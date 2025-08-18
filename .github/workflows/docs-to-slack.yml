@@ -1,0 +1,19 @@
+name: Docs to Slack
+
+on:
+  push:
+    paths:
+      - 'docs/**'
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send message to Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data "{\"text\":\"📄 文件更新\nRepo: ${GITHUB_REPOSITORY}\nBranch: ${GITHUB_REF_NAME}\nUser: ${GITHUB_ACTOR}\nMessage: ${COMMIT_MSG}\n🔗 ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}\"}" \
+          "$SLACK_WEBHOOK_URL"
