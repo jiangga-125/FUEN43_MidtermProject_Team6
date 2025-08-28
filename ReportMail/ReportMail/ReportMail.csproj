@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>aspnet-ReportAndMail-7bd21fb5-9d04-4808-84ad-76d6643065ec</UserSecretsId>
+    <UserSecretsId>aspnet-ReportMail-5ed21409-9c6d-4995-a395-92d6626fd9ae</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

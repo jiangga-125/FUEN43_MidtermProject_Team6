@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace ReportAndMail.Data
+namespace ReportMail.Data
 {
     public class ApplicationDbContext : IdentityDbContext
     {

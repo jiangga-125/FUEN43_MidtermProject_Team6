@@ -1,4 +1,4 @@
-namespace ReportAndMail.Models
+namespace ReportMail.Models
 {
     public class ErrorViewModel
     {

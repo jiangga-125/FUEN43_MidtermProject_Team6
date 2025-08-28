@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace ReportAndMail.Data.Migrations
+namespace ReportMail.Data.Migrations
 {
     public partial class CreateIdentitySchema : Migration
     {

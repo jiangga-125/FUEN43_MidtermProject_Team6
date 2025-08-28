@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using ReportAndMail.Models;
+using ReportMail.Models;
 
-namespace ReportAndMail.Controllers
+namespace ReportMail.Controllers
 {
     public class HomeController : Controller
     {
