@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ReportMail.Data;
+using ReportMail.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,10 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+builder.Services.AddDbContext<ReportMailDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ReportMail")));
+
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();

@@ -1,0 +1,69 @@
+@model ReportMail.Models.ReportFilter
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>ReportFilter</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="ReportDefinitionId" class="control-label"></label>
+                <select asp-for="ReportDefinitionId" class ="form-control" asp-items="ViewBag.ReportDefinitionId"></select>
+            </div>
+            <div class="form-group">
+                <label asp-for="FieldName" class="control-label"></label>
+                <input asp-for="FieldName" class="form-control" />
+                <span asp-validation-for="FieldName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="DisplayName" class="control-label"></label>
+                <input asp-for="DisplayName" class="form-control" />
+                <span asp-validation-for="DisplayName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="DataType" class="control-label"></label>
+                <input asp-for="DataType" class="form-control" />
+                <span asp-validation-for="DataType" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Operator" class="control-label"></label>
+                <input asp-for="Operator" class="form-control" />
+                <span asp-validation-for="Operator" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="DefaultValue" class="control-label"></label>
+                <input asp-for="DefaultValue" class="form-control" />
+                <span asp-validation-for="DefaultValue" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Options" class="control-label"></label>
+                <input asp-for="Options" class="form-control" />
+                <span asp-validation-for="Options" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CreatedAt" class="control-label"></label>
+                <input asp-for="CreatedAt" class="form-control" />
+                <span asp-validation-for="CreatedAt" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="UpdatedAt" class="control-label"></label>
+                <input asp-for="UpdatedAt" class="form-control" />
+                <span asp-validation-for="UpdatedAt" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+

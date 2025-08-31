@@ -1,0 +1,56 @@
+@model ReportMail.Models.ReportExportLog
+
+@{
+    ViewData["Title"] = "Edit";
+}
+
+<h1>Edit</h1>
+
+<h4>ReportExportLog</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="ExportId" />
+            <div class="form-group">
+                <label asp-for="UserId" class="control-label"></label>
+                <input asp-for="UserId" class="form-control" />
+                <span asp-validation-for="UserId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ReportName" class="control-label"></label>
+                <input asp-for="ReportName" class="form-control" />
+                <span asp-validation-for="ReportName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ExportFormat" class="control-label"></label>
+                <input asp-for="ExportFormat" class="form-control" />
+                <span asp-validation-for="ExportFormat" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ExportAt" class="control-label"></label>
+                <input asp-for="ExportAt" class="form-control" />
+                <span asp-validation-for="ExportAt" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Filters" class="control-label"></label>
+                <input asp-for="Filters" class="form-control" />
+                <span asp-validation-for="Filters" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="FilePath" class="control-label"></label>
+                <input asp-for="FilePath" class="form-control" />
+                <span asp-validation-for="FilePath" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Save" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
