@@ -1,93 +1,66 @@
 @model ReportMail.Models.ReportFilter
 
 @{
-    ViewData["Title"] = "Delete";
+    ViewData["Title"] = "刪除篩選欄位";
+    var currentReportDefinitionId = Context.Request.Query["reportDefinitionId"];
 }
 
-<h1>Delete</h1>
-
-<h3>Are you sure you want to delete this?</h3>
-<div>
-    <h4>ReportFilter</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.FieldName)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.FieldName)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.DisplayName)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.DisplayName)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.DataType)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.DataType)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Operator)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Operator)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.DefaultValue)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.DefaultValue)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Options)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Options)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.OrderIndex)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.OrderIndex)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.IsRequired)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.IsRequired)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.IsActive)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.IsActive)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.CreatedAt)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.CreatedAt)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.UpdatedAt)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.UpdatedAt)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.ReportDefinition)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.ReportDefinition.ReportDefinitionId)
-        </dd>
-    </dl>
-    
-    <form asp-action="Delete">
-        <input type="hidden" asp-for="ReportFilterId" />
-        <input type="submit" value="Delete" class="btn btn-danger" /> |
-        <a asp-action="Index">Back to List</a>
-    </form>
+<h1 class="mb-3 text-danger">刪除篩選欄位</h1>
+<div class="alert alert-warning">
+    確定要刪除這個欄位嗎？此動作無法還原。
 </div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">報表</dt>
+            <dd class="col-sm-9">@Model.ReportDefinition?.ReportName (ID: @Model.ReportDefinitionId)</dd>
+
+            <dt class="col-sm-3">欄位代碼</dt>
+            <dd class="col-sm-9">@Model.FieldName</dd>
+
+            <dt class="col-sm-3">顯示名稱</dt>
+            <dd class="col-sm-9">@Model.DisplayName</dd>
+
+            <dt class="col-sm-3">資料型別</dt>
+            <dd class="col-sm-9">@Model.DataType</dd>
+
+            <dt class="col-sm-3">運算子</dt>
+            <dd class="col-sm-9">@Model.Operator</dd>
+
+            <dt class="col-sm-3">預設值</dt>
+            <dd class="col-sm-9">@Model.DefaultValue</dd>
+
+            <dt class="col-sm-3">選項</dt>
+            <dd class="col-sm-9">@Model.Options</dd>
+
+            <dt class="col-sm-3">排序</dt>
+            <dd class="col-sm-9">@Model.OrderIndex</dd>
+
+            <dt class="col-sm-3">必填 / 啟用</dt>
+            <dd class="col-sm-9">
+                @(Model.IsRequired ? "必填" : "選填") ，
+                @(Model.IsActive ? "啟用" : "停用")
+            </dd>
+
+            <dt class="col-sm-3">建立 / 更新</dt>
+            <dd class="col-sm-9">
+                @Model.CreatedAt.ToString("yyyy/MM/dd HH:mm") ．
+                @Model.UpdatedAt.ToString("yyyy/MM/dd HH:mm")
+            </dd>
+        </dl>
+    </div>
+</div>
+
+<form asp-action="Delete" method="post">
+    @Html.AntiForgeryToken()
+
+    @* 主鍵要送回去 *@
+    <input type="hidden" asp-for="ReportFilterId" />
+
+    @* 刪除後回到同一報表的欄位列表 *@
+    <input type="hidden" name="reportDefinitionId" value="@currentReportDefinitionId" />
+
+    <button type="submit" class="btn btn-danger">確認刪除</button>
+    <a class="btn btn-secondary" asp-action="Index" asp-route-reportDefinitionId="@currentReportDefinitionId">取消</a>
+</form>

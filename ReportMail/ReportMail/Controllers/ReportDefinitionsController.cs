@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -9,13 +10,15 @@ using ReportMail.Models;
 
 namespace ReportMail.Controllers
 {
-    public class ReportDefinitionsController : Controller
+    public partial class ReportDefinitionsController : Controller
     {
         private readonly ReportMailDbContext _context;
+        private readonly IWebHostEnvironment _env;
 
-        public ReportDefinitionsController(ReportMailDbContext context)
+        public ReportDefinitionsController(ReportMailDbContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         // GET: ReportDefinitions

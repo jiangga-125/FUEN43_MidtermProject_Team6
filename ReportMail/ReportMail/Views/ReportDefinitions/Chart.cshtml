@@ -1,0 +1,141 @@
+﻿@model ReportMail.Models.ReportDefinition
+@using Microsoft.AspNetCore.Html
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "圖表";
+    var selects = ViewBag.Selects as Dictionary<int, SelectList>;
+}
+
+<h2 class="mb-3">圖表：@ViewBag.ReportName</h2>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+
+    @if (Model.ReportFilters == null || !Model.ReportFilters.Any())
+    {
+        <div class="alert alert-info">此報表尚未設定任何篩選欄位。</div>
+    }
+    else
+    {
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row g-3">
+                    @foreach (var f in Model.ReportFilters.OrderBy(x => x.OrderIndex))
+                    {
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                @f.DisplayName @if (f.IsRequired) {
+                                <span class="text-danger">*</span>
+                            }
+                        </label>
+
+                        @if (f.Operator.Equals("between", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <div class="input-group">
+                                @RenderInput(f, false)
+                                <span class="input-group-text">~</span>
+                                @RenderInput(f, true)
+                            </div>
+                            <span class="text-danger">@Html.ValidationMessage($"f_{f.ReportFilterId}")</span>
+                        }
+                        else if (f.DataType.Equals("multiselect", StringComparison.OrdinalIgnoreCase) || f.Operator.Equals("in", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <select class="form-select" name="f_@f.ReportFilterId" multiple size="5">
+                                @{
+                                    var list = (selects != null && selects.ContainsKey(f.ReportFilterId))
+                                    ? selects[f.ReportFilterId]
+                                    : new SelectList(Array.Empty<SelectListItem>());
+                                    foreach (SelectListItem opt in list)
+                                    {
+                                        <option value="@opt.Value">@opt.Text</option>
+                                    }
+                                }
+                            </select>
+                            <small class="text-muted">可按 Ctrl / Shift 複選</small>
+                            <span class="text-danger">@Html.ValidationMessage($"f_{f.ReportFilterId}")</span>
+                        }
+                        else if (f.DataType.Equals("select", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <select class="form-select" name="f_@f.ReportFilterId">
+                                @{
+                                    var list = (selects != null && selects.ContainsKey(f.ReportFilterId))
+                                    ? selects[f.ReportFilterId]
+                                    : new SelectList(Array.Empty<SelectListItem>());
+                                    foreach (SelectListItem opt in list)
+                                    {
+                                        <option value="@opt.Value">@opt.Text</option>
+                                    }
+                                }
+                            </select>
+                            <span class="text-danger">@Html.ValidationMessage($"f_{f.ReportFilterId}")</span>
+                        }
+                        else
+                        {
+                            @RenderInput(f, false)
+                            <span class="text-danger">@Html.ValidationMessage($"f_{f.ReportFilterId}")</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" name="__action" value="chart" class="btn btn-primary">產生圖表</button>
+    <button type="submit" name="__action" value="export" class="btn btn-outline-primary ms-2">匯出 CSV</button>
+    <a class="btn btn-secondary ms-2" asp-action="Index">回報表清單</a>
+        }
+</form>
+
+@functions {
+    IHtmlContent RenderInput(ReportMail.Models.ReportFilter f, bool isSecond)
+    {
+        var name = isSecond ? $"f_{f.ReportFilterId}_to" : $"f_{f.ReportFilterId}";
+        var defaultVal = f.DefaultValue ?? string.Empty;
+
+        if (defaultVal.Contains(","))
+        {
+            var parts = defaultVal.Split(',', 2, StringSplitOptions.TrimEntries);
+            defaultVal = isSecond ? (parts.Length > 1 ? parts[1] : "") : parts[0];
+        }
+
+        var type =
+            f.DataType.Equals("date", StringComparison.OrdinalIgnoreCase) ? "date" :
+            f.DataType.Equals("int", StringComparison.OrdinalIgnoreCase) ? "number" :
+            f.DataType.Equals("decimal", StringComparison.OrdinalIgnoreCase) ? "number" :
+            f.DataType.Equals("boolean", StringComparison.OrdinalIgnoreCase) ? "checkbox" : "text";
+
+        if (type == "checkbox")
+        {
+            var tag = new TagBuilder("input");
+            tag.Attributes["type"] = "checkbox";
+            tag.Attributes["name"] = name;
+            tag.AddCssClass("form-check-input");
+            if (bool.TryParse(defaultVal, out var b) && b) tag.Attributes["checked"] = "checked";
+
+            var wrap = new HtmlContentBuilder();
+            wrap.AppendHtml("<div class=\"form-check\">");
+            wrap.AppendHtml(tag);
+            wrap.AppendHtml($"<label class=\"form-check-label\" for=\"{name}\">是 / 否</label>");
+            wrap.AppendHtml("</div>");
+            return wrap;
+        }
+        else
+        {
+            var tag = new TagBuilder("input");
+            tag.Attributes["type"] = type;
+            tag.Attributes["name"] = name;
+            tag.AddCssClass("form-control");
+
+            if (f.DataType.Equals("decimal", StringComparison.OrdinalIgnoreCase))
+                tag.Attributes["step"] = "0.01";
+            else if (f.DataType.Equals("int", StringComparison.OrdinalIgnoreCase))
+                tag.Attributes["step"] = "1";
+
+            if (!string.IsNullOrWhiteSpace(defaultVal))
+                tag.Attributes["value"] = defaultVal;
+
+            return tag;
+        }
+    }
+}

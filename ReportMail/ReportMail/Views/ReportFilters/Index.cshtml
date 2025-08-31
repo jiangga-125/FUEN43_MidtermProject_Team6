@@ -1,101 +1,146 @@
 @model IEnumerable<ReportMail.Models.ReportFilter>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "篩選欄位";
+
+    // ★ 從 Controller 傳來的目前報表資訊（用來顯示「目前報表」與維持過濾）
+    //   注意：ViewBag 是 dynamic，這裡用 pattern matching 取出 int?
+    int? rdId = ViewBag.ReportDefinitionId is int v ? v : (int?)null;   // 目前報表的 ReportDefinitionId（可為 null）
+    string rdName = ViewBag.ReportName as string;                       // 目前報表名稱（可為 null）
 }
 
-<h1>Index</h1>
+<h1 class="mb-3">篩選欄位</h1>
 
-<p>
-    <a asp-action="Create">Create New</a>
+<!-- ★ 如果帶了 reportDefinitionId，顯示目前正在檢視哪一份報表的欄位 -->
+@if (rdId.HasValue)
+{
+    <div class="alert alert-secondary">
+        目前報表：@rdName（ID: @rdId）
+    </div>
+}
+
+<!-- ★ 功能列：建立新欄位／返回報表清單
+     - 新增時把 reportDefinitionId 一起帶上，Create 成功後能回到同一報表的欄位列表 -->
+<p class="mb-3">
+    <a class="btn btn-primary" asp-action="Create" asp-route-reportDefinitionId="@rdId">新增欄位</a>
+    <a class="btn btn-outline-secondary" asp-controller="ReportDefinitions" asp-action="Index">回報表清單</a>
 </p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.FieldName)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.DisplayName)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.DataType)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Operator)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.DefaultValue)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Options)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.OrderIndex)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.IsRequired)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.IsActive)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.CreatedAt)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.UpdatedAt)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.ReportDefinition)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.FieldName)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.DisplayName)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.DataType)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Operator)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.DefaultValue)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Options)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.OrderIndex)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.IsRequired)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.IsActive)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.CreatedAt)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.UpdatedAt)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.ReportDefinition.ReportDefinitionId)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.ReportFilterId">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.ReportFilterId">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.ReportFilterId">Delete</a>
-            </td>
-        </tr>
-}
-    </tbody>
-</table>
+
+<div class="table-responsive">
+    <table class="table table-striped table-bordered align-middle">
+        <thead class="table-light">
+            <tr>
+                <!-- 中文化表頭 + 自訂欄位 -->
+                <th style="width:20%">報表</th>
+                <th style="width:14%">欄位英文名稱</th>
+                <th style="width:16%">顯示名稱</th>
+                <th style="width:10%">資料型別</th>
+                <th style="width:10%">運算子</th>
+                <th style="width:8%">排序</th>
+                <th style="width:8%">必填</th>
+                <th style="width:8%">啟用</th>
+                <th>預設值 / 選項</th>
+                <th style="width:170px">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model != null && Model.Any())
+            {
+                foreach (var item in Model)
+                {
+                    <tr>
+                        <!-- ★ 優先顯示導覽屬性 ReportName；若未 Include 或為 null，就退回顯示 ID -->
+                        <td>@(item.ReportDefinition?.ReportName ?? $"ID: {item.ReportDefinitionId}")</td>
+
+                        <td class="fw-semibold">@item.FieldName</td>
+                        <td>@item.DisplayName</td>
+                        <td>@item.DataType</td>
+                        <td>@item.Operator</td>
+                        <td>@item.OrderIndex</td>
+
+                        <td>@(item.IsRequired ? "是" : "否")</td>
+                        <td>
+                            @if (item.IsActive)
+                            {
+                                <span class="badge bg-success">啟用</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">停用</span>
+                            }
+                        </td>
+
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(item.DefaultValue))
+                            {
+                                <div><small class="text-muted">Default:</small> @item.DefaultValue</div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(item.Options))
+                            {
+                                <div><small class="text-muted">Options:</small> @item.Options</div>
+                            }
+                        </td>
+
+                        <!-- ★ 操作列：編輯 / 明細 / 刪除
+                             - 帶上 asp-route-reportDefinitionId，返回列表時能保持「同一份報表」的過濾 -->
+                        <td>
+                            <div class="btn-group" role="group" aria-label="actions">
+                                <a class="btn btn-sm btn-outline-primary"
+                                   asp-action="Edit"
+                                   asp-route-id="@item.ReportFilterId"
+                                   asp-route-reportDefinitionId="@rdId">編輯</a>
+
+                                <a class="btn btn-sm btn-outline-secondary"
+                                   asp-action="Details"
+                                   asp-route-id="@item.ReportFilterId">明細</a>
+
+                                <a class="btn btn-sm btn-outline-danger"
+                                   asp-action="Delete"
+                                   asp-route-id="@item.ReportFilterId"
+                                   asp-route-reportDefinitionId="@rdId">刪除</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <!-- ★ 無資料時的空狀態 -->
+                <tr>
+                    <td colspan="10" class="text-center text-muted py-4">目前沒有欄位資料。</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- ▼▼▼ 參考說明（不會出現在畫面；純註解） ▼▼▼
+@*
+【這個檔案做了什麼】
+1) 支援「只看某報表的欄位」：
+   - 透過 Controller 在 QueryString 帶 reportDefinitionId
+   - Controller.Index() 內以 Where 過濾 + Include(rf => rf.ReportDefinition)
+   - 這裡用 ViewBag.ReportDefinitionId / ViewBag.ReportName 顯示與維持過濾
+
+2) 新增/編輯/刪除後維持過濾：
+   - 操作連結使用 asp-route-reportDefinitionId="@rdId"
+   - Controller 在 POST 後依是否帶 reportDefinitionId Redirect 回同一過濾頁
+
+3) 僅使用你現有的欄位：
+   - 顯示用欄位：FieldName, DisplayName, DataType, Operator, OrderIndex, IsRequired, IsActive, DefaultValue, Options
+   - 導覽屬性：ReportDefinition?.ReportName（若無 Include 則顯示 ID）
+
+4) 樣式：
+   - 採用 Bootstrap table 樣式（table-striped / table-bordered / align-middle）
+   - 布林欄位用中文與 badge 呈現
+
+【注意】
+- 若你的 Controller 沒有對 ReportDefinition 做 Include，這裡會顯示「ID: {ReportDefinitionId}」，不是報表名稱。
+- 如果 CreatedAt/UpdatedAt 也想顯示，可加兩欄：
+    <th>建立時間</th><th>最後更新</th>
+    <td>@item.CreatedAt.ToString("yyyy/MM/dd HH:mm")</td>
+    <td>@item.UpdatedAt.ToString("yyyy/MM/dd HH:mm")</td>
+  若你的型別是 DateTime?，請改成：
+    @item.CreatedAt?.ToString("yyyy/MM/dd HH:mm")
+    @item.UpdatedAt?.ToString("yyyy/MM/dd HH:mm")
+*@

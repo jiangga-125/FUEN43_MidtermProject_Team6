@@ -1,0 +1,32 @@
+﻿@model ReportMail.Controllers.ReportDefinitionsController.RunResultVM
+@{
+    ViewData["Title"] = "條件摘要";
+}
+<h2 class="mb-3">報表「@Model.ReportName」的條件摘要</h2>
+
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th style="width:28%">欄位英文名稱</th>
+            <th style="width:20%">顯示名稱</th>
+            <th style="width:18%">資料型別</th>
+            <th style="width:14%">運算子</th>
+            <th>值</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var x in Model.Items)
+        {
+            <tr>
+                <td>@x.FieldName</td>
+                <td>@x.DisplayName</td>
+                <td>@x.DataType</td>
+                <td>@x.Operator</td>
+                <td>@x.Value</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a class="btn btn-secondary" asp-action="Run" asp-route-id="@Model.ReportDefinitionId">返回條件</a>
+<a class="btn btn-outline-primary" asp-action="Index">回報表清單</a>
