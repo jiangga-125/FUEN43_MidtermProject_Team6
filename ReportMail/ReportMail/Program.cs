@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using ReportMail.Data.Contexts;
 using ReportMail.Data;
-using ReportMail.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,8 +14,9 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
-builder.Services.AddDbContext<ReportMailDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("ReportMail")));
+// 加入：報表＋Mail 的 DbContext（用 appsettings.json 的 "ReportMail" 連線字串）
+builder.Services.AddDbContext<ReportMailDbContext>(opt =>
+    opt.UseSqlServer(builder.Configuration.GetConnectionString("ReportMail")));
 
 builder.Services.AddControllersWithViews();
 

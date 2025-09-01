@@ -1,4 +1,4 @@
-@model ReportMail.Models.ReportDefinition
+@model ReportMail.Data.Entities.ReportDefinition
 
 @{
     ViewData["Title"] = "Delete";
@@ -50,7 +50,7 @@
     </dl>
     
     <form asp-action="Delete">
-        <input type="hidden" asp-for="ReportDefinitionId" />
+        <input type="hidden" asp-for="ReportDefinitionID" />
         <input type="submit" value="Delete" class="btn btn-danger" /> |
         <a asp-action="Index">Back to List</a>
     </form>

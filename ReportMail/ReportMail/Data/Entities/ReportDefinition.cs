@@ -1,14 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
-namespace ReportMail.Models;
+namespace ReportMail.Data.Entities;
 
+[Table("ReportDefinition")]
+[Index("IsActive", "Category", Name = "IX_ReportDefinition_IsActive_Category")]
 public partial class ReportDefinition
 {
-    public int ReportDefinitionId { get; set; }
+    [Key]
+    public int ReportDefinitionID { get; set; }
 
+    [StringLength(100)]
     public string ReportName { get; set; } = null!;
 
+    [StringLength(50)]
     public string Category { get; set; } = null!;
 
     public string? Description { get; set; }
@@ -19,7 +27,6 @@ public partial class ReportDefinition
 
     public DateTime UpdatedAt { get; set; }
 
-    public virtual ICollection<ReportAccessLog> ReportAccessLogs { get; set; } = new List<ReportAccessLog>();
-
+    [InverseProperty("ReportDefinition")]
     public virtual ICollection<ReportFilter> ReportFilters { get; set; } = new List<ReportFilter>();
 }

@@ -2,23 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using ReportMail.Models;
+using ReportMail.Data.Contexts;
+using ReportMail.Data.Entities;
 
 namespace ReportMail.Controllers
 {
-    public partial class ReportDefinitionsController : Controller
+    public class ReportDefinitionsController : Controller
     {
         private readonly ReportMailDbContext _context;
-        private readonly IWebHostEnvironment _env;
 
-        public ReportDefinitionsController(ReportMailDbContext context, IWebHostEnvironment env)
+        public ReportDefinitionsController(ReportMailDbContext context)
         {
             _context = context;
-            _env = env;
         }
 
         // GET: ReportDefinitions
@@ -36,7 +34,7 @@ namespace ReportMail.Controllers
             }
 
             var reportDefinition = await _context.ReportDefinitions
-                .FirstOrDefaultAsync(m => m.ReportDefinitionId == id);
+                .FirstOrDefaultAsync(m => m.ReportDefinitionID == id);
             if (reportDefinition == null)
             {
                 return NotFound();
@@ -56,7 +54,7 @@ namespace ReportMail.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("ReportDefinitionId,ReportName,Category,Description,IsActive,CreatedAt,UpdatedAt")] ReportDefinition reportDefinition)
+        public async Task<IActionResult> Create([Bind("ReportDefinitionID,ReportName,Category,Description,IsActive,CreatedAt,UpdatedAt")] ReportDefinition reportDefinition)
         {
             if (ModelState.IsValid)
             {
@@ -88,9 +86,9 @@ namespace ReportMail.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("ReportDefinitionId,ReportName,Category,Description,IsActive,CreatedAt,UpdatedAt")] ReportDefinition reportDefinition)
+        public async Task<IActionResult> Edit(int id, [Bind("ReportDefinitionID,ReportName,Category,Description,IsActive,CreatedAt,UpdatedAt")] ReportDefinition reportDefinition)
         {
-            if (id != reportDefinition.ReportDefinitionId)
+            if (id != reportDefinition.ReportDefinitionID)
             {
                 return NotFound();
             }
@@ -104,7 +102,7 @@ namespace ReportMail.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!ReportDefinitionExists(reportDefinition.ReportDefinitionId))
+                    if (!ReportDefinitionExists(reportDefinition.ReportDefinitionID))
                     {
                         return NotFound();
                     }
@@ -127,7 +125,7 @@ namespace ReportMail.Controllers
             }
 
             var reportDefinition = await _context.ReportDefinitions
-                .FirstOrDefaultAsync(m => m.ReportDefinitionId == id);
+                .FirstOrDefaultAsync(m => m.ReportDefinitionID == id);
             if (reportDefinition == null)
             {
                 return NotFound();
@@ -153,7 +151,7 @@ namespace ReportMail.Controllers
 
         private bool ReportDefinitionExists(int id)
         {
-            return _context.ReportDefinitions.Any(e => e.ReportDefinitionId == id);
+            return _context.ReportDefinitions.Any(e => e.ReportDefinitionID == id);
         }
     }
 }

@@ -1,4 +1,4 @@
-@model ReportMail.Models.ReportFilter
+@model ReportMail.Data.Entities.ReportFilter
 
 @{
     ViewData["Title"] = "Details";
@@ -80,11 +80,11 @@
             @Html.DisplayNameFor(model => model.ReportDefinition)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.ReportDefinition.ReportDefinitionId)
+            @Html.DisplayFor(model => model.ReportDefinition.ReportDefinitionID)
         </dd>
     </dl>
 </div>
 <div>
-    <a asp-action="Edit" asp-route-id="@Model?.ReportFilterId">Edit</a> |
+    <a asp-action="Edit" asp-route-id="@Model?.ReportFilterID">Edit</a> |
     <a asp-action="Index">Back to List</a>
 </div>
