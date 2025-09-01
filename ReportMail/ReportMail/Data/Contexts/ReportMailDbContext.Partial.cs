@@ -1,13 +1,21 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using ReportMail.Data.Entities;
 
 namespace ReportMail.Data.Contexts
 {
-    // 這是你的檔案（partial），re-scaffold 不會覆蓋
     public partial class ReportMailDbContext
     {
+        // 查詢用 DbSet（不會建表）
+        public virtual DbSet<DailySalesPoint> DailySalesPoints => Set<DailySalesPoint>();
+
         partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
         {
-            // 需要客製 Fluent API 設定再寫這裡（不改你的資料表）
+            // Keyless，且不對應任何資料表/檢視
+            modelBuilder.Entity<DailySalesPoint>(e =>
+            {
+                e.HasNoKey();
+                e.ToView(null); // 告訴 EF 這不是 table/view
+            });
         }
     }
 }
