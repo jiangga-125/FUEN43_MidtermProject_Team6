@@ -31,31 +31,42 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     let chart;
+
     function buildUrl(base){
-      const id = document.getElementById('reportId').value;
-      const from = document.getElementById('from').value;
-      const to = document.getElementById('to').value;
       const u = new URL(base, window.location.origin);
+      const id = document.getElementById('reportId').value;
       u.searchParams.set('reportDefinitionId', id);
-      if(from) u.searchParams.set('from', from);
-      if(to) u.searchParams.set('to', to);
+      const from = document.getElementById('StartDate')?.value;
+      const to   = document.getElementById('EndDate')?.value;
+      if (from) u.searchParams.set('StartDate', from);
+      if (to)   u.searchParams.set('EndDate', to);
       return u.toString();
     }
 
     async function run(){
-      const res = await fetch(buildUrl('@Url.Action("Run", "Reports")'));
-      const { labels, data } = await res.json();
+      const url = buildUrl('@Url.Action("Run", "Reports")');
+      try{
+        const res = await fetch(url);
+        if(!res.ok){
+          const txt = await res.text();     // ← 關鍵：錯誤時讀純文字
+          alert('伺服器錯誤 ' + res.status + '\n' + txt);
+          return;
+        }
+        const { labels, data } = await res.json();
 
-      const ctx = document.getElementById('chart');
-      if(chart) chart.destroy();
-      chart = new Chart(ctx, {
-        type: 'line',
-        data: { labels, datasets: [{ label: '數值', data }] },
-        options: { responsive: true, tension:.25 }
-      });
+        const ctx = document.getElementById('chart');
+        if (chart) chart.destroy();
+        chart = new Chart(ctx, {
+          type: 'line',
+          data: { labels, datasets: [{ label: '數值', data }] },
+          options: { responsive: true, tension: .25 }
+        });
 
-      // 匯出連結
-      document.getElementById('btnExport').href = buildUrl('@Url.Action("ExportExcel", "Reports")');
+        document.getElementById('btnExport').href = buildUrl('@Url.Action("ExportExcel", "Reports")');
+      }catch(err){
+        console.error(err);
+        alert('前端異常：' + err);
+      }
     }
 
     document.getElementById('btnRun').addEventListener('click', run);
