@@ -1,0 +1,77 @@
+﻿@model ReportMail.Models.ReportFilters.FiltersIndexVM
+@{
+    ViewData["Title"] = "篩選欄位管理";
+    var rid = Model.Report.ReportDefinitionID;
+}
+
+<h2 class="mb-3">@Model.Report.ReportName 篩選欄位</h2>
+
+<div class="mb-3">
+    <a class="btn btn-primary"
+       asp-area="ReportMail"
+       asp-controller="Filters"
+       asp-action="Create"
+       asp-route-reportDefinitionId="@rid">
+        新增篩選欄位
+    </a>
+    <a class="btn btn-outline-secondary ms-2"
+       asp-area="ReportMail"
+       asp-controller="ReportDefinitions"
+       asp-action="Index">
+        回報表清單
+    </a>
+</div>
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th style="width:90px;">順序</th>
+            <th style="width:220px;">欄位代碼</th>
+            <th>顯示名稱</th>
+            <th style="width:120px;">型別</th>
+            <th style="width:120px;">比較子</th>
+            <th style="width:90px;">必填</th>
+            <th style="width:90px;">啟用</th>
+            <th style="width:180px;"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model.Items?.Any() == true)
+        {
+            foreach (var f in Model.Items.OrderBy(x => x.OrderIndex))
+            {
+                <tr>
+                    <td>@f.OrderIndex</td>
+                    <td><code>@f.FieldName</code></td>
+                    <td>@f.DisplayName</td>
+                    <td>@f.DataType</td>
+                    <td>@f.Operator</td>
+                    <td>@(f.IsRequired ? "✓" : "")</td>
+                    <td>@(f.IsActive ? "✓" : "")</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary"
+                           asp-area="ReportMail"
+                           asp-controller="Filters"
+                           asp-action="Edit"
+                           asp-route-id="@f.ReportFilterID">
+                            編輯
+                        </a>
+
+                        <form class="d-inline" method="post"
+                              asp-area="ReportMail"
+                              asp-controller="Filters"
+                              asp-action="Delete"
+                              asp-route-id="@f.ReportFilterID"
+                              onsubmit="return confirm('確定要刪除這個篩選欄位嗎？');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">刪除</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr><td colspan="8" class="text-center text-muted">尚無篩選欄位</td></tr>
+        }
+    </tbody>
+</table>

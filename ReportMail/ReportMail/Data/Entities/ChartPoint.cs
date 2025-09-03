@@ -1,6 +1,9 @@
-﻿namespace ReportMail.Data.Entities
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace ReportMail.Data.Entities
 {
-    // 查詢結果 DTO，對應 View 輸出
+    // 只拿來承接查詢結果，不對應實體表／沒有主鍵
+    [Keyless]
     public class ChartPoint
     {
         public string Label { get; set; } = default!;  // 或可用 DateTime，這邊先用字串泛用

@@ -1,0 +1,144 @@
+﻿@model ReportMail.Models.ReportFilters.FilterDesignerVM
+@{
+    ViewData["Title"] = "新增篩選欄位";
+}
+
+<h2 class="mb-3">新增篩選欄位</h2>
+
+<form asp-action="Create" method="post">
+    <input type="hidden" asp-for="ReportDefinitionId" />
+
+    <div class="mb-3">
+        <label asp-for="Template" class="form-label"></label>
+        <select asp-for="Template" class="form-select">
+            <option value="DateRange">日期區間</option>
+            <option value="SingleValue">單值</option>
+            <option value="MultiSelect">多選</option>
+        </select>
+        <span asp-validation-for="Template" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Column" class="form-label"></label>
+        <input asp-for="Column" class="form-control" placeholder="例：br.BorrowDate / od.OrderDate" />
+        <span asp-validation-for="Column" class="text-danger"></span>
+    </div>
+
+    <div class="row g-2">
+        <div class="col">
+            <label asp-for="OrderIndex" class="form-label"></label>
+            <input asp-for="OrderIndex" class="form-control" />
+        </div>
+        <div class="col form-check align-self-end">
+            <input asp-for="IsRequired" class="form-check-input" />
+            <label asp-for="IsRequired" class="form-check-label"></label>
+        </div>
+        <div class="col form-check align-self-end">
+            <input asp-for="IsActive" class="form-check-input" />
+            <label asp-for="IsActive" class="form-check-label"></label>
+        </div>
+    </div>
+
+    <hr />
+
+    <!-- 單值 / 多選 共用欄位（日期區間可忽略這段） -->
+    <div class="row g-2">
+        <div class="col">
+            <label asp-for="FieldName" class="form-label"></label>
+            <input asp-for="FieldName" class="form-control" placeholder="例：Status / Keyword" />
+        </div>
+        <div class="col">
+            <label asp-for="DisplayName" class="form-label"></label>
+            <input asp-for="DisplayName" class="form-control" placeholder="例：狀態 / 關鍵字" />
+        </div>
+        <div class="col">
+            <label asp-for="DataType" class="form-label"></label>
+            <select asp-for="DataType" class="form-select">
+                <option value="">（依模板而定）</option>
+                <option>date</option>
+                <option>int</option>
+                <option>decimal</option>
+                <option>string</option>
+                <option>boolean</option>
+                <option>select</option>
+                <option>multiselect</option>
+            </select>
+        </div>
+        <div class="col">
+            <label asp-for="Operator" class="form-label"></label>
+            <select asp-for="Operator" class="form-select">
+                <option value="">（預設 eq / 日期區間自動）</option>
+                <option>eq</option>
+                <option>ne</option>
+                <option>gt</option>
+                <option>gte</option>
+                <option>lt</option>
+                <option>lte</option>
+                <option>like</option>
+                <option>in</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="DefaultValueJson" class="form-label"></label>
+        <textarea asp-for="DefaultValueJson" class="form-control" rows="2"
+                  placeholder='例：{"value":1} 或 {"values":["1","2"]}'></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">選項（多選/下拉）</label>
+        <small class="text-muted d-block">暫以逗號分隔的 value:text；例：1:未付款,2:已付款</small>
+        <input id="itemsInput" class="form-control" />
+    </div>
+
+    <hr />
+
+    <!-- 日期區間專用名稱（可保留預設 StartDate/EndDate） -->
+    <div class="row g-2">
+        <div class="col">
+            <label asp-for="StartFieldName" class="form-label"></label>
+            <input asp-for="StartFieldName" class="form-control" />
+        </div>
+        <div class="col">
+            <label asp-for="StartDisplayName" class="form-label"></label>
+            <input asp-for="StartDisplayName" class="form-control" />
+        </div>
+        <div class="col">
+            <label asp-for="EndFieldName" class="form-label"></label>
+            <input asp-for="EndFieldName" class="form-control" />
+        </div>
+        <div class="col">
+            <label asp-for="EndDisplayName" class="form-label"></label>
+            <input asp-for="EndDisplayName" class="form-control" />
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <button class="btn btn-primary" onclick="packItems()">建立</button>
+        <a asp-area="ReportMail" asp-controller="Reports" asp-action="Index"
+           class="btn btn-outline-secondary">返回</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // 將「1:未付款,2:已付款」這種輸入轉成 Items（送出前）
+        function packItems(){
+            const txt = document.getElementById('itemsInput').value.trim();
+            if(!txt) return;
+            const items = txt.split(',').map(x=>{
+                const [v,t] = x.split(':');
+                return { value: (v||'').trim(), text: (t||'').trim() };
+            }).filter(x=>x.value && x.text);
+
+            // 透過 hidden 欄位塞回模型（簡單作法：用 DefaultValueJson 沒有衝突可複用；或你也可做一個真正 Items 隱藏欄位）
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'ItemsJson';
+            hidden.value = JSON.stringify(items);
+            document.forms[0].appendChild(hidden);
+        }
+    </script>
+}

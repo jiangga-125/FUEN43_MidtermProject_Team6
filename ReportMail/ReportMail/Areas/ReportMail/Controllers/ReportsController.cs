@@ -1,187 +1,132 @@
-﻿// Controllers/ReportsController.cs
-using ClosedXML.Excel;                       // 匯出
+﻿// Areas/ReportMail/Controllers/ReportsController.cs
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ReportMail.Data.Contexts;              // DbContext
-using ReportMail.Data.Entities;
 using ReportMail.Services.Reports;
-using System.Globalization;
-using System.Text.Json;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
-namespace ReportMail.Controllers
+namespace ReportMail.Areas.ReportMail.Controllers
 {
+    /// <summary>
+    /// 報表主頁 + 三張「預設」不可編輯的報表 API。
+    /// 預設圖型與邏輯寫死在服務層（ShopReportDataService）：
+    /// 1) 折線圖 Line：近 30 天「總銷售金額」，可切顆粒度 day/month/year
+    /// 2) 長條圖 Bar：近 30 天「銷售書籍排行」，預設 Top10
+    /// 3) 圓餅圖 Pie：近 30 天「借閱書籍種類」排行，預設 Top5
+    ///
+    /// ※ 自訂報表（ReportDefinition/ReportFilter）之後另做 CRUD 與對應 API，不混在這支。
+    /// </summary>
+    [Area("ReportMail")]
+    // 讓 URL 穩定為 /ReportMail/Reports/{Action}
+    [Route("ReportMail/[controller]/[action]")]
     public class ReportsController : Controller
     {
-        private readonly ReportMailDbContext _db;
-        private readonly ReportQueryBuilder _builder;
-        public ReportsController(ReportMailDbContext db, ReportQueryBuilder builder)
+        private readonly IReportDataService _svc;
+
+        public ReportsController(IReportDataService svc)
         {
-            _db = db;
-            _builder = builder;
+            _svc = svc;
         }
 
+        /// <summary>
+        /// 主頁（一次顯示三張預設圖）。
+        /// View：Areas/ReportMail/Views/Reports/Index.cshtml
+        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> Index(int? reportDefinitionId)
-        {
-            var defs = await _db.Set<ReportDefinition>()      // 不靠 DbSet 名稱，直接用型別
-                .AsNoTracking()
-                .OrderBy(x => x.ReportName)                   // 有這欄就留著，沒有就拿掉
-                .Select(x => new { Value = x.ReportDefinitionID, Text = x.ReportName })
-                .ToListAsync();
+        // 也讓 /ReportMail/Reports 直接進到這頁（不用寫 /Index）
+        [Route("/ReportMail/Reports")]
+        public IActionResult Index() => View();
 
-            ViewBag.ReportDefs = defs;
-
-            var rid = reportDefinitionId ?? defs.FirstOrDefault()?.Value ?? 0;
-
-            // 只給畫面的 filters（排除 meta）
-            var filters = await _db.Set<ReportFilter>().AsNoTracking()
-              .Where(f => f.ReportDefinitionID == rid && f.IsActive && !f.FieldName.StartsWith("_"))
-              .OrderBy(f => f.OrderIndex)
-              .ToListAsync();
-            ViewBag.Filters = filters;
-            ViewBag.SelectedReportId = rid;
-
-            return View();
-        }
-
-
+        /// <summary>
+        /// 折線圖：總銷售金額序列。
+        /// 預設：近 30 天（含今日）、顆粒度 granularity = day。
+        /// 可選 granularity：day / month / year
+        /// 可選 excludeStatuses：?excludeStatuses=0&excludeStatuses=9（例如排除取消/作廢）
+        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> Run(int reportDefinitionId)
+        [Produces("application/json")]
+        public async Task<IActionResult> Line(
+            DateTime? from,              // 起日（yyyy-MM-dd），未給則 = 今天往前 29 天
+            DateTime? to,                // 迄日（yyyy-MM-dd），未給則 = 今天
+            string granularity = "day",  // day / month / year
+            [FromQuery] int[]? excludeStatuses = null)
         {
-            try
+            NormalizeDateRange(from, to, out var start, out var end);
+
+            granularity = (granularity ?? "day").Trim().ToLowerInvariant();
+            if (granularity is not ("day" or "month" or "year"))
+                return BadRequest("granularity 僅允許 day / month / year");
+
+            var points = await _svc.GetSalesAmountSeriesAsync(start, end, granularity, excludeStatuses);
+            return Ok(new
             {
-                var recipe = await LoadRecipeAsync(reportDefinitionId);
-                //先驗證 meta 是否齊全欄位有值
-                if (string.IsNullOrWhiteSpace(recipe.Dimension?.Column))
-                    return BadRequest("_dimension.options.column 未設定");
-                if (string.IsNullOrWhiteSpace(recipe.Metric?.Expr))
-                    return BadRequest("_metric.options.expr 未設定");
-
-                if (recipe == null) return BadRequest("報表缺少 meta 設定");
-
-                var uiFilters = await _db.Set<ReportFilter>().AsNoTracking()
-                    .Where(f => f.ReportDefinitionID == reportDefinitionId && f.IsActive && !f.FieldName.StartsWith("_"))
-                    .OrderBy(f => f.OrderIndex)
-                    .Select(f => new { f.FieldName, f.DataType, f.Operator, f.Options })
-                    .ToListAsync();
-
-                var (sql, ps) = _builder.Build(
-                    recipe,
-                    uiFilters.Select(f => (f.FieldName, f.DataType ?? "string", f.Operator ?? "eq", f.Options)),
-                    Request.Query
-                );
-                //暫時如果還有 500，彈窗會是清楚的 SQL/轉型訊息
-                Console.WriteLine(sql);
-                foreach (var p in ps) Console.WriteLine($"{p.ParameterName} = {p.Value}");
-
-                var rows = await _db.ChartPoints.FromSqlRaw(sql, ps.ToArray()).ToListAsync();
-                var labels = rows.Select(r => r.Label).ToArray();
-                var data = rows.Select(r => r.Value).ToArray();
-                return Json(new { labels, data });
-
-
-            }
-            catch (Exception ex)
-            {
-                // 給前端看得懂的純文字
-                return StatusCode(500, ex.GetBaseException().Message);
-            }
+                labels = points.Select(p => p.Label).ToArray(),
+                data = points.Select(p => p.Value).ToArray()
+            });
         }
 
+        /// <summary>
+        /// 長條圖：銷售書籍排行（以銷售數量排序）。
+        /// 預設：近 30 天 Top10。
+        /// 可選 excludeStatuses：?excludeStatuses=0&excludeStatuses=9
+        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> ExportExcel(int reportDefinitionId)
+        [Produces("application/json")]
+        public async Task<IActionResult> Bar(
+            DateTime? from,
+            DateTime? to,
+            int top = 10,
+            [FromQuery] int[]? excludeStatuses = null)
         {
-            try
+            NormalizeDateRange(from, to, out var start, out var end);
+            if (top <= 0) top = 10;
+
+            var points = await _svc.GetTopSoldBooksAsync(start, end, top, excludeStatuses);
+            return Ok(new
             {
-                var recipe = await LoadRecipeAsync(reportDefinitionId);
-                if (recipe == null) return BadRequest("報表缺少 meta 設定");
-
-                var uiFilters = await _db.Set<ReportFilter>().AsNoTracking()
-                    .Where(f => f.ReportDefinitionID == reportDefinitionId && f.IsActive && !f.FieldName.StartsWith("_"))
-                    .OrderBy(f => f.OrderIndex)
-                    .Select(f => new { f.FieldName, f.DataType, f.Operator, f.Options })
-                    .ToListAsync();
-
-                var (sql, ps) = _builder.Build(
-                    recipe,
-                    uiFilters.Select(f => (f.FieldName, f.DataType ?? "string", f.Operator ?? "eq", f.Options)),
-                    Request.Query
-                );
-
-                var rows = await _db.ChartPoints.FromSqlRaw(sql, ps.ToArray()).ToListAsync();
-
-                using var wb = new ClosedXML.Excel.XLWorkbook();
-                var ws = wb.Worksheets.Add("Report");
-                ws.Cell(1, 1).Value = "Label";
-                ws.Cell(1, 2).Value = "Value";
-                for (int i = 0; i < rows.Count; i++)
-                {
-                    ws.Cell(i + 2, 1).Value = rows[i].Label;
-                    ws.Cell(i + 2, 2).Value = rows[i].Value;
-                }
-                ws.Columns().AdjustToContents();
-
-                using var ms = new MemoryStream();
-                wb.SaveAs(ms); ms.Position = 0;
-                return File(ms.ToArray(),
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    $"Report_{reportDefinitionId}_{DateTime.Now:yyyyMMddHHmmss}.xlsx");
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.GetBaseException().Message);
-            }
+                labels = points.Select(p => p.Label).ToArray(),
+                data = points.Select(p => p.Value).ToArray()
+            });
         }
 
-
-        private static readonly JsonSerializerOptions JsonOpt = new()
+        /// <summary>
+        /// 圓餅圖：借閱書籍「種類」排行（以借閱筆數計）。
+        /// 預設：近 30 天 Top5。
+        /// ※ 若你的 BorrowRecords 走 Listings 流程，對應 Join 已在服務層處理
+        /// </summary>
+        [HttpGet]
+        [Produces("application/json")]
+        public async Task<IActionResult> Pie(
+            DateTime? from,
+            DateTime? to,
+            int top = 5)
         {
-            PropertyNameCaseInsensitive = true // ← 關鍵：忽略大小寫
-        };
+            NormalizeDateRange(from, to, out var start, out var end);
+            if (top <= 0) top = 5;
 
-        // 讀 meta rows → 組出 Recipe
-        private async Task<ReportRecipe?> LoadRecipeAsync(int reportDefinitionId)
-        {
-            // 只抓 meta（FieldName 以底線開頭）
-            var meta = await _db.Set<ReportFilter>().AsNoTracking()
-                .Where(f => f.ReportDefinitionID == reportDefinitionId && f.FieldName.StartsWith("_"))
-                .ToDictionaryAsync(f => f.FieldName, f => f.Options ?? "{}");
-
-            if (!meta.TryGetValue("_source", out var srcJson) ||
-                !meta.TryGetValue("_dimension", out var dimJson) ||
-                !meta.TryGetValue("_metric", out var metJson))
-                return null; // 缺 meta 直接回 null，外層回 400
-
-            // 大小寫不敏感的反序列化（這裡才會把 "column" 填進 Column）
-            var src = JsonSerializer.Deserialize<ReportSource>(srcJson, JsonOpt)!;
-            var dim = JsonSerializer.Deserialize<ReportDimension>(dimJson, JsonOpt)!;
-            var met = JsonSerializer.Deserialize<ReportMetric>(metJson, JsonOpt)!;
-
-            // _preset.where（可有可無）
-            string? presetWhere = null;
-            if (meta.TryGetValue("_preset", out var preJson))
+            var points = await _svc.GetTopBorrowCategoryAsync(start, end, top);
+            return Ok(new
             {
-                using var doc = JsonDocument.Parse(preJson);
-                if (doc.RootElement.TryGetProperty("where", out var w))
-                    presetWhere = w.GetString();
-            }
-
-            return new ReportRecipe
-            {
-                Source = src,
-                Dimension = dim,
-                Metric = met,
-                WherePreset = presetWhere
-            };
+                labels = points.Select(p => p.Label).ToArray(),
+                data = points.Select(p => p.Value).ToArray()
+            });
         }
 
-        private static DateTime? ParseDate(string? s)
+        #region helpers
+
+        /// <summary>
+        /// 正常化日期區間：
+        /// - 沒給參數：預設近 30 天（含今天），即 [end-29, end]
+        /// - 只給其中一端：另一端補齊
+        /// - 確保 start <= end；回傳的 start/end 都是 Date（時間 = 00:00）
+        /// </summary>
+        private static void NormalizeDateRange(DateTime? from, DateTime? to, out DateTime start, out DateTime end)
         {
-            if (string.IsNullOrWhiteSpace(s)) return null;
-            if (DateTime.TryParseExact(s, new[] { "yyyy-MM-dd", "MM/dd", "MM/dd/yyyy" },
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt)) return dt;
-            if (DateTime.TryParse(s, out dt)) return dt;
-            return null;
+            end = (to ?? DateTime.Today).Date;       // 今天
+            start = (from ?? end.AddDays(-29)).Date;     // 近 30 天
+            if (start > end) (start, end) = (end, start); // 交換，防呆
         }
+
+        #endregion
     }
 }
