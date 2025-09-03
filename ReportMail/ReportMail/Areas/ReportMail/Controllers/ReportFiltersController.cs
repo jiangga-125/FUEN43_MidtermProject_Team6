@@ -8,9 +8,10 @@ using Microsoft.EntityFrameworkCore;
 using ReportMail.Data.Contexts;
 using ReportMail.Data.Entities;
 
-namespace ReportMail.Controllers
+namespace ReportMail.Areas.ReportMail.Controllers
 {
-    public class ReportFiltersController : Controller
+	[Area("ReportMail")]
+	public class ReportFiltersController : Controller
     {
         private readonly ReportMailDbContext _context;
 

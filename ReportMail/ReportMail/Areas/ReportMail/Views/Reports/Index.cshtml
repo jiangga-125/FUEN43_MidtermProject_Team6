@@ -1,0 +1,165 @@
+﻿@{
+    ViewData["Title"] = "報表總覽";
+    // 後端端點（都帶 Area）
+    var urlLine = Url.Action("Line", "Reports", new { area = "ReportMail" });
+    var urlBar = Url.Action("Bar", "Reports", new { area = "ReportMail" });
+    var urlPie = Url.Action("Pie", "Reports", new { area = "ReportMail" });
+
+    // 之後自定義報表的 CRUD 頁（按鈕先留位）
+    var newUrl = Url.Action("Create", "ReportDefinitions", new { area = "ReportMail" });
+    var editUrl = Url.Action("Edit", "ReportDefinitions", new { area = "ReportMail", id = 0 });
+    var deleteUrl = Url.Action("Delete", "ReportDefinitions", new { area = "ReportMail", id = 0 });
+}
+
+<h2 class="mb-3">報表總覽</h2>
+
+<style>
+    .grid3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0,1fr));
+        gap: 16px;
+    }
+    @@media (max-width: 1200px) {
+        .grid3
+
+    {
+        grid-template-columns: repeat(2, minmax(0,1fr));
+    }
+
+    }
+    @@media (max-width: 768px) {
+        .grid3
+
+    {
+        grid-template-columns: 1fr;
+    }
+
+    }
+
+    .card {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+
+        .card h5 {
+            margin: 0 0 12px;
+        }
+
+    .toolbar {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+        .toolbar .spacer {
+            flex: 1;
+        }
+</style>
+
+<div class="grid3">
+    <!-- 折線圖：總銷售金額（預設近 30 天、按日） -->
+    <div class="card">
+        <div class="toolbar">
+            <h5>總銷售金額（近 30 天）</h5>
+            <div class="spacer"></div>
+            <!-- 之後這裡換成「自定義報表下拉」 -->
+            <select id="ddlLine" class="form-select form-select-sm" style="width: 180px;">
+                <option value="">預設：總銷售金額</option>
+            </select>
+            <a class="btn btn-sm btn-outline-primary" href="@newUrl">新增</a>
+            <a id="btnEditLine" class="btn btn-sm btn-outline-secondary disabled" href="javascript:void(0)">編輯</a>
+            <a id="btnDelLine" class="btn btn-sm btn-outline-danger disabled" href="javascript:void(0)">刪除</a>
+        </div>
+        <canvas id="chartLine" height="120"></canvas>
+    </div>
+
+    <!-- 長條圖：銷售書籍排行 Top10 -->
+    <div class="card">
+        <div class="toolbar">
+            <h5>銷售書籍排行（近 30 天 Top10）</h5>
+            <div class="spacer"></div>
+            <select id="ddlBar" class="form-select form-select-sm" style="width: 180px;">
+                <option value="">預設：銷售排行 Top10</option>
+            </select>
+            <a class="btn btn-sm btn-outline-primary" href="@newUrl">新增</a>
+            <a id="btnEditBar" class="btn btn-sm btn-outline-secondary disabled" href="javascript:void(0)">編輯</a>
+            <a id="btnDelBar" class="btn btn-sm btn-outline-danger disabled" href="javascript:void(0)">刪除</a>
+        </div>
+        <canvas id="chartBar" height="120"></canvas>
+    </div>
+
+    <!-- 圓餅圖：借閱書籍種類 Top5 -->
+    <div class="card">
+        <div class="toolbar">
+            <h5>借閱書籍種類排行（近 30 天 Top5）</h5>
+            <div class="spacer"></div>
+            <select id="ddlPie" class="form-select form-select-sm" style="width: 180px;">
+                <option value="">預設：種類排行 Top5</option>
+            </select>
+            <a class="btn btn-sm btn-outline-primary" href="@newUrl">新增</a>
+            <a id="btnEditPie" class="btn btn-sm btn-outline-secondary disabled" href="javascript:void(0)">編輯</a>
+            <a id="btnDelPie" class="btn btn-sm btn-outline-danger disabled" href="javascript:void(0)">刪除</a>
+        </div>
+        <canvas id="chartPie" height="120"></canvas>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let chartLine, chartBar, chartPie;
+
+    async function fetchJson(url){
+      const res = await fetch(url);
+      if(!res.ok){
+        alert('伺服器錯誤 ' + res.status + '\n' + await res.text());
+        throw new Error('http ' + res.status);
+      }
+      return await res.json();
+    }
+
+    async function loadLine(){
+      const url = '@urlLine'; // 預設近 30 天、day
+      const { labels, data } = await fetchJson(url);
+      const ctx = document.getElementById('chartLine');
+      if(chartLine) chartLine.destroy();
+      chartLine = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ label: '總銷售金額', data }] },
+        options: { responsive: true, tension: .25 }
+      });
+    }
+
+    async function loadBar(){
+      const url = '@urlBar'; // 預設 Top10
+      const { labels, data } = await fetchJson(url);
+      const ctx = document.getElementById('chartBar');
+      if(chartBar) chartBar.destroy();
+      chartBar = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label: '銷售量', data }] },
+        options: { responsive: true }
+      });
+    }
+
+    async function loadPie(){
+      const url = '@urlPie'; // 預設 Top5
+      const { labels, data } = await fetchJson(url);
+      const ctx = document.getElementById('chartPie');
+      if(chartPie) chartPie.destroy();
+      chartPie = new Chart(ctx, {
+        type: 'pie',
+        data: { labels, datasets: [{ label: '借閱筆數', data }] },
+        options: { responsive: true }
+      });
+    }
+
+    // 先把三張預設載入
+    window.addEventListener('DOMContentLoaded', async() => {
+      await Promise.all([loadLine(), loadBar(), loadPie()]);
+    });
+
+    // ☆ 之後等你接「自定義報表」下拉，選到自定義時再啟用編輯/刪除按鈕
+</script>

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using ReportMail.Data.Contexts;
 using ReportMail.Data;
 using ReportMail.Services.Reports;
+using ReportMail.Data.Shop;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,9 +16,15 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
-// 加入：報表＋Mail 的 DbContext（用 appsettings.json 的 "ReportMail" 連線字串）
+// 報表＋Mail 的 DbContext（用 appsettings.json 的 "ReportMail" 連線字串）
 builder.Services.AddDbContext<ReportMailDbContext>(opt =>
     opt.UseSqlServer(builder.Configuration.GetConnectionString("ReportMail")));
+// 商務核心資料 DbContext
+builder.Services.AddDbContext<ShopDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ShopConnection")));
+
+// 預設三張圖的查圖服務
+builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
 
 builder.Services.AddScoped<ReportQueryBuilder>();
 
@@ -43,6 +50,11 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthorization();
+
+app.MapControllerRoute(
+	name: "areas",
+	pattern: "{area:exists}/{controller=Reports}/{action=Index}/{id?}");
+
 
 app.MapControllerRoute(
     name: "default",

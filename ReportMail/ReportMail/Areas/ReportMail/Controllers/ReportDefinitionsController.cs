@@ -7,10 +7,12 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ReportMail.Data.Contexts;
 using ReportMail.Data.Entities;
+using ReportMail.Services.Reports;
 
-namespace ReportMail.Controllers
+namespace ReportMail.Areas.ReportMail.Controllers
 {
-    public class ReportDefinitionsController : Controller
+	[Area("ReportMail")]
+	public class ReportDefinitionsController : Controller
     {
         private readonly ReportMailDbContext _context;
 
@@ -28,6 +30,11 @@ namespace ReportMail.Controllers
         // GET: ReportDefinitions/Details/5
         public async Task<IActionResult> Details(int? id)
         {
+
+            if (BuiltinReports.IsBuiltin((int)id))
+            {
+                return NotFound(); // 或 Forbid(); 不要讓人操作到
+            }
             if (id == null)
             {
                 return NotFound();
@@ -68,6 +75,10 @@ namespace ReportMail.Controllers
         // GET: ReportDefinitions/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
+            if (BuiltinReports.IsBuiltin((int)id))
+            {
+                return NotFound(); // 或 Forbid(); 不要讓人操作到
+            }
             if (id == null)
             {
                 return NotFound();
@@ -119,6 +130,10 @@ namespace ReportMail.Controllers
         // GET: ReportDefinitions/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
+            if (BuiltinReports.IsBuiltin((int)id))
+            {
+                return NotFound(); // 或 Forbid(); 不要讓人操作到
+            }
             if (id == null)
             {
                 return NotFound();
