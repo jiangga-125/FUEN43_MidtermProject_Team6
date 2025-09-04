@@ -4,6 +4,9 @@ using ReportMail.Services.Reports;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using ReportMail.Data.Contexts;
+
 
 namespace ReportMail.Areas.ReportMail.Controllers
 {
@@ -22,10 +25,12 @@ namespace ReportMail.Areas.ReportMail.Controllers
     public class ReportsController : Controller
     {
         private readonly IReportDataService _svc;
+        private readonly ReportMailDbContext _db;
 
-        public ReportsController(IReportDataService svc)
+        public ReportsController(IReportDataService svc, ReportMailDbContext db)
         {
             _svc = svc;
+            _db = db;
         }
 
         /// <summary>
@@ -35,7 +40,29 @@ namespace ReportMail.Areas.ReportMail.Controllers
         [HttpGet]
         // 也讓 /ReportMail/Reports 直接進到這頁（不用寫 /Index）
         [Route("/ReportMail/Reports")]
-        public IActionResult Index() => View();
+        public IActionResult Index()
+        {
+            // 注意：Category 的實際值若是 "Line/Bar/Pie"（首字大寫），請改成相對應字串
+            ViewBag.LineReports = _db.ReportDefinitions
+                .Where(r => r.IsActive && r.Category == "line")
+                .OrderBy(r => r.ReportName)
+                .Select(r => new { r.ReportDefinitionID, r.ReportName })
+                .ToList();
+
+            ViewBag.BarReports = _db.ReportDefinitions
+                .Where(r => r.IsActive && r.Category == "bar")
+                .OrderBy(r => r.ReportName)
+                .Select(r => new { r.ReportDefinitionID, r.ReportName })
+                .ToList();
+
+            ViewBag.PieReports = _db.ReportDefinitions
+                .Where(r => r.IsActive && r.Category == "pie")
+                .OrderBy(r => r.ReportName)
+                .Select(r => new { r.ReportDefinitionID, r.ReportName })
+                .ToList();
+
+            return View();
+        }
 
         /// <summary>
         /// 折線圖：總銷售金額序列。

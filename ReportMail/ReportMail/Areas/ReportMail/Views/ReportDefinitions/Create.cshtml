@@ -1,55 +1,383 @@
-@model ReportMail.Data.Entities.ReportDefinition
-
+﻿@model ReportMail.Data.Entities.ReportDefinition
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "新增報表";
+
+    // 先固定折線圖；若未來要支援其它圖型可再加 tabs
+    var chartCategory = "line";
+    var previewUrl = Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" }) ?? "#";
+    var apiCatUrl = Url.Action("Categories", "Lookup", new { area = "ReportMail" }) ?? "#";
+    var apiStatusUrl = Url.Action("OrderStatuses", "Lookup", new { area = "ReportMail" }) ?? "#";
 }
 
-<h1>Create</h1>
+<h1 class="mb-3">新增報表</h1>
 
-<h4>ReportDefinition</h4>
-<hr />
 <div class="row">
-    <div class="col-md-4">
-        <form asp-action="Create">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="ReportName" class="control-label"></label>
+    <div class="col-lg-5">
+        <form id="frmCreate" asp-area="ReportMail" asp-controller="ReportDefinitions" asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Category" value="@chartCategory" />
+            <input type="hidden" name="FiltersJson" id="FiltersJson" />
+
+            <div class="mb-3">
+                <label class="form-label">基礎報表</label>
+                <select id="baseKind" class="form-select">
+                    <option value="sales">1. 書籍銷售量（本）</option>
+                    <option value="borrow">2. 書籍借閱量（本）</option>
+                    <option value="orders">3. 訂單（總金額/筆數）</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="ReportName" class="form-label">名稱</label>
                 <input asp-for="ReportName" class="form-control" />
-                <span asp-validation-for="ReportName" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="Category" class="control-label"></label>
-                <input asp-for="Category" class="form-control" />
-                <span asp-validation-for="Category" class="text-danger"></span>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label">說明</label>
+                <textarea asp-for="Description" class="form-control" rows="2"></textarea>
             </div>
-            <div class="form-group">
-                <label asp-for="Description" class="control-label"></label>
-                <input asp-for="Description" class="form-control" />
-                <span asp-validation-for="Description" class="text-danger"></span>
+
+            <div class="form-check mb-3">
+                <input class="form-check-input" asp-for="IsActive" checked />
+                <label class="form-check-label" asp-for="IsActive">啟用</label>
             </div>
-            <div class="form-group form-check">
-                <label class="form-check-label">
-                    <input class="form-check-input" asp-for="IsActive" /> @Html.DisplayNameFor(model => model.IsActive)
-                </label>
+
+            <div class="d-flex gap-2 mb-2">
+                <button id="btnSubmit" type="submit" class="btn btn-primary">儲存</button>
+                <a asp-area="ReportMail" asp-controller="ReportDefinitions" asp-action="Index" class="btn btn-secondary">返回列表</a>
             </div>
-            <div class="form-group">
-                <label asp-for="CreatedAt" class="control-label"></label>
-                <input asp-for="CreatedAt" class="form-control" />
-                <span asp-validation-for="CreatedAt" class="text-danger"></span>
+
+            <hr />
+
+            <!-- 共同：日期 + 粒度 -->
+            <div class="mb-3">
+                <label class="form-label">日期區間</label>
+                <div class="d-flex gap-2">
+                    <input id="dateFrom" type="date" class="form-control" style="max-width:160px" />
+                    <span class="pt-2">~</span>
+                    <input id="dateTo" type="date" class="form-control" style="max-width:160px" />
+                </div>
+                <div class="mt-2">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="gran" id="gDay" value="day" checked>
+                        <label class="form-check-label" for="gDay">按日</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="gran" id="gMonth" value="month">
+                        <label class="form-check-label" for="gMonth">按月</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="gran" id="gYear" value="year">
+                        <label class="form-check-label" for="gYear">按年</label>
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label asp-for="UpdatedAt" class="control-label"></label>
-                <input asp-for="UpdatedAt" class="form-control" />
-                <span asp-validation-for="UpdatedAt" class="text-danger"></span>
+
+            <!-- sales 專用 -->
+            <div id="sec-sales">
+                <div class="mb-3">
+                    <label class="form-label">書籍種類（可多選）</label>
+                    <select id="salesCategories" class="form-select" multiple></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">單本價位</label>
+                    <select id="priceRange" class="form-select">
+                        <option value="">全部</option>
+                    </select>
+                </div>
             </div>
-            <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
+
+            <!-- borrow 專用 -->
+            <div id="sec-borrow" class="d-none">
+                <div class="mb-3">
+                    <label class="form-label">書籍種類（可多選）</label>
+                    <select id="borrowCategories" class="form-select" multiple></select>
+                </div>
+                @* 預留：未來若有出版年份，這裡可再加 decadeRange *@
             </div>
+
+            <!-- orders 專用 -->
+            <div id="sec-orders" class="d-none">
+                <div class="mb-3">
+                    <label class="form-label">指標</label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="metric" id="mAmount" value="amount" checked>
+                            <label class="form-check-label" for="mAmount">總銷售金額</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="metric" id="mCount" value="count">
+                            <label class="form-check-label" for="mCount">總訂單筆數</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">訂單狀態</label>
+                    <div id="orderStatusGroup" class="d-flex flex-wrap gap-3"></div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col">
+                        <label class="form-label">單筆訂單金額（Min）</label>
+                        <input id="ordAmtMin" type="number" class="form-control" placeholder="空白=不限">
+                    </div>
+                    <div class="col">
+                        <label class="form-label">單筆訂單金額（Max）</label>
+                        <input id="ordAmtMax" type="number" class="form-control" placeholder="空白=不限">
+                    </div>
+                </div>
+            </div>
+
         </form>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">預覽</h5>
+            <button class="btn btn-outline-primary btn-sm" type="button" id="btnPreview">更新預覽</button>
+        </div>
+        <hr class="mt-2" />
+        <div id="previewBox" class="position-relative" style="height:380px;">
+            <canvas id="previewChart" class="w-100 h-100"></canvas>
+        </div>
     </div>
 </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const chartCategory = "@chartCategory";
+        const apiPreview = "@previewUrl";
+        const apiCats    = "@apiCatUrl";
+        const apiStatus  = "@apiStatusUrl";
+        let chart;
 
+        // 初始化日期（近30天）
+        const today = new Date();
+        const from  = new Date(); from.setDate(today.getDate()-29);
+        document.getElementById('dateFrom').value = from.toISOString().slice(0,10);
+        document.getElementById('dateTo').value   = today.toISOString().slice(0,10);
+
+        // 區塊切換
+        function showSection(kind){
+          document.getElementById('sec-sales').classList.toggle('d-none', kind!=='sales');
+          document.getElementById('sec-borrow').classList.toggle('d-none', kind!=='borrow');
+          document.getElementById('sec-orders').classList.toggle('d-none', kind!=='orders');
+        }
+        document.getElementById('baseKind').addEventListener('change', e=>{ showSection(e.target.value); preview(); });
+
+        // 載入選單
+        async function loadCategories(selId){
+          const sel = document.getElementById(selId);
+          sel.innerHTML = "";
+          sel.add(new Option("全部", ""));            // 空字串 = 全部
+          const res = await fetch(apiCats);
+          const list = await res.json();
+          list.forEach(x => sel.add(new Option(x.text, x.value)));
+        }
+        // 以 API 的編碼為準建立 5 個狀態；若 API 失敗則用內建 0~4
+        function loadStatusesCheckbox(){
+          const FIXED = [
+            { value: 0, text: "待處理" },
+            { value: 1, text: "已付款" },
+            { value: 2, text: "已出貨" },
+            { value: 3, text: "已完成" },
+            { value: 4, text: "已取消" }
+          ];
+          const box = document.getElementById('orderStatusGroup');
+          box.innerHTML = "";
+
+          // 全選
+          box.insertAdjacentHTML("beforeend",
+            `<div class="form-check me-3">
+               <input class="form-check-input" type="checkbox" id="os_all">
+               <label class="form-check-label" for="os_all">全選</label>
+             </div>`);
+
+          // 5 個狀態（固定順序）
+          FIXED.forEach(s=>{
+            box.insertAdjacentHTML("beforeend",
+              `<div class="form-check me-3">
+                 <input class="form-check-input" type="checkbox" id="os_${s.value}" data-val="${s.value}">
+                 <label class="form-check-label" for="os_${s.value}">${s.text}</label>
+               </div>`);
+          });
+
+          // 預設：只勾「已完成」
+          const done = document.getElementById('os_3');
+          if (done) done.checked = true;
+
+          // 全選/個別切換
+          box.addEventListener('change', (e)=>{
+            const all = document.getElementById('os_all');
+            const checks = [...box.querySelectorAll('input[type=checkbox][data-val]')];
+
+            if (e.target.id === 'os_all') {
+              checks.forEach(cb => cb.checked = all.checked);
+            } else {
+              all.checked = checks.every(cb => cb.checked);
+            }
+            preview();
+          });
+        }
+        // 產生價位（每 100 一格）
+        (function genPrice(){
+          const pr = document.getElementById('priceRange');
+          for(let i=0;i<10;i++){
+            const min = i*100+1, max=(i+1)*100;
+            pr.add(new Option(`${min}-${max}`, `${min}-${max}`));
+          }
+        })();
+
+        // 初始載入
+        showSection('sales');
+        loadCategories('salesCategories');
+        loadCategories('borrowCategories');
+        loadStatusesCheckbox();
+
+        // 組 filters（送到後端，也用於儲存）
+        function buildFilters(){
+          const kind = document.getElementById('baseKind').value;
+          const df   = document.getElementById('dateFrom').value;
+          const dt   = document.getElementById('dateTo').value;
+          const gran = document.querySelector('input[name="gran"]:checked').value;
+
+          const filters = [];
+          const dateField = (kind==='borrow') ? 'BorrowDate' : 'OrderDate';
+          filters.push({
+            FieldName: dateField,
+            DataType: 'date',
+            Operator: 'between',
+            DefaultValue: `${df}~${dt};gran=${gran}`,
+            Options: JSON.stringify({ granularity: ['day','month','year'] })
+          });
+
+          if(kind==='sales'){
+            const vals = Array.from(document.getElementById('salesCategories').selectedOptions).map(o=>o.value);
+            const catVals = vals.filter(v => v !== "");  // ""=全部→不加條件
+            if (catVals.length > 0) {
+              filters.push({ FieldName:'CategoryID', DataType:'select', Operator:'in',
+                             DefaultValue: catVals.join(','), Options: JSON.stringify({ source:'Categories' }) });
+            }
+            const pr = document.getElementById('priceRange').value;
+            if(pr){
+              filters.push({ FieldName:'SalePrice', DataType:'select', Operator:'between', DefaultValue: pr });
+            }
+          }
+          else if(kind==='borrow'){
+            const vals = Array.from(document.getElementById('borrowCategories').selectedOptions).map(o=>o.value);
+            const catVals = vals.filter(v => v !== "");
+            if (catVals.length > 0) {
+              filters.push({ FieldName:'CategoryID', DataType:'select', Operator:'in',
+                             DefaultValue: catVals.join(','), Options: JSON.stringify({ source:'Categories' }) });
+            }
+            // 預留：未來加入 PublishYear between
+          }
+          else { // orders
+            const metric = document.querySelector('input[name="metric"]:checked').value; // amount|count
+            filters.push({ FieldName:'Metric', DefaultValue: metric });
+
+            // 訂單狀態（多選）：
+            // - 勾「全選」或 5 個全勾 → 不加條件（等於全部）
+            // - 勾部分 → 送 IN (..)
+            // - 全不勾 → 送一個「不可能命中」的值，讓結果為空
+            const osBox = document.getElementById('orderStatusGroup');
+            const picks = Array.from(osBox.querySelectorAll('input[type=checkbox][data-val]:checked'))
+                               .map(cb => cb.getAttribute('data-val'));
+            const allChecked = osBox.querySelector('#os_all')?.checked;
+
+            if (picks.length === 0) {
+              // 使用 -99999 當哨兵值；後端會做 IN，比對不到任何資料 → 空結果
+              filters.push({ FieldName:'OrderStatus', Operator:'in', DefaultValue: '-99999' });
+            } else if (!allChecked && picks.length < 5) {
+              filters.push({ FieldName:'OrderStatus', Operator:'in', DefaultValue: picks.join(',') });
+            }// else：全部（全選或 5 個全勾）=> 不加條件
+
+            const min = document.getElementById('ordAmtMin').value;
+            const max = document.getElementById('ordAmtMax').value;
+            if(min || max){
+              filters.push({ FieldName:'OrderAmount', Operator:'between', DefaultValue: `${min||0}-${max||999999}` });
+            }
+
+          }
+
+          return filters;
+        }
+        
+        // 預覽（安全解析，錯誤會 alert）
+        async function preview(){
+            const body = {
+              category: "@("line")",
+              baseKind: document.getElementById('baseKind').value,
+              filters : buildFilters()
+            };
+
+            const res  = await fetch("@(Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" }))", {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            });
+
+            const text = await res.text();
+            let js;
+            try { js = JSON.parse(text); }
+            catch (e) { console.error(text); alert("預覽失敗：" + text.substring(0,200)); return; }
+            if (js.error) { alert(js.detail || js.error); return; }
+
+            // 方便檢查
+            console.log("DEBUG:", js.debug);
+            console.log("labels len=", (js.labels||[]).length, (js.labels||[]).slice(0,5));
+            console.log("data   len=", (js.data||[]).length,   (js.data||[]).slice(0,5));
+
+            // 轉成 Chart.js 需要的型別
+            const labels = (js.labels || []).map(String);
+            const values = (js.data   || []).map(v => Number(v ?? 0));
+
+            const canvasEl = document.getElementById('previewChart'); // ← 只宣告一次
+            if (chart) chart.destroy();
+            chart = new Chart(canvasEl, {
+              type: 'line',
+              data: {
+                labels,
+                datasets: [{
+                  label: js.title || '預覽',
+                  data: values,
+                  spanGaps: true,
+                  tension: 0,
+                  pointRadius: 2
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                normalized: true,
+                scales: { y: { beginAtZero: true } }
+              }
+            });
+
+        }
+
+        // 互動即時預覽（完整清單，沒有 decadeRange）
+        [
+          'baseKind','dateFrom','dateTo','gDay','gMonth','gYear',
+          'salesCategories','priceRange','borrowCategories',
+          'orderStatusGroup','mAmount','mCount','ordAmtMin','ordAmtMax'
+        ].forEach(id=>{
+          const el = document.getElementById(id);
+          if(el) el.addEventListener('change', preview);
+        });
+
+        // 送出：把 filters 放入 hidden
+        document.getElementById('btnSubmit').addEventListener('click', ()=>{
+          document.getElementById('FiltersJson').value = JSON.stringify(buildFilters());
+        });
+
+        // 初次載入也預覽一次
+        document.getElementById('btnPreview').addEventListener('click', preview);
+        preview();
+    </script>
+
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

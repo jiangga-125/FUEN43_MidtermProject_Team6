@@ -68,8 +68,12 @@
             <!-- 之後這裡換成「自定義報表下拉」 -->
             <select id="ddlLine" class="form-select form-select-sm" style="width: 180px;">
                 <option value="">預設：總銷售金額</option>
+                @foreach (var r in (IEnumerable<dynamic>)ViewBag.LineReports ?? new List<dynamic>())
+                {
+                    <option value="@r.ReportDefinitionID">@r.ReportName</option>
+                }
             </select>
-            <a class="btn btn-sm btn-outline-primary" href="@newUrl">新增</a>
+            <a class="btn btn-sm btn-outline-primary" href="@($"{newUrl}?category=line")">新增</a>
             <a id="btnEditLine" class="btn btn-sm btn-outline-secondary disabled" href="javascript:void(0)">編輯</a>
             <a id="btnDelLine" class="btn btn-sm btn-outline-danger disabled" href="javascript:void(0)">刪除</a>
         </div>
@@ -83,8 +87,12 @@
             <div class="spacer"></div>
             <select id="ddlBar" class="form-select form-select-sm" style="width: 180px;">
                 <option value="">預設：銷售排行 Top10</option>
+                @foreach (var r in (IEnumerable<dynamic>)ViewBag.BarReports ?? new List<dynamic>())
+                {
+                    <option value="@r.ReportDefinitionID">@r.ReportName</option>
+                }
             </select>
-            <a class="btn btn-sm btn-outline-primary" href="@newUrl">新增</a>
+            <a class="btn btn-sm btn-outline-primary" href="@($"{newUrl}?category=bar")">新增</a>
             <a id="btnEditBar" class="btn btn-sm btn-outline-secondary disabled" href="javascript:void(0)">編輯</a>
             <a id="btnDelBar" class="btn btn-sm btn-outline-danger disabled" href="javascript:void(0)">刪除</a>
         </div>
@@ -98,8 +106,12 @@
             <div class="spacer"></div>
             <select id="ddlPie" class="form-select form-select-sm" style="width: 180px;">
                 <option value="">預設：種類排行 Top5</option>
+                @foreach (var r in (IEnumerable<dynamic>)ViewBag.PieReports ?? new List<dynamic>())
+                {
+                    <option value="@r.ReportDefinitionID">@r.ReportName</option>
+                }
             </select>
-            <a class="btn btn-sm btn-outline-primary" href="@newUrl">新增</a>
+            <a class="btn btn-sm btn-outline-primary" href="@($"{newUrl}?category=pie")">新增</a>
             <a id="btnEditPie" class="btn btn-sm btn-outline-secondary disabled" href="javascript:void(0)">編輯</a>
             <a id="btnDelPie" class="btn btn-sm btn-outline-danger disabled" href="javascript:void(0)">刪除</a>
         </div>
@@ -161,5 +173,36 @@
       await Promise.all([loadLine(), loadBar(), loadPie()]);
     });
 
-    // ☆ 之後等你接「自定義報表」下拉，選到自定義時再啟用編輯/刪除按鈕
+      // 取得「編輯/刪除」的 URL 根（/Edit/ 與 /Delete/）
+    const editRoot = '@Url.Action("Edit", "ReportDefinitions", new { area = "ReportMail", id = 0 })'.replace(/0$/, '');
+    const delRoot  = '@Url.Action("Delete", "ReportDefinitions", new { area = "ReportMail", id = 0 })'.replace(/0$/, '');
+
+    function wireCrud(selectId, editBtnId, delBtnId) {
+      const sel = document.getElementById(selectId);
+      const btnE = document.getElementById(editBtnId);
+      const btnD = document.getElementById(delBtnId);
+
+      function update() {
+        const id = sel.value;
+        const enable = !!id;
+        if (enable) {
+          btnE.classList.remove('disabled');
+          btnD.classList.remove('disabled');
+          btnE.href = editRoot + id;
+          btnD.href = delRoot  + id;
+        } else {
+          btnE.classList.add('disabled');
+          btnD.classList.add('disabled');
+          btnE.href = 'javascript:void(0)';
+          btnD.href = 'javascript:void(0)';
+        }
+      }
+      sel.addEventListener('change', update);
+      update(); // 初始化一次
+    }
+
+    // 你的三組下拉／按鈕 id 名稱沿用現有的
+    wireCrud('ddlLine', 'btnEditLine', 'btnDelLine');
+    wireCrud('ddlBar',  'btnEditBar',  'btnDelBar');
+    wireCrud('ddlPie',  'btnEditPie',  'btnDelPie');
 </script>
