@@ -1,56 +1,74 @@
 @model ReportMail.Data.Entities.ReportDefinition
-
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "編輯報表";
+    var lc = (Model?.Category ?? "line").ToLowerInvariant();
+    var currentCategory = (lc == "line" || lc == "bar" || lc == "pie") ? lc : "line";
+    Func<string, string> Btn = key => currentCategory == key ? "btn btn-sm btn-primary" : "btn btn-sm btn-outline-secondary";
 }
 
-<h1>Edit</h1>
+<h1 class="mb-3">編輯報表</h1>
 
-<h4>ReportDefinition</h4>
+<!-- 圖表類型切換（Edit 頁：就地切 hidden，不跳頁） -->
+<div class="btn-group mb-3" role="group" aria-label="chart type">
+    <button type="button" class="@Btn("line")" data-chart="line">折線圖</button>
+    <button type="button" class="@Btn("bar")" data-chart="bar">長條圖</button>
+    <button type="button" class="@Btn("pie")" data-chart="pie">圓餅圖</button>
+</div>
+
 <hr />
+
 <div class="row">
-    <div class="col-md-4">
-        <form asp-action="Edit">
+    <div class="col-md-6">
+        <form asp-area="ReportMail" asp-controller="ReportDefinitions" asp-action="Edit" method="post">
+            @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
             <input type="hidden" asp-for="ReportDefinitionID" />
-            <div class="form-group">
-                <label asp-for="ReportName" class="control-label"></label>
+            <!-- 類型用 hidden 綁定，按鈕會就地修改它 -->
+            <input type="hidden" asp-for="Category" id="hidCategory" />
+
+            <div class="mb-3">
+                <label asp-for="ReportName" class="form-label">名稱</label>
                 <input asp-for="ReportName" class="form-control" />
                 <span asp-validation-for="ReportName" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="Category" class="control-label"></label>
-                <input asp-for="Category" class="form-control" />
-                <span asp-validation-for="Category" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Description" class="control-label"></label>
-                <input asp-for="Description" class="form-control" />
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label">說明</label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
                 <span asp-validation-for="Description" class="text-danger"></span>
             </div>
-            <div class="form-group form-check">
-                <label class="form-check-label">
-                    <input class="form-check-input" asp-for="IsActive" /> @Html.DisplayNameFor(model => model.IsActive)
-                </label>
+
+            <div class="form-check mb-3">
+                <input class="form-check-input" asp-for="IsActive" />
+                <label class="form-check-label" asp-for="IsActive">啟用</label>
             </div>
-            <div class="form-group">
-                <label asp-for="CreatedAt" class="control-label"></label>
-                <input asp-for="CreatedAt" class="form-control" />
-                <span asp-validation-for="CreatedAt" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="UpdatedAt" class="control-label"></label>
-                <input asp-for="UpdatedAt" class="form-control" />
-                <span asp-validation-for="UpdatedAt" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
-            </div>
+
+            <!-- 時間戳由 DbContext 自動處理，視圖不送出 -->
+            <button type="submit" class="btn btn-primary">儲存</button>
+            <a asp-area="ReportMail" asp-controller="ReportDefinitions" asp-action="Index" class="btn btn-secondary">返回列表</a>
         </form>
     </div>
 </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
-
+@section Scripts {
+    <script>
+        // 就地切換 Category（不跳頁）
+        (function(){
+          const hid = document.getElementById('hidCategory');
+          const btns = document.querySelectorAll('[data-chart]');
+          btns.forEach(b=>{
+            b.addEventListener('click', () => {
+              const v = b.getAttribute('data-chart');
+              hid.value = v;
+              // 視覺高亮
+              btns.forEach(x=>x.classList.replace('btn-primary','btn-outline-secondary'));
+              b.classList.replace('btn-outline-secondary','btn-primary');
+            });
+          });
+        })();
+    </script>
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

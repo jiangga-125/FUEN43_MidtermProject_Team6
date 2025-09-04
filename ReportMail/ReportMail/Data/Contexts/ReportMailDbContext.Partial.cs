@@ -1,17 +1,47 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using ReportMail.Data.Entities;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ReportMail.Data.Contexts
 {
     public partial class ReportMailDbContext
     {
-        // 讓 FromSqlRaw 有型別可以投射
-        public virtual DbSet<ChartPoint> ChartPoints => Set<ChartPoint>();
-
-        partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
+        public override int SaveChanges()
         {
-            // Keyless DTO 映射（不對應資料表）
-            modelBuilder.Entity<ChartPoint>().HasNoKey();
+            ApplyTimestamps();
+            return base.SaveChanges();
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            ApplyTimestamps();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
+        private void ApplyTimestamps()
+        {
+            var now = DateTime.Now; // 本地時間
+            foreach (var entry in ChangeTracker.Entries().Where(e =>
+                         e.State == EntityState.Added || e.State == EntityState.Modified))
+            {
+                var hasCreated = entry.Metadata.FindProperty("CreatedAt") != null;
+                var hasUpdated = entry.Metadata.FindProperty("UpdatedAt") != null;
+
+                if (entry.State == EntityState.Added)
+                {
+                    if (hasCreated) entry.Property("CreatedAt").CurrentValue = now;
+                    if (hasUpdated) entry.Property("UpdatedAt").CurrentValue = now;
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    // 鎖住 CreatedAt，不允許被覆寫
+                    if (hasCreated) entry.Property("CreatedAt").IsModified = false;
+                    if (hasUpdated) entry.Property("UpdatedAt").CurrentValue = now;
+                }
+            }
         }
     }
 }

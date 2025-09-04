@@ -61,16 +61,63 @@ namespace ReportMail.Areas.ReportMail.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("ReportDefinitionID,ReportName,Category,Description,IsActive,CreatedAt,UpdatedAt")] ReportDefinition reportDefinition)
+        public async Task<IActionResult> Create([Bind("ReportDefinitionID,ReportName,Category,Description,IsActive")] ReportDefinition reportDefinition, string? FiltersJson)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
+                return View(reportDefinition);
+
+            _context.Add(reportDefinition);
+            await _context.SaveChangesAsync(); // 先拿到新 ID
+
+            if (!string.IsNullOrWhiteSpace(FiltersJson))
             {
-                _context.Add(reportDefinition);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                try
+                {
+                    var drafts = System.Text.Json.JsonSerializer.Deserialize<List<ReportFilterDraft>>(FiltersJson) ?? new();
+                    int order = 1;
+                    foreach (var d in drafts.OrderBy(x => x.OrderIndex ?? int.MaxValue))
+                    {
+                        var f = new ReportFilter
+                        {
+                            ReportDefinitionID = reportDefinition.ReportDefinitionID,
+                            FieldName = d.FieldName ?? "",
+                            DisplayName = d.DisplayName,
+                            DataType = d.DataType,
+                            Operator = d.Operator,
+                            DefaultValue = d.DefaultValue,
+                            Options = d.Options,
+                            OrderIndex = d.OrderIndex ?? order++,
+                            IsRequired = d.IsRequired ?? false,
+                            IsActive = d.IsActive ?? true
+                        };
+                        _context.ReportFilters.Add(f);
+                    }
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    // 若 JSON 解析失敗，不影響報表本體建立
+                    ModelState.AddModelError("", "篩選器無法解析：" + ex.Message);
+                }
             }
-            return View(reportDefinition);
+
+            return RedirectToAction(nameof(Details), new { id = reportDefinition.ReportDefinitionID });
         }
+
+        // 只給這支 action 用的簡單 DTO
+        private class ReportFilterDraft
+        {
+            public string? FieldName { get; set; }
+            public string? DisplayName { get; set; }
+            public string? DataType { get; set; }
+            public string? Operator { get; set; }
+            public string? DefaultValue { get; set; }
+            public string? Options { get; set; }
+            public int? OrderIndex { get; set; }
+            public bool? IsRequired { get; set; }
+            public bool? IsActive { get; set; }
+        }
+
 
         // GET: ReportDefinitions/Edit/5
         public async Task<IActionResult> Edit(int? id)
