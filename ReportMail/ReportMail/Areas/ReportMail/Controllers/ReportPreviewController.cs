@@ -5,27 +5,27 @@ using System.Text.Json;
 
 namespace ReportMail.Areas.ReportMail.Controllers
 {
-	[Area("ReportMail")]
+    [Area("ReportMail")]
 	[Route("ReportMail/[controller]/[action]")]
-	public class ReportPreviewController : Controller
-	{
-		private readonly ShopDbContext _shop;
-		public ReportPreviewController(ShopDbContext shop) => _shop = shop;
+    public class ReportPreviewController : Controller
+    {
+        private readonly ShopDbContext _shop;
+        public ReportPreviewController(ShopDbContext shop) => _shop = shop;
 
-		public class PreviewReq
-		{
+        public class PreviewReq
+        {
 			public string? Category { get; set; }  // line|bar|pie（目前用 line）
 			public string? BaseKind { get; set; }  // sales|borrow|orders
-			public List<FilterDraft>? Filters { get; set; }
-		}
-		public class FilterDraft
-		{
-			public string? FieldName { get; set; }
-			public string? Operator { get; set; }
-			public string? DataType { get; set; }
-			public string? DefaultValue { get; set; }
-			public string? Options { get; set; }
-		}
+            public List<FilterDraft>? Filters { get; set; }
+        }
+        public class FilterDraft
+        {
+            public string? FieldName { get; set; }
+            public string? Operator { get; set; }
+            public string? DataType { get; set; }
+            public string? DefaultValue { get; set; }
+            public string? Options { get; set; }
+        }
 
 
 		private sealed class YMVal { public int Year { get; set; } public int Month { get; set; } public decimal V { get; set; } }
@@ -33,9 +33,9 @@ namespace ReportMail.Areas.ReportMail.Controllers
 		private sealed class DVal { public DateTime Day { get; set; } public decimal V { get; set; } }
 
 
-		[HttpPost]
-		public async Task<IActionResult> PreviewDraft([FromBody] PreviewReq req)
-		{
+        [HttpPost]
+        public async Task<IActionResult> PreviewDraft([FromBody] PreviewReq req)
+        {
 			try
 			{
 
@@ -48,9 +48,9 @@ namespace ReportMail.Areas.ReportMail.Controllers
 
 				// 共用條件
 				DateTime dateFrom, dateTo;
-				string gran = "day";
+            string gran = "day";
 				List<int> categoryIds = new();       // 空 = 全部
-				int? priceMin = null, priceMax = null;
+            int? priceMin = null, priceMax = null;
 				int topTo = 10;                      // 柱/餅才用得到
 				List<int> exclStatus = new();        // 訂單要排除的狀態
 				List<int> inclStatus = new();		 // 訂單要包含的狀態
@@ -61,8 +61,8 @@ namespace ReportMail.Areas.ReportMail.Controllers
 				dateFrom = DateTime.Today.AddDays(-29);
 				dateTo = DateTime.Today;
 				foreach (var f in req?.Filters ?? new())
-				{
-					var name = (f.FieldName ?? "").ToLowerInvariant();
+            {
+                var name = (f.FieldName ?? "").ToLowerInvariant();
 					if (name is "orderdate" or "borrowdate" or "daterange")
 					{
 						if (!string.IsNullOrWhiteSpace(f.DefaultValue))
@@ -71,13 +71,13 @@ namespace ReportMail.Areas.ReportMail.Controllers
 
 							// 解析粒度
 							foreach (var t in tokens)
-							{
+                {
 								var kv = t.Split('=', 2, StringSplitOptions.TrimEntries);
 								if (kv.Length == 2 && kv[0].Equals("gran", StringComparison.OrdinalIgnoreCase))
-								{
+                    {
 									var g = kv[1].ToLowerInvariant();
 									if (g is "day" or "month" or "year") gran = g;
-								}
+                    }
 							}
 
 							// 解析日期範圍
@@ -85,11 +85,11 @@ namespace ReportMail.Areas.ReportMail.Controllers
 							var rp = rangePart.Split('~', StringSplitOptions.TrimEntries);
 							if (rp.Length >= 1 && DateTime.TryParse(rp[0], out var d1)) dateFrom = d1.Date;
 							if (rp.Length >= 2)
-							{
+                    {
 								var right = rp[1].Split('=', 2)[0]; // 去掉 ;gran=...
 								if (DateTime.TryParse(right, out var d2))
 									dateTo = d2.Date.AddDays(1).AddTicks(-1); // end of day
-							}
+                    }
 
 
 							debug["dateFrom"] = dateFrom;
@@ -97,38 +97,40 @@ namespace ReportMail.Areas.ReportMail.Controllers
 							debug["gran"] = gran;
 
 
-						}
+                }
 					}
-					else if (name == "categoryid" && f.Operator == "in" && !string.IsNullOrWhiteSpace(f.DefaultValue))
-					{
+                else if (name == "categoryid" && f.Operator == "in" && !string.IsNullOrWhiteSpace(f.DefaultValue))
+                {
 						// 空字串代表「全部」→ 直接忽略此條件
 						var tmp = f.DefaultValue.Split(',')
 							.Where(s => !string.IsNullOrWhiteSpace(s))
-							.Select(s => int.TryParse(s, out var x) ? x : (int?)null)
-							.Where(x => x.HasValue).Select(x => x!.Value).ToList();
+                        .Select(s => int.TryParse(s, out var x) ? x : (int?)null)
+                        .Where(x => x.HasValue).Select(x => x!.Value).ToList();
 						if (tmp.Count > 0) categoryIds = tmp;
-					}
-					else if (name == "saleprice" && f.Operator == "between" && !string.IsNullOrWhiteSpace(f.DefaultValue))
-					{
+                }
+                // 價位區間
+                else if (name == "saleprice" && f.Operator == "between" && !string.IsNullOrWhiteSpace(f.DefaultValue))
+                {
 						var p = f.DefaultValue.Split('-');
 						if (int.TryParse(p.ElementAtOrDefault(0), out var a)) priceMin = a;
 						if (int.TryParse(p.ElementAtOrDefault(1), out var b)) priceMax = b;
-					}
-					else if (name == "rank" && f.Operator == "between" && !string.IsNullOrWhiteSpace(f.DefaultValue))
-					{
+                }
+                // 排名名次
+                else if (name == "rank" && f.Operator == "between" && !string.IsNullOrWhiteSpace(f.DefaultValue))
+                {
 						var p = f.DefaultValue.Split('-');
 						if (int.TryParse(p.ElementAtOrDefault(1), out var t)) topTo = Math.Clamp(t, 1, 50);
-					}
+                }
 					else if (name == "metric" && !string.IsNullOrWhiteSpace(f.DefaultValue))
-					{
+                {
 						orderMetric = f.DefaultValue.ToLowerInvariant() == "count" ? "count" : "amount";
-					}
+                }
 					else if (name == "orderstatus" && f.Operator == "in" && !string.IsNullOrWhiteSpace(f.DefaultValue))
 					{
 						inclStatus = f.DefaultValue.Split(',')
 							.Select(s => int.TryParse(s, out var x) ? x : (int?)null)
 							.Where(x => x.HasValue).Select(x => x!.Value).ToList();
-					}
+            }
 					else if (name == "excludestatus" && f.Operator == "in" && !string.IsNullOrWhiteSpace(f.DefaultValue))
 					{
 						exclStatus = f.DefaultValue.Split(',')
@@ -174,11 +176,13 @@ namespace ReportMail.Areas.ReportMail.Controllers
 
 				// ===== 分支：sales / borrow / orders =====
 				if (baseKind == "sales")
-				{
-					var q = from od in _shop.OrderDetails
-							join o in _shop.Orders on od.OrderID equals o.OrderID
-							join b in _shop.Books on od.BookID equals b.BookID
-							where o.OrderDate >= dateFrom && o.OrderDate <= dateTo
+            {
+                // 銷售量（以 OrderDetail.Quantity 匯總）
+                // 價位以 Book.SalePrice ?? Book.ListPrice 篩選
+                var q = from od in _shop.OrderDetails
+                        join o in _shop.Orders on od.OrderID equals o.OrderID
+                        join b in _shop.Books on od.BookID equals b.BookID
+                        where o.OrderDate >= dateFrom && o.OrderDate <= dateTo
 							select new { o.OrderDate, b.CategoryID, Price = (b.SalePrice ?? b.ListPrice), od.Quantity };
 
 					debug["salesRawCount"] = await q.CountAsync();
@@ -187,12 +191,12 @@ namespace ReportMail.Areas.ReportMail.Controllers
 
 
 
-					if (categoryIds.Any()) q = q.Where(x => categoryIds.Contains(x.CategoryID));
-					if (priceMin.HasValue) q = q.Where(x => x.Price >= priceMin.Value);
-					if (priceMax.HasValue) q = q.Where(x => x.Price <= priceMax.Value);
+                if (categoryIds.Any()) q = q.Where(x => categoryIds.Contains(x.CategoryID));
+                if (priceMin.HasValue) q = q.Where(x => x.Price >= priceMin.Value);
+                if (priceMax.HasValue) q = q.Where(x => x.Price <= priceMax.Value);
 
-					if (gran == "month")
-					{
+                if (gran == "month")
+                {
 						var raw = await q.GroupBy(x => new { x.OrderDate.Year, x.OrderDate.Month })
 										 .Select(g => new { g.Key.Year, g.Key.Month, V = g.Sum(x => (decimal)x.Quantity) })
 										 .ToListAsync();
@@ -204,11 +208,11 @@ namespace ReportMail.Areas.ReportMail.Controllers
 						{
 							labels.Add($"{y}-{m:00}");
 							data.Add(dict.TryGetValue((y, m), out var v) ? v : 0m);
-						}
+                }
 						return Json(new { title = "書籍銷售量（月）", labels, data, debug });
 					}
-					else if (gran == "year")
-					{
+                else if (gran == "year")
+                {
 						var raw = await q.GroupBy(x => x.OrderDate.Year)
 										 .Select(g => new { Year = g.Key, V = g.Sum(x => (decimal)x.Quantity) })
 										 .ToListAsync();
@@ -217,14 +221,14 @@ namespace ReportMail.Areas.ReportMail.Controllers
 						var labels = new List<string>();
 						var data = new List<decimal>();
 						foreach (var y in EachYear(dateFrom, dateTo))
-						{
+                {
 							labels.Add(y.ToString());
 							data.Add(dict.TryGetValue(y, out var v) ? v : 0m);
-						}
+                }
 						return Json(new { title = "書籍銷售量（年）", labels, data, debug });
-					}
+            }
 					else // day
-					{
+            {
 						// 以 年/月/日 拆欄位分組，避免 DateTime.Date 轉譯差異
 						var raw = await q.GroupBy(x => new { x.OrderDate.Year, x.OrderDate.Month, x.OrderDate.Day })
 										 .Select(g => new { g.Key.Year, g.Key.Month, g.Key.Day, V = g.Sum(x => (decimal)x.Quantity) })
@@ -235,7 +239,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
 						var labels = new List<string>();
 						var data = new List<decimal>();
 						for (var d = dateFrom.Date; d <= dateTo.Date; d = d.AddDays(1))
-						{
+                        {
 							labels.Add(d.ToString("yyyy-MM-dd"));
 							data.Add(dict.TryGetValue((d.Year, d.Month, d.Day), out var v) ? v : 0m);
 						}
@@ -247,12 +251,14 @@ namespace ReportMail.Areas.ReportMail.Controllers
 						return Json(new { title = "書籍銷售量（日）", labels, data, debug });
 					}
 
-				}
+                return Json(new { title = $"銷售排行 Top {take}", labels = data.Select(x => x.Label), data = data.Select(x => x.V) });
+            }
 				else if (baseKind == "borrow")
-				{
-					var q = from br in _shop.BorrowRecords
-							join l in _shop.Listings on br.ListingID equals l.ListingID
-							where br.BorrowDate >= dateFrom && br.BorrowDate <= dateTo
+            {
+                // 借閱量組成（以 Listing.CategoryID 匯總）
+                var q = from br in _shop.BorrowRecords
+                        join l in _shop.Listings on br.ListingID equals l.ListingID
+                        where br.BorrowDate >= dateFrom && br.BorrowDate <= dateTo
 							select new { br.BorrowDate, l.CategoryID };
 
 					debug["dateFrom"] = dateFrom;
@@ -260,7 +266,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
 					debug["gran"] = gran;
 
 
-					if (categoryIds.Any()) q = q.Where(x => categoryIds.Contains(x.CategoryID));
+                if (categoryIds.Any()) q = q.Where(x => categoryIds.Contains(x.CategoryID));
 
 					if (gran == "month")
 					{
@@ -399,7 +405,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
 						{
 							raw = await q.GroupBy(o => new { o.OrderDate.Year, o.OrderDate.Month, o.OrderDate.Day })
 										 .Select(g => new DVal { Day = new DateTime(g.Key.Year, g.Key.Month, g.Key.Day), V = g.Sum(x => x.TotalAmount) })
-										 .ToListAsync();
+                                  .ToListAsync();
 						}
 
 						var dict = raw.ToDictionary(k => (k.Day.Year, k.Day.Month, k.Day.Day), v => v.V);
@@ -426,9 +432,9 @@ namespace ReportMail.Areas.ReportMail.Controllers
 				// 不讓前端因 500 無法 parse；固定回 JSON
 				Response.StatusCode = 400;
 				return Json(new { error = "Preview failed", detail = ex.Message });
-			}
+            }
 
-		}
+        }
 
-	}
+    }
 }
