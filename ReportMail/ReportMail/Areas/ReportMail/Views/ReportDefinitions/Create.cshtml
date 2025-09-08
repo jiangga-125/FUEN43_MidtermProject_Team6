@@ -3,21 +3,21 @@
     ViewData["Title"] = "新增報表";
     Layout = "~/Views/Shared/_Layout.cshtml";
 
-    // 走既有的控制器：預覽給 ReportPreviewController；分類來源給 LookupController
+    // 後端 API：預覽、分類
     var previewUrl = Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" }) ?? "#";
     var catsUrl = Url.Action("Categories", "Lookup", new { area = "ReportMail" }) ?? "#";
 }
-
 <h1 class="mb-3">新增報表</h1>
 
 <div class="row g-4">
     <div class="col-lg-6">
         <div class="card">
             <div class="card-body">
-                <form asp-action="Create" method="post">
+                <form asp-area="ReportMail" asp-controller="ReportDefinitions" asp-action="Create" method="post" id="frmCreate">
+                    @Html.AntiForgeryToken()
                     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-                    <!-- 報表基本欄位 -->
+                    <!-- 基本欄位 -->
                     <div class="mb-3">
                         <label asp-for="ReportName" class="form-label">報表名稱</label>
                         <input asp-for="ReportName" class="form-control" />
@@ -26,7 +26,7 @@
 
                     <div class="mb-3">
                         <label asp-for="Category" class="form-label">圖表種類</label>
-                        <select asp-for="Category" class="form-select">
+                        <select asp-for="Category" id="category" class="form-select">
                             <option value="line">折線圖</option>
                             <option value="bar">長條圖</option>
                             <option value="pie">圓餅圖</option>
@@ -34,7 +34,6 @@
                         <span asp-validation-for="Category" class="text-danger"></span>
                     </div>
 
-                    <!-- ★ 關鍵：BaseKind 綁模型，真實寫入 DB；id 仍設為 baseKind 供 JS 使用 -->
                     <div class="mb-3">
                         <label asp-for="BaseKind" class="form-label">基礎報表</label>
                         <select asp-for="BaseKind" id="baseKind" class="form-select">
@@ -48,7 +47,7 @@
 
                     <hr />
 
-                    <!-- 日期與粒度（所有 base 共用） -->
+                    <!-- 日期＋粒度（共用） -->
                     <div class="mb-2 fw-bold">日期區間與粒度</div>
                     <div class="row g-2 align-items-end mb-3">
                         <div class="col">
@@ -98,7 +97,6 @@
                             <select id="borrowCategories" class="form-select" multiple></select>
                             <div class="form-text">選「（全部）」或不選＝全部</div>
                         </div>
-                        @* 出版年份（十年區間）暫不做，保留未來可擴充 *@
                     </div>
 
                     <!-- orders -->
@@ -145,22 +143,21 @@
                         </div>
                     </div>
 
-                    <!-- 確保新增時 IsActive = true（避免模型繫結預設成 false） -->
+                    <!-- 讓新增預設啟用，並把 FiltersJson 帶回後端 -->
                     <input type="hidden" asp-for="IsActive" value="true" />
-                    <!-- 後端接收的 Filter 草稿（JSON 字串） -->
                     <input type="hidden" id="FiltersJson" name="FiltersJson" />
 
                     <div class="mt-4 d-flex gap-2">
-                        <a asp-action="Index" class="btn btn-outline-secondary">返回</a>
+                        <a asp-area="ReportMail" asp-controller="ReportDefinitions" asp-action="Index" class="btn btn-outline-secondary">返回</a>
                         <button type="button" id="btnPreview" class="btn btn-info">更新預覽</button>
-                        <button type="submit" id="btnSubmit" class="btn btn-primary">儲存</button>
+                        <button type="submit" class="btn btn-primary">儲存</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- 預覽 -->
+    <!-- 右側：預覽 -->
     <div class="col-lg-6">
         <div class="card">
             <div class="card-body">
@@ -174,7 +171,6 @@
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // 後端 API（用 Razor 常數，避免硬寫 URL）
         const apiPreview = "@previewUrl";
         const apiCats    = "@catsUrl";
 
@@ -184,9 +180,8 @@
           document.getElementById('section-orders').style.display = (kind==='orders') ? '' : 'none';
         }
 
-        // 載入書籍分類（銷售/借閱共用）
         async function loadCategories(){
-          const res = await fetch(apiCats);
+          const res = await fetch(apiCats, { cache:'no-store' });
           const list = await res.json();
           const bind = (id)=>{
             const sel = document.getElementById(id);
@@ -198,7 +193,6 @@
           bind('borrowCategories');
         }
 
-        // 產生價位（每 100 元一區）
         function genPrice(){
           const sel = document.getElementById('priceRange');
           sel.innerHTML = "";
@@ -209,7 +203,7 @@
           }
         }
 
-        // 訂單狀態 checkbox：全選/半選 + 預設只勾已完成
+        // 訂單狀態：全選/半選；預設只勾已完成
         (function wireStatusCheckboxes(){
           const boxAll = document.getElementById('os_all');
           const boxes  = Array.from(document.querySelectorAll('#orderStatusGroup .os'));
@@ -230,7 +224,6 @@
           syncAllState();
         })();
 
-        // 組前端 Filter（只用 ValueJson）
         function buildFilters(){
           const kind = document.getElementById('baseKind').value;
           const df   = document.getElementById('dateFrom').value;
@@ -240,11 +233,9 @@
           const filters = [];
           const dateField = (kind==='borrow') ? 'BorrowDate' : 'OrderDate';
 
-          // 日期 + 粒度
-          filters.push({
-            FieldName: dateField, DataType:'date', Operator:'between',
-            ValueJson: JSON.stringify({ from: df, to: dt, gran })
-          });
+          // 日期＋粒度
+          filters.push({ FieldName: dateField, DataType:'date', Operator:'between',
+                         ValueJson: JSON.stringify({ from: df, to: dt, gran }) });
 
           if (kind==='sales'){
             const cats = Array.from(document.getElementById('salesCategories').selectedOptions)
@@ -269,16 +260,15 @@
                              ValueJson: JSON.stringify({ values: cats }),
                              Options: JSON.stringify({ source:'Categories' }) });
             }
-            // decade 暫不做
           }
           else { // orders
             const metric = document.getElementById('mCount').checked ? 'count' : 'amount';
             filters.push({ FieldName:'Metric', ValueJson: JSON.stringify({ value: metric }) });
 
             const osBox = document.getElementById('orderStatusGroup');
-            const picks = Array.from(osBox.querySelectorAll('input.os:checked')).map(cb=>Number(cb.getAttribute('data-val')));
+            const picks = Array.from(osBox.querySelectorAll('input.os:checked'))
+                               .map(cb=>Number(cb.getAttribute('data-val')));
             const allChecked = document.getElementById('os_all').checked;
-            // 規則：全選＝不加狀態條件；全部不勾＝送空集合（後端回空結果）
             if (!allChecked){
               filters.push({ FieldName:'OrderStatus', Operator:'in',
                              ValueJson: JSON.stringify({ values: picks }) });
@@ -294,41 +284,53 @@
           return filters;
         }
 
-        // 預覽（呼叫既有 ReportPreviewController.PreviewDraft）
+        // 預覽（相容舊/新回傳格式）
         let chart;
         async function preview(){
-          const filters = buildFilters();
-          const payload = { Category:'line', BaseKind: document.getElementById('baseKind').value, Filters: filters };
-
+          const payload = {
+            Category: document.getElementById('category').value || 'line',
+            BaseKind: document.getElementById('baseKind').value,
+            Filters: buildFilters()
+          };
           const res = await fetch(apiPreview, {
             method:'POST',
             headers:{'Content-Type':'application/json'},
             body: JSON.stringify(payload)
           });
           const json = await res.json();
-          if (json && json.labels){
-            const ctx = document.getElementById('previewChart').getContext('2d');
-            if (chart){ chart.destroy(); }
-            chart = new Chart(ctx, {
-              type:'line',
-              data:{ labels: json.labels, datasets:[{ label: json.title, data: json.data }]},
-              options:{ responsive:true, animation:false, scales:{ y:{ beginAtZero:true } } }
-            });
+
+          let labels = [], values = [], title = '預覽';
+          if (Array.isArray(json.labels) && Array.isArray(json.data)){
+            labels = json.labels; values = json.data; title = json.title || title;
+          } else if (Array.isArray(json.series) || Array.isArray(json.Series)){
+            const s = json.series || json.Series;
+            labels = s.map(p => p.label ?? p.date ?? p.x ?? '');
+            values = s.map(p => p.value ?? p.y ?? 0);
+            title  = (json.echo?.baseKind ? `折線圖 - ${json.echo.baseKind}` : title);
           }
+
+          const ctx = document.getElementById('previewChart').getContext('2d');
+          if (chart) chart.destroy();
+          chart = new Chart(ctx, {
+            type:'line',
+            data:{ labels, datasets:[{ label:title, data:values }]},
+            options:{ responsive:true, animation:false, scales:{ y:{ beginAtZero:true } } }
+          });
         }
 
-        // 存檔：把 filters 丟進隱藏欄位
-        document.getElementById('btnSubmit').addEventListener('click', ()=>{
+        // 事件：變更即預覽；送出帶 FiltersJson
+        document.getElementById('btnPreview').addEventListener('click', preview);
+        document.getElementById('frmCreate').addEventListener('submit', ()=>{
           document.getElementById('FiltersJson').value = JSON.stringify(buildFilters());
         });
-        document.getElementById('btnPreview').addEventListener('click', preview);
-
-        // 即時預覽綁定
-        ['baseKind','dateFrom','dateTo','gDay','gMonth','gYear','salesCategories','borrowCategories','priceRange','mAmount','mCount','ordAmtMin','ordAmtMax']
-          .forEach(id => { const el = document.getElementById(id); if(el) el.addEventListener('change', preview); });
+        ['category','baseKind','dateFrom','dateTo','gDay','gMonth','gYear',
+         'salesCategories','borrowCategories','priceRange',
+         'mAmount','mCount','ordAmtMin','ordAmtMax'].forEach(id=>{
+           const el = document.getElementById(id); if (el) el.addEventListener('change', preview);
+         });
 
         // 初始化
-        document.addEventListener('DOMContentLoaded', async ()=>{
+        (async function(){
           const today = new Date(); const from = new Date(); from.setDate(today.getDate()-29);
           document.getElementById('dateFrom').value = from.toISOString().slice(0,10);
           document.getElementById('dateTo').value   = today.toISOString().slice(0,10);
@@ -339,6 +341,9 @@
           await loadCategories();
           genPrice();
           preview();
-        });
+        })();
     </script>
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

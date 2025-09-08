@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using ReportMail.Data.Contexts;
 using ReportMail.Data.Entities;
-using System.Text.Json;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace ReportMail.Areas.ReportMail.Controllers
 {
@@ -151,7 +152,9 @@ namespace ReportMail.Areas.ReportMail.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id,
             [Bind("ReportDefinitionID,ReportName,Category,BaseKind,Description,IsActive,CreatedAt,UpdatedAt")]
-            ReportDefinition reportDefinition)
+            ReportDefinition reportDefinition,
+            [FromForm] string? FiltersJson // 接收前端組好的 Filter 草稿(JSON)
+        )
         {
             if (id != reportDefinition.ReportDefinitionID) return NotFound();
             if (!ModelState.IsValid) return View(reportDefinition);
@@ -159,21 +162,56 @@ namespace ReportMail.Areas.ReportMail.Controllers
             reportDefinition.Category = (reportDefinition.Category ?? "line").Trim().ToLowerInvariant();
             reportDefinition.BaseKind = (reportDefinition.BaseKind ?? "sales").Trim().ToLowerInvariant();
 
-            // （建議）新增一律啟用，避免被 Index() 過濾掉
+            // 一律啟用，避免被 Index() 過濾掉
             reportDefinition.IsActive = true;
+            reportDefinition.UpdatedAt = DateTime.Now;// 後端自動刷新
 
+            using var tx = await _context.Database.BeginTransactionAsync();
             try
-            {
-                reportDefinition.UpdatedAt = DateTime.Now; // ★ 後端自動刷新
+            {   // 1) 先更新 Definition 本體
                 _context.Update(reportDefinition);
                 await _context.SaveChangesAsync();
+
+                // 2)砍掉舊的Filters(最簡潔、避免比對順序異動)
+                var olds = _context.ReportFilters.Where(f => f.ReportDefinitionID == reportDefinition.ReportDefinitionID);
+                _context.ReportFilters.RemoveRange(olds);
+                await _context.SaveChangesAsync();
+
+                // 3)還原新增十的「草稿解析」:逐筆加入新的Filters
+                if (!string.IsNullOrWhiteSpace(FiltersJson))
+                {
+                    var drafts = System.Text.Json.JsonSerializer.Deserialize<List<ReportFilterDraft>>(FiltersJson) ?? new();
+                    var now = DateTime.Now;
+                    int order = 1;
+                    foreach (var d in drafts)
+                    {
+                        if (string.IsNullOrWhiteSpace(d.FieldName)) continue;
+                        var f = new ReportFilter
+                        {
+                            ReportDefinitionID = reportDefinition.ReportDefinitionID,
+                            FieldName = d.FieldName!.Trim(),
+                            DisplayName = string.IsNullOrWhiteSpace(d.DisplayName) ? d.FieldName!.Trim() : d.DisplayName!.Trim(),
+                            DataType = (d.DataType ?? "text").Trim().ToLowerInvariant(),
+                            Operator = (d.Operator ?? "eq").Trim().ToLowerInvariant(),
+                            ValueJson = d.ValueJson ?? "{}",   // 新版只用 ValueJson
+                            Options = d.Options,
+                            OrderIndex = order++,
+                            IsRequired = d.IsRequired ?? false,   // 或 d.IsRequired.GetValueOrDefault(false)                            IsActive = true,
+                            CreatedAt = now,
+                            UpdatedAt = now
+                        };
+                        _context.ReportFilters.Add(f);
+                    }
+                    await _context.SaveChangesAsync();
+                }
+                await tx.CommitAsync();
+                return RedirectToAction(nameof(Index));
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!ReportDefinitionExists(reportDefinition.ReportDefinitionID)) return NotFound();
-                else throw;
+                await tx.RollbackAsync();
+                throw;
             }
-            return RedirectToAction(nameof(Index));
         }
 
         // GET: ReportMail/ReportDefinitions/Delete/5
