@@ -28,15 +28,15 @@ public partial class ReportFilter
     public string Operator { get; set; } = null!;
 
     [StringLength(200)]
-    public string? DefaultValue { get; set; }
+    public string ValueJson { get; set; } = "{}";
 
     public string? Options { get; set; }
 
     public int OrderIndex { get; set; }
 
-    public bool IsRequired { get; set; }
+    public bool IsRequired { get; set; }=false; 
 
-    public bool IsActive { get; set; }
+    public bool IsActive { get; set; }=true;
 
     public DateTime CreatedAt { get; set; }
 

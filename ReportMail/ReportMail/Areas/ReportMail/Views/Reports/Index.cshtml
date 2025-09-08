@@ -1,208 +1,238 @@
-﻿@{
-    ViewData["Title"] = "報表總覽";
-    // 後端端點（都帶 Area）
-    var urlLine = Url.Action("Line", "Reports", new { area = "ReportMail" });
-    var urlBar = Url.Action("Bar", "Reports", new { area = "ReportMail" });
-    var urlPie = Url.Action("Pie", "Reports", new { area = "ReportMail" });
+﻿@using System.Linq
+@using System.Collections.Generic
+@using ReportMail.Data.Entities
+@{
+    ViewData["Title"] = "報表主頁";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 
-    // 之後自定義報表的 CRUD 頁（按鈕先留位）
-    var newUrl = Url.Action("Create", "ReportDefinitions", new { area = "ReportMail" });
-    var editUrl = Url.Action("Edit", "ReportDefinitions", new { area = "ReportMail", id = 0 });
-    var deleteUrl = Url.Action("Delete", "ReportDefinitions", new { area = "ReportMail", id = 0 });
+    // === 後端 API ===
+    // 預設折線圖資料（你專案現有的 ReportsController.Line）
+    var apiLine = Url.Action("Line", "Reports", new { area = "ReportMail" }) ?? "#";
+    // 讀某個 ReportDefinition 的定義（Category/BaseKind/Filters(ValueJson)）
+    var apiDefPayload = Url.Action("DefinitionPayload", "ReportDefinitions", new { area = "ReportMail" }) ?? "#";
+    // 依 BaseKind+Filters 預覽資料（你專案現有的 ReportPreviewController.PreviewDraft）
+    var apiPreview = Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" }) ?? "#";
+
+    // 新增/編輯/刪除的頁面
+    var urlCreateDef = Url.Action("Create", "ReportDefinitions", new { area = "ReportMail" }) ?? "#";
+    var urlEditDefBase = Url.Action("Edit", "ReportDefinitions", new { area = "ReportMail" }) ?? "#"; // 之後 + /{id}
+    var urlDelDefBase = Url.Action("Delete", "ReportDefinitions", new { area = "ReportMail" }) ?? "#"; // 之後 + /{id}
+
+    // === 折線圖用的自訂報表清單 ===
+    // ReportsController.Index 建議提供 ViewBag.LineReports（Category='line' & IsActive=1）
+    // 若控制器暫時沒提供，這裡會是空列，仍可顯示預設報表。
+    var lineList = ViewBag.LineReports as IEnumerable<ReportDefinition>
+                   ?? Enumerable.Empty<ReportDefinition>();
 }
 
-<h2 class="mb-3">報表總覽</h2>
+<div class="container-fluid py-3">
+    <h1 class="mb-4">報表主頁</h1>
 
-<style>
-    .grid3 {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0,1fr));
-        gap: 16px;
-    }
-    @@media (max-width: 1200px) {
-        .grid3
-
-    {
-        grid-template-columns: repeat(2, minmax(0,1fr));
-    }
-
-    }
-    @@media (max-width: 768px) {
-        .grid3
-
-    {
-        grid-template-columns: 1fr;
-    }
-
-    }
-
-    .card {
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0 1px 2px rgba(0,0,0,.04);
-    }
-
-        .card h5 {
-            margin: 0 0 12px;
-        }
-
-    .toolbar {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        margin-bottom: 8px;
-    }
-
-        .toolbar .spacer {
-            flex: 1;
-        }
-</style>
-
-<div class="grid3">
-    <!-- 折線圖：總銷售金額（預設近 30 天、按日） -->
-    <div class="card">
-        <div class="toolbar">
-            <h5>總銷售金額（近 30 天）</h5>
-            <div class="spacer"></div>
-            <!-- 之後這裡換成「自定義報表下拉」 -->
-            <select id="ddlLine" class="form-select form-select-sm" style="width: 180px;">
-                <option value="">預設：總銷售金額</option>
-                @foreach (var r in (IEnumerable<dynamic>)ViewBag.LineReports ?? new List<dynamic>())
-                {
-                    <option value="@r.ReportDefinitionID">@r.ReportName</option>
-                }
-            </select>
-            <a class="btn btn-sm btn-outline-primary" href="@($"{newUrl}?category=line")">新增</a>
-            <a id="btnEditLine" class="btn btn-sm btn-outline-secondary disabled" href="javascript:void(0)">編輯</a>
-            <a id="btnDelLine" class="btn btn-sm btn-outline-danger disabled" href="javascript:void(0)">刪除</a>
+    <!-- ===== 折線圖卡片（本題主角） ===== -->
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold">折線圖</span>
+                <!-- 下拉：第一個選項 = 預設報表；其餘為自訂報表 -->
+                <select id="ddlLine" class="form-select form-select-sm" style="min-width:280px;">
+                    <option value="">（預設報表）</option>
+                    @foreach (var d in lineList)
+                    {
+                        <option value="@d.ReportDefinitionID">@d.ReportName</option>
+                    }
+                </select>
+            </div>
+            <div class="d-flex gap-2">
+                <!-- 新增固定導到 ReportDefinitions.Create（內頁選擇圖表類型與篩選） -->
+                <a class="btn btn-sm btn-primary" href="@urlCreateDef">新增</a>
+                <!-- 編輯/刪除：需要先在下拉選到某一筆 -->
+                <button id="btnEditLine" class="btn btn-sm btn-outline-secondary">編輯</button>
+                <button id="btnDelLine" class="btn btn-sm btn-outline-danger">刪除</button>
+            </div>
         </div>
-        <canvas id="chartLine" height="200" width="200"></canvas>
+        <div class="card-body">
+            <!-- ★ 必備：折線圖畫布 -->
+            <canvas id="chartLine" height="140"></canvas>
+            <div class="text-muted small mt-2">
+                提示：選擇「自訂報表」會即時更新圖表；選「（預設報表）」回到寫死的預設資料。
+            </div>
+        </div>
     </div>
 
-    <!-- 長條圖：銷售書籍排行 Top10 -->
-    <div class="card">
-        <div class="toolbar">
-            <h5>銷售書籍排行（近 30 天 Top10）</h5>
-            <div class="spacer"></div>
-            <select id="ddlBar" class="form-select form-select-sm" style="width: 180px;">
-                <option value="">預設：銷售排行 Top10</option>
-                @foreach (var r in (IEnumerable<dynamic>)ViewBag.BarReports ?? new List<dynamic>())
-                {
-                    <option value="@r.ReportDefinitionID">@r.ReportName</option>
-                }
-            </select>
-            <a class="btn btn-sm btn-outline-primary" href="@($"{newUrl}?category=bar")">新增</a>
-            <a id="btnEditBar" class="btn btn-sm btn-outline-secondary disabled" href="javascript:void(0)">編輯</a>
-            <a id="btnDelBar" class="btn btn-sm btn-outline-danger disabled" href="javascript:void(0)">刪除</a>
+    <!-- ===== 長條圖/圓餅圖保留位（稍後可依此模式增加） ===== -->
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between">
+                    <span class="fw-bold">長條圖（預留）</span>
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-sm btn-primary disabled" aria-disabled="true">新增</a>
+                        <button class="btn btn-sm btn-outline-secondary" disabled>編輯</button>
+                        <button class="btn btn-sm btn-outline-danger" disabled>刪除</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="text-muted small">稍後用同一套路接上。</div>
+                    <canvas id="chartBar" height="140"></canvas>
+                </div>
+            </div>
         </div>
-        <canvas id="chartBar" height="200" width="200"></canvas>
-    </div>
-
-    <!-- 圓餅圖：借閱書籍種類 Top5 -->
-    <div class="card">
-        <div class="toolbar">
-            <h5>借閱書籍種類排行（近 30 天 Top5）</h5>
-            <div class="spacer"></div>
-            <select id="ddlPie" class="form-select form-select-sm" style="width: 180px;">
-                <option value="">預設：種類排行 Top5</option>
-                @foreach (var r in (IEnumerable<dynamic>)ViewBag.PieReports ?? new List<dynamic>())
-                {
-                    <option value="@r.ReportDefinitionID">@r.ReportName</option>
-                }
-            </select>
-            <a class="btn btn-sm btn-outline-primary" href="@($"{newUrl}?category=pie")">新增</a>
-            <a id="btnEditPie" class="btn btn-sm btn-outline-secondary disabled" href="javascript:void(0)">編輯</a>
-            <a id="btnDelPie" class="btn btn-sm btn-outline-danger disabled" href="javascript:void(0)">刪除</a>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between">
+                    <span class="fw-bold">圓餅圖（預留）</span>
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-sm btn-primary disabled" aria-disabled="true">新增</a>
+                        <button class="btn btn-sm btn-outline-secondary" disabled>編輯</button>
+                        <button class="btn btn-sm btn-outline-danger" disabled>刪除</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="text-muted small">稍後用同一套路接上。</div>
+                    <canvas id="chartPie" height="140"></canvas>
+                </div>
+            </div>
         </div>
-        <canvas id="chartPie" height="200" width="200"></canvas>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    let chartLine, chartBar, chartPie;
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // === 用不會與 DOM id 衝突的名稱 ===
+        window._lineChart = window._lineChart || null;
 
-    async function fetchJson(url){
-      const res = await fetch(url);
-      if(!res.ok){
-        alert('伺服器錯誤 ' + res.status + '\n' + await res.text());
-        throw new Error('http ' + res.status);
-      }
-      return await res.json();
-    }
+        // === 工具：重畫折線圖 ===
+        function renderLine(labels, data, title){
+          const canvas = document.getElementById('chartLine');
+          if (!canvas) { console.error('#chartLine not found'); return; }
 
-    async function loadLine(){
-      const url = '@urlLine'; // 預設近 30 天、day
-      const { labels, data } = await fetchJson(url);
-      const ctx = document.getElementById('chartLine');
-      if(chartLine) chartLine.destroy();
-      chartLine = new Chart(ctx, {
-        type: 'line',
-        data: { labels, datasets: [{ label: '總銷售金額', data }] },
-        options: { responsive: true, tension: .25 }
-      });
-    }
+          // 只有在「真的是 Chart 實例」時才 destroy
+          if (window._lineChart && typeof window._lineChart.destroy === 'function') {
+            window._lineChart.destroy();
+          }
 
-    async function loadBar(){
-      const url = '@urlBar'; // 預設 Top10
-      const { labels, data } = await fetchJson(url);
-      const ctx = document.getElementById('chartBar');
-      if(chartBar) chartBar.destroy();
-      chartBar = new Chart(ctx, {
-        type: 'bar',
-        data: { labels, datasets: [{ label: '銷售量', data }] },
-        options: { responsive: true }
-      });
-    }
-
-    async function loadPie(){
-      const url = '@urlPie'; // 預設 Top5
-      const { labels, data } = await fetchJson(url);
-      const ctx = document.getElementById('chartPie');
-      if(chartPie) chartPie.destroy();
-      chartPie = new Chart(ctx, {
-        type: 'pie',
-        data: { labels, datasets: [{ label: '借閱筆數', data }] },
-        options: { responsive: true }
-      });
-    }
-
-    // 先把三張預設載入
-    window.addEventListener('DOMContentLoaded', async() => {
-      await Promise.all([loadLine(), loadBar(), loadPie()]);
-    });
-
-      // 取得「編輯/刪除」的 URL 根（/Edit/ 與 /Delete/）
-    const editRoot = '@Url.Action("Edit", "ReportDefinitions", new { area = "ReportMail", id = 0 })'.replace(/0$/, '');
-    const delRoot  = '@Url.Action("Delete", "ReportDefinitions", new { area = "ReportMail", id = 0 })'.replace(/0$/, '');
-
-    function wireCrud(selectId, editBtnId, delBtnId) {
-      const sel = document.getElementById(selectId);
-      const btnE = document.getElementById(editBtnId);
-      const btnD = document.getElementById(delBtnId);
-
-      function update() {
-        const id = sel.value;
-        const enable = !!id;
-        if (enable) {
-          btnE.classList.remove('disabled');
-          btnD.classList.remove('disabled');
-          btnE.href = editRoot + id;
-          btnD.href = delRoot  + id;
-        } else {
-          btnE.classList.add('disabled');
-          btnD.classList.add('disabled');
-          btnE.href = 'javascript:void(0)';
-          btnD.href = 'javascript:void(0)';
+          // 直接把 canvas 傳給 Chart（Chart.js 會自己取 context）
+          window._lineChart = new Chart(canvas, {
+            type: 'line',
+            data: { labels: labels || [], datasets: [{ label: title || '折線圖', data: data || [] }] },
+            options: { responsive: true, tension: .25, scales: { y: { beginAtZero: true } } }
+          });
         }
-      }
-      sel.addEventListener('change', update);
-      update(); // 初始化一次
-    }
 
-    // 你的三組下拉／按鈕 id 名稱沿用現有的
-    wireCrud('ddlLine', 'btnEditLine', 'btnDelLine');
-    wireCrud('ddlBar',  'btnEditBar',  'btnDelBar');
-    wireCrud('ddlPie',  'btnEditPie',  'btnDelPie');
-</script>
+        // === 預設（寫死）折線圖：呼叫 ReportsController.Line 回傳的 JSON ===
+        async function loadLine(){
+          try {
+            const res = await fetch('@Url.Action("Line", "Reports", new { area = "ReportMail" })');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const json = await res.json();
+            renderLine(json.labels, json.data, json.title || '預設折線圖');
+          } catch (err) {
+            console.error('loadLine failed:', err);
+            renderLine([], [], '預設折線圖（載入失敗）');
+          }
+        }
+
+        // === DefinitionPayload → PreviewDraft：只用 ValueJson ===
+        function mapFiltersForPreview(filters){
+          return (filters || []).map(f => ({
+            FieldName: f.FieldName,
+            Operator:  f.Operator,
+            DataType:  f.DataType,
+            Options:   f.Options,
+            ValueJson: f.ValueJson
+          }));
+        }
+
+        // === 載入「自訂（折線圖）」：先取定義，再呼叫預覽 ===
+        // 以 id 讀取報表定義 → 呼叫預覽 → 畫折線圖
+        async function loadLineByDefinition(defId) {
+            try {
+              // 1) 取報表定義（關快取 + 加時間戳）
+              const defUrl = '@Url.Action("DefinitionPayload", "ReportDefinitions", new { area = "ReportMail" })'
+                           + '?id=' + encodeURIComponent(defId) + '&t=' + Date.now();
+              const resDef = await fetch(defUrl, { cache: 'no-store' });
+              if (!resDef.ok) throw new Error('DefinitionPayload HTTP ' + resDef.status);
+              const def = await resDef.json();
+              console.debug('[Line] definition =', def);
+
+              // 2) 來源類型（sales/borrow/orders）— 支援 camelCase / PascalCase
+              const kind = ((def.baseKind ?? def.BaseKind) || '').toString().trim().toLowerCase();
+              if (!['sales','borrow','orders'].includes(kind)) {
+                console.error('BaseKind 缺失或不合法，definition=', def);
+                alert('此報表缺少來源類型（sales/borrow/orders），請檢查定義。');
+                return;
+              }
+
+              // 3) Filters — 支援 camelCase / PascalCase
+              const defFilters = def.filters ?? def.Filters ?? [];
+
+              const req = {
+                Category: 'line',
+                BaseKind: kind,
+                Filters: (defFilters || []).map(f => ({
+                  FieldName:    f.fieldName    ?? f.FieldName,
+                  Operator:     f.operator     ?? f.Operator,
+                  DataType:     f.dataType     ?? f.DataType,
+                  ValueJson:    f.valueJson    ?? f.ValueJson ?? null,
+                  DefaultValue: f.defaultValue ?? f.DefaultValue ?? null,
+                  Options:      f.options      ?? f.Options ?? null
+                }))
+              };
+              console.debug('[Line] req =', req);
+
+              // 4) 呼叫預覽（關快取 + 加時間戳）
+              const prevUrl = '@Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" })'
+                            + '?t=' + Date.now();
+              const resPrev = await fetch(prevUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+                body: JSON.stringify(req),
+                cache: 'no-store'
+              });
+              if (!resPrev.ok) throw new Error('PreviewDraft HTTP ' + resPrev.status);
+
+              const json = await resPrev.json();
+              console.debug('[Line] echo =', json.echo);
+
+              // 5) 畫圖
+              renderLine(json.labels || [], json.data || [], json.title || '折線圖');
+            } catch (err) {
+              console.error('loadLineByDefinition failed:', err);
+              renderLine([], [], '載入失敗');
+            }
+          }        // === 綁定：下拉切換、自訂報表的編輯/刪除導頁 ===
+        (function bindLineUI(){
+          const ddl     = document.getElementById('ddlLine');
+          const btnEdit = document.getElementById('btnEditLine');
+          const btnDel  = document.getElementById('btnDelLine');
+
+          if (ddl){
+            ddl.addEventListener('change', async (e)=>{
+              const id = e.target.value;
+              if (!id) await loadLine();               // 空值 → 預設
+              else     await loadLineByDefinition(id); // 有選 → 自訂
+            });
+          }
+
+          if (btnEdit){
+            btnEdit.addEventListener('click', ()=>{
+              const id = (ddl && ddl.value) || '';
+              if (!id){ alert('請先在下拉選擇要編輯的報表'); return; }
+              window.location.href = '@Url.Action("Edit", "ReportDefinitions", new { area = "ReportMail" })/' + id;
+            });
+          }
+
+          if (btnDel){
+            btnDel.addEventListener('click', ()=>{
+              const id = (ddl && ddl.value) || '';
+              if (!id){ alert('請先在下拉選擇要刪除的報表'); return; }
+              window.location.href = '@Url.Action("Delete", "ReportDefinitions", new { area = "ReportMail" })/' + id;
+            });
+          }
+        })();
+
+        // === 首次載入：顯示預設折線圖 ===
+        document.addEventListener('DOMContentLoaded', loadLine);
+    </script>
+}

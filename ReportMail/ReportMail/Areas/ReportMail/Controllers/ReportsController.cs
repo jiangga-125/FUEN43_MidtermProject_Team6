@@ -40,26 +40,26 @@ namespace ReportMail.Areas.ReportMail.Controllers
         [HttpGet]
         // 也讓 /ReportMail/Reports 直接進到這頁（不用寫 /Index）
         [Route("/ReportMail/Reports")]
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            // 注意：Category 的實際值若是 "Line/Bar/Pie"（首字大寫），請改成相對應字串
-            ViewBag.LineReports = _db.ReportDefinitions
-                .Where(r => r.IsActive && r.Category == "line")
-                .OrderBy(r => r.ReportName)
-                .Select(r => new { r.ReportDefinitionID, r.ReportName })
-                .ToList();
+            var defs = _db.ReportDefinitions
+                          .AsNoTracking()
+                          .Where(r => r.IsActive);
 
-            ViewBag.BarReports = _db.ReportDefinitions
-                .Where(r => r.IsActive && r.Category == "bar")
+            ViewBag.LineReports = await defs
+                .Where(r => r.Category != null && r.Category.ToLower() == "line")
                 .OrderBy(r => r.ReportName)
-                .Select(r => new { r.ReportDefinitionID, r.ReportName })
-                .ToList();
+                .ToListAsync();
 
-            ViewBag.PieReports = _db.ReportDefinitions
-                .Where(r => r.IsActive && r.Category == "pie")
+            ViewBag.BarReports = await defs
+                .Where(r => r.Category != null && r.Category.ToLower() == "bar")
                 .OrderBy(r => r.ReportName)
-                .Select(r => new { r.ReportDefinitionID, r.ReportName })
-                .ToList();
+                .ToListAsync();
+
+            ViewBag.PieReports = await defs
+                .Where(r => r.Category != null && r.Category.ToLower() == "pie")
+                .OrderBy(r => r.ReportName)
+                .ToListAsync();
 
             return View();
         }

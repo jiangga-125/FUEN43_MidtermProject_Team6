@@ -17,11 +17,17 @@ public partial class ReportDefinition
     public string ReportName { get; set; } = null!;
 
     [StringLength(50)]
-    public string Category { get; set; } = null!;
+    public string Category { get; set; } = null!;  //line/bar/pie
+
+    public string BaseKind { get; set; } = null!;  // ← 新增：sales|borrow|orders
 
     public string? Description { get; set; }
 
-    public bool IsActive { get; set; }
+    public bool IsActive { get; set; } = true;
+
+    public bool IsSystem { get; set; } = false;      //是否預設
+
+    public int SortOrder { get; set; } = 0;          // 排序順序
 
     public DateTime CreatedAt { get; set; }
 
