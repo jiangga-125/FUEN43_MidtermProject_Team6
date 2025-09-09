@@ -194,39 +194,91 @@
         return filters;
     }
 
+    // ★ 動態推導圖例（後端沒給 title 時的後備）
+    function computeLegend(cat, baseKind, filters, json) {
+        try {
+            const kind = (baseKind || '').toLowerCase();
+            if (cat === 'bar' || cat === 'pie') {
+                // 取 RankRange.to 當 TopN（沒有就預設 10）
+                let topN = 10;
+                const fr = (filters || []).find(f => (f.FieldName || '') === 'RankRange');
+                if (fr && fr.ValueJson) {
+                    const v = JSON.parse(fr.ValueJson);
+                    if (v && typeof v.to !== 'undefined') topN = Number(v.to) || 10;
+                }
+                if (kind === 'sales') return `銷售量 Top${topN}（本）`;
+                if (kind === 'borrow') return `借閱量 Top${topN}（本）`;
+                return '預覽';
+            } else { // line
+                if (kind === 'orders') {
+                    // 看 Metric：count/amount
+                    const fm = (filters || []).find(f => (f.FieldName || '') === 'Metric');
+                    const mv = fm && fm.ValueJson ? (JSON.parse(fm.ValueJson).value || '') : '';
+                    return (mv === 'count') ? '訂單筆數（筆）' : '銷售金額（元）';
+                }
+                if (kind === 'sales') return '銷售量（本）';
+                if (kind === 'borrow') return '借閱量（本）';
+                return '預覽';
+            }
+        } catch {
+            return '預覽';
+        }
+    }
+
     // ==== preview (Chart.js) ====
     let chart;
     async function preview() {
         if (!apiPreview) return;
 
         const cat = getChartCategoryUi();
-        const payload = { Category: cat, BaseKind: ($('baseKind')?.value || 'sales'), Filters: buildFilters() };
+        const baseKind = ($('baseKind')?.value || 'sales');
+        const filts = buildFilters();
 
-        let labels = [], values = [], title = '預覽';
+        const payload = { Category: cat, BaseKind: baseKind, Filters: filts };
+
+        let labels = [], values = [], title = ''; // ★ 預設不給字，由下方決定
         try {
-            const res = await fetch(apiPreview, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), cache: 'no-store' });
+            const res = await fetch(apiPreview, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                cache: 'no-store'
+            });
             const json = await res.json();
 
             // 相容兩種回傳格式
             if (Array.isArray(json.labels) && Array.isArray(json.data)) {
-                labels = json.labels; values = json.data; title = json.title || title;
+                labels = json.labels;
+                // 強制轉數字，避免字串數字
+                values = json.data.map(v => typeof v === 'number' ? v : Number(v) || 0); // ★
+                title = json.title || ''; // ★ 等一下再用 computeLegend 補
             } else {
                 const s = json.series || json.Series || [];
                 labels = s.map(p => p.label ?? p.name ?? '');
-                values = s.map(p => p.value ?? p.y ?? 0);
-                title = json.echo?.baseKind ? `${cat.toUpperCase()} - ${json.echo.baseKind}` : title;
+                values = s.map(p => Number(p.value ?? p.y ?? 0)); // ★ 轉成 Number
+                title = json.title || ''; // ★
+            }
+
+            // ★ 若後端沒有 title，用前端推導的 legend
+            if (!title || !String(title).trim()) {
+                title = computeLegend(cat, baseKind, filts);
             }
         } catch (err) {
             console.error('preview fetch error:', err);
             labels = ['無資料']; values = [0];
+            title = computeLegend(cat, baseKind, filts) || '預覽'; // ★ 就算失敗也給個合理圖例
         }
 
         const ctx = $('previewChart')?.getContext('2d'); if (!ctx) return;
         if (chart) chart.destroy();
         chart = new Chart(ctx, {
             type: (cat === 'pie' ? 'pie' : (cat === 'bar' ? 'bar' : 'line')),
-            data: { labels, datasets: [{ label: title, data: values }] },
-            options: { responsive: true, animation: false, scales: (cat === 'pie' ? {} : { y: { beginAtZero: true } }) }
+            data: { labels, datasets: [{ label: title, data: values }] }, // ★ 圖例名稱 = title（動態）
+            options: {
+                responsive: true,
+                animation: false,
+                scales: (cat === 'pie' ? {} : { y: { beginAtZero: true } })
+            }
         });
     }
 
@@ -270,6 +322,7 @@
             const fr = find('RankRange'); if (fr) { const v = val(fr); if (v.from) $('rankFromBorrow').value = String(v.from); if (v.to) $('rankToBorrow').value = String(v.to); }
         }
     }
+
     // 訂單狀態 checkbox：全選/半選 + 預設只勾已完成
     function wireStatusCheckboxes() {
         const boxAll = document.getElementById('os_all');
@@ -298,8 +351,6 @@
         if (done) done.checked = true;
         syncAllState();
     }
-
-
 
     // ==== wire events ====
     function wire() {

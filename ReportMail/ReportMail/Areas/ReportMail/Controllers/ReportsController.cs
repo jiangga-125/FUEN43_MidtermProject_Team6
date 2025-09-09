@@ -17,7 +17,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
     /// 2) 長條圖 Bar：近 30 天「銷售書籍排行」，預設 Top10
     /// 3) 圓餅圖 Pie：近 30 天「借閱書籍種類」排行，預設 Top5
     ///
-    /// ※ 自訂報表（ReportDefinition/ReportFilter）之後另做 CRUD 與對應 API，不混在這支。
+    /// ※ 自訂報表（ReportDefinition/ReportFilter）另做 CRUD 與對應 API，不混在這支。
     /// </summary>
     [Area("ReportMail")]
     // 讓 URL 穩定為 /ReportMail/Reports/{Action}
@@ -85,12 +85,38 @@ namespace ReportMail.Areas.ReportMail.Controllers
                 return BadRequest("granularity 僅允許 day / month / year");
 
             var points = await _svc.GetSalesAmountSeriesAsync(start, end, granularity, excludeStatuses);
-            return Ok(new
-            {
-                labels = points.Select(p => p.Label).ToArray(),
-                data = points.Select(p => p.Value).ToArray()
-            });
-        }
+
+			// 預設（day）→ 補零：確保 30 天每日都有一個點
+			if (granularity == "day")
+			{
+				// 將服務回來的序列轉成 map：label -> value
+				// （服務層 day 的 label 預期為 "yyyy-MM-dd"）
+				var map = points.ToDictionary(p => p.Label, p => p.Value, StringComparer.Ordinal);
+
+				var labels = new List<string>(capacity: (end - start).Days + 1);
+				var data = new List<decimal>(capacity: (end - start).Days + 1);
+
+				for (var d = start.Date; d <= end.Date; d = d.AddDays(1))
+				{
+					var lab = d.ToString("yyyy-MM-dd");
+					labels.Add(lab);
+					data.Add(map.TryGetValue(lab, out var v) ? v : 0m); // 沒資料 → 補 0
+				}
+
+				return Ok(new {  
+                    title= "每日銷售金額",
+					labels, 
+                    data 
+                });
+			}
+
+			// 非 day（例如 month/year）保持原邏輯
+			return Ok(new
+			{
+				labels = points.Select(p => p.Label).ToArray(),
+				data = points.Select(p => p.Value).ToArray()
+			});
+		}
 
         /// <summary>
         /// 長條圖：銷售書籍排行（以銷售數量排序）。
@@ -111,6 +137,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
             var points = await _svc.GetTopSoldBooksAsync(start, end, top, excludeStatuses);
             return Ok(new
             {
+                title=$"總銷售本數",
                 labels = points.Select(p => p.Label).ToArray(),
                 data = points.Select(p => p.Value).ToArray()
             });
@@ -134,6 +161,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
             var points = await _svc.GetTopBorrowCategoryAsync(start, end, top);
             return Ok(new
             {
+                title=$"總借閱本數",
                 labels = points.Select(p => p.Label).ToArray(),
                 data = points.Select(p => p.Value).ToArray()
             });
