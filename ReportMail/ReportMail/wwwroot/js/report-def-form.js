@@ -1,239 +1,357 @@
 ﻿// @ts-nocheck
-
 (function () {
-    const root = document.getElementById('rd-form');
-    if (!root) return;
-
-    const mode = root.dataset.mode || 'create';
-    const defId = Number(root.dataset.defId || 0);
-    const apiDef = root.dataset.apiDef;
-    const apiCats = root.dataset.apiCats;
-    const apiPreview = root.dataset.apiPreview;
-
     const $ = (id) => document.getElementById(id);
 
-    function showSection(kind) {
-        $('section-sales').style.display = (kind === 'sales' ? '' : 'none');
-        $('section-borrow').style.display = (kind === 'borrow' ? '' : 'none');
-        $('section-orders').style.display = (kind === 'orders' ? '' : 'none');
+    // 從頁面注入的 API（Create/Edit 兩頁記得用 Scripts 區塊設好 window.__API_*__）
+    const apiPreview = window.__API_PREVIEW__ || document.querySelector('script[src*="report-def-form.js"]')?.dataset?.apiPreview || (typeof previewUrl !== "undefined" ? previewUrl : null) || "@previewUrl";
+    const apiCats = window.__API_CATS__ || (typeof catsUrl !== "undefined" ? catsUrl : null) || "@catsUrl";
+    const apiDef = window.__DEF_URL__ || null; // 只有 Edit 頁有
+
+    // ===== Feature flag：出版年份目前 DB 未做，關閉：不顯示且不送出 =====
+    const FEATURE_PUBLISH_DECADE = false;
+
+    // 取用目前「圖表種類」：支援 Create 的 <select id="Category"> 與 Edit 可能使用的 hidCategory / data-chart 按鈕
+    function getChartCategoryUi() {
+        const sel = $('Category') || $('category');
+        if (sel && sel.value) return sel.value.toLowerCase();
+        const hid = $('hidCategory');
+        if (hid && hid.value) return hid.value.toLowerCase();
+        const btn = document.querySelector('[data-chart].btn-primary,[data-chart].active');
+        if (btn) return String(btn.getAttribute('data-chart')).toLowerCase();
+        return 'line';
+    }
+
+    // ==== UI helpers ====
+    function isBarPie() {
+        const cat = getChartCategoryUi();
+        return cat === 'bar' || cat === 'pie';
+    }
+
+    // 只負責「區塊有/無」：不處理訂單 option、粒度/標題的細節（下方 syncUiByCategoryAndKind 處理）
+    function showSections() {
+        const cat = getChartCategoryUi();
+        const kind = ($('baseKind')?.value || 'sales').toLowerCase();
+
+        // 折線圖才顯示 orders 區塊
+        if ($('section-orders')) $('section-orders').style.display = (cat === 'line' && kind === 'orders') ? '' : 'none';
+
+        // 銷售/借閱區塊：line 也可顯示（線圖的 sales/borrow 也會有日期/分類/價位）
+        if ($('section-sales')) $('section-sales').style.display = (kind === 'sales') ? '' : 'none';
+        if ($('section-borrow')) $('section-borrow').style.display = (kind === 'borrow') ? '' : 'none';
+
+        // 排行區塊：只在 bar/pie 顯示
+        if ($('rank-sales')) $('rank-sales').style.display = (isBarPie() && kind === 'sales') ? '' : 'none';
+        if ($('rank-borrow')) $('rank-borrow').style.display = (isBarPie() && kind === 'borrow') ? '' : 'none';
+    }
+
+    // 依「圖表種類 + 基礎報表」同步 UI 細節：隱藏粒度、改標題、隱藏訂單 option、出版年行為
+    function syncUiByCategoryAndKind() {
+        const cat = getChartCategoryUi();                    // line | bar | pie
+        const kindSel = $('baseKind');                        // Create 一定有；Edit 可能沒有
+        const kind = (kindSel?.value || '').toLowerCase();
+        const isBP = (cat === 'bar' || cat === 'pie');
+
+        // 2) bar/pie 隱藏粒度 + 改標題文字
+        const gran = $('granGroup');                          // 裝著「日/月/年」radio 的容器
+        const dateLabel = $('dateLabel');                     // 標題文字：日期區間與粒度 / 日期區間
+        if (gran) gran.style.display = isBP ? 'none' : '';
+        if (dateLabel) dateLabel.textContent = isBP ? '日期區間' : '日期區間與粒度';
+
+        // 3) bar/pie 隱藏「訂單」選項；若正好選到訂單，切回 sales/borrow
+        if (kindSel) {
+            const optOrders = kindSel.querySelector('option[value="orders"]');
+            if (optOrders) {
+                optOrders.hidden = isBP;
+                optOrders.disabled = isBP;
+                if (isBP && kindSel.value === 'orders') {
+                    const fallback = kindSel.querySelector('option[value="sales"]') ? 'sales'
+                        : (kindSel.querySelector('option[value="borrow"]') ? 'borrow' : '');
+                    if (fallback) {
+                        kindSel.value = fallback;
+                        // 觸發 change 讓既有 showSections/preview 跑起來
+                        kindSel.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            }
+        }
+
+        // 1) 出版年份列（借閱+bar/pie 時才顯示；旗標關閉＝永遠不顯示）
+        const decRow = $('publishDecadeRow');
+        if (decRow) {
+            const showDecade = FEATURE_PUBLISH_DECADE && isBP && (kind === 'borrow');
+            decRow.style.display = showDecade ? '' : 'none';
+        }
+    }
+
+    // ==== data sources ====
+    async function loadCategories() {
+        if (!apiCats) return;
+        const res = await fetch(apiCats, { cache: 'no-store' });
+        const list = await res.json();
+        const fill = (selId) => {
+            const sel = $(selId); if (!sel) return;
+            sel.innerHTML = '';
+            sel.add(new Option('（全部）', ''));
+            list.forEach(x => sel.add(new Option(x.text, x.value)));
+        };
+        fill('salesCategories'); fill('borrowCategories');
     }
 
     function genPrice() {
-        const sel = $('priceRange');
-        if (!sel) return;
-        sel.innerHTML = '';
-        sel.add(new Option('（全部）', ''));
+        const sel = $('priceRange'); if (!sel) return;
+        sel.innerHTML = ''; sel.add(new Option('（全部）', ''));
         for (let s = 1; s <= 1000; s += 100) {
             const e = Math.min(s + 99, 1000);
             sel.add(new Option(`${s}~${e}`, `${s}-${e}`));
         }
     }
 
-    async function loadCategories() {
-        if (!apiCats) return;
-        const res = await fetch(apiCats, { cache: 'no-store' });
-        const list = await res.json();
-        const fill = (selId) => {
-            const sel = $(selId);
-            if (!sel) return;
-            sel.innerHTML = '';
-            sel.add(new Option('（全部）', ''));
-            list.forEach(x => sel.add(new Option(x.text, x.value)));
-        };
-        fill('salesCategories');
-        fill('borrowCategories');
+    function genRank(selectFromId, selectToId, max = 100, defFrom = 1, defTo = 10) {
+        const sFrom = $(selectFromId), sTo = $(selectToId);
+        if (!sFrom || !sTo) return;
+        const fill = (sel) => { sel.innerHTML = ''; for (let i = 1; i <= max; i++) sel.add(new Option(String(i), String(i))); };
+        fill(sFrom); fill(sTo);
+        sFrom.value = String(defFrom); sTo.value = String(defTo);
     }
 
-    // 訂單狀態全選
-    (function wireStatusCheckboxes() {
-        const boxAll = $('os_all');
+    function genDecades() {
+        const sel = $('publishDecade'); if (!sel) return;
+        const now = new Date().getFullYear();
+        const end = now - (now % 10); // 本年代末（含今年對齊）
+        sel.innerHTML = '';
+        sel.add(new Option('（全部）', ''));
+        for (let y = 1901; y <= end; y += 10) {
+            const to = y + 9;
+            sel.add(new Option(`${y}~${to}年`, `${y}-${to}`));
+        }
+    }
+
+    // ==== build filters ====
+    function buildFilters() {
+        const cat = getChartCategoryUi();
+        const kind = ($('baseKind')?.value || 'sales').toLowerCase();
+        const df = $('dateFrom')?.value;
+        const dt = $('dateTo')?.value;
+        const gran = document.querySelector('input[name="gran"]:checked')?.value || 'day';
+
+        const filters = [];
+        const dateField = (kind === 'borrow') ? 'BorrowDate' : 'OrderDate';
+        filters.push({ FieldName: dateField, DataType: 'date', Operator: 'between', ValueJson: JSON.stringify({ from: df, to: dt, gran }) });
+
+        if (kind === 'sales') {
+            const cats = Array.from($('salesCategories')?.selectedOptions || []).map(o => Number(o.value)).filter(v => !!v);
+            if (cats.length) filters.push({ FieldName: 'CategoryID', DataType: 'select', Operator: 'in', ValueJson: JSON.stringify({ values: cats }) });
+            const pr = $('priceRange')?.value;
+            if (pr) {
+                const [min, max] = pr.split('-').map(Number);
+                filters.push({ FieldName: 'SalePrice', DataType: 'number', Operator: 'between', ValueJson: JSON.stringify({ min, max }) });
+            }
+            if (isBarPie()) {
+                const from = Number($('rankFrom')?.value || 1);
+                const to = Number($('rankTo')?.value || 10);
+                filters.push({ FieldName: 'RankRange', Operator: 'between', ValueJson: JSON.stringify({ from, to }) });
+            }
+        }
+        else if (kind === 'borrow') {
+            const cats = Array.from($('borrowCategories')?.selectedOptions || []).map(o => Number(o.value)).filter(v => !!v);
+            if (cats.length) filters.push({ FieldName: 'CategoryID', DataType: 'select', Operator: 'in', ValueJson: JSON.stringify({ values: cats }) });
+
+            // 出版年份：目前關閉，不送到後端（未來要開只需把 FEATURE_PUBLISH_DECADE 改 true）
+            if (FEATURE_PUBLISH_DECADE) {
+                const dec = $('publishDecade')?.value;
+                if (dec) {
+                    const [fromYear, toYear] = dec.split('-').map(Number);
+                    filters.push({ FieldName: 'PublishDecade', Operator: 'between', ValueJson: JSON.stringify({ fromYear, toYear }) });
+                }
+            }
+
+            if (isBarPie()) {
+                const from = Number($('rankFromBorrow')?.value || 1);
+                const to = Number($('rankToBorrow')?.value || 10);
+                filters.push({ FieldName: 'RankRange', Operator: 'between', ValueJson: JSON.stringify({ from, to }) });
+            }
+        }
+        else { // orders (only line)
+            const metric = $('mCount')?.checked ? 'count' : 'amount';
+            filters.push({ FieldName: 'Metric', ValueJson: JSON.stringify({ value: metric }) });
+
+            //訂單狀態（包含式）：全選＝不送；全不勾＝送空集合（回空結果）
+            const group = document.getElementById('orderStatusGroup');
+            const all = document.getElementById('os_all');
+            if (group && all) {
+                const picks = Array.from(group.querySelectorAll('.os:checked')).map(cb => Number(cb.dataset.val));
+                if (!all.checked) { // 不是全選時才送（包含式）
+                    filters.push({
+                        FieldName: 'OrderStatus', Operator: 'in',
+                        ValueJson: JSON.stringify({ values: picks })
+                    });
+                }
+            }
+
+            const min = $('ordAmtMin')?.value, max = $('ordAmtMax')?.value;
+            if (min || max) filters.push({ FieldName: 'OrderAmount', DataType: 'number', Operator: 'between', ValueJson: JSON.stringify({ min: Number(min || 0), max: Number(max || 999999) }) });
+        }
+        return filters;
+    }
+
+    // ==== preview (Chart.js) ====
+    let chart;
+    async function preview() {
+        if (!apiPreview) return;
+
+        const cat = getChartCategoryUi();
+        const payload = { Category: cat, BaseKind: ($('baseKind')?.value || 'sales'), Filters: buildFilters() };
+
+        let labels = [], values = [], title = '預覽';
+        try {
+            const res = await fetch(apiPreview, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), cache: 'no-store' });
+            const json = await res.json();
+
+            // 相容兩種回傳格式
+            if (Array.isArray(json.labels) && Array.isArray(json.data)) {
+                labels = json.labels; values = json.data; title = json.title || title;
+            } else {
+                const s = json.series || json.Series || [];
+                labels = s.map(p => p.label ?? p.name ?? '');
+                values = s.map(p => p.value ?? p.y ?? 0);
+                title = json.echo?.baseKind ? `${cat.toUpperCase()} - ${json.echo.baseKind}` : title;
+            }
+        } catch (err) {
+            console.error('preview fetch error:', err);
+            labels = ['無資料']; values = [0];
+        }
+
+        const ctx = $('previewChart')?.getContext('2d'); if (!ctx) return;
+        if (chart) chart.destroy();
+        chart = new Chart(ctx, {
+            type: (cat === 'pie' ? 'pie' : (cat === 'bar' ? 'bar' : 'line')),
+            data: { labels, datasets: [{ label: title, data: values }] },
+            options: { responsive: true, animation: false, scales: (cat === 'pie' ? {} : { y: { beginAtZero: true } }) }
+        });
+    }
+
+    // ==== hydrate for Edit ====
+    async function hydrateFromServer() {
+        if (!apiDef) return;
+        const r = await fetch(apiDef, { cache: 'no-store' }); if (!r.ok) return;
+        const d = await r.json();
+
+        const cat = (d.Category || d.category || 'line').toLowerCase();
+        const bk = (d.BaseKind || d.baseKind || 'sales').toLowerCase();
+        if ($('Category')) $('Category').value = cat;
+        if ($('baseKind')) $('baseKind').value = bk;
+
+        const filters = d.Filters || d.filters || [];
+        const find = (name) => filters.find(f => (f.FieldName || f.fieldName) === name) || null;
+        const val = (f) => { try { return JSON.parse(f.ValueJson || f.valueJson || '{}'); } catch { return {} } };
+
+        // 日期
+        const dateField = (bk === 'borrow') ? 'BorrowDate' : 'OrderDate';
+        const fDate = find(dateField);
+        if (fDate) { const v = val(fDate); if (v.from) $('dateFrom').value = v.from; if (v.to) $('dateTo').value = v.to; const g = (v.gran || 'day').toLowerCase(); (g === 'month' ? $('gMonth') : g === 'year' ? $('gYear') : $('gDay')).checked = true; }
+
+        // 共用顯示邏輯
+        showSections();
+        syncUiByCategoryAndKind();
+
+        // sales
+        if (bk === 'sales') {
+            const fc = find('CategoryID'); if (fc) { const picks = (val(fc).values || []).map(Number); Array.from($('salesCategories').options).forEach(o => o.selected = picks.includes(Number(o.value))); }
+            const fp = find('SalePrice'); if (fp) { const v = val(fp); if (v.min != null && v.max != null) $('priceRange').value = `${v.min}-${v.max}`; }
+            const fr = find('RankRange'); if (fr) { const v = val(fr); if (v.from) $('rankFrom').value = String(v.from); if (v.to) $('rankTo').value = String(v.to); }
+        }
+
+        // borrow
+        if (bk === 'borrow') {
+            const fc = find('CategoryID'); if (fc) { const picks = (val(fc).values || []).map(Number); Array.from($('borrowCategories').options).forEach(o => o.selected = picks.includes(Number(o.value))); }
+            if (FEATURE_PUBLISH_DECADE) {
+                const fd = find('PublishDecade'); if (fd) { const v = val(fd); if (v.fromYear && v.toYear) $('publishDecade').value = `${v.fromYear}-${v.toYear}`; }
+            }
+            const fr = find('RankRange'); if (fr) { const v = val(fr); if (v.from) $('rankFromBorrow').value = String(v.from); if (v.to) $('rankToBorrow').value = String(v.to); }
+        }
+    }
+    // 訂單狀態 checkbox：全選/半選 + 預設只勾已完成
+    function wireStatusCheckboxes() {
+        const boxAll = document.getElementById('os_all');
         const boxes = Array.from(document.querySelectorAll('#orderStatusGroup .os'));
+        if (!boxAll || boxes.length === 0) return; // 沒有 orders UI 就略過
+
         const syncAllState = () => {
             const allChecked = boxes.every(b => b.checked);
             boxAll.checked = allChecked;
             boxAll.indeterminate = !allChecked && boxes.some(b => b.checked);
         };
-        if (boxAll) {
-            boxAll.addEventListener('change', () => {
-                boxes.forEach(b => b.checked = boxAll.checked);
-                syncAllState(); preview();
-            });
-            boxes.forEach(b => b.addEventListener('change', () => { syncAllState(); preview(); }));
-        }
-    })();
 
-    function buildFilters() {
-        const kind = $('baseKind').value;
-        const df = $('dateFrom').value;
-        const dt = $('dateTo').value;
-        const gran = document.querySelector('input[name="gran"]:checked')?.value || 'day';
-
-        const filters = [];
-        filters.push({
-            FieldName: 'DateRange', DataType: 'date', Operator: 'between',
-            ValueJson: JSON.stringify({ from: df, to: dt, gran })
+        boxAll.addEventListener('change', () => {
+            boxes.forEach(b => b.checked = boxAll.checked);
+            syncAllState();
+            if (typeof preview === 'function') preview();
         });
+        boxes.forEach(b => b.addEventListener('change', () => {
+            syncAllState();
+            if (typeof preview === 'function') preview();
+        }));
 
-        if (kind === 'sales') {
-            const cats = Array.from($('salesCategories').selectedOptions).map(o => Number(o.value)).filter(v => !!v);
-            if (cats.length) filters.push({ FieldName: 'CategoryID', DataType: 'select', Operator: 'in', ValueJson: JSON.stringify({ values: cats }) });
-            const pr = $('priceRange').value;
-            if (pr) {
-                const [min, max] = pr.split('-').map(Number);
-                filters.push({ FieldName: 'SalePrice', DataType: 'number', Operator: 'between', ValueJson: JSON.stringify({ min, max }) });
-            }
-        } else if (kind === 'borrow') {
-            const cats = Array.from($('borrowCategories').selectedOptions).map(o => Number(o.value)).filter(v => !!v);
-            if (cats.length) filters.push({ FieldName: 'CategoryID', DataType: 'select', Operator: 'in', ValueJson: JSON.stringify({ values: cats }) });
-        } else {
-            const metric = $('mCount').checked ? 'count' : 'amount';
-            filters.push({ FieldName: 'Metric', ValueJson: JSON.stringify({ value: metric }) });
-
-            const picks = Array.from(document.querySelectorAll('#orderStatusGroup .os:checked')).map(cb => Number(cb.getAttribute('data-val')));
-            const allChecked = $('os_all').checked;
-            if (!allChecked) {
-                filters.push({ FieldName: 'OrderStatus', Operator: 'in', ValueJson: JSON.stringify({ values: picks }) });
-            }
-            const min = $('ordAmtMin').value;
-            const max = $('ordAmtMax').value;
-            if (min || max) {
-                filters.push({ FieldName: 'OrderAmount', DataType: 'number', Operator: 'between', ValueJson: JSON.stringify({ min: Number(min || 0), max: Number(max || 999999) }) });
-            }
-        }
-        return filters;
+        // 預設只勾「已完成」
+        boxes.forEach(b => b.checked = false);
+        const done = document.getElementById('os_3');
+        if (done) done.checked = true;
+        syncAllState();
     }
 
-    // ====== 預覽（Chart.js）======
-    let chart;
-    async function preview() {
-        if (!apiPreview) return;
 
-        const payload = { Category: 'line', BaseKind: $('baseKind').value, Filters: buildFilters() };
-        const res = await fetch(apiPreview, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-            body: JSON.stringify(payload),
-            cache: 'no-store'
+
+    // ==== wire events ====
+    function wire() {
+        // submit：塞 FiltersJson
+        document.addEventListener('submit', (ev) => {
+            const form = ev.target;
+            if (form && form.querySelector('#FiltersJson')) {
+                $('FiltersJson').value = JSON.stringify(buildFilters());
+            }
         });
-        const json = await res.json();
 
-        // 同時相容兩種回傳格式：
-        // 1) 舊：{ labels:[], data:[], title:"..." }
-        // 2) 新：{ series:[{label,value},...], echo:{...} }
-        let labels = [], values = [], title = '預覽';
-        if (Array.isArray(json.labels) && Array.isArray(json.data)) {
-            labels = json.labels; values = json.data; title = json.title || title;
-        } else if (Array.isArray(json.series) || Array.isArray(json.Series)) {
-            const s = json.series || json.Series;
-            labels = s.map(p => p.label ?? p.date ?? p.x ?? '');
-            values = s.map(p => p.value ?? p.y ?? 0);
-            title = (json.echo?.baseKind ? `折線圖 - ${json.echo.baseKind}` : title);
-        }
-
-        const cvs = $('previewChart');
-        if (!cvs || !window.Chart) return;
-        const ctx = cvs.getContext('2d');
-        if (chart && chart.destroy) chart.destroy();
-        chart = new Chart(ctx, {
-            type: 'line',
-            data: { labels, datasets: [{ label: title, data: values }] },
-            options: { responsive: true, animation: false, scales: { y: { beginAtZero: true } } }
+        // 即時預覽：只要相關欄位變動，做兩件事：1)區塊顯示 2)細節同步（粒度/標題/訂單/出版年）→ 重畫
+        ['Category', 'category', 'baseKind', 'dateFrom', 'dateTo', 'gDay', 'gMonth', 'gYear',
+            'salesCategories', 'borrowCategories', 'priceRange',
+            'rankFrom', 'rankTo', 'rankFromBorrow', 'rankToBorrow', 'publishDecade',
+            'mAmount', 'mCount', 'ordAmtMin', 'ordAmtMax'
+        ].forEach(id => {
+            const el = $(id);
+            if (el) el.addEventListener('change', () => { showSections(); syncUiByCategoryAndKind(); preview(); });
         });
+
+        // 圖型切換按鈕（Edit 可能存在）
+        document.querySelectorAll('[data-chart]').forEach(btn => {
+            btn.addEventListener('click', () => setTimeout(() => { showSections(); syncUiByCategoryAndKind(); preview(); }, 0));
+        });
+
+        // 預覽按鈕
+        $('btnPreview')?.addEventListener('click', preview);
     }
 
-    async function hydrateForEdit() {
-        if (!apiDef || !defId) return;
-        const res = await fetch(`${apiDef}?id=${defId}`, { cache: 'no-store' });
-        const d = await res.json();
-
-        $('hidCategory').value = (d.Category || 'line');
-        const bk = (d.BaseKind || 'sales');
-        $('baseKind').value = bk; showSection(bk);
-
-        const fr = (d.Filters || []).find(f => (f.FieldName || '').toLowerCase() === 'daterange');
-        if (fr && fr.ValueJson) {
-            const v = JSON.parse(fr.ValueJson);
-            if (v.from) $('dateFrom').value = v.from;
-            if (v.to) $('dateTo').value = v.to;
-            const g = (v.gran || 'day').toLowerCase();
-            (document.getElementById(g === 'month' ? 'gMonth' : (g === 'year' ? 'gYear' : 'gDay'))).checked = true;
-        }
-
-        if (bk === 'sales') {
-            const fc = (d.Filters || []).find(f => (f.FieldName || '').toLowerCase() === 'categoryid' && (f.Operator || '').toLowerCase() === 'in');
-            if (fc && fc.ValueJson) {
-                const picks = (JSON.parse(fc.ValueJson).values || []).map(Number);
-                Array.from($('salesCategories').options).forEach(o => { o.selected = picks.includes(Number(o.value)); });
-            }
-            const fp = (d.Filters || []).find(f => (f.FieldName || '').toLowerCase() === 'saleprice' && (f.Operator || '').toLowerCase() === 'between');
-            if (fp && fp.ValueJson) {
-                const { min, max } = JSON.parse(fp.ValueJson);
-                if (min && max) $('priceRange').value = `${min}-${max}`;
-            }
-        }
-
-        if (bk === 'borrow') {
-            const fc = (d.Filters || []).find(f => (f.FieldName || '').toLowerCase() === 'categoryid' && (f.Operator || '').toLowerCase() === 'in');
-            if (fc && fc.ValueJson) {
-                const picks = (JSON.parse(fc.ValueJson).values || []).map(Number);
-                Array.from($('borrowCategories').options).forEach(o => { o.selected = picks.includes(Number(o.value)); });
-            }
-        }
-
-        if (bk === 'orders') {
-            const fm = (d.Filters || []).find(f => (f.FieldName || '').toLowerCase() === 'metric');
-            if (fm && fm.ValueJson) {
-                const val = (JSON.parse(fm.ValueJson).value || 'amount').toLowerCase();
-                (val === 'count' ? $('mCount') : $('mAmount')).checked = true;
-            }
-            const fos = (d.Filters || []).find(f => (f.FieldName || '').toLowerCase() === 'orderstatus' && (f.Operator || '').toLowerCase() === 'in');
-            if (fos && fos.ValueJson) {
-                const picks = (JSON.parse(fos.ValueJson).values || []).map(Number);
-                const boxes = Array.from(document.querySelectorAll('#orderStatusGroup .os'));
-                boxes.forEach(b => b.checked = picks.includes(Number(b.getAttribute('data-val'))));
-                const all = $('os_all');
-                const allChecked = boxes.every(b => b.checked);
-                all.checked = allChecked; all.indeterminate = !allChecked && boxes.some(b => b.checked);
-            } else {
-                $('os_all').checked = true;
-                Array.from(document.querySelectorAll('#orderStatusGroup .os')).forEach(b => b.checked = true);
-            }
-            const fa = (d.Filters || []).find(f => (f.FieldName || '').toLowerCase() === 'orderamount' && (f.Operator || '').toLowerCase() === 'between');
-            if (fa && fa.ValueJson) {
-                const { min, max } = JSON.parse(fa.ValueJson);
-                if (min != null) $('ordAmtMin').value = min;
-                if (max != null) $('ordAmtMax').value = max;
-            }
-        }
-    }
-
-    $('baseKind').addEventListener('change', (e) => { showSection(e.target.value); preview(); });
-    document.addEventListener('submit', (ev) => {
-        const form = ev.target;
-        if (form && form.querySelector('#FiltersJson')) {
-            $('FiltersJson').value = JSON.stringify(buildFilters());
-        }
-    });
-
-    // 初始化：共用邏輯
+    // ==== init ====
     (async function init() {
         await loadCategories();
         genPrice();
+        genRank('rankFrom', 'rankTo', 100, 1, 10);
+        genRank('rankFromBorrow', 'rankToBorrow', 100, 1, 10);
+        genDecades(); // 即使 flag 關閉也安全，因為整列預設隱藏
 
-        // 預設近 30 天
+        // 預設日期 30 天
         const today = new Date(); const from = new Date(); from.setDate(today.getDate() - 29);
-        $('dateFrom').value ||= from.toISOString().slice(0, 10);
-        $('dateTo').value ||= today.toISOString().slice(0, 10);
-        $('gDay').checked = true;
+        if ($('dateFrom')) $('dateFrom').value ||= from.toISOString().slice(0, 10);
+        if ($('dateTo')) $('dateTo').value ||= today.toISOString().slice(0, 10);
 
-        // create：顯示 sales 區塊；edit：灌資料
-        if (mode === 'edit') {
-            await hydrateForEdit();
-        } else {
-            showSection($('baseKind').value || 'sales');
-        }
+        showSections();
+        syncUiByCategoryAndKind(); // 套用：隱藏粒度 / 訂單 / 出版年份
+        wire();
+        wireStatusCheckboxes();
 
-        // 預覽一次
+        // Edit 頁：套回已存
+        if (apiDef) { await hydrateFromServer(); showSections(); syncUiByCategoryAndKind(); }
+
+        // 首次預覽
         preview();
     })();
 })();

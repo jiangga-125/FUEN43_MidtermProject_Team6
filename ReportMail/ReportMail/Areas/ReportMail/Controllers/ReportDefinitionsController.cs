@@ -52,7 +52,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
             public string? DisplayName { get; set; }
             public string? DataType { get; set; }
             public string? Operator { get; set; }
-            public string? ValueJson { get; set; }    // ★ 唯一來源
+            public string? ValueJson { get; set; }    // 唯一來源
             public string? Options { get; set; }
             public int? OrderIndex { get; set; }
             public bool? IsRequired { get; set; }
@@ -60,7 +60,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
         }
 
         // POST: ReportMail/ReportDefinitions/Create
-        // ★ 把 BaseKind 納入 Bind；時間戳後端自動補；FiltersJson 會展開為多筆 ReportFilter（只寫 ValueJson）
+        // 把 BaseKind 納入 Bind；時間戳後端自動補；FiltersJson 會展開為多筆 ReportFilter（只寫 ValueJson）
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(
@@ -73,7 +73,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
             var now = DateTime.Now;
             reportDefinition.CreatedAt = now;
             reportDefinition.UpdatedAt = now;
-            // ★ 保證這兩個欄位標準化（去空白 + 小寫），空值給預設
+            //保證這兩個欄位標準化（去空白 + 小寫），空值給預設
             reportDefinition.Category = (reportDefinition.Category ?? "line").Trim().ToLowerInvariant();
             reportDefinition.BaseKind = (reportDefinition.BaseKind ?? "sales").Trim().ToLowerInvariant();
 
@@ -116,12 +116,12 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             DisplayName = display,
                             DataType = d.DataType ?? "text",
                             Operator = d.Operator ?? "eq",
-                            ValueJson = d.ValueJson ?? "{}",   // ★ 只寫 ValueJson
+                            ValueJson = d.ValueJson ?? "{}",   //  只寫 ValueJson
                             Options = d.Options ?? "{}",
                             OrderIndex = d.OrderIndex ?? order++,
                             IsRequired = d.IsRequired ?? false,
                             IsActive = d.IsActive ?? true,
-                            CreatedAt = now,                   // ★ 後端自動化
+                            CreatedAt = now,                   //  後端自動化
                             UpdatedAt = now
                         });
                     }
@@ -147,7 +147,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
         }
 
         // POST: ReportMail/ReportDefinitions/Edit/5
-        // ★ 同樣把 BaseKind 納入 Bind，並在儲存前刷新 UpdatedAt
+        // 把 BaseKind 納入 Bind，並在儲存前刷新 UpdatedAt
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id,

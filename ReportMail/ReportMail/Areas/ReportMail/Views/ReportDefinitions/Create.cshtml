@@ -3,7 +3,6 @@
     ViewData["Title"] = "新增報表";
     Layout = "~/Views/Shared/_Layout.cshtml";
 
-    // 後端 API：預覽、分類
     var previewUrl = Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" }) ?? "#";
     var catsUrl = Url.Action("Categories", "Lookup", new { area = "ReportMail" }) ?? "#";
 }
@@ -13,7 +12,7 @@
     <div class="col-lg-6">
         <div class="card">
             <div class="card-body">
-                <form asp-area="ReportMail" asp-controller="ReportDefinitions" asp-action="Create" method="post" id="frmCreate">
+                <form asp-action="Create" method="post">
                     @Html.AntiForgeryToken()
                     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
@@ -26,7 +25,7 @@
 
                     <div class="mb-3">
                         <label asp-for="Category" class="form-label">圖表種類</label>
-                        <select asp-for="Category" id="category" class="form-select">
+                        <select asp-for="Category" id="Category" class="form-select">
                             <option value="line">折線圖</option>
                             <option value="bar">長條圖</option>
                             <option value="pie">圓餅圖</option>
@@ -37,18 +36,18 @@
                     <div class="mb-3">
                         <label asp-for="BaseKind" class="form-label">基礎報表</label>
                         <select asp-for="BaseKind" id="baseKind" class="form-select">
-                            <option value="sales">書籍銷售量</option>
-                            <option value="borrow">書籍借閱量</option>
-                            <option value="orders">訂單</option>
+                            <option value="sales">書籍銷售量（本）</option>
+                            <option value="borrow">書籍借閱量（本）</option>
+                            <option value="orders">訂單（僅折線圖）</option>
                         </select>
                         <span asp-validation-for="BaseKind" class="text-danger"></span>
-                        <div class="form-text">依選擇顯示對應篩選欄位</div>
+                        <div class="form-text">提示：長條圖 / 圓餅圖僅適用「銷售量 / 借閱量」。</div>
                     </div>
 
                     <hr />
 
-                    <!-- 日期＋粒度（共用） -->
-                    <div class="mb-2 fw-bold">日期區間與粒度</div>
+                    <!-- 日期與粒度（共用；bar/pie 也可保留粒度供後端聚合使用） -->
+                    <div id="dateLabel" class="mb-2 fw-bold">日期區間與粒度</div>
                     <div class="row g-2 align-items-end mb-3">
                         <div class="col">
                             <label class="form-label">起</label>
@@ -58,30 +57,36 @@
                             <label class="form-label">迄</label>
                             <input type="date" id="dateTo" class="form-control" />
                         </div>
-                        <div class="col-auto">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="gran" id="gDay" value="day" checked>
-                                <label class="form-check-label" for="gDay">日</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="gran" id="gMonth" value="month">
-                                <label class="form-check-label" for="gMonth">月</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="gran" id="gYear" value="year">
-                                <label class="form-check-label" for="gYear">年</label>
-                            </div>
+                        <div id="granGroup" class="col-auto">
+                            <div class="form-check"><input class="form-check-input" type="radio" name="gran" id="gDay" value="day" checked><label class="form-check-label" for="gDay">日</label></div>
+                            <div class="form-check"><input class="form-check-input" type="radio" name="gran" id="gMonth" value="month"><label class="form-check-label" for="gMonth">月</label></div>
+                            <div class="form-check"><input class="form-check-input" type="radio" name="gran" id="gYear" value="year"><label class="form-check-label" for="gYear">年</label></div>
                         </div>
                     </div>
 
-                    <!-- sales -->
-                    <div id="section-sales" class="border rounded p-3 mb-3">
+                    <!-- sales：for line/bar/pie -->
+                    <div id="section-sales" class="border rounded p-3 mb-3" style="display:none">
                         <div class="mb-2 fw-bold">銷售篩選</div>
+
+                        <!-- 排行區間（bar/pie 用） -->
+                        <div class="row g-2 align-items-end mb-3" id="rank-sales" style="display:none">
+                            <div class="col-6">
+                                <label class="form-label">銷售排行：起</label>
+                                <select id="rankFrom" class="form-select"></select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">銷售排行：迄</label>
+                                <select id="rankTo" class="form-select"></select>
+                            </div>
+                            <div class="form-text">預設 1~10 名。</div>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label">書籍種類（多選）</label>
                             <select id="salesCategories" class="form-select" multiple></select>
                             <div class="form-text">選「（全部）」或不選＝全部</div>
                         </div>
+
                         <div class="mb-3">
                             <label class="form-label">單本價位</label>
                             <select id="priceRange" class="form-select"></select>
@@ -89,20 +94,39 @@
                         </div>
                     </div>
 
-                    <!-- borrow -->
+                    <!-- borrow：for line/bar/pie -->
                     <div id="section-borrow" class="border rounded p-3 mb-3" style="display:none">
                         <div class="mb-2 fw-bold">借閱篩選</div>
+
+                        <!-- 排行區間（bar/pie 用） -->
+                        <div class="row g-2 align-items-end mb-3" id="rank-borrow" style="display:none">
+                            <div class="col-6">
+                                <label class="form-label">借閱排行：起</label>
+                                <select id="rankFromBorrow" class="form-select"></select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">借閱排行：迄</label>
+                                <select id="rankToBorrow" class="form-select"></select>
+                            </div>
+                            <div class="form-text">預設 1~10 名。</div>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label">書籍種類（多選）</label>
                             <select id="borrowCategories" class="form-select" multiple></select>
                             <div class="form-text">選「（全部）」或不選＝全部</div>
                         </div>
+                        <!-- 出版年份（十年區間）：預設隱藏 -->
+                        <div id="publishDecadeRow" class="mb-3" style="display:none">
+                            <label class="form-label">出版年份（十年區間）</label>
+                            <select id="publishDecade" class="form-select"></select>
+                            <div class="form-text">每 10 年一區，1901 年起至現在。</div>
+                        </div>
                     </div>
 
-                    <!-- orders -->
+                    <!-- orders：僅折線圖可見 -->
                     <div id="section-orders" class="border rounded p-3 mb-3" style="display:none">
-                        <div class="mb-2 fw-bold">訂單篩選</div>
-
+                        <div class="mb-2 fw-bold">訂單篩選（僅折線圖）</div>
                         <div class="mb-3">
                             <label class="form-label d-block">指標</label>
                             <div class="form-check form-check-inline">
@@ -114,7 +138,7 @@
                                 <label class="form-check-label" for="mCount">總訂單筆數</label>
                             </div>
                         </div>
-
+                        <!-- 訂單狀態（包含式篩選；全選＝不送條件；全不勾＝空集合） -->
                         <div class="mb-3">
                             <label class="form-label">訂單狀態</label>
                             <div id="orderStatusGroup" class="d-flex flex-wrap gap-3">
@@ -122,47 +146,55 @@
                                     <input class="form-check-input" type="checkbox" id="os_all">
                                     <label class="form-check-label" for="os_all">全選</label>
                                 </div>
-                                <div class="form-check"><input class="form-check-input os" type="checkbox" id="os_0" data-val="0"><label class="form-check-label" for="os_0">待處理</label></div>
-                                <div class="form-check"><input class="form-check-input os" type="checkbox" id="os_1" data-val="1"><label class="form-check-label" for="os_1">已付款</label></div>
-                                <div class="form-check"><input class="form-check-input os" type="checkbox" id="os_2" data-val="2"><label class="form-check-label" for="os_2">已出貨</label></div>
-                                <div class="form-check"><input class="form-check-input os" type="checkbox" id="os_3" data-val="3"><label class="form-check-label" for="os_3">已完成</label></div>
-                                <div class="form-check"><input class="form-check-input os" type="checkbox" id="os_4" data-val="4"><label class="form-check-label" for="os_4">已取消</label></div>
+                                <div class="form-check">
+                                    <input class="form-check-input os" type="checkbox" id="os_0" data-val="0">
+                                    <label class="form-check-label" for="os_0">待處理</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input os" type="checkbox" id="os_1" data-val="1">
+                                    <label class="form-check-label" for="os_1">已付款</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input os" type="checkbox" id="os_2" data-val="2">
+                                    <label class="form-check-label" for="os_2">已出貨</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input os" type="checkbox" id="os_3" data-val="3">
+                                    <label class="form-check-label" for="os_3">已完成</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input os" type="checkbox" id="os_4" data-val="4">
+                                    <label class="form-check-label" for="os_4">已取消</label>
+                                </div>
                             </div>
-                            <div class="form-text">預設只勾「已完成」；勾「全選」＝不加狀態條件；全不勾＝空結果</div>
+                            <div class="form-text">預設只勾「已完成」。全選＝不加狀態條件；全不勾＝送空集合（回空結果）。</div>
                         </div>
-
                         <div class="row g-2">
-                            <div class="col">
-                                <label class="form-label">單筆金額（Min）</label>
-                                <input type="number" id="ordAmtMin" class="form-control" placeholder="0" />
-                            </div>
-                            <div class="col">
-                                <label class="form-label">單筆金額（Max）</label>
-                                <input type="number" id="ordAmtMax" class="form-control" placeholder="999999" />
-                            </div>
+                            <div class="col"><label class="form-label">單筆金額（Min）</label><input type="number" id="ordAmtMin" class="form-control" placeholder="0" /></div>
+                            <div class="col"><label class="form-label">單筆金額（Max）</label><input type="number" id="ordAmtMax" class="form-control" placeholder="999999" /></div>
                         </div>
                     </div>
 
-                    <!-- 讓新增預設啟用，並把 FiltersJson 帶回後端 -->
+                    <!-- 後端接收 -->
                     <input type="hidden" asp-for="IsActive" value="true" />
                     <input type="hidden" id="FiltersJson" name="FiltersJson" />
 
                     <div class="mt-4 d-flex gap-2">
-                        <a asp-area="ReportMail" asp-controller="ReportDefinitions" asp-action="Index" class="btn btn-outline-secondary">返回</a>
+                        <a asp-action="Index" class="btn btn-outline-secondary">返回</a>
                         <button type="button" id="btnPreview" class="btn btn-info">更新預覽</button>
-                        <button type="submit" class="btn btn-primary">儲存</button>
+                        <button type="submit" id="btnSubmit" class="btn btn-primary">儲存</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- 右側：預覽 -->
+    <!-- 預覽 -->
     <div class="col-lg-6">
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title mb-3">預覽</h5>
-                <canvas id="previewChart" height="180"></canvas>
+                <canvas id="previewChart" height="200"></canvas>
             </div>
         </div>
     </div>
@@ -171,178 +203,11 @@
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        const apiPreview = "@previewUrl";
-        const apiCats    = "@catsUrl";
-
-        function showSection(kind){
-          document.getElementById('section-sales').style.display  = (kind==='sales')  ? '' : 'none';
-          document.getElementById('section-borrow').style.display = (kind==='borrow') ? '' : 'none';
-          document.getElementById('section-orders').style.display = (kind==='orders') ? '' : 'none';
-        }
-
-        async function loadCategories(){
-          const res = await fetch(apiCats, { cache:'no-store' });
-          const list = await res.json();
-          const bind = (id)=>{
-            const sel = document.getElementById(id);
-            sel.innerHTML = "";
-            sel.add(new Option("（全部）",""));
-            list.forEach(x => sel.add(new Option(x.text, x.value)));
-          };
-          bind('salesCategories');
-          bind('borrowCategories');
-        }
-
-        function genPrice(){
-          const sel = document.getElementById('priceRange');
-          sel.innerHTML = "";
-          sel.add(new Option("（全部）",""));
-          for(let s=1; s<=1000; s+=100){
-            const e = Math.min(s+99, 1000);
-            sel.add(new Option(`${s}~${e}`, `${s}-${e}`));
-          }
-        }
-
-        // 訂單狀態：全選/半選；預設只勾已完成
-        (function wireStatusCheckboxes(){
-          const boxAll = document.getElementById('os_all');
-          const boxes  = Array.from(document.querySelectorAll('#orderStatusGroup .os'));
-          const syncAllState = ()=>{
-            const allChecked = boxes.every(b => b.checked);
-            boxAll.checked = allChecked;
-            boxAll.indeterminate = !allChecked && boxes.some(b=>b.checked);
-          };
-          boxAll.addEventListener('change', ()=>{
-            boxes.forEach(b => b.checked = boxAll.checked);
-            syncAllState(); preview();
-          });
-          boxes.forEach(b => b.addEventListener('change', ()=>{ syncAllState(); preview(); }));
-
-          // 預設只勾「已完成」
-          boxes.forEach(b => b.checked = false);
-          document.getElementById('os_3').checked = true;
-          syncAllState();
-        })();
-
-        function buildFilters(){
-          const kind = document.getElementById('baseKind').value;
-          const df   = document.getElementById('dateFrom').value;
-          const dt   = document.getElementById('dateTo').value;
-          const gran = document.querySelector('input[name="gran"]:checked').value;
-
-          const filters = [];
-          const dateField = (kind==='borrow') ? 'BorrowDate' : 'OrderDate';
-
-          // 日期＋粒度
-          filters.push({ FieldName: dateField, DataType:'date', Operator:'between',
-                         ValueJson: JSON.stringify({ from: df, to: dt, gran }) });
-
-          if (kind==='sales'){
-            const cats = Array.from(document.getElementById('salesCategories').selectedOptions)
-                              .map(o=>o.value).filter(v=>v!=="").map(Number);
-            if (cats.length>0){
-              filters.push({ FieldName:'CategoryID', DataType:'select', Operator:'in',
-                             ValueJson: JSON.stringify({ values: cats }),
-                             Options: JSON.stringify({ source:'Categories' }) });
-            }
-            const pr = document.getElementById('priceRange').value;
-            if (pr){
-              const [min,max] = pr.split('-');
-              filters.push({ FieldName:'SalePrice', DataType:'number', Operator:'between',
-                             ValueJson: JSON.stringify({ min:Number(min), max:Number(max) }) });
-            }
-          }
-          else if (kind==='borrow'){
-            const cats = Array.from(document.getElementById('borrowCategories').selectedOptions)
-                              .map(o=>o.value).filter(v=>v!=="").map(Number);
-            if (cats.length>0){
-              filters.push({ FieldName:'CategoryID', DataType:'select', Operator:'in',
-                             ValueJson: JSON.stringify({ values: cats }),
-                             Options: JSON.stringify({ source:'Categories' }) });
-            }
-          }
-          else { // orders
-            const metric = document.getElementById('mCount').checked ? 'count' : 'amount';
-            filters.push({ FieldName:'Metric', ValueJson: JSON.stringify({ value: metric }) });
-
-            const osBox = document.getElementById('orderStatusGroup');
-            const picks = Array.from(osBox.querySelectorAll('input.os:checked'))
-                               .map(cb=>Number(cb.getAttribute('data-val')));
-            const allChecked = document.getElementById('os_all').checked;
-            if (!allChecked){
-              filters.push({ FieldName:'OrderStatus', Operator:'in',
-                             ValueJson: JSON.stringify({ values: picks }) });
-            }
-
-            const min = document.getElementById('ordAmtMin').value;
-            const max = document.getElementById('ordAmtMax').value;
-            if (min || max){
-              filters.push({ FieldName:'OrderAmount', DataType:'number', Operator:'between',
-                             ValueJson: JSON.stringify({ min:Number(min||0), max:Number(max||999999) }) });
-            }
-          }
-          return filters;
-        }
-
-        // 預覽（相容舊/新回傳格式）
-        let chart;
-        async function preview(){
-          const payload = {
-            Category: document.getElementById('category').value || 'line',
-            BaseKind: document.getElementById('baseKind').value,
-            Filters: buildFilters()
-          };
-          const res = await fetch(apiPreview, {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify(payload)
-          });
-          const json = await res.json();
-
-          let labels = [], values = [], title = '預覽';
-          if (Array.isArray(json.labels) && Array.isArray(json.data)){
-            labels = json.labels; values = json.data; title = json.title || title;
-          } else if (Array.isArray(json.series) || Array.isArray(json.Series)){
-            const s = json.series || json.Series;
-            labels = s.map(p => p.label ?? p.date ?? p.x ?? '');
-            values = s.map(p => p.value ?? p.y ?? 0);
-            title  = (json.echo?.baseKind ? `折線圖 - ${json.echo.baseKind}` : title);
-          }
-
-          const ctx = document.getElementById('previewChart').getContext('2d');
-          if (chart) chart.destroy();
-          chart = new Chart(ctx, {
-            type:'line',
-            data:{ labels, datasets:[{ label:title, data:values }]},
-            options:{ responsive:true, animation:false, scales:{ y:{ beginAtZero:true } } }
-          });
-        }
-
-        // 事件：變更即預覽；送出帶 FiltersJson
-        document.getElementById('btnPreview').addEventListener('click', preview);
-        document.getElementById('frmCreate').addEventListener('submit', ()=>{
-          document.getElementById('FiltersJson').value = JSON.stringify(buildFilters());
-        });
-        ['category','baseKind','dateFrom','dateTo','gDay','gMonth','gYear',
-         'salesCategories','borrowCategories','priceRange',
-         'mAmount','mCount','ordAmtMin','ordAmtMax'].forEach(id=>{
-           const el = document.getElementById(id); if (el) el.addEventListener('change', preview);
-         });
-
-        // 初始化
-        (async function(){
-          const today = new Date(); const from = new Date(); from.setDate(today.getDate()-29);
-          document.getElementById('dateFrom').value = from.toISOString().slice(0,10);
-          document.getElementById('dateTo').value   = today.toISOString().slice(0,10);
-
-          showSection('sales');
-          document.getElementById('baseKind').addEventListener('change', e => { showSection(e.target.value); preview(); });
-
-          await loadCategories();
-          genPrice();
-          preview();
-        })();
+        window.__API_PREVIEW__ = "@previewUrl";  // 你頁面上原本的 previewUrl 變數
+        window.__API_CATS__    = "@catsUrl";     // 分類清單 API
     </script>
+
+    <script src="~/js/report-def-form.js" asp-append-version="true"></script>
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }

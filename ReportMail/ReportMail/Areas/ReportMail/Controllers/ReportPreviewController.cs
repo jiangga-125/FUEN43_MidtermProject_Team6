@@ -42,9 +42,12 @@ namespace ReportMail.Areas.ReportMail.Controllers
         private sealed record InV(int[]? values);
         private sealed record RangeV(decimal? min, decimal? max);
         private sealed record ValueV(string? value);
+		// 供 bar/pie 解析
+		private sealed record RankRangeV(int? from, int? to);
+		private sealed record DecadeV(int? fromYear, int? toYear);
 
-        // 工具：補零序列
-        static IEnumerable<DateTime> EachDay(DateTime s, DateTime e)
+		// 工具：補零序列
+		static IEnumerable<DateTime> EachDay(DateTime s, DateTime e)
         {
             for (var d = s.Date; d <= e.Date; d = d.AddDays(1)) yield return d;
         }
@@ -73,8 +76,11 @@ namespace ReportMail.Areas.ReportMail.Controllers
                 List<int> categoryIds = new();       // 空 = 全部
                 int? priceMin = null, priceMax = null;
                 int topTo = 10;                      // bar/pie 時用（相容）
-                // 訂單狀態（新：包含式）+ 舊：排除式（相容）
-                var inclStatus = new List<int>();
+				int rankFrom = 1, rankTo = topTo;   // bar/pie 會用到；預設 1~topTo
+				int? decadeFrom = null, decadeTo = null; // 借閱用（預留出版年份）
+
+				// 訂單狀態（新：包含式）+ 舊：排除式（相容）
+				var inclStatus = new List<int>();
                 var exclStatus = new List<int>();
                 bool statusSpecifiedByInclude = false;
                 string orderMetric = "amount";       // amount | count
@@ -222,10 +228,43 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             if (decimal.TryParse(p.ElementAtOrDefault(1), out var b)) orderAmtMax = b;
                         }
                     }
-                }
+					// 9) 排行區間（RankRange，兩下拉）— 允許 "1-10" 或 JSON {"from":1,"to":10}
+					else if (name == "rankrange")
+					{
+						if (hasVJ)
+						{
+							var v = JsonSerializer.Deserialize<RankRangeV>(f.ValueJson!)!;
+							if (v.from.HasValue) rankFrom = Math.Max(1, v.from.Value);
+							if (v.to.HasValue) rankTo = Math.Max(rankFrom, Math.Min(50, v.to.Value));
+						}
+						else if (hasDV)
+						{
+							var p = f.DefaultValue!.Split('-', 2, StringSplitOptions.TrimEntries);
+							if (int.TryParse(p.ElementAtOrDefault(0), out var f1)) rankFrom = Math.Max(1, f1);
+							if (int.TryParse(p.ElementAtOrDefault(1), out var t1)) rankTo = Math.Max(rankFrom, Math.Min(50, t1));
+						}
+					}
 
-                // 預設日期 & 端點修正
-                if (dateFrom == default) dateFrom = DateTime.Today.AddDays(-29);
+					// 10) 預留-出版年份（十年區間，借閱用）— 允許 "1991-2000" 或 JSON {"fromYear":1991,"toYear":2000}
+					else if (name == "publishdecade")
+					{
+						if (hasVJ)
+						{
+							var v = JsonSerializer.Deserialize<DecadeV>(f.ValueJson!)!;
+							decadeFrom = v.fromYear; decadeTo = v.toYear;
+						}
+						else if (hasDV)
+						{
+							var p = f.DefaultValue!.Split('-', 2, StringSplitOptions.TrimEntries);
+							if (int.TryParse(p.ElementAtOrDefault(0), out var fy)) decadeFrom = fy;
+							if (int.TryParse(p.ElementAtOrDefault(1), out var ty)) decadeTo = ty;
+						}
+					}
+
+				}
+
+				// 預設日期 & 端點修正
+				if (dateFrom == default) dateFrom = DateTime.Today.AddDays(-29);
                 if (dateTo == default) dateTo = DateTime.Today;
                 // 右邊補到當天 23:59:59.9999999
                 dateTo = dateTo.Date.AddDays(1).AddTicks(-1);
@@ -249,8 +288,95 @@ namespace ReportMail.Areas.ReportMail.Controllers
                     filters = req?.Filters?.Select(f => new { f.FieldName, f.DataType, f.Operator, f.ValueJson })
                 };
 
-                // ===== 分支：sales / borrow / orders =====
-                if (baseKind == "sales")
+				// =========================
+				//   Bar / Pie  — TopN
+				// =========================
+				if (cat is "bar" or "pie")
+				{
+					if (baseKind == "sales")
+					{
+						// 來源：訂單明細 × 訂單 × 書籍
+						var q = from od in _shop.OrderDetails.AsNoTracking()
+								join o in _shop.Orders.AsNoTracking() on od.OrderID equals o.OrderID
+								join b in _shop.Books.AsNoTracking() on od.BookID equals b.BookID
+								where o.OrderDate >= dateFrom && o.OrderDate <= dateTo
+								select new
+								{
+									b.BookID,
+									b.Title,
+									b.CategoryID,
+									Price = (b.SalePrice ?? b.ListPrice),
+									od.Quantity
+								};
+
+						if (categoryIds.Any()) q = q.Where(x => categoryIds.Contains(x.CategoryID));
+						if (priceMin.HasValue) q = q.Where(x => x.Price >= priceMin.Value);
+						if (priceMax.HasValue) q = q.Where(x => x.Price <= priceMax.Value);
+
+						// TopN（以銷售「本數」排序）
+						var grouped = await q.GroupBy(x => new { x.BookID, x.Title })
+											 .Select(g => new { g.Key.BookID, g.Key.Title, V = g.Sum(x => (decimal)x.Quantity) })
+											 .OrderByDescending(x => x.V)
+											 .ToListAsync();
+
+						var from = Math.Max(1, rankFrom);
+						var to = Math.Max(from, rankTo);
+						var slice = grouped.Skip(from - 1).Take(to - from + 1)
+										   .Select(x => new { label = x.Title, value = x.V })
+										   .ToList();
+
+						return Json(new
+						{
+							ok = true,
+							title = (cat == "pie" ? "書籍銷售量 TopN（圓餅）" : "書籍銷售量 TopN（長條）"),
+							echo = new { category = cat, baseKind, date = new { from = dateFrom, to = dateTo, gran }, categoryIds, price = new { min = priceMin, max = priceMax }, rank = new { from, to } },
+							series = slice
+						});
+					}
+					else if (baseKind == "borrow")
+					{
+						// 來源：借閱紀錄 × Listing（有分類/書名）；若你的資料有出版年，可再 join 書籍
+						var q = from br in _shop.BorrowRecords.AsNoTracking()
+								join l in _shop.Listings.AsNoTracking() on br.ListingID equals l.ListingID
+								where br.BorrowDate >= dateFrom && br.BorrowDate <= dateTo
+								select new { br.BorrowDate, l.CategoryID, l.Title, l.ISBN };
+
+						if (categoryIds.Any()) q = q.Where(x => categoryIds.Contains(x.CategoryID));
+
+						// 預留借閱書籍出版年，可把下段註解改為實作：
+						// join b in _shop.Books on x.ISBN equals b.ISBN
+						// where (!decadeFrom.HasValue || b.PublishYear >= decadeFrom.Value)
+						//    && (!decadeTo.HasValue   || b.PublishYear <= decadeTo.Value)
+
+						var grouped = await q.GroupBy(x => x.Title)
+											 .Select(g => new { Title = g.Key, V = g.Count() })
+											 .OrderByDescending(x => x.V)
+											 .ToListAsync();
+
+						var from = Math.Max(1, rankFrom);
+						var to = Math.Max(from, rankTo);
+						var slice = grouped.Skip(from - 1).Take(to - from + 1)
+										   .Select(x => new { label = x.Title, value = (decimal)x.V })
+										   .ToList();
+
+						return Json(new
+						{
+							ok = true,
+							title = (cat == "pie" ? "書籍借閱量 TopN（圓餅）" : "書籍借閱量 TopN（長條）"),
+							echo = new { category = cat, baseKind, date = new { from = dateFrom, to = dateTo, gran }, categoryIds, decade = new { fromYear = decadeFrom, toYear = decadeTo }, rank = new { from, to } },
+							series = slice
+						});
+					}
+					else
+					{
+						// orders 不支援 bar/pie
+						return Json(new { ok = false, error = "orders 不支援 bar/pie", echo });
+					}
+				}
+
+
+				// ===== 分支：sales / borrow / orders =====
+				if (baseKind == "sales")
                 {
                     var q = from od in _shop.OrderDetails
                             join o in _shop.Orders on od.OrderID equals o.OrderID
