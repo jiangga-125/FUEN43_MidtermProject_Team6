@@ -328,7 +328,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
 						return Json(new
 						{
 							ok = true,
-							title = (cat == "pie" ? "書籍銷售量 TopN（圓餅）" : "書籍銷售量 TopN（長條）"),
+							title = $"書籍銷售本數",
 							echo = new { category = cat, baseKind, date = new { from = dateFrom, to = dateTo, gran }, categoryIds, price = new { min = priceMin, max = priceMax }, rank = new { from, to } },
 							series = slice
 						});
@@ -362,7 +362,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
 						return Json(new
 						{
 							ok = true,
-							title = (cat == "pie" ? "書籍借閱量 TopN（圓餅）" : "書籍借閱量 TopN（長條）"),
+							title = $"書籍借閱本數",
 							echo = new { category = cat, baseKind, date = new { from = dateFrom, to = dateTo, gran }, categoryIds, decade = new { fromYear = decadeFrom, toYear = decadeTo }, rank = new { from, to } },
 							series = slice
 						});
@@ -402,7 +402,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             labels.Add($"{y}-{m:00}");
                             data.Add(dict.TryGetValue((y, m), out var v) ? v : 0m);
                         }
-                        return Json(new { title = $"書籍銷售量（{unit}）", labels, data, echo });
+                        return Json(new { title = $"每{unit}銷售本數", labels, data, echo });
                     }
                     else if (gran == "year")
                     {
@@ -418,7 +418,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             labels.Add(y.ToString());
                             data.Add(dict.TryGetValue(y, out var v) ? v : 0m);
                         }
-                        return Json(new { title = $"書籍銷售量（{unit}）", labels, data, echo });
+                        return Json(new { title = $"每{unit}銷售本數", labels, data, echo });
                     }
                     else
                     {
@@ -434,7 +434,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             labels.Add(d.ToString("yyyy-MM-dd"));
                             data.Add(dict.TryGetValue(d.Date, out var v) ? v : 0m);
                         }
-                        return Json(new { title = $"書籍銷售量（{unit}）", labels, data, echo });
+                        return Json(new { title = $"每{unit}銷售本數", labels, data, echo });
                     }
                 }
                 else if (baseKind == "borrow")
@@ -460,7 +460,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             labels.Add($"{y}-{m:00}");
                             data.Add(dict.TryGetValue((y, m), out var v) ? v : 0m);
                         }
-                        return Json(new { title = $"書籍借閱量（{unit}）", labels, data, echo });
+                        return Json(new { title = $"每{unit}借閱本數", labels, data, echo });
                     }
                     else if (gran == "year")
                     {
@@ -476,7 +476,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             labels.Add(y.ToString());
                             data.Add(dict.TryGetValue(y, out var v) ? v : 0m);
                         }
-                        return Json(new { title = $"書籍借閱量（{unit}）", labels, data, echo });
+                        return Json(new { title = $"每{unit}借閱本數", labels, data, echo });
                     }
                     else
                     {
@@ -492,7 +492,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             labels.Add(d.ToString("yyyy-MM-dd"));
                             data.Add(dict.TryGetValue(d.Date, out var v) ? v : 0m);
                         }
-                        return Json(new { title = $"書籍借閱量（{unit}）", labels, data, echo });
+                        return Json(new { title = $"每{unit}借閱本數", labels, data, echo });
                     }
                 }
                 else // orders
@@ -517,7 +517,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                     if (orderAmtMin.HasValue) q = q.Where(o => o.TotalAmount >= orderAmtMin.Value);
                     if (orderAmtMax.HasValue) q = q.Where(o => o.TotalAmount <= orderAmtMax.Value);
 
-                    var titlePrefix = orderMetric == "count" ? "訂單筆數" : "總銷售金額";
+                    var titlePrefix = orderMetric == "count" ? "總銷售筆數" : "總銷售金額";
 
                     if (gran == "month")
                     {
@@ -543,7 +543,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             labels.Add($"{y}-{m:00}");
                             data.Add(dict.TryGetValue((y, m), out var v) ? v : 0m);
                         }
-                        return Json(new { title = $"{titlePrefix}（{unit}）", labels, data, echo });
+                        return Json(new { title = $"每{unit}{titlePrefix}", labels, data, echo });
                     }
                     else if (gran == "year")
                     {
@@ -569,7 +569,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             labels.Add(y.ToString());
                             data.Add(dict.TryGetValue(y, out var v) ? v : 0m);
                         }
-                        return Json(new { title = $"{titlePrefix}（{unit}）", labels, data, echo });
+                        return Json(new { title = $"每{unit}{titlePrefix}", labels, data, echo });
                     }
                     else
                     {
@@ -595,7 +595,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             labels.Add(d.ToString("yyyy-MM-dd"));
                             data.Add(dict.TryGetValue(d.Date, out var v) ? v : 0m);
                         }
-                        return Json(new { title = $"{titlePrefix}（{unit}）", labels, data, echo });
+                        return Json(new { title = $"每{unit}{titlePrefix}", labels, data, echo });
                     }
                 }
             }

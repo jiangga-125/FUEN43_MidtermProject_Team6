@@ -14,7 +14,7 @@ namespace ReportMail.Services.Reports
         /// <summary>
         /// 折線圖：總銷售金額（依顆粒度彙總）
         /// granularity = day/month/year
-        /// excludeStatuses 預設排除「已取消」(4)；若你的系統代碼不同再調整。
+        /// excludeStatuses 預設排除「已取消」(4)
         /// </summary>
         Task<IReadOnlyList<ChartPoint>> GetSalesAmountSeriesAsync(
             DateTime start, DateTime end, string granularity = "day",

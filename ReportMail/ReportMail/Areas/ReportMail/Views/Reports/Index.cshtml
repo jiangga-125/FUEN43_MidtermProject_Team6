@@ -37,7 +37,7 @@
                 <span class="fw-bold">折線圖</span>
                 <!-- 下拉：第一個選項 = 預設報表；其餘為自訂報表 -->
                 <select id="ddlLine" class="form-select form-select-sm" style="min-width:280px;">
-                    <option value="">（預設報表）</option>
+                    <option value="">（預設報表）近30日每日銷售金額</option>
                     @foreach (var d in lineList)
                     {
                         <option value="@d.ReportDefinitionID">@d.ReportName</option>
@@ -56,7 +56,7 @@
             <!-- ★ 必備：折線圖畫布 -->
             <canvas id="chartLine" height="140"></canvas>
             <div class="text-muted small mt-2">
-                提示：選擇「自訂報表」會即時更新圖表；選「（預設報表）」回到寫死的預設資料。
+                @*提示：選擇「自訂報表」會即時更新圖表；選「（預設報表）」回到寫死的預設資料。*@
             </div>
         </div>
     </div>
@@ -70,7 +70,7 @@
                         <span class="fw-bold">長條圖</span>
                         <!-- 下拉：第一個選項 = 預設報表；其餘為自訂報表（Category='bar'） -->
                         <select id="ddlBar" class="form-select form-select-sm" style="min-width:280px;">
-                            <option value="">（預設報表）</option>
+                            <option value="">（預設報表）近30日書籍銷售Top10</option>
                             @foreach (var d in barList)
                             {
                                 <option value="@d.ReportDefinitionID">@d.ReportName</option>
@@ -86,7 +86,7 @@
                 <div class="card-body">
                     <canvas id="chartBar" height="140"></canvas>
                     <div class="text-muted small mt-2">
-                        提示：選擇「自訂報表」會即時更新圖表；選「（預設報表）」回到寫死的預設資料。
+                        @*提示：選擇「自訂報表」會即時更新圖表；選「（預設報表）」回到寫死的預設資料。*@
                     </div>
                 </div>
             </div>
@@ -99,7 +99,7 @@
                     <div class="d-flex align-items-center gap-2">
                         <span class="fw-bold">圓餅圖</span>
                         <select id="ddlPie" class="form-select form-select-sm" style="min-width:280px;">
-                            <option value="">（預設報表）</option>
+                            <option value="">（預設報表）近30日書籍借閱種類Top5</option>
                             @foreach (var d in pieList)
                             {
                                 <option value="@d.ReportDefinitionID">@d.ReportName</option>
@@ -115,7 +115,7 @@
                 <div class="card-body">
                     <canvas id="chartPie" height="140"></canvas>
                     <div class="text-muted small mt-2">
-                        提示：選擇「自訂報表」會即時更新圖表；選「（預設報表）」回到寫死的預設資料。
+                        @*提示：選擇「自訂報表」會即時更新圖表；選「（預設報表）」回到寫死的預設資料。*@
                     </div>
                 </div>
             </div>
@@ -246,7 +246,7 @@
           if (btnEdit){
             btnEdit.addEventListener('click', ()=>{
               const id = (ddl && ddl.value) || '';
-              if (!id){ alert('請先在下拉選擇要編輯的報表'); return; }
+              if (!id){ alert('請先在折線圖下拉選擇一筆自訂報表'); return; }
               window.location.href = '@Url.Action("Edit", "ReportDefinitions", new { area = "ReportMail" })/' + id;
             });
           }
