@@ -1,9 +1,10 @@
+using ReportMail.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using ReportMail.Data.Contexts;
 using ReportMail.Data;
-using ReportMail.Services.Reports;
+using ReportMail.Data.Contexts;
 using ReportMail.Data.Shop;
+using ReportMail.Services.Reports;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +30,9 @@ builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
 builder.Services.AddScoped<ReportQueryBuilder>();
 
 builder.Services.AddControllersWithViews();
+
+//Email發信功能
+builder.Services.AddScoped<MailService>();
 
 var app = builder.Build();
 
