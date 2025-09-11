@@ -45,6 +45,7 @@
                 </select>
             </div>
             <div class="d-flex gap-2">
+                <button id="btnExportLine" class="btn btn-sm btn-success">匯出</button>
                 <!-- 新增固定導到 ReportDefinitions.Create（內頁選擇圖表類型與篩選） -->
                 <a class="btn btn-sm btn-primary" href="@urlCreateDef">新增</a>
                 <!-- 編輯/刪除：需要先在下拉選到某一筆 -->
@@ -78,6 +79,7 @@
                         </select>
                     </div>
                     <div class="d-flex gap-2">
+                        <button id="btnExportBar" class="btn btn-sm btn-success">匯出</button>
                         <a class="btn btn-sm btn-primary" href="@urlCreateDef">新增</a>
                         <button id="btnEditBar" class="btn btn-sm btn-outline-secondary">編輯</button>
                         <button id="btnDelBar" class="btn btn-sm btn-outline-danger">刪除</button>
@@ -107,6 +109,7 @@
                         </select>
                     </div>
                     <div class="d-flex gap-2">
+                        <button id="btnExportPie" class="btn btn-sm btn-success">匯出</button>
                         <a class="btn btn-sm btn-primary" href="@urlCreateDef">新增</a>
                         <button id="btnEditPie" class="btn btn-sm btn-outline-secondary">編輯</button>
                         <button id="btnDelPie" class="btn btn-sm btn-outline-danger">刪除</button>
@@ -121,6 +124,7 @@
             </div>
         </div>
     </div>
+</div>
 
 
 @section Scripts {
@@ -146,6 +150,10 @@
             options: { responsive: true, tension: .25, scales: { y: { beginAtZero: true } } }
           });
         }
+        // 追蹤目前折線圖的 BaseKind 與 顆粒度
+        window._lineBaseKind   = 'sales'; // 預設圖=近30日銷售金額
+        window._lineGranularity= 'day';   // 預設 granularity=day
+
 
         // === 預設（寫死）折線圖：呼叫 ReportsController.Line 回傳的 JSON ===
         async function loadLine(){
@@ -153,6 +161,7 @@
             const res = await fetch('@Url.Action("Line", "Reports", new { area = "ReportMail" })');
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const json = await res.json();
+             window._lineGranularity = 'day'; // 設定顆粒度
             renderLine(json.labels, json.data, json.title || '預設折線圖');
           } catch (err) {
             console.error('loadLine failed:', err);
@@ -172,29 +181,36 @@
         }
 
         // === 載入「自訂圖表」：先取定義，再呼叫預覽 ===
-        // 以 id 讀取報表定義 → 呼叫預覽 → 畫圖
-        // ======== 折線圖 ========
-        async function loadLineByDefinition(defId) {
+        // ======== 折線圖（自訂） ========
+          async function loadLineByDefinition(defId) {
             try {
-              // 1) 取報表定義（關快取 + 加時間戳）
+              // 1) 取定義（關快取 + timestamp）
               const defUrl = '@Url.Action("DefinitionPayload", "ReportDefinitions", new { area = "ReportMail" })'
-                           + '?id=' + encodeURIComponent(defId) + '&t=' + Date.now();
+                            + '?id=' + encodeURIComponent(defId) + '&t=' + Date.now();
               const resDef = await fetch(defUrl, { cache: 'no-store' });
-              if (!resDef.ok) throw new Error('DefinitionPayload HTTP ' + resDef.status);
+              if (!resDef.ok) {
+                const t = await resDef.text();
+                throw new Error('DefinitionPayload HTTP ' + resDef.status + ' ' + t);
+              }
               const def = await resDef.json();
-              console.debug('[Line] definition =', def);
 
-              // 2) 來源類型（sales/borrow/orders）— 支援 camelCase / PascalCase
+              // 2) 驗證種類、取得來源
+              const category = ((def.category ?? def.Category) || '').toString().trim().toLowerCase();
+              if (category !== 'line') { alert('此報表不是折線圖類型'); return; }
               const kind = ((def.baseKind ?? def.BaseKind) || '').toString().trim().toLowerCase();
               if (!['sales','borrow','orders'].includes(kind)) {
-                console.error('BaseKind 缺失或不合法，definition=', def);
                 alert('此報表缺少來源類型（sales/borrow/orders），請檢查定義。');
                 return;
               }
 
-              // 3) Filters — 支援 camelCase / PascalCase
-              const defFilters = def.filters ?? def.Filters ?? [];
+              // 3) 這裡先決定「圖例標題 = 下拉目前選到的文字 或 定義名稱」
+              const ddl = document.getElementById('ddlLine');
+              const pickedName = ddl?.selectedOptions?.[0]?.text?.trim();
+              const defName = (def.reportName ?? def.ReportName ?? '').toString().trim();
+              const viewTitle = pickedName || defName || '折線圖';
 
+              // 4) filters 轉成後端可吃的鍵名
+              const defFilters = def.filters ?? def.Filters ?? [];
               const req = {
                 Category: 'line',
                 BaseKind: kind,
@@ -207,29 +223,44 @@
                   Options:      f.options      ?? f.Options ?? null
                 }))
               };
-              console.debug('[Line] req =', req);
 
-              // 4) 呼叫預覽（關快取 + 加時間戳）
-              const prevUrl = '@Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" })'
-                            + '?t=' + Date.now();
+              // 5) 呼叫預覽
+              const prevUrl = '@Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" })' + '?t=' + Date.now();
               const resPrev = await fetch(prevUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
                 body: JSON.stringify(req),
                 cache: 'no-store'
               });
-              if (!resPrev.ok) throw new Error('PreviewDraft HTTP ' + resPrev.status);
-
+              if (!resPrev.ok) {
+                // 把後端錯誤訊息露出來，之後除錯才找得到原因
+                const t = await resPrev.text();
+                throw new Error('PreviewDraft HTTP ' + resPrev.status + ' ' + t);
+              }
               const json = await resPrev.json();
-              console.debug('[Line] echo =', json.echo);
 
-              // 5) 畫圖
-              renderLine(json.labels || [], json.data || [], json.title || '折線圖');
+              // 6) 相容兩種回傳格式：labels/data 或 series
+              let labels = [], data = [];
+              if (Array.isArray(json.labels) && Array.isArray(json.data)) {
+                labels = json.labels; data = json.data;
+              } else {
+                const s = json.series || json.Series || [];
+                labels = s.map(p => p.label ?? p.name ?? '');
+                data   = s.map(p => Number(p.value ?? p.y ?? 0));
+              }
+
+              // 標題優先用自訂名稱；若後端有 title 也可覆蓋
+              const title = json.title || viewTitle;
+
+              // 7) 畫圖
+              renderLine(labels, data, title);
             } catch (err) {
               console.error('loadLineByDefinition failed:', err);
+              // 讓使用者看到後端實際錯誤（例如：日期 ValueJson 解析失敗等）
+              alert('折線圖載入失敗：' + (err?.message || err));
               renderLine([], [], '載入失敗');
             }
-          }        // === 綁定：下拉切換、自訂報表的編輯/刪除導頁 ===
+          }          // === 綁定：下拉切換、自訂報表的編輯/刪除導頁 ===
         (function bindLineUI(){
           const ddl     = document.getElementById('ddlLine');
           const btnEdit = document.getElementById('btnEditLine');
@@ -254,7 +285,7 @@
           if (btnDel){
             btnDel.addEventListener('click', ()=>{
               const id = (ddl && ddl.value) || '';
-              if (!id){ alert('請先在下拉選擇要刪除的報表'); return; }
+              if (!id){ alert('請先在折線圖下拉選擇要刪除的報表'); return; }
               window.location.href = '@Url.Action("Delete", "ReportDefinitions", new { area = "ReportMail" })/' + id;
             });
           }
@@ -363,7 +394,7 @@
             if (btnDel){
             btnDel.addEventListener('click', ()=>{
                 const id = (ddl && ddl.value) || '';
-                if (!id){ alert('請先在長條圖下拉選擇一筆自訂報表'); return; }
+                if (!id){ alert('請先在長條圖下拉選擇要刪除的自訂報表'); return; }
                 window.location.href = '@urlDelDefBase/' + id;
             });
             }
@@ -466,7 +497,7 @@
             if (btnDel){
             btnDel.addEventListener('click', ()=>{
                 const id = (ddl && ddl.value) || '';
-                if (!id){ alert('請先在圓餅圖下拉選擇一筆自訂報表'); return; }
+                if (!id){ alert('請先在圓餅圖下拉選擇要刪除的自訂報表'); return; }
                 window.location.href = '@urlDelDefBase/' + id;
             });
             }
@@ -479,4 +510,97 @@
             loadPie();
         });
     </script>
+    <script>
+        // 取 Chart.js 畫面上的 "當前資料"
+                function getChartPayloadLine(email){
+          const c = window._lineChart;
+          const ddl = document.getElementById('ddlLine');
+          const selectedText = ddl?.options[ddl.selectedIndex]?.text
+                             || '（預設報表）近30日每日銷售金額'; //預設顯示
+          return {
+            Category: 'line',
+            BaseKind: window._lineBaseKind,
+            Granularity: window._lineGranularity,
+            Title: selectedText,
+            SubTitle: `匯出日期：${new Date().toLocaleString()}`,
+            Labels: c?.data?.labels ?? [],
+            Values: c?.data?.datasets?.[0]?.data ?? [],
+            To: email
+          };
+        }
+
+        function getChartPayloadBar(email){
+          const c = window._barChart;
+          const ddl = document.getElementById('ddlBar');
+          const selectedText = ddl?.options[ddl.selectedIndex]?.text
+                             || '（預設報表）近30日書籍銷售Top10'; //預設顯示
+          return {
+            Category: 'bar',
+            Title: selectedText,
+            SubTitle: `匯出日期：${new Date().toLocaleString()}`,
+            Labels: c?.data?.labels ?? [],
+            Values: c?.data?.datasets?.[0]?.data ?? [],
+            To: email
+          };
+        }
+
+        function getChartPayloadPie(email){
+          const c = window._pieChart;
+          const ddl = document.getElementById('ddlPie');
+          const selectedText = ddl?.options[ddl.selectedIndex]?.text
+                             || '（預設報表）近30日書籍借閱種類Top5'; //預設顯示
+          return {
+            Category: 'pie',
+            Title: selectedText,
+            SubTitle: `匯出日期：${new Date().toLocaleString()}`,
+            Labels: c?.data?.labels ?? [],
+            Values: c?.data?.datasets?.[0]?.data ?? [],
+            To: email
+          };
+        }
+
+
+        async function postExcel(payload){
+          const url = '@Url.Action("SendExcel", "ReportExport", new { area = "ReportMail" })';
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) {
+            const t = await res.text();
+            throw new Error('寄送失敗：' + t);
+          }
+        }
+
+        // 綁定三顆匯出
+        (function bindExportButtons(){
+          const lineBtn = document.getElementById('btnExportLine');
+          const barBtn  = document.getElementById('btnExportBar');
+          const pieBtn  = document.getElementById('btnExportPie');
+
+          async function askEmailAndSend(buildPayload){
+            const email = prompt('請輸入要寄送的電子郵件：');
+            if (!email) return;
+            try{
+              await postExcel(buildPayload(email));
+              alert('✅ 已寄出，請到信箱查收');
+            }catch(err){
+              console.error(err);
+              alert('❌ ' + err.message);
+            }
+          }
+
+          if (lineBtn) lineBtn.addEventListener('click', ()=> askEmailAndSend(getChartPayloadLine));
+          if (barBtn)  barBtn .addEventListener('click', ()=> askEmailAndSend(getChartPayloadBar));
+          if (pieBtn)  pieBtn .addEventListener('click', ()=> askEmailAndSend(getChartPayloadPie));
+        })();
+
+        // 如果想改成 Bootstrap Modal：
+        // 1) 在頁面加一個 <div id="mailModal"> ... input[type=email] ... </div>
+        // 2) 打開時把 buildPayload 存到 window._exportBuilder
+        // 3) 點「送出」時取 input 值 → postExcel(window._exportBuilder(email))
+    </script>
+
+
 }

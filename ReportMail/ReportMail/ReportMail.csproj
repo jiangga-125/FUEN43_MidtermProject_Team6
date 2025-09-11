@@ -27,8 +27,6 @@
 
   <ItemGroup>
     <Folder Include="Areas\ReportMail\Data\" />
-    <Folder Include="Areas\ReportMail\Models\" />
-    <Folder Include="Services\Export\" />
   </ItemGroup>
 
 </Project>
