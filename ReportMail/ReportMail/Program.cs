@@ -1,9 +1,10 @@
-using ReportMail.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ReportMail.Data;
 using ReportMail.Data.Contexts;
 using ReportMail.Data.Shop;
+using ReportMail.Services;
+using ReportMail.Services.Export;
 using ReportMail.Services.Reports;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,6 +34,8 @@ builder.Services.AddControllersWithViews();
 
 //Email發信功能
 builder.Services.AddScoped<MailService>();
+//ClosedXML 的實作注入
+builder.Services.AddSingleton<IExcelExporter, ClosedXmlExcelExporter>();
 
 var app = builder.Build();
 

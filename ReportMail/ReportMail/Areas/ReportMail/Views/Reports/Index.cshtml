@@ -6,13 +6,10 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 
     // === 後端 API ===
-    // 預設圖表資料
     var apiLine = Url.Action("Line", "Reports", new { area = "ReportMail" }) ?? "#";
     var apiBar = Url.Action("Bar", "Reports", new { area = "ReportMail" }) ?? "#";
     var apiPie = Url.Action("Pie", "Reports", new { area = "ReportMail" }) ?? "#";
-    // 讀某個 ReportDefinition 的定義（Category/BaseKind/Filters(ValueJson)）
     var apiDefPayload = Url.Action("DefinitionPayload", "ReportDefinitions", new { area = "ReportMail" }) ?? "#";
-    // 依 BaseKind+Filters 預覽資料（你專案現有的 ReportPreviewController.PreviewDraft）
     var apiPreview = Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" }) ?? "#";
 
     // 新增/編輯/刪除的頁面
@@ -21,8 +18,7 @@
     var urlDelDefBase = Url.Action("Delete", "ReportDefinitions", new { area = "ReportMail" }) ?? "#"; // 之後 + /{id}
 
     // === 自訂報表清單 ===
-    // ReportsController.Index
-    var lineList = ViewBag.LineReports as IEnumerable<ReportDefinition>?? Enumerable.Empty<ReportDefinition>();
+    var lineList = ViewBag.LineReports as IEnumerable<ReportDefinition> ?? Enumerable.Empty<ReportDefinition>();
     var barList = ViewBag.BarReports as IEnumerable<ReportDefinition> ?? Enumerable.Empty<ReportDefinition>();
     var pieList = ViewBag.PieReports as IEnumerable<ReportDefinition> ?? Enumerable.Empty<ReportDefinition>();
 }
@@ -30,12 +26,11 @@
 <div class="container-fluid py-3">
     <h1 class="mb-4">報表主頁</h1>
 
-    <!-- ===== 折線圖卡片（本題主角） ===== -->
+    <!-- ===== 折線圖卡片 ===== -->
     <div class="card mb-4">
         <div class="card-header d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center gap-2">
                 <span class="fw-bold">折線圖</span>
-                <!-- 下拉：第一個選項 = 預設報表；其餘為自訂報表 -->
                 <select id="ddlLine" class="form-select form-select-sm" style="min-width:280px;">
                     <option value="">（預設報表）近30日每日銷售金額</option>
                     @foreach (var d in lineList)
@@ -45,19 +40,15 @@
                 </select>
             </div>
             <div class="d-flex gap-2">
-                <!-- 新增固定導到 ReportDefinitions.Create（內頁選擇圖表類型與篩選） -->
+                <button id="btnExportLine" class="btn btn-sm btn-success">匯出</button>
                 <a class="btn btn-sm btn-primary" href="@urlCreateDef">新增</a>
-                <!-- 編輯/刪除：需要先在下拉選到某一筆 -->
                 <button id="btnEditLine" class="btn btn-sm btn-outline-secondary">編輯</button>
                 <button id="btnDelLine" class="btn btn-sm btn-outline-danger">刪除</button>
             </div>
         </div>
         <div class="card-body">
-            <!-- ★ 必備：折線圖畫布 -->
             <canvas id="chartLine" height="140"></canvas>
-            <div class="text-muted small mt-2">
-                @*提示：選擇「自訂報表」會即時更新圖表；選「（預設報表）」回到寫死的預設資料。*@
-            </div>
+            <div class="text-muted small mt-2"></div>
         </div>
     </div>
 
@@ -68,7 +59,6 @@
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center gap-2">
                         <span class="fw-bold">長條圖</span>
-                        <!-- 下拉：第一個選項 = 預設報表；其餘為自訂報表（Category='bar'） -->
                         <select id="ddlBar" class="form-select form-select-sm" style="min-width:280px;">
                             <option value="">（預設報表）近30日書籍銷售Top10</option>
                             @foreach (var d in barList)
@@ -78,6 +68,7 @@
                         </select>
                     </div>
                     <div class="d-flex gap-2">
+                        <button id="btnExportBar" class="btn btn-sm btn-success">匯出</button>
                         <a class="btn btn-sm btn-primary" href="@urlCreateDef">新增</a>
                         <button id="btnEditBar" class="btn btn-sm btn-outline-secondary">編輯</button>
                         <button id="btnDelBar" class="btn btn-sm btn-outline-danger">刪除</button>
@@ -85,9 +76,7 @@
                 </div>
                 <div class="card-body">
                     <canvas id="chartBar" height="140"></canvas>
-                    <div class="text-muted small mt-2">
-                        @*提示：選擇「自訂報表」會即時更新圖表；選「（預設報表）」回到寫死的預設資料。*@
-                    </div>
+                    <div class="text-muted small mt-2"></div>
                 </div>
             </div>
         </div>
@@ -107,6 +96,7 @@
                         </select>
                     </div>
                     <div class="d-flex gap-2">
+                        <button id="btnExportPie" class="btn btn-sm btn成功">匯出</button>
                         <a class="btn btn-sm btn-primary" href="@urlCreateDef">新增</a>
                         <button id="btnEditPie" class="btn btn-sm btn-outline-secondary">編輯</button>
                         <button id="btnDelPie" class="btn btn-sm btn-outline-danger">刪除</button>
@@ -114,369 +104,520 @@
                 </div>
                 <div class="card-body">
                     <canvas id="chartPie" height="140"></canvas>
-                    <div class="text-muted small mt-2">
-                        @*提示：選擇「自訂報表」會即時更新圖表；選「（預設報表）」回到寫死的預設資料。*@
-                    </div>
+                    <div class="text-muted small mt-2"></div>
                 </div>
             </div>
         </div>
     </div>
-
+</div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // === 用不會與 DOM id 衝突的名稱 ===
+        // === 全局狀態 ===
         window._lineChart = window._lineChart || null;
+        window._barChart  = window._barChart  || null;
+        window._pieChart  = window._pieChart  || null;
 
-        // === 工具：重畫折線圖 ===
+        // 折線：BaseKind / Granularity / Metric
+        window._lineBaseKind    = window._lineBaseKind    ?? 'sales';
+        window._lineGranularity = window._lineGranularity ?? 'day';
+        window._lineValueMetric = window._lineValueMetric ?? 'amount';
+
+        // 長條：BaseKind / Metric
+        window._barBaseKind     = window._barBaseKind     ?? 'sales';
+        window._barValueMetric  = window._barValueMetric  ?? 'quantity';
+
+        // 圓餅：BaseKind / Metric
+        window._pieBaseKind     = window._pieBaseKind     ?? 'borrow';
+        window._pieValueMetric  = window._pieValueMetric  ?? 'count';
+
+        // === Chart render ===
         function renderLine(labels, data, title){
-          const canvas = document.getElementById('chartLine');
-          if (!canvas) { console.error('#chartLine not found'); return; }
-
-          // 只有在「真的是 Chart 實例」時才 destroy
-          if (window._lineChart && typeof window._lineChart.destroy === 'function') {
-            window._lineChart.destroy();
-          }
-
-          // 直接把 canvas 傳給 Chart（Chart.js 會自己取 context）
-          window._lineChart = new Chart(canvas, {
+          const el = document.getElementById('chartLine');
+          if (!el) return;
+          if (window._lineChart && typeof window._lineChart.destroy === 'function') window._lineChart.destroy();
+          window._lineChart = new Chart(el, {
             type: 'line',
             data: { labels: labels || [], datasets: [{ label: title || '折線圖', data: data || [] }] },
             options: { responsive: true, tension: .25, scales: { y: { beginAtZero: true } } }
           });
         }
+        function renderBar(labels, data, title){
+          const el = document.getElementById('chartBar');
+          if (!el) return;
+          if (window._barChart && typeof window._barChart.destroy === 'function') window._barChart.destroy();
+          window._barChart = new Chart(el, {
+            type: 'bar',
+            data: { labels: labels || [], datasets: [{ label: title || '長條圖', data: data || [] }] },
+            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+          });
+        }
+        function renderPie(labels, data, title){
+          const el = document.getElementById('chartPie');
+          if (!el) return;
+          if (window._pieChart && typeof window._pieChart.destroy === 'function') window._pieChart.destroy();
+          window._pieChart = new Chart(el, {
+            type: 'pie',
+            data: { labels: labels || [], datasets: [{ label: title || '圓餅圖', data: data || [] }] },
+            options: { responsive: true }
+          });
+        }
 
-        // === 預設（寫死）折線圖：呼叫 ReportsController.Line 回傳的 JSON ===
+        // === 通用工具 ===
+        const lower = s => (s ?? '').toString().trim().toLowerCase();
+
+        // ★★★ 顆粒度同步：支援兩種來源（專用 Granularity 濾鏡；或「日期型」濾鏡的 ValueJson.gran）
+        function trySyncGranularityFromFilters(filters){
+          try{
+            // 1) 專用 Granularity 濾鏡（若你有這種）
+            const g1 = (filters||[]).find(f => {
+              const n = lower(f.FieldName ?? f.fieldName);
+              return n === 'granularity' || n === 'dategranularity';
+            });
+            if (g1){
+              const raw = g1.ValueJson ?? g1.valueJson ?? '{}';
+              try{
+                const j = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                const v = lower((j?.value ?? j));
+                if (['year','month','day'].includes(v)) { window._lineGranularity = v; return true; }
+              }catch{
+                const v = lower(String(raw));
+                if (['year','month','day'].includes(v)) { window._lineGranularity = v; return true; }
+              }
+            }
+
+            // 2) 日期型濾鏡（DataType: 'date' 或 欄位名以 *Date 結尾），ValueJson 內含 gran / granularity / groupBy
+            const g2 = (filters||[]).find(f => {
+              const dt = lower(f.DataType ?? f.dataType);
+              const n  = lower(f.FieldName ?? f.fieldName);
+              return dt === 'date' || n.endsWith('date');
+            });
+            if (g2){
+              const raw = g2.ValueJson ?? g2.valueJson ?? '{}';
+              let gVal = null;
+              try{
+                const j = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                const cand = (j?.gran ?? j?.granularity ?? j?.groupBy ?? j?.groupby);
+                if (typeof cand === 'string') gVal = lower(cand);
+              }catch{
+                // 候補：raw 非 JSON 時以字串搜尋關鍵字
+                const s = lower(String(raw));
+                if (s.includes('year'))  gVal = 'year';
+                else if (s.includes('month')) gVal = 'month';
+                else if (s.includes('day'))   gVal = 'day';
+              }
+              if (['year','month','day'].includes(gVal)){
+                window._lineGranularity = gVal;
+                return true;
+              }
+            }
+            return false;
+          }catch{ return false; }
+        }
+
+        // 同步 Metric（amount/count/quantity）
+        function trySyncMetricFromFilters(filters, setter){
+          try{
+            const mf = (filters||[]).find(f => lower(f.FieldName ?? f.fieldName) === 'metric');
+            if (!mf) return false;
+            const raw = mf.ValueJson ?? mf.valueJson ?? '{}';
+            let metric = null;
+            try{
+              const j = typeof raw === 'string' ? JSON.parse(raw) : raw;
+              const v = lower((j?.value ?? j));
+              if (['amount','count','quantity'].includes(v)) metric = v;
+            }catch{
+              const v = lower(String(raw));
+              if (['amount','count','quantity'].includes(v)) metric = v;
+            }
+            if (metric){ setter(metric); return true; }
+            return false;
+          }catch{ return false; }
+        }
+
+        // === 預設三張圖 ===
         async function loadLine(){
-          try {
-            const res = await fetch('@Url.Action("Line", "Reports", new { area = "ReportMail" })');
+          try{
+            const res = await fetch('@apiLine', { cache: 'no-store' });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const json = await res.json();
-            renderLine(json.labels, json.data, json.title || '預設折線圖');
-          } catch (err) {
-            console.error('loadLine failed:', err);
-            renderLine([], [], '預設折線圖（載入失敗）');
+            window._lineBaseKind    = 'sales';
+            window._lineGranularity = 'day';
+            window._lineValueMetric = 'amount';
+            renderLine(json.labels||[], json.data||[], json.title||'預設折線圖');
+          }catch(e){
+            console.error(e); renderLine([], [], '預設折線圖（載入失敗）');
+          }
+        }
+        async function loadBar(){
+          try{
+            const res = await fetch('@apiBar', { cache: 'no-store' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const json = await res.json();
+            window._barBaseKind    = 'sales';
+            window._barValueMetric = 'quantity';
+            renderBar(json.labels||[], json.data||[], json.title||'預設長條圖');
+          }catch(e){
+            console.error(e); renderBar([], [], '預設長條圖（載入失敗）');
+          }
+        }
+        async function loadPie(){
+          try{
+            const res = await fetch('@apiPie', { cache: 'no-store' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const json = await res.json();
+            window._pieBaseKind    = 'borrow';
+            window._pieValueMetric = 'count';
+            renderPie(json.labels||[], json.data||[], json.title||'預設圓餅圖');
+          }catch(e){
+            console.error(e); renderPie([], [], '預設圓餅圖（載入失敗）');
           }
         }
 
-        // === DefinitionPayload → PreviewDraft：只用 ValueJson ===
-        function mapFiltersForPreview(filters){
-          return (filters || []).map(f => ({
-            FieldName: f.FieldName,
-            Operator:  f.Operator,
-            DataType:  f.DataType,
-            Options:   f.Options,
-            ValueJson: f.ValueJson
-          }));
+        // === 自訂：DefinitionPayload → PreviewDraft → 畫圖 ===
+        async function loadLineByDefinition(defId){
+          try{
+            // 1) 定義
+            const defUrl = '@apiDefPayload' + '?id=' + encodeURIComponent(defId) + '&t=' + Date.now();
+            const resDef = await fetch(defUrl, { cache: 'no-store' });
+            if (!resDef.ok){ throw new Error('DefinitionPayload HTTP ' + resDef.status + ' ' + await resDef.text()); }
+            const def = await resDef.json();
+
+            // 2) 種類/來源
+            const category = lower(def.category ?? def.Category);
+            if (category !== 'line'){ alert('此報表不是折線圖類型'); return; }
+            const kind = lower(def.baseKind ?? def.BaseKind);
+            if (!['sales','borrow','orders'].includes(kind)){ alert('缺少來源類型'); return; }
+            window._lineBaseKind = kind;
+
+            // 3) 標題
+            const ddl = document.getElementById('ddlLine');
+            const pickedName = ddl?.selectedOptions?.[0]?.text?.trim();
+            const defName = (def.reportName ?? def.ReportName ?? '').toString().trim();
+            const viewTitle = pickedName || defName || '折線圖';
+
+            // 4) Filters
+            const defFilters = def.filters ?? def.Filters ?? [];
+            const req = {
+              Category: 'line',
+              BaseKind: kind,
+              Filters: (defFilters||[]).map(f => ({
+                FieldName:    f.fieldName    ?? f.FieldName,
+                Operator:     f.operator     ?? f.Operator,
+                DataType:     f.dataType     ?? f.DataType,
+                ValueJson:    f.valueJson    ?? f.ValueJson ?? null,
+                DefaultValue: f.defaultValue ?? f.DefaultValue ?? null,
+                Options:      f.options      ?? f.Options ?? null
+              }))
+            };
+            // ← 這裡就會正確抓到 gran（從日期型濾鏡的 ValueJson.gran）
+            trySyncGranularityFromFilters(defFilters);
+            trySyncMetricFromFilters(defFilters, m => { window._lineValueMetric = m; });
+
+            // 5) 預覽
+            const resPrev = await fetch('@apiPreview' + '?t=' + Date.now(), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+              body: JSON.stringify(req),
+              cache: 'no-store'
+            });
+            if (!resPrev.ok){ throw new Error('PreviewDraft HTTP ' + resPrev.status + ' ' + await resPrev.text()); }
+            const json = await resPrev.json();
+
+            // 回應 echo.filters 再同步一次（以回應為準）
+            if (json?.echo?.filters) {
+              trySyncGranularityFromFilters(json.echo.filters);
+              trySyncMetricFromFilters(json.echo.filters, m => { window._lineValueMetric = m; });
+            }
+
+            // 6) 畫圖
+            let labels = [], data = [];
+            if (Array.isArray(json.labels) && Array.isArray(json.data)) {
+              labels = json.labels; data = json.data;
+            } else {
+              const s = json.series || json.Series || [];
+              labels = s.map(p => p.label ?? p.name ?? '');
+              data   = s.map(p => Number(p.value ?? p.y ?? 0));
+            }
+            renderLine(labels, data, json.title || viewTitle);
+          }catch(err){
+            console.error('loadLineByDefinition failed:', err);
+            alert('折線圖載入失敗：' + (err?.message || err));
+            renderLine([], [], '載入失敗');
+          }
         }
 
-        // === 載入「自訂圖表」：先取定義，再呼叫預覽 ===
-        // 以 id 讀取報表定義 → 呼叫預覽 → 畫圖
-        // ======== 折線圖 ========
-        async function loadLineByDefinition(defId) {
-            try {
-              // 1) 取報表定義（關快取 + 加時間戳）
-              const defUrl = '@Url.Action("DefinitionPayload", "ReportDefinitions", new { area = "ReportMail" })'
-                           + '?id=' + encodeURIComponent(defId) + '&t=' + Date.now();
-              const resDef = await fetch(defUrl, { cache: 'no-store' });
-              if (!resDef.ok) throw new Error('DefinitionPayload HTTP ' + resDef.status);
-              const def = await resDef.json();
-              console.debug('[Line] definition =', def);
+        async function loadBarByDefinition(defId){
+          try{
+            const defUrl = '@apiDefPayload' + '?id=' + encodeURIComponent(defId) + '&t=' + Date.now();
+            const resDef = await fetch(defUrl, { cache: 'no-store' });
+            if (!resDef.ok) throw new Error('DefinitionPayload HTTP ' + resDef.status);
+            const def = await resDef.json();
 
-              // 2) 來源類型（sales/borrow/orders）— 支援 camelCase / PascalCase
-              const kind = ((def.baseKind ?? def.BaseKind) || '').toString().trim().toLowerCase();
-              if (!['sales','borrow','orders'].includes(kind)) {
-                console.error('BaseKind 缺失或不合法，definition=', def);
-                alert('此報表缺少來源類型（sales/borrow/orders），請檢查定義。');
-                return;
-              }
+            const category = lower(def.category ?? def.Category);
+            if (category !== 'bar'){ alert('此報表不是長條圖類型'); return; }
+            const kind = lower(def.baseKind ?? def.BaseKind);
+            window._barBaseKind = kind || 'sales';
 
-              // 3) Filters — 支援 camelCase / PascalCase
-              const defFilters = def.filters ?? def.Filters ?? [];
+            const defFilters = def.filters ?? def.Filters ?? [];
+            trySyncMetricFromFilters(defFilters, m => { window._barValueMetric = m; });
 
-              const req = {
-                Category: 'line',
-                BaseKind: kind,
-                Filters: (defFilters || []).map(f => ({
-                  FieldName:    f.fieldName    ?? f.FieldName,
-                  Operator:     f.operator     ?? f.Operator,
-                  DataType:     f.dataType     ?? f.DataType,
-                  ValueJson:    f.valueJson    ?? f.ValueJson ?? null,
-                  DefaultValue: f.defaultValue ?? f.DefaultValue ?? null,
-                  Options:      f.options      ?? f.Options ?? null
-                }))
-              };
-              console.debug('[Line] req =', req);
+            const req = {
+              Category: 'bar',
+              BaseKind: window._barBaseKind,
+              Filters: (defFilters||[]).map(f => ({
+                FieldName:    f.fieldName    ?? f.FieldName,
+                Operator:     f.operator     ?? f.Operator,
+                DataType:     f.dataType     ?? f.DataType,
+                ValueJson:    f.valueJson    ?? f.ValueJson ?? null,
+                DefaultValue: f.defaultValue ?? f.DefaultValue ?? null,
+                Options:      f.options      ?? f.Options ?? null
+              }))
+            };
 
-              // 4) 呼叫預覽（關快取 + 加時間戳）
-              const prevUrl = '@Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" })'
-                            + '?t=' + Date.now();
-              const resPrev = await fetch(prevUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-                body: JSON.stringify(req),
-                cache: 'no-store'
-              });
-              if (!resPrev.ok) throw new Error('PreviewDraft HTTP ' + resPrev.status);
+            const resPrev = await fetch('@apiPreview' + '?t=' + Date.now(), {
+              method: 'POST', headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+              body: JSON.stringify(req), cache: 'no-store'
+            });
+            if (!resPrev.ok) throw new Error('PreviewDraft HTTP ' + resPrev.status);
+            const json = await resPrev.json();
 
-              const json = await resPrev.json();
-              console.debug('[Line] echo =', json.echo);
-
-              // 5) 畫圖
-              renderLine(json.labels || [], json.data || [], json.title || '折線圖');
-            } catch (err) {
-              console.error('loadLineByDefinition failed:', err);
-              renderLine([], [], '載入失敗');
+            if (json?.echo?.filters) {
+              trySyncMetricFromFilters(json.echo.filters, m => { window._barValueMetric = m; });
             }
-          }        // === 綁定：下拉切換、自訂報表的編輯/刪除導頁 ===
+
+            let labels=[], data=[], title=json.title||'長條圖';
+            if (Array.isArray(json.labels) && Array.isArray(json.data)) {
+              labels = json.labels; data = json.data;
+            } else {
+              const s = json.series || json.Series || [];
+              labels = s.map(p => p.label ?? p.name ?? '');
+              data   = s.map(p => Number(p.value ?? p.y ?? 0));
+            }
+            renderBar(labels, data, title);
+          }catch(err){
+            console.error('loadBarByDefinition failed:', err);
+            renderBar([], [], '載入失敗');
+          }
+        }
+
+        async function loadPieByDefinition(defId){
+          try{
+            const defUrl = '@apiDefPayload' + '?id=' + encodeURIComponent(defId) + '&t=' + Date.now();
+            const resDef = await fetch(defUrl, { cache: 'no-store' });
+            if (!resDef.ok) throw new Error('DefinitionPayload HTTP ' + resDef.status);
+            const def = await resDef.json();
+
+            const category = lower(def.category ?? def.Category);
+            if (category !== 'pie'){ alert('此報表不是圓餅圖類型'); return; }
+            const kind = lower(def.baseKind ?? def.BaseKind);
+            window._pieBaseKind = kind || 'borrow';
+
+            const defFilters = def.filters ?? def.Filters ?? [];
+            trySyncMetricFromFilters(defFilters, m => { window._pieValueMetric = m; });
+
+            const req = {
+              Category: 'pie',
+              BaseKind: window._pieBaseKind,
+              Filters: (defFilters||[]).map(f => ({
+                FieldName:    f.fieldName    ?? f.FieldName,
+                Operator:     f.operator     ?? f.Operator,
+                DataType:     f.dataType     ?? f.DataType,
+                ValueJson:    f.valueJson    ?? f.ValueJson ?? null,
+                DefaultValue: f.defaultValue ?? f.DefaultValue ?? null,
+                Options:      f.options      ?? f.Options ?? null
+              }))
+            };
+
+            const resPrev = await fetch('@apiPreview' + '?t=' + Date.now(), {
+              method: 'POST', headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+              body: JSON.stringify(req), cache: 'no-store'
+            });
+            if (!resPrev.ok) throw new Error('PreviewDraft HTTP ' + resPrev.status);
+            const json = await resPrev.json();
+
+            if (json?.echo?.filters) {
+              trySyncMetricFromFilters(json.echo.filters, m => { window._pieValueMetric = m; });
+            }
+
+            let labels=[], data=[], title=json.title||'圓餅圖';
+            if (Array.isArray(json.labels) && Array.isArray(json.data)) {
+              labels = json.labels; data = json.data;
+            } else {
+              const s = json.series || json.Series || [];
+              labels = s.map(p => p.label ?? p.name ?? '');
+              data   = s.map(p => Number(p.value ?? p.y ?? 0));
+            }
+            renderPie(labels, data, title);
+          }catch(err){
+            console.error('loadPieByDefinition failed:', err);
+            renderPie([], [], '載入失敗');
+          }
+        }
+
+        // === 綁定 ===
         (function bindLineUI(){
-          const ddl     = document.getElementById('ddlLine');
+          const ddl = document.getElementById('ddlLine');
           const btnEdit = document.getElementById('btnEditLine');
           const btnDel  = document.getElementById('btnDelLine');
-
           if (ddl){
             ddl.addEventListener('change', async (e)=>{
               const id = e.target.value;
-              if (!id) await loadLine();               // 空值 → 預設
-              else     await loadLineByDefinition(id); // 有選 → 自訂
+              if (!id) await loadLine(); else await loadLineByDefinition(id);
             });
           }
-
           if (btnEdit){
             btnEdit.addEventListener('click', ()=>{
               const id = (ddl && ddl.value) || '';
               if (!id){ alert('請先在折線圖下拉選擇一筆自訂報表'); return; }
-              window.location.href = '@Url.Action("Edit", "ReportDefinitions", new { area = "ReportMail" })/' + id;
+              window.location.href = '@urlEditDefBase/' + id;
             });
           }
-
           if (btnDel){
             btnDel.addEventListener('click', ()=>{
               const id = (ddl && ddl.value) || '';
-              if (!id){ alert('請先在下拉選擇要刪除的報表'); return; }
-              window.location.href = '@Url.Action("Delete", "ReportDefinitions", new { area = "ReportMail" })/' + id;
+              if (!id){ alert('請先在折線圖下拉選擇要刪除的報表'); return; }
+              window.location.href = '@urlDelDefBase/' + id;
             });
           }
         })();
-        // ======== 長條圖 ========
-        function renderBar(labels, data, title){
-            const canvas = document.getElementById('chartBar');
-            if (!canvas) return;
-            if (window._barChart && typeof window._barChart.destroy === 'function') {
-            window._barChart.destroy();
-            }
-            window._barChart = new Chart(canvas, {
-            type: 'bar',
-            data: { labels: labels || [], datasets: [{ label: title || '長條圖', data: data || [] }] },
-            options: { responsive: true, scales: { y: { beginAtZero: true } } }
-            });
-        }
-
-        // 預設長條圖（ReportsController.Bar）
-        async function loadBar(){
-            try{
-            const res = await fetch('@apiBar');
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            const json = await res.json();
-            renderBar(json.labels || [], json.data || [], json.title || '預設長條圖');
-            }catch(err){
-            console.error('loadBar failed:', err);
-            renderBar([], [], '預設長條圖（載入失敗）');
-            }
-        }
-
-        // 自訂（bar）：DefinitionPayload -> PreviewDraft -> 畫圖
-        async function loadBarByDefinition(defId){
-            try{
-            // 1) 取定義
-            const defUrl = '@apiDefPayload' + '?id=' + encodeURIComponent(defId) + '&t=' + Date.now();
-            const resDef = await fetch(defUrl, { cache: 'no-store' });
-            if (!resDef.ok) throw new Error('DefinitionPayload HTTP ' + resDef.status);
-            const def = await resDef.json();
-
-            // 2) 檢查種類/來源
-            const category = ((def.category ?? def.Category) || '').toString().trim().toLowerCase();
-            if (category !== 'bar'){ alert('此報表不是長條圖類型'); return; }
-            const kind = ((def.baseKind ?? def.BaseKind) || '').toString().trim().toLowerCase();
-
-            // 3) filters 轉為後端可吃的鍵名
-            const defFilters = def.filters ?? def.Filters ?? [];
-            const req = {
-                Category: 'bar',
-                BaseKind: kind,
-                Filters: (defFilters || []).map(f => ({
-                FieldName:    f.fieldName    ?? f.FieldName,
-                Operator:     f.operator     ?? f.Operator,
-                DataType:     f.dataType     ?? f.DataType,
-                ValueJson:    f.valueJson    ?? f.ValueJson ?? null,
-                DefaultValue: f.defaultValue ?? f.DefaultValue ?? null,
-                Options:      f.options      ?? f.Options ?? null
-                }))
-            };
-
-            // 4) 預覽
-            const prevUrl = '@apiPreview' + '?t=' + Date.now();
-            const resPrev = await fetch(prevUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-                body: JSON.stringify(req),
-                cache: 'no-store'
-            });
-            if (!resPrev.ok) throw new Error('PreviewDraft HTTP ' + resPrev.status);
-            const json = await resPrev.json();
-
-            // 5) 相容兩種回傳格式：series 或 labels/data
-            let labels = [], data = [], title = json.title || '長條圖';
-            if (Array.isArray(json.labels) && Array.isArray(json.data)) {
-                labels = json.labels; data = json.data;
-            } else {
-                const s = json.series || json.Series || [];
-                labels = s.map(p => p.label ?? p.name ?? '');
-                data   = s.map(p => Number(p.value ?? p.y ?? 0));
-            }
-            renderBar(labels, data, title);
-            }catch(err){
-            console.error('loadBarByDefinition failed:', err);
-            renderBar([], [], '載入失敗');
-            }
-        }
 
         (function bindBarUI(){
-            const ddl     = document.getElementById('ddlBar');
-            const btnEdit = document.getElementById('btnEditBar');
-            const btnDel  = document.getElementById('btnDelBar');
-
-            if (ddl){
+          const ddl = document.getElementById('ddlBar');
+          const btnEdit = document.getElementById('btnEditBar');
+          const btnDel  = document.getElementById('btnDelBar');
+          if (ddl){
             ddl.addEventListener('change', ()=>{
-                const id = ddl.value || '';
-                if (!id) loadBar(); else loadBarByDefinition(id);
+              const id = ddl.value || '';
+              if (!id) loadBar(); else loadBarByDefinition(id);
             });
-            }
-            if (btnEdit){
+          }
+          if (btnEdit){
             btnEdit.addEventListener('click', ()=>{
-                const id = (ddl && ddl.value) || '';
-                if (!id){ alert('請先在長條圖下拉選擇一筆自訂報表'); return; }
-                window.location.href = '@urlEditDefBase/' + id;
+              const id = (ddl && ddl.value) || '';
+              if (!id){ alert('請先在長條圖下拉選擇一筆自訂報表'); return; }
+              window.location.href = '@urlEditDefBase/' + id;
             });
-            }
-            if (btnDel){
+          }
+          if (btnDel){
             btnDel.addEventListener('click', ()=>{
-                const id = (ddl && ddl.value) || '';
-                if (!id){ alert('請先在長條圖下拉選擇一筆自訂報表'); return; }
-                window.location.href = '@urlDelDefBase/' + id;
+              const id = (ddl && ddl.value) || '';
+              if (!id){ alert('請先在長條圖下拉選擇要刪除的自訂報表'); return; }
+              window.location.href = '@urlDelDefBase/' + id;
             });
-            }
+          }
         })();
-
-        // ======== 圓餅圖 ========
-        function renderPie(labels, data, title){
-            const canvas = document.getElementById('chartPie');
-            if (!canvas) return;
-            if (window._pieChart && typeof window._pieChart.destroy === 'function') {
-            window._pieChart.destroy();
-            }
-            window._pieChart = new Chart(canvas, {
-            type: 'pie',
-            data: { labels: labels || [], datasets: [{ label: title || '圓餅圖', data: data || [] }] },
-            options: { responsive: true }
-            });
-        }
-
-        async function loadPie(){
-            try{
-            const res = await fetch('@apiPie');
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            const json = await res.json();
-            renderPie(json.labels || [], json.data || [], json.title || '預設圓餅圖');
-            }catch(err){
-            console.error('loadPie failed:', err);
-            renderPie([], [], '預設圓餅圖（載入失敗）');
-            }
-        }
-
-        async function loadPieByDefinition(defId){
-            try{
-            const defUrl = '@apiDefPayload' + '?id=' + encodeURIComponent(defId) + '&t=' + Date.now();
-            const resDef = await fetch(defUrl, { cache: 'no-store' });
-            if (!resDef.ok) throw new Error('DefinitionPayload HTTP ' + resDef.status);
-            const def = await resDef.json();
-
-            const category = ((def.category ?? def.Category) || '').toString().trim().toLowerCase();
-            if (category !== 'pie'){ alert('此報表不是圓餅圖類型'); return; }
-            const kind = ((def.baseKind ?? def.BaseKind) || '').toString().trim().toLowerCase();
-
-            const defFilters = def.filters ?? def.Filters ?? [];
-            const req = {
-                Category: 'pie',
-                BaseKind: kind,
-                Filters: (defFilters || []).map(f => ({
-                FieldName:    f.fieldName    ?? f.FieldName,
-                Operator:     f.operator     ?? f.Operator,
-                DataType:     f.dataType     ?? f.DataType,
-                ValueJson:    f.valueJson    ?? f.ValueJson ?? null,
-                DefaultValue: f.defaultValue ?? f.DefaultValue ?? null,
-                Options:      f.options      ?? f.Options ?? null
-                }))
-            };
-
-            const prevUrl = '@apiPreview' + '?t=' + Date.now();
-            const resPrev = await fetch(prevUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-                body: JSON.stringify(req),
-                cache: 'no-store'
-            });
-            if (!resPrev.ok) throw new Error('PreviewDraft HTTP ' + resPrev.status);
-            const json = await resPrev.json();
-
-            let labels = [], data = [], title = json.title || '圓餅圖';
-            if (Array.isArray(json.labels) && Array.isArray(json.data)) {
-                labels = json.labels; data = json.data;
-            } else {
-                const s = json.series || json.Series || [];
-                labels = s.map(p => p.label ?? p.name ?? '');
-                data   = s.map(p => Number(p.value ?? p.y ?? 0));
-            }
-            renderPie(labels, data, title);
-            }catch(err){
-            console.error('loadPieByDefinition failed:', err);
-            renderPie([], [], '載入失敗');
-            }
-        }
 
         (function bindPieUI(){
-            const ddl     = document.getElementById('ddlPie');
-            const btnEdit = document.getElementById('btnEditPie');
-            const btnDel  = document.getElementById('btnDelPie');
-
-            if (ddl){
+          const ddl = document.getElementById('ddlPie');
+          const btnEdit = document.getElementById('btnEditPie');
+          const btnDel  = document.getElementById('btnDelPie');
+          if (ddl){
             ddl.addEventListener('change', ()=>{
-                const id = ddl.value || '';
-                if (!id) loadPie(); else loadPieByDefinition(id);
+              const id = ddl.value || '';
+              if (!id) loadPie(); else loadPieByDefinition(id);
             });
-            }
-            if (btnEdit){
+          }
+          if (btnEdit){
             btnEdit.addEventListener('click', ()=>{
-                const id = (ddl && ddl.value) || '';
-                if (!id){ alert('請先在圓餅圖下拉選擇一筆自訂報表'); return; }
-                window.location.href = '@urlEditDefBase/' + id;
+              const id = (ddl && ddl.value) || '';
+              if (!id){ alert('請先在圓餅圖下拉選擇一筆自訂報表'); return; }
+              window.location.href = '@urlEditDefBase/' + id;
             });
-            }
-            if (btnDel){
+          }
+          if (btnDel){
             btnDel.addEventListener('click', ()=>{
-                const id = (ddl && ddl.value) || '';
-                if (!id){ alert('請先在圓餅圖下拉選擇一筆自訂報表'); return; }
-                window.location.href = '@urlDelDefBase/' + id;
+              const id = (ddl && ddl.value) || '';
+              if (!id){ alert('請先在圓餅圖下拉選擇要刪除的自訂報表'); return; }
+              window.location.href = '@urlDelDefBase/' + id;
             });
-            }
+          }
         })();
 
-        // === 首次載入：顯示預設折線圖 ===
+        // === 首次載入 ===
         document.addEventListener('DOMContentLoaded', ()=>{
-            loadLine();
-            loadBar();
-            loadPie();
+          loadLine(); loadBar(); loadPie();
         });
+    </script>
+
+    <script>
+        // === 匯出 payload ===
+        function getChartPayloadLine(email){
+          const c = window._lineChart;
+          const ddl = document.getElementById('ddlLine');
+          const selectedText = ddl?.options[ddl.selectedIndex]?.text
+                             || '（預設報表）近30日每日銷售金額';
+          return {
+            Category:    'line',
+            BaseKind:    window._lineBaseKind,
+            Granularity: window._lineGranularity,  // ← 這裡會是 year / month / day
+            ValueMetric: window._lineValueMetric,  // amount / count / quantity
+            Title:       selectedText,
+            SubTitle:    `匯出日期：${new Date().toLocaleString()}`,
+            Labels:      c?.data?.labels ?? [],
+            Values:      c?.data?.datasets?.[0]?.data ?? [],
+            To:          email
+          };
+        }
+
+        function getChartPayloadBar(email){
+          const c = window._barChart;
+          const ddl = document.getElementById('ddlBar');
+          const selectedText = ddl?.options[ddl.selectedIndex]?.text
+                             || '（預設報表）近30日書籍銷售Top10';
+          return {
+            Category:    'bar',
+            BaseKind:    window._barBaseKind,
+            ValueMetric: window._barValueMetric,
+            Title:       selectedText,
+            SubTitle:    `匯出日期：${new Date().toLocaleString()}`,
+            Labels:      c?.data?.labels ?? [],
+            Values:      c?.data?.datasets?.[0]?.data ?? [],
+            To:          email
+          };
+        }
+
+        function getChartPayloadPie(email){
+          const c = window._pieChart;
+          const ddl = document.getElementById('ddlPie');
+          const selectedText = ddl?.options[ddl.selectedIndex]?.text
+                             || '（預設報表）近30日書籍借閱種類Top5';
+          return {
+            Category:    'pie',
+            BaseKind:    window._pieBaseKind,
+            ValueMetric: window._pieValueMetric,
+            Title:       selectedText,
+            SubTitle:    `匯出日期：${new Date().toLocaleString()}`,
+            Labels:      c?.data?.labels ?? [],
+            Values:      c?.data?.datasets?.[0]?.data ?? [],
+            To:          email
+          };
+        }
+
+        async function postExcel(payload){
+          const url = '@Url.Action("SendExcel", "ReportExport", new { area = "ReportMail" })';
+          const res = await fetch(url, {
+            method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('寄送失敗：' + await res.text());
+        }
+
+        (function bindExportButtons(){
+          const lineBtn = document.getElementById('btnExportLine');
+          const barBtn  = document.getElementById('btnExportBar');
+          const pieBtn  = document.getElementById('btnExportPie');
+
+          async function askEmailAndSend(buildPayload){
+            const email = prompt('請輸入要寄送的電子郵件：');
+            if (!email) return;
+            try{ await postExcel(buildPayload(email)); alert('✅ 已寄出，請到信箱查收'); }
+            catch(err){ console.error(err); alert('❌ ' + err.message); }
+          }
+
+          if (lineBtn) lineBtn.addEventListener('click', ()=> askEmailAndSend(getChartPayloadLine));
+          if (barBtn)  barBtn .addEventListener('click', ()=> askEmailAndSend(getChartPayloadBar));
+          if (pieBtn)  pieBtn .addEventListener('click', ()=> askEmailAndSend(getChartPayloadPie));
+        })();
     </script>
 }
