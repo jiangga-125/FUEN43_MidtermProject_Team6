@@ -42,11 +42,21 @@ namespace ReportMail.Areas.ReportMail.Controllers
             return View(reportDefinition);
         }
 
-        // GET: ReportMail/ReportDefinitions/Create
-        public IActionResult Create() => View();
+		// GET: ReportMail/ReportDefinitions/Create
+		public IActionResult Create(string? category)
+		{
+			var model = new ReportDefinition();
+			if (!string.IsNullOrWhiteSpace(category))
+			{
+				var c = category.Trim().ToLowerInvariant();
+				if (c == "line" || c == "bar" || c == "pie")
+					model.Category = c; // 讓 Create.cshtml 的 <select asp-for="Category"> 預設選到對應項目
+			}
+			return View(model);
+		}
 
-        // 用來承接前端 FiltersJson 的草稿 DTO（只保留 ValueJson）
-        private class ReportFilterDraft
+		// 用來承接前端 FiltersJson 的草稿 DTO（只保留 ValueJson）
+		private class ReportFilterDraft
         {
             public string? FieldName { get; set; }
             public string? DisplayName { get; set; }
@@ -134,8 +144,8 @@ namespace ReportMail.Areas.ReportMail.Controllers
                 }
             }
 
-            return RedirectToAction(nameof(Index));
-        }
+			return RedirectToAction("Index", "Reports", new { area = "ReportMail" });
+		}
 
         // GET: ReportMail/ReportDefinitions/Edit/5
         public async Task<IActionResult> Edit(int? id)
@@ -205,8 +215,8 @@ namespace ReportMail.Areas.ReportMail.Controllers
                     await _context.SaveChangesAsync();
                 }
                 await tx.CommitAsync();
-                return RedirectToAction(nameof(Index));
-            }
+				return RedirectToAction("Index", "Reports", new { area = "ReportMail" });
+			}
             catch (DbUpdateConcurrencyException)
             {
                 await tx.RollbackAsync();
@@ -241,8 +251,8 @@ namespace ReportMail.Areas.ReportMail.Controllers
                 _context.ReportDefinitions.Remove(reportDefinition);
                 await _context.SaveChangesAsync();
             }
-            return RedirectToAction(nameof(Index));
-        }
+			return RedirectToAction("Index", "Reports", new { area = "ReportMail" });
+		}
 
         // 供主頁下拉載入自訂「折線圖」報表所需參數：Category + BaseKind + Filters（只含 ValueJson）
         [HttpGet]

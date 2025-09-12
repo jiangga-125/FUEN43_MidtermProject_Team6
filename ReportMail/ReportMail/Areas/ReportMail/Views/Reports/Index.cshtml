@@ -41,7 +41,7 @@
             </div>
             <div class="d-flex gap-2">
                 <button id="btnExportLine" class="btn btn-sm btn-success">匯出</button>
-                <a class="btn btn-sm btn-primary" href="@urlCreateDef">新增</a>
+                <a class="btn btn-sm btn-primary" href="@($"{urlCreateDef}?category=line")">新增</a>
                 <button id="btnEditLine" class="btn btn-sm btn-outline-secondary">編輯</button>
                 <button id="btnDelLine" class="btn btn-sm btn-outline-danger">刪除</button>
             </div>
@@ -69,7 +69,7 @@
                     </div>
                     <div class="d-flex gap-2">
                         <button id="btnExportBar" class="btn btn-sm btn-success">匯出</button>
-                        <a class="btn btn-sm btn-primary" href="@urlCreateDef">新增</a>
+                        <a class="btn btn-sm btn-primary" href="@($"{urlCreateDef}?category=bar")">新增</a>
                         <button id="btnEditBar" class="btn btn-sm btn-outline-secondary">編輯</button>
                         <button id="btnDelBar" class="btn btn-sm btn-outline-danger">刪除</button>
                     </div>
@@ -97,7 +97,7 @@
                     </div>
                     <div class="d-flex gap-2">
                         <button id="btnExportPie" class="btn btn-sm btn-success">匯出</button>
-                        <a class="btn btn-sm btn-primary" href="@urlCreateDef">新增</a>
+                        <a class="btn btn-sm btn-primary" href="@($"{urlCreateDef}?category=pie")">新增</a>
                         <button id="btnEditPie" class="btn btn-sm btn-outline-secondary">編輯</button>
                         <button id="btnDelPie" class="btn btn-sm btn-outline-danger">刪除</button>
                     </div>
@@ -110,6 +110,13 @@
         </div>
     </div>
 </div>
+<form id="defDeleteForm"
+      method="post"
+      action="@Url.Action("Delete", "ReportDefinitions", new { area = "ReportMail" })"
+      style="display:none">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" id="defDeleteId" />
+</form>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -167,10 +174,10 @@
         // === 通用工具 ===
         const lower = s => (s ?? '').toString().trim().toLowerCase();
 
-        // ★★★ 顆粒度同步：支援兩種來源（專用 Granularity 濾鏡；或「日期型」濾鏡的 ValueJson.gran）
+        // 顆粒度同步：支援兩種來源（專用 Granularity 濾鏡；或「日期型」濾鏡的 ValueJson.gran）
         function trySyncGranularityFromFilters(filters){
           try{
-            // 1) 專用 Granularity 濾鏡（若你有這種）
+            // 1) 專用 Granularity 濾鏡
             const g1 = (filters||[]).find(f => {
               const n = lower(f.FieldName ?? f.fieldName);
               return n === 'granularity' || n === 'dategranularity';
@@ -457,10 +464,18 @@
         }
 
         // === 綁定 ===
+        //刪除動作
+        function confirmAndDelete(id, where){
+        if (!id){ alert(`請先在${where}下拉選擇要刪除的自訂報表`); return; }
+        if (!confirm('確定要刪除此自訂報表嗎？此動作無法復原。')) return;
+        document.getElementById('defDeleteId').value = id;
+        document.getElementById('defDeleteForm').submit();
+        }
         (function bindLineUI(){
           const ddl = document.getElementById('ddlLine');
           const btnEdit = document.getElementById('btnEditLine');
           const btnDel  = document.getElementById('btnDelLine');
+
           if (ddl){
             ddl.addEventListener('change', async (e)=>{
               const id = e.target.value;
@@ -477,8 +492,7 @@
           if (btnDel){
             btnDel.addEventListener('click', ()=>{
               const id = (ddl && ddl.value) || '';
-              if (!id){ alert('請先在折線圖下拉選擇要刪除的報表'); return; }
-              window.location.href = '@urlDelDefBase/' + id;
+              confirmAndDelete(id, '折線圖');
             });
           }
         })();
@@ -503,8 +517,7 @@
           if (btnDel){
             btnDel.addEventListener('click', ()=>{
               const id = (ddl && ddl.value) || '';
-              if (!id){ alert('請先在長條圖下拉選擇要刪除的自訂報表'); return; }
-              window.location.href = '@urlDelDefBase/' + id;
+              confirmAndDelete(id, '長條圖');
             });
           }
         })();
@@ -529,8 +542,7 @@
           if (btnDel){
             btnDel.addEventListener('click', ()=>{
               const id = (ddl && ddl.value) || '';
-              if (!id){ alert('請先在圓餅圖下拉選擇要刪除的自訂報表'); return; }
-              window.location.href = '@urlDelDefBase/' + id;
+              confirmAndDelete(id, '圓餅圖');
             });
           }
         })();
