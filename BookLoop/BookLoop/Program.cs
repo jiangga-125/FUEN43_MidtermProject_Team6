@@ -1,6 +1,7 @@
 using BookLoop.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using BookLoop.Ordersys.Models;
 
 namespace BookLoop
 {
@@ -16,7 +17,10 @@ namespace BookLoop
                 options.UseSqlServer(connectionString));
             builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-            builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+			builder.Services.AddDbContext<OrdersysContext>(options =>
+	            options.UseSqlServer(builder.Configuration.GetConnectionString("Ordersys"))); // ·s¼W
+
+			builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             builder.Services.AddControllersWithViews();
 

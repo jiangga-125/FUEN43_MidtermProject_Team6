@@ -1,0 +1,272 @@
+﻿@model IEnumerable<BookLoop.Ordersys.Models.Order>
+
+@{
+    ViewData["Title"] = "Index";
+}
+@section Styles {
+    <style>
+        th.head-width, td.head-width {
+            width: 140px;
+            
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* 訂單滑鼠移上去變色*/
+        .table tbody tr:hover {
+            background-color: #f0f8ff; /* 淡藍色，可換顏色 */
+            cursor: pointer; /* 滑鼠變成手型，更直覺 */
+            transition: background-color 0.3s ease; /* 平滑過渡 */
+        }
+
+        /* 新增按鈕CSS*/
+        .btn-new {
+            width: 200px; /* 寬度 */
+            border: 2px solid #28a745; /* 跟 btn-success 顏色一致 */
+            background-color: #eaf9ee; /* 框內淺綠色 */
+            color: #28a745; /* 文字顏色 */
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-new:hover {
+            background-color: #28a745; /* 滑鼠移上去變深綠 */
+            color: white;
+        }
+
+
+
+    </style>
+}
+
+
+<div class="text-center">
+<h1 class="border-2">訂單</h1>
+
+
+    @if (TempData["Success"] != null)
+    {
+            <div class="alert alert-success">@TempData["Success"]</div>
+        }
+
+    <div class="d-flex justify-content-between mb-3">
+        <form asp-action="Index" method="get" class="d-flex">
+            <input type="number" name="searchOrderId" class="form-control me-2"
+                   placeholder="搜尋 OrderID" value="@ViewContext.HttpContext.Request.Query["searchOrderId"]">
+            <button type="submit" class="btn btn-primary" style="width:100px;">搜尋</button>
+        </form>
+    </div>
+
+<p>
+        <a asp-action="Create" class="btn btn-new">新增</a>
+</p>
+    <div class="d-flex justify-content-center">
+        <table class="table" style="table-layout: fixed; width:100%;">
+    <thead>
+        <tr>
+            <th class="head-width">
+                @Html.DisplayNameFor(model => model.OrderId)
+            </th>
+            <th class="head-width">
+                @Html.DisplayNameFor(model => model.OrderDate)
+            </th>
+            <th class="head-width">
+                @Html.DisplayNameFor(model => model.TotalAmount)
+            </th>
+            <th class="head-width">
+                @Html.DisplayNameFor(model => model.Status)
+            </th>
+            @*  <th class="head-width">
+                @Html.DisplayNameFor(model => model.DiscountAmount)
+            </th> *@
+             <th class="head-width">
+                @Html.DisplayNameFor(model => model.DiscountCode)
+            </th>
+             
+            @*  <th class="head-width">
+                @Html.DisplayNameFor(model => model.MemberCouponId)
+            </th> *@
+             <th class="head-width">
+                @Html.DisplayNameFor(model => model.CouponTypeSnap)
+            </th>
+            @* <th class="head-width">
+                @Html.DisplayNameFor(model => model.CouponValueSnap)
+            </th> *@
+            <th class="head-width">
+                @Html.DisplayNameFor(model => model.CouponNameSnap)
+            </th>
+            <th class="head-width">
+                @Html.DisplayNameFor(model => model.CouponDiscountAmount)
+            </th>
+            <th class="head-width">
+                @Html.DisplayNameFor(model => model.Customer)
+            </th>
+
+             <th class="head-width">
+                 物流資訊
+             </th>
+             <th class="head-width">
+                   租借書籍資訊
+             </th>
+
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr class="order-row" data-id="@item.OrderId">
+
+                        <td>
+                            @Html.DisplayFor(modelItem => item.OrderId)
+                        </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.OrderDate)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.TotalAmount)
+            </td>
+            <td>
+                            @{
+                                string statusText = item.Status switch
+                                {
+                                    0 => "待付款",
+                                    1 => "已下訂",
+                                    2 => "已出貨",
+                                    3 => "完成訂單",
+                                    4 => "已取消",
+                                    _ => "未知狀態"
+                                };
+                            }
+                            @statusText
+            </td>
+            @* <td>
+                @Html.DisplayFor(modelItem => item.DiscountAmount)
+            </td> *@
+            <td>
+                @Html.DisplayFor(modelItem => item.DiscountCode)
+            </td>
+     
+            @* <td>
+                @Html.DisplayFor(modelItem => item.MemberCouponId)
+            </td> *@
+            <td>
+                @Html.DisplayFor(modelItem => item.CouponTypeSnap)
+            </td>
+            @* <td>
+                @Html.DisplayFor(modelItem => item.CouponValueSnap)
+            </td> *@
+            <td>
+                @Html.DisplayFor(modelItem => item.CouponNameSnap)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CouponDiscountAmount)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Customer.CustomerId)
+            </td>
+                        <td>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                    data-bs-target="#shipmentModal" data-orderid="@item.OrderId">
+                                查看物流
+                            </button>
+                        </td>
+                       <td>
+                        <a asp-controller="Rentals" asp-action="ByID" asp-route-orderId="@item.OrderId" class="btn btn-secondary">
+                            查看租借書籍
+                        </a>
+                        </td>
+
+                        <td class="d-flex flex-column">
+                            <a asp-action="Edit" asp-route-id="@item.OrderId" class="btn btn-success mb-2" style="width:100px;">修改</a>
+                            <a asp-action="Details" asp-route-id="@item.OrderId" class="btn btn-info mb-2" style="width:100px;">詳細資訊</a>
+                            <a asp-action="OrderDetails" asp-route-id="@item.OrderId" class="btn btn-warning mb-2" style="width:100px;">訂單明細</a>
+                            <a asp-action="Delete" asp-route-id="@item.OrderId" class="btn btn-danger" style="width:100px;">刪除</a>
+                        </td>
+        </tr>
+}
+    </tbody>
+</table>
+    </div>
+</div>
+
+@* 分頁 *@
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div>
+        顯示第 @(((ViewBag.CurrentPage - 1) * ViewBag.PageSize) + 1)
+        到 @(Math.Min(ViewBag.CurrentPage * ViewBag.PageSize, ViewBag.TotalCount)) 筆，
+        共 @ViewBag.TotalCount 筆
+    </div>
+
+    <nav>
+        <ul class="pagination mb-0">
+            <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-page="@(ViewBag.CurrentPage - 1)"
+                   asp-route-searchOrderId="@ViewContext.HttpContext.Request.Query["searchOrderId"]">上一頁</a>
+            </li>
+
+            @{
+                int startPage = Math.Max(1, ViewBag.CurrentPage - 2);
+                int endPage = Math.Min(ViewBag.TotalPages, ViewBag.CurrentPage + 2);
+            }
+
+            @for (int i = startPage; i <= endPage; i++)
+            {
+                <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                    <a class="page-link"
+                       asp-action="Index"
+                       asp-route-page="@i"
+                       asp-route-searchOrderId="@ViewContext.HttpContext.Request.Query["searchOrderId"]">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-page="@(ViewBag.CurrentPage + 1)"
+                   asp-route-searchOrderId="@ViewContext.HttpContext.Request.Query["searchOrderId"]">下一頁</a>
+            </li>
+        </ul>
+    </nav>
+</div>
+
+@* 物流modal *@
+<div class="modal fade" id="shipmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">物流資訊</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="shipmentContent">
+                載入中...
+            </div>
+        </div>
+    </div>
+</div>
+@section Scripts{
+    <script>
+
+
+        $(document).ready(function() {
+            $('#shipmentModal').on('show.bs.modal', function (event) {
+                var button = $(event.relatedTarget);
+                var orderId = button.data('orderid');
+                var modal = $(this);
+                modal.find('#shipmentContent').load('/Shipments/DetailsByOrder?orderId=' + orderId);
+            });
+        });
+
+
+
+       
+        $(document).on("click", ".order-row", function (e) {
+            // 如果點到按鈕或超連結，就不要觸發
+            if (!$(e.target).closest("a, button").length) {
+                var orderId = $(this).data("id");
+                window.location = '/Orders/OrderDetails/' + orderId;
+            }
+        });
+
+    </script>
+}
