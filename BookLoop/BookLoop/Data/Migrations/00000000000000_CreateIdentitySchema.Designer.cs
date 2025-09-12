@@ -10,20 +10,20 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BookLoop.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("00000000000000_CreateIdentitySchema")]
-    partial class CreateIdentitySchema
+    [Migration("00000000000000_CreateIDentitySchema")]
+    partial class CreateIDentitySchema
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "3.0.0")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128)
+                .HasAnnotation("Relational:MaxIDentifierLength", 128)
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.IDentity.IDentityRole", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<string>("ID")
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("ConcurrencyStamp")
@@ -38,7 +38,7 @@ namespace BookLoop.Data.Migrations
                         .HasColumnType("nvarchar(256)")
                         .HasMaxLength(256);
 
-                    b.HasKey("Id");
+                    b.HasKey("ID");
 
                     b.HasIndex("NormalizedName")
                         .IsUnique()
@@ -48,9 +48,9 @@ namespace BookLoop.Data.Migrations
                     b.ToTable("AspNetRoles");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.IDentity.IDentityRoleClaim<string>", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("ID")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
@@ -61,20 +61,20 @@ namespace BookLoop.Data.Migrations
                     b.Property<string>("ClaimValue")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("RoleId")
+                    b.Property<string>("RoleID")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.HasKey("Id");
+                    b.HasKey("ID");
 
-                    b.HasIndex("RoleId");
+                    b.HasIndex("RoleID");
 
                     b.ToTable("AspNetRoleClaims");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUser", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.IDentity.IDentityUser", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<string>("ID")
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("AccessFailedCount")
@@ -124,7 +124,7 @@ namespace BookLoop.Data.Migrations
                         .HasColumnType("nvarchar(256)")
                         .HasMaxLength(256);
 
-                    b.HasKey("Id");
+                    b.HasKey("ID");
 
                     b.HasIndex("NormalizedEmail")
                         .HasName("EmailIndex");
@@ -137,9 +137,9 @@ namespace BookLoop.Data.Migrations
                     b.ToTable("AspNetUsers");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.IDentity.IDentityUserClaim<string>", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("ID")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
@@ -150,18 +150,18 @@ namespace BookLoop.Data.Migrations
                     b.Property<string>("ClaimValue")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("UserId")
+                    b.Property<string>("UserID")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.HasKey("Id");
+                    b.HasKey("ID");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserID");
 
                     b.ToTable("AspNetUserClaims");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.IDentity.IDentityUserLogin<string>", b =>
                 {
                     b.Property<string>("LoginProvider")
                         .HasColumnType("nvarchar(128)")
@@ -174,35 +174,35 @@ namespace BookLoop.Data.Migrations
                     b.Property<string>("ProviderDisplayName")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("UserId")
+                    b.Property<string>("UserID")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("LoginProvider", "ProviderKey");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserID");
 
                     b.ToTable("AspNetUserLogins");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.IDentity.IDentityUserRole<string>", b =>
                 {
-                    b.Property<string>("UserId")
+                    b.Property<string>("UserID")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("RoleId")
+                    b.Property<string>("RoleID")
                         .HasColumnType("nvarchar(450)");
 
-                    b.HasKey("UserId", "RoleId");
+                    b.HasKey("UserID", "RoleID");
 
-                    b.HasIndex("RoleId");
+                    b.HasIndex("RoleID");
 
                     b.ToTable("AspNetUserRoles");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.IDentity.IDentityUserToken<string>", b =>
                 {
-                    b.Property<string>("UserId")
+                    b.Property<string>("UserID")
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("LoginProvider")
@@ -216,58 +216,58 @@ namespace BookLoop.Data.Migrations
                     b.Property<string>("Value")
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("UserId", "LoginProvider", "Name");
+                    b.HasKey("UserID", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.IDentity.IDentityRoleClaim<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
+                    b.HasOne("Microsoft.AspNetCore.IDentity.IDentityRole", null)
                         .WithMany()
-                        .HasForeignKey("RoleId")
+                        .HasForeignKey("RoleID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.IDentity.IDentityUserClaim<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("Microsoft.AspNetCore.IDentity.IDentityUser", null)
                         .WithMany()
-                        .HasForeignKey("UserId")
+                        .HasForeignKey("UserID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.IDentity.IDentityUserLogin<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("Microsoft.AspNetCore.IDentity.IDentityUser", null)
                         .WithMany()
-                        .HasForeignKey("UserId")
+                        .HasForeignKey("UserID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.IDentity.IDentityUserRole<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
+                    b.HasOne("Microsoft.AspNetCore.IDentity.IDentityRole", null)
                         .WithMany()
-                        .HasForeignKey("RoleId")
+                        .HasForeignKey("RoleID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("Microsoft.AspNetCore.IDentity.IDentityUser", null)
                         .WithMany()
-                        .HasForeignKey("UserId")
+                        .HasForeignKey("UserID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.IDentity.IDentityUserToken<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("Microsoft.AspNetCore.IDentity.IDentityUser", null)
                         .WithMany()
-                        .HasForeignKey("UserId")
+                        .HasForeignKey("UserID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

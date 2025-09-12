@@ -58,7 +58,7 @@
   const getUID = prefix => {
     do {
       prefix += Math.floor(Math.random() * MAX_UID);
-    } while (document.getElementById(prefix));
+    } while (document.getElementByID(prefix));
 
     return prefix;
   };
@@ -3728,10 +3728,10 @@
       }
 
       const tip = this.getTipElement();
-      const tipId = getUID(this.constructor.NAME);
-      tip.setAttribute('id', tipId);
+      const tipID = getUID(this.constructor.NAME);
+      tip.setAttribute('id', tipID);
 
-      this._element.setAttribute('aria-describedby', tipId);
+      this._element.setAttribute('aria-describedby', tipID);
 
       if (this._config.animation) {
         tip.classList.add(CLASS_NAME_FADE$2);

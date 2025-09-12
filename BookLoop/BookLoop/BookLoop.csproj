@@ -4,20 +4,26 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>aspnet-BookLoop-b499ba85-bb6e-4dff-9485-d687f36c80f0</UserSecretsId>
+    <UserSecretsID>aspnet-BookLoop-b499ba85-bb6e-4dff-9485-d687f36c80f0</UserSecretsID>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Services\**" />
+    <Content Remove="Services\**" />
+    <EmbeddedResource Remove="Services\**" />
+    <None Remove="Services\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.18" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.18" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.18" />
+    <PackageReference Include="Microsoft.AspNetCore.IDentity.EntityFrameworkCore" Version="8.0.18" />
+    <PackageReference Include="Microsoft.AspNetCore.IDentity.UI" Version="8.0.18" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.18" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.18" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Areas\Books\" />
-    <Folder Include="Services\" />
   </ItemGroup>
 
 </Project>
