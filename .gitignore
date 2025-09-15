@@ -1,0 +1,4 @@
+# 忽略 Visual Studio 暫存檔
+.vs/
+bin/
+obj/
