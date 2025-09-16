@@ -1,0 +1,205 @@
+﻿@{
+    ViewData["Title"] = "管理者總覽 - 報表";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var apiLine = Url.Action("Line", "Reports", new { area = "ReportMail" }) ?? "#";
+    var apiBar = Url.Action("Bar", "Reports", new { area = "ReportMail" }) ?? "#";
+    var apiPie = Url.Action("Pie", "Reports", new { area = "ReportMail" }) ?? "#";
+
+    var apiDefPayload = Url.Action("DefinitionPayload", "ReportDefinitions", new { area = "ReportMail" }) ?? "#";
+    var apiPreview = Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" }) ?? "#";
+    var apiDefsByPub = Url.Action("Definitions", "ReportsAdmin", new { area = "ReportMail" }) ?? "#";
+}
+
+<div class="container">
+    <!-- 只保留：Publisher + 日期 + 重新載入（不顯示粒度） -->
+    <div class="row g-3 align-items-end mb-2">
+        <div class="col-12 col-sm-4 col-md-3">
+            <label class="form-label">出版社</label>
+            <select id="publisherSelect" class="form-select">
+                <option value="">全部出版社</option>
+                @foreach (var id in (IEnumerable<int>)ViewBag.PublisherIds)
+                {
+                    <option value="@id">Publisher @id</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-12 col-sm-6 col-md-5">
+            <label class="form-label">日期區間</label>
+            <div class="d-flex gap-2">
+                <input id="start" type="date" class="form-control" />
+                <input id="end" type="date" class="form-control" />
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4 text-end">
+            <button class="btn btn-primary" id="btnReload">重新載入</button>
+        </div>
+    </div>
+
+    <!-- 版型與 Reports/Index 相同：左圓餅，右上折線，右下長條 -->
+    <div class="row g-3">
+        <div class="col-12 col-xl-6">
+            <div class="card h-100">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span>借閱書籍種類排行（前5名，近30日）</span>
+                    <select id="selPieDef" class="form-select form-select-sm" style="width:auto;max-width:60%">
+                        <option value="">— 自訂報表（圓餅） —</option>
+                    </select>
+                </div>
+                <div class="card-body" style="height:420px"><canvas id="pieChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <div class="row g-3">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <span>總銷售金額（每日，近30日）</span>
+                            <select id="selLineDef" class="form-select form-select-sm" style="width:auto;max-width:60%">
+                                <option value="">— 自訂報表（折線） —</option>
+                            </select>
+                        </div>
+                        <div class="card-body" style="height:260px"><canvas id="lineChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex align-items-center justify-content-between">
+                            <span>銷售書籍排行（前10名，近30日）</span>
+                            <select id="selBarDef" class="form-select form-select-sm" style="width:auto;max-width:60%">
+                                <option value="">— 自訂報表（長條） —</option>
+                            </select>
+                        </div>
+                        <div class="card-body" style="height:260px"><canvas id="barChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const api = {
+          line: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(apiLine)),
+          bar:  @Html.Raw(System.Text.Json.JsonSerializer.Serialize(apiBar)),
+          pie:  @Html.Raw(System.Text.Json.JsonSerializer.Serialize(apiPie)),
+          def:  @Html.Raw(System.Text.Json.JsonSerializer.Serialize(apiDefPayload)),
+          prev: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(apiPreview)),
+          defsByPub: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(apiDefsByPub))
+        };
+
+        const el = {
+          pub: document.getElementById('publisherSelect'),
+          s: document.getElementById('start'),
+          e: document.getElementById('end'),
+          reload: document.getElementById('btnReload'),
+          dd: { line: document.getElementById('selLineDef'), bar: document.getElementById('selBarDef'), pie: document.getElementById('selPieDef') }
+        };
+
+        // 預設近 30 日
+        const today = new Date(); today.setHours(0,0,0,0);
+        const d30 = new Date(today); d30.setDate(d30.getDate()-29);
+        el.s.valueAsDate = d30; el.e.valueAsDate = today;
+
+        let chart = { line: null, bar: null, pie: null };
+
+        // 不帶 granularity，交給後端用預設 day
+        function baseQs(kind){
+          const q = new URLSearchParams();
+          if (el.s.value) q.set('from', el.s.value);
+          if (el.e.value) q.set('to', el.e.value);
+          if (el.pub.value) q.set('publisherId', el.pub.value);
+          return q.toString();
+        }
+
+        async function drawChart(kind, url){
+          const res = await fetch(url, { cache:'no-store' });
+          if (!res.ok) { console.error('API error:', url); return; }
+          const data = await res.json();
+          const labels = data.labels || [];
+          const values = (data.data || data.values || []).map(v => typeof v === 'number' ? v : Number(v) || 0);
+          const ctx = document.getElementById(kind + 'Chart').getContext('2d');
+
+          if (chart[kind]) chart[kind].destroy();
+          chart[kind] = new Chart(ctx, {
+            type: (kind==='pie' ? 'pie' : (kind==='bar' ? 'bar':'line')),
+            data: { labels, datasets: [{ label: data.title || '數據', data: values, fill:false }] },
+            options: { responsive:true, maintainAspectRatio:false, scales: (kind==='pie'? {} : { y: { beginAtZero: true }}) }
+          });
+        }
+
+        async function loadDefaultCharts(){
+          await drawChart('line', `${api.line}?${baseQs('line')}`);
+          await drawChart('bar',  `${api.bar}?${baseQs('bar')}`);
+          await drawChart('pie',  `${api.pie}?${baseQs('pie')}`);
+        }
+
+        // 依 Publisher 取各類自訂報表清單
+        async function reloadDefDropdowns(){
+          await fillDef('line'); await fillDef('bar'); await fillDef('pie');
+        }
+        async function fillDef(cat){
+          const q = new URLSearchParams(); q.set('category', cat); if (el.pub.value) q.set('publisherId', el.pub.value);
+          const r = await fetch(`${api.defsByPub}?${q}`, { cache:'no-store' }); if (!r.ok) return;
+          const list = await r.json();
+          const dd = el.dd[cat];
+          dd.innerHTML = '';
+          dd.add(new Option(`— 自訂報表（${cat}） —`, ''));
+          list.forEach(x => dd.add(new Option(x.name, x.id)));
+        }
+
+        // 自訂報表預覽：照你的 Reports/Index 流程，僅在送出前插入目前 Publisher 篩選
+        function applyPublisherFilter(filters, publisherId){
+          const names = ['PublisherID','publisherId','publisher'];
+          const fs = (filters||[]).filter(f => !names.includes((f.FieldName||f.fieldName||'')+''));
+          if (publisherId){
+            fs.push({ FieldName:'PublisherID', DataType:'select', Operator:'in', ValueJson: JSON.stringify([Number(publisherId)]) });
+          }
+          return fs;
+        }
+
+        async function loadByDefinition(cat, defId){
+          if (!defId){ await loadDefaultCharts(); return; }
+          const r = await fetch(`${api.def}?id=${defId}`, { cache:'no-store' }); if (!r.ok) return;
+          const d = await r.json();
+
+          const payload = {
+            Category: cat,
+            BaseKind: d.baseKind || d.BaseKind || 'sales',
+            Filters:  applyPublisherFilter(d.filters || d.Filters || [], el.pub.value)
+          };
+          const pr = await fetch(api.prev, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+          if (!pr.ok) return;
+          const j = await pr.json();
+
+          const labels = Array.isArray(j.labels) ? j.labels : (j.series||[]).map(p => p.label ?? p.name ?? '');
+          const values = Array.isArray(j.data) ? j.data.map(v => Number(v)||0) : (j.series||[]).map(p => Number(p.value ?? p.y ?? 0));
+          const ctx = document.getElementById(cat+'Chart').getContext('2d');
+
+          if (chart[cat]) chart[cat].destroy();
+          chart[cat] = new Chart(ctx, {
+            type: (cat==='pie' ? 'pie' : (cat==='bar' ? 'bar':'line')),
+            data: { labels, datasets: [{ label: j.title || '預覽', data: values, fill:false }] },
+            options: { responsive:true, maintainAspectRatio:false, scales: (cat==='pie'? {} : { y: { beginAtZero: true }}) }
+          });
+        }
+
+        // events
+        el.reload.addEventListener('click', async () => { await loadDefaultCharts(); });
+        el.pub.addEventListener('change', async () => { await reloadDefDropdowns(); await loadDefaultCharts(); });
+        el.dd.line.addEventListener('change', (e) => loadByDefinition('line', e.target.value));
+        el.dd.bar .addEventListener('change', (e) => loadByDefinition('bar',  e.target.value));
+        el.dd.pie .addEventListener('change', (e) => loadByDefinition('pie',  e.target.value));
+
+        // init
+        (async function init(){
+          await reloadDefDropdowns();
+          await loadDefaultCharts();
+        })();
+    </script>
+}
