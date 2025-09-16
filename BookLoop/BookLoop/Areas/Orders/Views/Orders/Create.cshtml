@@ -1,0 +1,98 @@
+﻿@model BookLoop.Ordersys.Models.Order
+
+@{
+    ViewData["Title"] = "Create";
+}
+@{
+    var statusList = new List<SelectListItem>
+    {
+        new SelectListItem { Value = "0", Text = "待付款" },
+        new SelectListItem { Value = "1", Text = "已下訂" },
+        new SelectListItem { Value = "2", Text = "已出貨" },
+        new SelectListItem { Value = "3", Text = "完成訂單" },
+        new SelectListItem { Value = "4", Text = "已取消" }
+    };
+}
+
+<h1>新增訂單</h1>
+
+<h4></h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="All" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="CustomerID" class="control-label"></label> 
+                <select asp-for="CustomerID" class ="form-control" asp-items="ViewBag.CustomerID"></select>
+            </div>
+            <div class="form-group">
+                <label asp-for="OrderDate" class="control-label"></label> <span>(必填)</span>
+                <input asp-for="OrderDate" class="form-control" type="date" />
+                <span asp-validation-for="OrderDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TotalAmount" class="control-label"></label> <span>(必填)</span>
+                <input asp-for="TotalAmount" class="form-control" type="number" step="0.01" />
+                <span asp-validation-for="TotalAmount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Status" class="control-label"></label><span>(必填)</span>
+                <select asp-for="Status" class="form-select" asp-items="statusList">
+                </select>
+                <span asp-validation-for="Status" class="text-danger"></span>
+            </div>
+            @* <div class="form-group">
+                <label asp-for="DiscountAmount" class="control-label"></label>
+                <input asp-for="DiscountAmount" class="form-control" type="number" step="0.01" />
+                <span asp-validation-for="DiscountAmount" class="text-danger"></span>
+            </div> *@
+            <div class="form-group">
+                <label asp-for="DiscountCode" class="control-label"></label>
+                <input asp-for="DiscountCode" class="form-control" />
+                <span asp-validation-for="DiscountCode" class="text-danger"></span>
+            </div>
+            @* <div class="form-group">
+                <label asp-for="CreatedAt" class="control-label"></label>
+                <input asp-for="CreatedAt" class="form-control" />
+                <span asp-validation-for="CreatedAt" class="text-danger"></span>
+            </div> *@
+            @* <div class="form-group">
+                <label asp-for="MemberCouponID" class="control-label"></label>
+                <input asp-for="MemberCouponID" class="form-control" />
+                <span asp-validation-for="MemberCouponID" class="text-danger"></span>
+            </div> *@
+            <div class="form-group">
+                <label asp-for="CouponTypeSnap" class="control-label"></label>
+                <input asp-for="CouponTypeSnap" class="form-control" />
+                <span asp-validation-for="CouponTypeSnap" class="text-danger"></span>
+            </div>
+            @* <div class="form-group">
+                <label asp-for="CouponValueSnap" class="control-label"></label>
+                <input asp-for="CouponValueSnap" class="form-control" type="number" step="0.01" />
+                <span asp-validation-for="CouponValueSnap" class="text-danger"></span>
+            </div> *@
+            <div class="form-group">
+                <label asp-for="CouponNameSnap" class="control-label"></label>
+                <input asp-for="CouponNameSnap" class="form-control" />
+                <span asp-validation-for="CouponNameSnap" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CouponDiscountAmount" class="control-label"></label> <span>(必填)</span>
+                <input asp-for="CouponDiscountAmount" class="form-control" type="number" step="0.01" />
+                <span asp-validation-for="CouponDiscountAmount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary mb-2 mt-3" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index" class="btn btn-secondary">返回訂單列表</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
