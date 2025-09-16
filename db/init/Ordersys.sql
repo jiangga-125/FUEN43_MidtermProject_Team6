@@ -1,3 +1,5 @@
+-- CREATE DATABASE Ordersys;
+-- GO
 --USE [Ordersys]
 --GO
 /****** Object:  Table [dbo].[__EFMigrationsHistory]    Script Date: 2025/9/12 下午 02:54:46 ******/
@@ -255,3 +257,4 @@ REFERENCES [dbo].[Orders] ([OrderID])
 GO
 ALTER TABLE [dbo].[Shipments] CHECK CONSTRAINT [FK_Shipments_Orders]
 GO
+
