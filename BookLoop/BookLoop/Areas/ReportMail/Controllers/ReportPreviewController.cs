@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BookLoop.Data.Shop;
@@ -7,72 +6,13 @@ using System.Text.Json;
 namespace ReportMail.Areas.ReportMail.Controllers
 {
     [Area("ReportMail")]
-    [Authorize(Roles = "Admin,Marketing,Publisher")]
     [Route("ReportMail/[controller]/[action]")]
     public class ReportPreviewController : Controller
     {
         private readonly ShopDbContext _shop;
-        private readonly IPublisherScopeService _scope;
-        public ReportPreviewController(ShopDbContext shop, IPublisherScopeService scope)
-        {
-            _shop = shop;
-            _scope = scope;
-        }
+        public ReportPreviewController(ShopDbContext shop) => _shop = shop;
 
-        
-        // ===== Publisher 可視範圍與 UI 篩選的交集 =====
-        private static int[] ParsePublisherIdsFromFilters(List<FilterDraft>? filters)
-        {
-            if (filters == null) return Array.Empty<int>();
-            foreach (var f in filters)
-            {
-                var name = (f.FieldName ?? "").Trim().ToLowerInvariant();
-                if (name == "publisherid" || name == "publisherids" || name == "publisher")
-                {
-                    if (!string.IsNullOrWhiteSpace(f.ValueJson))
-                    {
-                        try
-                        {
-                            using var doc = JsonDocument.Parse(f.ValueJson);
-                            return doc.RootElement.EnumerateArray()
-                                      .Select(e => e.TryGetInt32(out var n) ? n : (int?)null)
-                                      .Where(n => n.HasValue).Select(n => n!.Value)
-                                      .Distinct().ToArray();
-                        }
-                        catch { }
-                    }
-                    if (!string.IsNullOrWhiteSpace(f.DefaultValue))
-                    {
-                        var arr = f.DefaultValue.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                .Select(s => int.TryParse(s, out var n) ? n : (int?)null)
-                                .Where(n => n.HasValue).Select(n => n!.Value)
-                                .Distinct().ToArray();
-                        return arr;
-                    }
-                }
-            }
-            return Array.Empty<int>();
-        }
-
-        private (bool limit, int[] ids) ResolveEffectivePublisherScope(PreviewReq dto)
-        {
-            // Admin/Marketing：不限制
-            if (_scope.IsAdminOrMarketing(User)) return (false, Array.Empty<int>());
-
-            // 一般員工（非書商）→ 直接無資料
-            if (!_scope.IsPublisher(User)) return (true, Array.Empty<int>());
-
-            // 書商： claims/對映表給的可視範圍
-            var allowed = _scope.GetPublisherIds(User) ?? Array.Empty<int>();
-            if (allowed.Length == 0) return (true, Array.Empty<int>());
-
-            // 與 UI 傳來的 Publisher 篩選取交集（若 UI 沒帶，就用 allowed）
-            var ui = ParsePublisherIdsFromFilters(dto.Filters);
-            if (ui.Length == 0) return (true, allowed.Distinct().ToArray());
-            var set = ui.Intersect(allowed).Distinct().ToArray();
-            return (true, set);
-        }
-    // ==== 前端請求 DTO（支援新舊兩種欄位）====
+        // ==== 前端請求 DTO（支援新舊兩種欄位）====
         public class PreviewReq
         {
             public string? Category { get; set; }   // line|bar|pie（目前用 line）
@@ -127,9 +67,6 @@ namespace ReportMail.Areas.ReportMail.Controllers
         {
             try
             {
-                // ★ 強制套用出版社可視範圍（Admin/Marketing 不限制；一般員工回空；書商取交集）
-                var (limitByPublisher, effPubIds) = ResolveEffectivePublisherScope(req);
-
                 var cat = (req.Category ?? "line").Trim().ToLowerInvariant();        // line/bar/pie（圖表型態）
                 var baseKind = (req.BaseKind ?? "sales").Trim().ToLowerInvariant();  // sales/borrow/orders（資料來源）
 
@@ -402,8 +339,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
 						var q = from br in _shop.BorrowRecords.AsNoTracking()
 								join l in _shop.Listings.AsNoTracking() on br.ListingID equals l.ListingID
 								where br.BorrowDate >= dateFrom && br.BorrowDate <= dateTo
-								select new { br.BorrowDate, l.CategoryID, l.Title, l.ISBN, l.PublisherID };
-                        if (limitByPublisher) q = q.Where(x => effPubIds.Contains(x.PublisherID));
+								select new { br.BorrowDate, l.CategoryID, l.Title, l.ISBN };
 
 						if (categoryIds.Any()) q = q.Where(x => categoryIds.Contains(x.CategoryID));
 
@@ -446,8 +382,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             join o in _shop.Orders on od.OrderID equals o.OrderID
                             join b in _shop.Books on od.BookID equals b.BookID
                             where o.OrderDate >= dateFrom && o.OrderDate <= dateTo
-                            select new { o.OrderDate, b.CategoryID, b.PublisherID, Price = (b.SalePrice ?? b.ListPrice), od.Quantity };
-                    if (limitByPublisher) q = q.Where(x => effPubIds.Contains(x.PublisherID));
+                            select new { o.OrderDate, b.CategoryID, Price = (b.SalePrice ?? b.ListPrice), od.Quantity };
 
                     if (categoryIds.Any()) q = q.Where(x => categoryIds.Contains(x.CategoryID));
                     if (priceMin.HasValue) q = q.Where(x => x.Price >= priceMin.Value);
@@ -564,14 +499,6 @@ namespace ReportMail.Areas.ReportMail.Controllers
                 {
                     var q = _shop.Orders.AsNoTracking()
                                 .Where(o => o.OrderDate >= dateFrom && o.OrderDate <= dateTo);
-                    if (limitByPublisher)
-                    {
-                        q = (from o in q
-                             join od in _shop.OrderDetails.AsNoTracking() on o.OrderID equals od.OrderID
-                             join b in _shop.Books.AsNoTracking() on od.BookID equals b.BookID
-                             where effPubIds.Contains(b.PublisherID)
-                             select o).Distinct();
-                    }
 
                     // 新：包含式（若前端有送 OrderStatus，優先用）
                     if (statusSpecifiedByInclude)

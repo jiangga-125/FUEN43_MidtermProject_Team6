@@ -18,6 +18,7 @@
   <ItemGroup>
     <Folder Include="Areas\Books\" />
     <Folder Include="Data\Contexts\" />
+    <Folder Include="Services\" />
   </ItemGroup>
 
 <ItemGroup>

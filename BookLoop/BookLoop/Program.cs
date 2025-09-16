@@ -34,12 +34,8 @@ namespace BookLoop
 					builder.Configuration.GetConnectionString("ShopConnection")
 					?? builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            // 權限服務(報表權限)
-            builder.Services.AddScoped<IPublisherScopeService, PublisherScopeService>();
-
-
-            // 報表服務
-            builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
+			// 報表服務
+			builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
 			builder.Services.AddScoped<ReportQueryBuilder>();
 
 
