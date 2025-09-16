@@ -246,27 +246,26 @@
 </div>
 @section Scripts{
     <script>
-
-
         $(document).ready(function() {
             $('#shipmentModal').on('show.bs.modal', function (event) {
-                var button = $(event.relatedTarget);
-                var orderID = button.data('orderid');
+                var button = $(event.relatedTarget);  // 取得點擊的按鈕
+                var orderID = button.data('orderid'); // 從按鈕抓 orderID
                 var modal = $(this);
-                modal.find('#shipmentContent').load('/Shipments/DetailsByOrder?orderID=' + orderID);
+
+                // 這裡就是放 URL
+                var url = '/Orders/Shipments/DetailsByOrder?orderID=' + orderID;
+
+                // 載入 PartialView
+                modal.find('#shipmentContent').load(url);
+            });
+
+            // 點行列跳轉訂單明細
+            $(document).on("click", ".order-row", function (e) {
+                if (!$(e.target).closest("a, button").length) {
+                    var orderID = $(this).data("id");
+                    window.location = '/Orders/OrderDetails/' + orderID;
+                }
             });
         });
-
-
-
-       
-        $(document).on("click", ".order-row", function (e) {
-            // 如果點到按鈕或超連結，就不要觸發
-            if (!$(e.target).closest("a, button").length) {
-                var orderID = $(this).data("id");
-                window.location = '/Orders/OrderDetails/' + orderID;
-            }
-        });
-
     </script>
 }

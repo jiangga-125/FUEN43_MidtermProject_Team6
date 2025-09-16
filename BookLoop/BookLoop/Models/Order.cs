@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -46,6 +47,7 @@ public partial class Order
 	public decimal CouponDiscountAmount { get; set; }
 
 	[Display(Name = "客戶ID號碼")]
+	[ValidateNever]
 	public virtual Customer Customer { get; set; } = null!;
 
     public virtual ICollection<OrderAddress> OrderAddresses { get; set; } = new List<OrderAddress>();
