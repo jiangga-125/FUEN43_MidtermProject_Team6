@@ -1,11 +1,12 @@
 using BookLoop.Data;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using BookLoop.Data.Shop;//報表暫時性保留
 using BookLoop.Data.Contexts;
+using BookLoop.Data.Shop;//報表暫時性保留
+using BookLoop.Ordersys.Models;
 using BookLoop.Services;
 using BookLoop.Services.Export;
 using BookLoop.Services.Reports;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 
 
@@ -21,6 +22,9 @@ namespace BookLoop
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(connectionString));
+
+			builder.Services.AddDbContext<OrdersysContext>(options =>
+				options.UseSqlServer(builder.Configuration.GetConnectionString("Ordersys"))); // 新增 OrdersysContext
 
 			// ReportMail 的資料庫（報表定義/匯出紀錄等）
 			builder.Services.AddDbContext<ReportMailDbContext>(options =>
