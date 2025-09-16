@@ -1,7 +1,13 @@
 using BookLoop.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using BookLoop.Ordersys.Models;
+using BookLoop.Data.Shop;//報表暫時性保留
+using BookLoop.Data.Contexts;
+using BookLoop.Services;
+using BookLoop.Services.Export;
+using BookLoop.Services.Reports;
+
+
 
 namespace BookLoop
 {
@@ -15,12 +21,36 @@ namespace BookLoop
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(connectionString));
-            builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-			builder.Services.AddDbContext<OrdersysContext>(options =>
-	            options.UseSqlServer(builder.Configuration.GetConnectionString("Ordersys"))); // 新增
+			// ReportMail 的資料庫（報表定義/匯出紀錄等）
+			builder.Services.AddDbContext<ReportMailDbContext>(options =>
+				options.UseSqlServer(
+					builder.Configuration.GetConnectionString("ReportMail")
+					?? builder.Configuration.GetConnectionString("DefaultConnection")));
 
-			builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+			// 報表預設三張圖用的資料來源（書/訂單/借閱）
+			builder.Services.AddDbContext<ShopDbContext>(options =>
+				options.UseSqlServer(
+					builder.Configuration.GetConnectionString("ShopConnection")
+					?? builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            // 權限服務(報表權限)
+            builder.Services.AddScoped<IPublisherScopeService, PublisherScopeService>();
+
+
+            // 報表服務
+            builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
+			builder.Services.AddScoped<ReportQueryBuilder>();
+
+
+			// 匯出/寄信
+			builder.Services.AddSingleton<IExcelExporter, ClosedXmlExcelExporter>();
+			builder.Services.AddScoped<MailService>();
+
+
+			builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+            builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             builder.Services.AddControllersWithViews();
 
