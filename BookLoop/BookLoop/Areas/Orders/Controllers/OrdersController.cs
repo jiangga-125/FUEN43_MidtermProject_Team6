@@ -81,7 +81,7 @@ namespace BookLoop.Ordersys.Controllers
 
 
 
-
+		[Route("Orders/OrderDetails/{id}")]
 		public async Task<IActionResult> OrderDetails(int id)
 		{
 			// id = OrderID
