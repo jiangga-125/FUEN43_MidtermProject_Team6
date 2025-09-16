@@ -788,11 +788,11 @@ function Sizzle( selector, context, results, seed ) {
 
 					// Document context
 					if ( nodeType === 9 ) {
-						if ( ( elem = context.getElementById( m ) ) ) {
+						if ( ( elem = context.getElementByID( m ) ) ) {
 
 							// Support: IE, Opera, Webkit
 							// TODO: identify versions
-							// getElementById can match elements by name instead of ID
+							// getElementByID can match elements by name instead of ID
 							if ( elem.id === m ) {
 								results.push( elem );
 								return results;
@@ -806,8 +806,8 @@ function Sizzle( selector, context, results, seed ) {
 
 						// Support: IE, Opera, Webkit
 						// TODO: identify versions
-						// getElementById can match elements by name instead of ID
-						if ( newContext && ( elem = newContext.getElementById( m ) ) &&
+						// getElementByID can match elements by name instead of ID
+						if ( newContext && ( elem = newContext.getElementByID( m ) ) &&
 							contains( context, elem ) &&
 							elem.id === m ) {
 
@@ -1198,44 +1198,44 @@ setDocument = Sizzle.setDocument = function( node ) {
 	support.getElementsByClassName = rnative.test( document.getElementsByClassName );
 
 	// Support: IE<10
-	// Check if getElementById returns elements by name
-	// The broken getElementById methods don't pick up programmatically-set names,
+	// Check if getElementByID returns elements by name
+	// The broken getElementByID methods don't pick up programmatically-set names,
 	// so use a roundabout getElementsByName test
-	support.getById = assert( function( el ) {
+	support.getByID = assert( function( el ) {
 		docElem.appendChild( el ).id = expando;
 		return !document.getElementsByName || !document.getElementsByName( expando ).length;
 	} );
 
 	// ID filter and find
-	if ( support.getById ) {
+	if ( support.getByID ) {
 		Expr.filter[ "ID" ] = function( id ) {
-			var attrId = id.replace( runescape, funescape );
+			var attrID = id.replace( runescape, funescape );
 			return function( elem ) {
-				return elem.getAttribute( "id" ) === attrId;
+				return elem.getAttribute( "id" ) === attrID;
 			};
 		};
 		Expr.find[ "ID" ] = function( id, context ) {
-			if ( typeof context.getElementById !== "undefined" && documentIsHTML ) {
-				var elem = context.getElementById( id );
+			if ( typeof context.getElementByID !== "undefined" && documentIsHTML ) {
+				var elem = context.getElementByID( id );
 				return elem ? [ elem ] : [];
 			}
 		};
 	} else {
 		Expr.filter[ "ID" ] =  function( id ) {
-			var attrId = id.replace( runescape, funescape );
+			var attrID = id.replace( runescape, funescape );
 			return function( elem ) {
 				var node = typeof elem.getAttributeNode !== "undefined" &&
 					elem.getAttributeNode( "id" );
-				return node && node.value === attrId;
+				return node && node.value === attrID;
 			};
 		};
 
 		// Support: IE 6 - 7 only
-		// getElementById is not reliable as a find shortcut
+		// getElementByID is not reliable as a find shortcut
 		Expr.find[ "ID" ] = function( id, context ) {
-			if ( typeof context.getElementById !== "undefined" && documentIsHTML ) {
+			if ( typeof context.getElementByID !== "undefined" && documentIsHTML ) {
 				var node, i, elems,
-					elem = context.getElementById( id );
+					elem = context.getElementByID( id );
 
 				if ( elem ) {
 
@@ -3193,7 +3193,7 @@ var rootjQuery,
 
 				// HANDLE: $(#id)
 				} else {
-					elem = document.getElementById( match[ 2 ] );
+					elem = document.getElementByID( match[ 2 ] );
 
 					if ( elem ) {
 
@@ -3649,7 +3649,7 @@ jQuery.Callbacks = function( options ) {
 };
 
 
-function Identity( v ) {
+function IDentity( v ) {
 	return v;
 }
 function Thrower( ex ) {
@@ -3791,7 +3791,7 @@ jQuery.extend( {
 										if ( special ) {
 											then.call(
 												returned,
-												resolve( maxDepth, deferred, Identity, special ),
+												resolve( maxDepth, deferred, IDentity, special ),
 												resolve( maxDepth, deferred, Thrower, special )
 											);
 
@@ -3803,9 +3803,9 @@ jQuery.extend( {
 
 											then.call(
 												returned,
-												resolve( maxDepth, deferred, Identity, special ),
+												resolve( maxDepth, deferred, IDentity, special ),
 												resolve( maxDepth, deferred, Thrower, special ),
-												resolve( maxDepth, deferred, Identity,
+												resolve( maxDepth, deferred, IDentity,
 													deferred.notifyWith )
 											);
 										}
@@ -3815,7 +3815,7 @@ jQuery.extend( {
 
 										// Only substitute handlers pass on context
 										// and multiple values (non-spec behavior)
-										if ( handler !== Identity ) {
+										if ( handler !== IDentity ) {
 											that = undefined;
 											args = [ returned ];
 										}
@@ -3883,7 +3883,7 @@ jQuery.extend( {
 								newDefer,
 								isFunction( onProgress ) ?
 									onProgress :
-									Identity,
+									IDentity,
 								newDefer.notifyWith
 							)
 						);
@@ -3895,7 +3895,7 @@ jQuery.extend( {
 								newDefer,
 								isFunction( onFulfilled ) ?
 									onFulfilled :
-									Identity
+									IDentity
 							)
 						);
 
@@ -5821,7 +5821,7 @@ jQuery.each( {
 	clientY: true,
 	offsetX: true,
 	offsetY: true,
-	pointerId: true,
+	pointerID: true,
 	pointerType: true,
 	screenX: true,
 	screenY: true,
@@ -7398,7 +7398,7 @@ function defaultPrefilter( elem, props, opts ) {
 		// the overflowX value there.
 		opts.overflow = [ style.overflow, style.overflowX, style.overflowY ];
 
-		// Identify a display type, preferring old show/hide data over the CSS cascade
+		// IDentify a display type, preferring old show/hide data over the CSS cascade
 		restoreDisplay = dataShow && dataShow.display;
 		if ( restoreDisplay == null ) {
 			restoreDisplay = dataPriv.get( elem, "display" );

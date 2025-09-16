@@ -1,0 +1,55 @@
+﻿@model BookLoop.Ordersys.Models.Rental
+
+@{
+    ViewData["Title"] = "新增租借紀錄";
+}
+
+<h2>新增租借紀錄</h2>
+
+<form asp-action="CreateByID" method="post">
+    <div class="form-group">
+        <label asp-for="ItemName" class="control-label"></label>
+        <input asp-for="ItemName" class="form-control" />
+        <span asp-validation-for="ItemName" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="RentalStart" class="control-label"></label>
+        <input asp-for="RentalStart" class="form-control" type="date" value="@Model.RentalStart.ToString("yyyy-MM-dd")" />
+        <span asp-validation-for="RentalStart" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="RentalEnd" class="control-label"></label>
+        <input asp-for="RentalEnd" class="form-control" type="date" value="@Model.RentalEnd.ToString("yyyy-MM-dd")" />
+        <span asp-validation-for="RentalEnd" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="ReturnedDate" class="control-label"></label>
+        <input asp-for="ReturnedDate" class="form-control" type="date" />
+        <span asp-validation-for="ReturnedDate" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="Status" class="control-label"></label>
+        <select asp-for="Status" class="form-control">
+            <option value="0" selected="@(Model.Status == 0 ? "selected" : null)">租借中</option>
+            <option value="1" selected="@(Model.Status == 1 ? "selected" : null)">已歸還</option>
+            <option value="2" selected="@(Model.Status == 2 ? "selected" : null)">逾期</option>
+        </select>
+        <span asp-validation-for="Status" class="text-danger"></span>
+    </div>
+
+    <!-- 隱藏欄位，帶入 orderID -->
+    <input type="hidden" asp-for="OrderID" value="@Model.OrderID" />
+
+    <div class="form-group mt-3">
+        <input type="submit" value="新增" class="btn btn-primary" />
+        <a asp-action="ByID" asp-route-orderID="@Model.OrderID" class="btn btn-secondary">回租借紀錄</a>
+    </div>
+</form>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
