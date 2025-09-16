@@ -57,6 +57,7 @@ namespace Ordersys.Controllers
 
 
 		// GET: ReturnsDetails
+		[Route("Returns/ReturnsDetails/{id}")]
 		public async Task<IActionResult> ReturnsDetails(int id)
 		{
 			// 找到 Return 記錄
