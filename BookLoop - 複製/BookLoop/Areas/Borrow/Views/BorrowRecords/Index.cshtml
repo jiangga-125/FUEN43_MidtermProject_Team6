@@ -1,0 +1,222 @@
+﻿@model IEnumerable<BorrowSystem.ViewModels.BorrowRecordsViewModel>
+@using System.ComponentModel.DataAnnotations
+@using System.Reflection
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "借閱";
+}
+
+<table class="table table-striped align-middle" id="borrowrecordTable">
+    <thead class="table">
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.BookTitle)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.MemberName)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ConditionName)
+            </th>            
+            <th>
+                @Html.DisplayNameFor(model => model.BorrowDate)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ReturnDate)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.DueDate)
+            </th>                                
+            <th>功能</th>
+        </tr>
+    </thead>
+    <tbody>
+        
+@foreach (var item in Model) {
+        <tr>
+            <td>
+               @Html.DisplayFor(modelItem => item.BookTitle)
+            </td>
+            <td>
+               @Html.DisplayFor(modelItem => item.MemberName)
+            </td>
+            <td class="fw-bold fs-6 @(item.ConditionName == "借出" ? "text-primary"
+                                    : item.ConditionName == "逾期" ? "text-danger"
+                                    : item.ConditionName == "歸還" ? "text-success"
+                                    : "")">
+                @Html.DisplayFor(modelItem => item.ConditionName)
+            </td>           
+            <td>
+                @Html.DisplayFor(modelItem => item.BorrowDate)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ReturnDate)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.DueDate)
+            </td>       
+     
+            <td>
+                    @* @if (item.ConditionName == "借出") // 假設書已借出才可以歸還
+                    {
+                        <a asp-controller="BorrowRecords" asp-action="Return" asp-route-id="@item.RecordID"
+                           class="btn btn-success">
+                            還書
+                        </a>
+                    } *@
+
+                    @if (item.ConditionName == "借出") // 假設書已借出才可以歸還
+                    {
+                        <button type="button" class="btn btn-success"
+                                onclick="openReturnModal(@item.RecordID)">
+                            還書
+                        </button>
+                    }
+
+                    @if (item.ReservationID == null && item.ConditionName == "借出")
+                    // 假設書不是預約中.等待取書(這兩個狀態id才會為null).要在借出狀態才可以預約
+                    {
+                        <a asp-controller="Reservations" asp-action="Create" asp-route-id="@item.ListingID"
+                           class="btn btn-secondary">
+                            預約
+                        </a>
+                    }
+
+                @* <a asp-controller="Reservations" asp-action="Create" asp-route-id="@item.ListingID" class="btn btn-secondary">預約</a> *@
+            </td>
+        </tr>
+}
+    </tbody>
+</table>
+<!--  Modal 殼，放在 Index 頁面底部 -->
+<div class="modal fade" id="returnModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">歸還確認</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="returnModalBody">
+                <!-- AJAX 載入 _ReturnConfirm.cshtml -->
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal -->
+<div class="modal fade" id="returnResultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-info-circle"></i> 系統訊息</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <p id="returnResultMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">確定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("_MessageModal")
+@section Styles{
+    <style>
+     /* 讓每個可排序的表頭成為定位容器，並預留右側空間放箭頭 */
+    table.dataTable thead th.sorting,
+    table.dataTable thead th.sorting_asc,
+    table.dataTable thead th.sorting_desc {
+      position: relative;
+      padding-right: 2rem; /* 視箭頭大小調整，例如 1.5rem~2.5rem */
+    }
+
+    /* 先清掉 DataTables 的預設箭頭內容 */
+    table.dataTable thead th.sorting:after,
+    table.dataTable thead th.sorting_asc:after,
+    table.dataTable thead th.sorting_desc:after {
+      content: "";
+    }
+
+    /* 預設：fa-sort */
+    table.dataTable thead th.sorting::after {
+      font-family: "Font Awesome 6 Free";
+      font-weight: 900;
+      content: "\f0dc";  /* fa-sort */
+      font-size: 40px;   /* 想更大就加大，記得同時加大 padding-right */
+      line-height: 1;
+      position: absolute;
+      right: 8px;        /* 與右邊距離 */
+      top: 50%;
+      transform: translateY(-50%);
+      color: gray;
+      pointer-events: none; /* 避免擋到點擊 */
+    }
+
+    /* 升冪：fa-sort-up */
+    table.dataTable thead th.sorting_asc::after {
+      content: "\f0de";  /* fa-sort-up */
+      color: #1e88e5;
+    }
+
+    /* 降冪：fa-sort-down */
+    table.dataTable thead th.sorting_desc::after {
+      content: "\f0dd";  /* fa-sort-down */
+      color: #e53935;
+    }
+
+    .modal-footer {
+        border-top: none !important;
+    }
+
+    #borrowrecordTable tbody tr:hover {
+            background-color: yellow !important;
+    }
+        /* 奇數列 */
+        #borrowrecordTable tbody tr:nth-child(odd) {
+            background-color: #f0f4ff;
+        }
+
+        /* 偶數列 */
+        #borrowrecordTable tbody tr:nth-child(even) {
+            background-color: #e8f7f1;
+        }
+  </style>
+}
+@section Scripts
+{
+    <script>                            
+        $(document).ready(function () {
+            $('#borrowrecordTable').DataTable({
+                language: {
+                    url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/zh-HANT.json"
+                    ,searchPlaceholder: "輸入書名或借閱人"
+                },
+                pageLength: 10,     // 預設顯示筆數
+                lengthMenu: [5, 10, 15], // 可選筆數
+                ordering: true,     // 是否允許排序
+                searching: true,// 是否允許搜尋
+                columnDefs: [
+              { targets: -1, orderable: false, searchable: false }
+            ],order: [[3, 'desc']]
+            });
+        });
+
+          function openReturnModal(recordId) {
+          const url = '/BorrowRecords/Return/' + recordId;
+          $('#returnModalBody').load(url, function () {
+            const modal = new bootstrap.Modal(document.getElementById('returnModal'));
+            modal.show();
+          });
+        }
+            document.addEventListener("DOMContentLoaded", function () {
+            var msg = @Html.Raw(JsonSerializer.Serialize(TempData["ReturnMessage"] ?? ""));
+            if (msg && msg.length > 0) {
+                document.getElementById("returnResultMessage").innerText = msg;
+                var myModal = new bootstrap.Modal(document.getElementById('returnResultModal'));
+                myModal.show();
+            }
+        });
+    </script>   
+} 

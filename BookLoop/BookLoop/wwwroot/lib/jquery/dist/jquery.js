@@ -788,11 +788,11 @@ function Sizzle( selector, context, results, seed ) {
 
 					// Document context
 					if ( nodeType === 9 ) {
-						if ( ( elem = context.getElementByID( m ) ) ) {
+						if ( ( elem = context.getElementById( m ) ) ) {
 
 							// Support: IE, Opera, Webkit
 							// TODO: identify versions
-							// getElementByID can match elements by name instead of ID
+							// getElementById can match elements by name instead of ID
 							if ( elem.id === m ) {
 								results.push( elem );
 								return results;
@@ -806,8 +806,8 @@ function Sizzle( selector, context, results, seed ) {
 
 						// Support: IE, Opera, Webkit
 						// TODO: identify versions
-						// getElementByID can match elements by name instead of ID
-						if ( newContext && ( elem = newContext.getElementByID( m ) ) &&
+						// getElementById can match elements by name instead of ID
+						if ( newContext && ( elem = newContext.getElementById( m ) ) &&
 							contains( context, elem ) &&
 							elem.id === m ) {
 
@@ -1198,8 +1198,8 @@ setDocument = Sizzle.setDocument = function( node ) {
 	support.getElementsByClassName = rnative.test( document.getElementsByClassName );
 
 	// Support: IE<10
-	// Check if getElementByID returns elements by name
-	// The broken getElementByID methods don't pick up programmatically-set names,
+	// Check if getElementById returns elements by name
+	// The broken getElementById methods don't pick up programmatically-set names,
 	// so use a roundabout getElementsByName test
 	support.getByID = assert( function( el ) {
 		docElem.appendChild( el ).id = expando;
@@ -1215,8 +1215,8 @@ setDocument = Sizzle.setDocument = function( node ) {
 			};
 		};
 		Expr.find[ "ID" ] = function( id, context ) {
-			if ( typeof context.getElementByID !== "undefined" && documentIsHTML ) {
-				var elem = context.getElementByID( id );
+			if ( typeof context.getElementById !== "undefined" && documentIsHTML ) {
+				var elem = context.getElementById( id );
 				return elem ? [ elem ] : [];
 			}
 		};
@@ -1231,11 +1231,11 @@ setDocument = Sizzle.setDocument = function( node ) {
 		};
 
 		// Support: IE 6 - 7 only
-		// getElementByID is not reliable as a find shortcut
+		// getElementById is not reliable as a find shortcut
 		Expr.find[ "ID" ] = function( id, context ) {
-			if ( typeof context.getElementByID !== "undefined" && documentIsHTML ) {
+			if ( typeof context.getElementById !== "undefined" && documentIsHTML ) {
 				var node, i, elems,
-					elem = context.getElementByID( id );
+					elem = context.getElementById( id );
 
 				if ( elem ) {
 
@@ -3193,7 +3193,7 @@ var rootjQuery,
 
 				// HANDLE: $(#id)
 				} else {
-					elem = document.getElementByID( match[ 2 ] );
+					elem = document.getElementById( match[ 2 ] );
 
 					if ( elem ) {
 

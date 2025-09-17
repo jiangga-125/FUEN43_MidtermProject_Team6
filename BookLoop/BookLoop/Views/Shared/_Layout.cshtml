@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="~/BookLoop.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <link href="~/lib/font-awesome/css/all.min.css" rel="stylesheet" />
+
+
+    @await RenderSectionAsync("Styles", required: false)
     <style>
         body {
             background-color: #f8f9fa; /* 淺灰背景 */
@@ -50,6 +56,9 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="Orders" asp-controller="Orders" asp-action="Index">📘 訂單</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="Borrow" asp-controller="Listings" asp-action="Index">📘 二手書籍</a>
+                        </li>
                         @* <li class="nav-item">
                             <a class="nav-link" asp-area="XXXX" asp-controller="XXXX" asp-action="Index">範例</a>
                         </li> *@
@@ -77,7 +86,11 @@
         </div>
     </footer>
 
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     @RenderSection("Scripts", required: false)
 </body>
 </html>

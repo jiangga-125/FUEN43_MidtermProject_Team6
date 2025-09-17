@@ -32,7 +32,7 @@ const toType = obj => {
 const getUID = prefix => {
   do {
     prefix += Math.floor(Math.random() * MAX_UID);
-  } while (document.getElementByID(prefix));
+  } while (document.getElementById(prefix));
 
   return prefix;
 };

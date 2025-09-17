@@ -1,0 +1,100 @@
+﻿@model IEnumerable<BookLoop.BorrowSystem.Models.Listing>
+@{
+    var total = (int)(ViewData["Total"] ?? 0);
+    var page = (int)(ViewData["Page"] ?? 1);
+    var pageSize = (int)(ViewData["PageSize"] ?? 10);
+    var totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
+    var startItem = total == 0 ? 0 : (page - 1) * pageSize + 1;
+    var endItem = Math.Min(page * pageSize, total);
+    int start = Math.Max(1, page - 2);
+    int end = Math.Min(totalPages, page + 2);
+}
+<div class="d-flex justify-content-end align-items-center mb-2">
+    <div class="d-flex align-items-center gap-2">
+        <label for="pageSizeSelector" class="mb-0 text-muted">每頁</label>
+        <select id="pageSizeSelector" class="form-select form-select-sm" style="width:auto;">
+            <option value="5" selected="@(pageSize == 5 ? "selected" : null)">5</option>
+            <option value="10" selected="@(pageSize == 10 ? "selected" : null)">10</option>
+            <option value="15" selected="@(pageSize == 15 ? "selected" : null)">15</option>
+        </select>
+        <span class="text-muted">筆</span>
+    </div>
+</div>
+<table class="table table-striped align-middle book-table" id="bookTable">
+    <thead class="bg-info">
+        <tr>
+            <th>書名</th>
+            <th>作者</th>
+            <th>分類</th>
+            <th>出版社</th>
+            <th>ISBN</th>
+            <th>上架時間</th>
+            <th style="width:150px;"></th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model)
+    {
+        var primary = item.ListingAuthors?.FirstOrDefault(a => a.IsPrimary)?.AuthorName;
+        var secondaries = item.ListingAuthors?
+            .Where(a => !a.IsPrimary).OrderBy(a => a.ListingAuthorID)
+            .Select(a => a.AuthorName).ToList() ?? new List<string>();
+
+        var names = new List<string>();
+        if (!string.IsNullOrWhiteSpace(primary)) names.Add(primary);
+        if (secondaries.Count > 0) names.AddRange(secondaries.Select(s => $"{s}（次作者）"));
+
+        <tr>
+            <td>@item.Title</td>
+            <td>@(names.Count == 0 ? Html.Raw("<span class='text-muted'>（無）</span>") : string.Join("、", names))</td>
+            <td>@item.Category?.CategoryName</td>
+            <td>@item.Publisher?.PublisherName</td>
+            <td>@item.ISBN</td>
+            <td>@item.CreatedAt.ToString("yyyy-M-d")</td>
+            <td class="text-nowrap">
+                <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@item.ListingID">詳細資料</a>
+                @if (item.IsAvailable)
+                {
+                    <a class="btn btn-sm btn-outline-info" asp-controller="BorrowRecords" asp-action="Create" asp-route-id="@item.ListingID">借閱</a>
+                    <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@item.ListingID">刪除</a>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+<div class="d-flex justify-content-between align-items-center ">
+    <div class="fw-bold">
+        顯示第 @startItem 至 @endItem 筆結果，共 @total 筆
+    </div>
+@if (totalPages > 1)
+{
+    <nav class="mt-2">
+        <ul class="pagination pagination mb-0">
+            <li class="page-item @(page == 1 ? "disabled" : "")">
+                <a class="page-link" data-page="@(page - 1)" href="?page=@(page - 1)">«</a>
+            </li>
+
+            @for (int i = start; i <= end; i++)
+            {
+                <li class="page-item @(i == page ? "active" : "")">
+                    <a class="page-link" data-page="@i" href="?page=@i">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(page == totalPages ? "disabled" : "")">
+                <a class="page-link" data-page="@(page + 1)" href="?page=@(page + 1)">»</a>
+            </li>
+        </ul>
+    </nav>
+}
+</div>
+
+@section Styles{
+    <style>
+		#tableWrap .pagination {
+			margin-top: 0.25rem !important; /* 更小的上邊距 */
+		}
+    </style>       
+}
