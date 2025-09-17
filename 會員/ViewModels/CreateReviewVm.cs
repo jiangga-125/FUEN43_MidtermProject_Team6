@@ -1,7 +1,7 @@
 ﻿// Models/ViewModels/CreateReviewVm.cs
 using System.ComponentModel.DataAnnotations;
 
-namespace 會員.Models
+namespace 會員.Models.ViewModels
 {
 	public class CreateReviewVm
 	{

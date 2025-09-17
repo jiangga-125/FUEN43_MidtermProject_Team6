@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using 會員.Areas.Reviews;
 using 會員.Models;
+using 會員.Models.ViewModels;
 
 namespace 會員.Areas.Reviews.Controllers
 {

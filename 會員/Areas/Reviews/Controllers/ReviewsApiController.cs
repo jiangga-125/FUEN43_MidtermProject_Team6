@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using 會員.Models;
 using System.Linq;
 using 會員.Areas.Reviews;
+using 會員.Models.ViewModels;
+
 
 [ApiController]
 [Route("api/reviews")]
