@@ -1,3 +1,4 @@
+using BookLoop.BorrowSystem.Models;
 using BookLoop.Data;
 using BookLoop.Data.Contexts;
 using BookLoop.Data.Shop;//報表暫時性保留
@@ -5,6 +6,7 @@ using BookLoop.Ordersys.Models;
 using BookLoop.Services;
 using BookLoop.Services.Export;
 using BookLoop.Services.Reports;
+using BorrowSystem.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,8 +28,13 @@ namespace BookLoop
 			builder.Services.AddDbContext<OrdersysContext>(options =>
 				options.UseSqlServer(builder.Configuration.GetConnectionString("Ordersys"))); // 新增 OrdersysContext
 
-			// ReportMail 的資料庫（報表定義/匯出紀錄等）
-			builder.Services.AddDbContext<ReportMailDbContext>(options =>
+            builder.Services.AddDbContext<BorrowSystemContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("BorrowSystem"))); // 新增 BorrowSystemContext
+            builder.Services.AddScoped<ReservationExpiryService>(); // BorrowSystem 服務
+            builder.Services.AddHostedService<ReservationExpiryWorker>(); // BorrowSystem 服務
+            builder.Services.AddScoped<ReservationQueueService>(); // BorrowSystem 服務
+            // ReportMail 的資料庫（報表定義/匯出紀錄等）
+            builder.Services.AddDbContext<ReportMailDbContext>(options =>
 				options.UseSqlServer(
 					builder.Configuration.GetConnectionString("ReportMail")
 					?? builder.Configuration.GetConnectionString("DefaultConnection")));

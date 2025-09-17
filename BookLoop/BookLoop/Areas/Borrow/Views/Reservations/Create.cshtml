@@ -1,0 +1,76 @@
+﻿@model BorrowSystem.ViewModels.ReservationsViewmodel
+
+@{
+    ViewData["Title"] = "預約";
+}
+
+<h1>預約借書</h1>
+
+
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="ListingID" />
+            <div class="mb-3 d-flex gap-2 align-items-center">
+                <label class="form-label text-nowrap text-center">書名</label>
+                <input asp-for="BookTitle" class="form-control" readonly style="width:450px"/>
+            </div>
+            <div class="mb-3 d-flex gap-2 align-items-center">
+                <label asp-for="MemberID" class="form-label text-nowrap text-center">選擇預約者</label>
+                <select asp-for="MemberID" asp-items="Model.Members" class="form-select">
+                    <option value="">-- 請選擇 --</option>
+                </select>
+                <span asp-validation-for="MemberID" class="text-danger text-nowrap text-center"></span>
+            </div>
+            <div class="form-group d-flex gap-2 align-items-center mt-4 text-nowrap">
+                <label asp-for="ReservationDay" class="control-label text-nowrap text-center"></label>
+                <input asp-for="ReservationDay" class="form-control" type="date" asp-format="{0:yyyy-MM-dd}" readonly />
+                <span asp-validation-for="ReservationDay" class="text-danger"></span>
+            </div>
+            <div class="form-group d-flex gap-2 align-items-center mt-4">
+                <label asp-for="ExpiresDay" class="control-label text-nowrap text-center"></label>
+                <input asp-for="ExpiresDay" class="form-control" type="date" asp-format="{0:yyyy-MM-dd}" readonly />
+                <span asp-validation-for="ExpiresDay" class="text-danger"></span>
+            </div>
+            <div class="form-group d-flex gap-2 align-items-center mt-4">
+                <label asp-for="ReadyDay" class="control-label text-nowrap text-center"></label>
+                <input asp-for="ReadyDay" class="form-control" type="date" asp-format="{0:yyyy-MM-dd}" readonly />
+                <span asp-validation-for="ReadyDay" class="text-danger"></span>
+            </div>
+            <div class="form-group mt-4 d-flex gap-2">
+                <input type="submit" value="預約" class="btn btn-primary" />
+				<a class="btn btn-success" asp-controller="Reservations" asp-action="Index">回預約總覽</a>
+				<a class="btn btn-info" asp-controller="BorrowRecords" asp-action="Index">回借閱總覽</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
+    <script>
+            window.setTimeout(function () {
+            $(".auto-dismiss").fadeTo(500, 0).slideUp(500, function () {
+                $(this).remove();
+            });
+        }, 3000);
+    </script>
+
+}
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success auto-dismiss">
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger auto-dismiss">
+        @TempData["ErrorMessage"]
+    </div>
+}
