@@ -7,13 +7,31 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Ordersys.styles.css" asp-append-version="true" />
+
     @await RenderSectionAsync("Styles", required: false)
+    <style>
+        body {
+            background-color: #f8f9fa; /* 淺灰背景 */
+        }
+
+        main {
+            min-height: 70vh; /* 保持頁面高度，不會太擠 */
+        }
+
+        footer {
+            margin-top: 50px;
+            padding: 20px 0;
+            background-color: #212529; /* 深灰底 */
+            color: #f8f9fa;
+            text-align: center;
+        }
+    </style>
 </head>
 <body >
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark bg-dark border-bottom box-shadow mb-3">
             <div class="container-fluid">
-                <a class="navbar-brand"  asp-controller="Home" asp-action="Index">訂單</a>
+                <a class="navbar-brand" asp-controller="Orders" asp-action="Index">訂單</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -21,24 +39,24 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area=""  asp-controller="Home" asp-action="Index">首頁</a>
+                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">🏠 首頁</a>
                         </li>
                       
                         <li class="nav-item">
-                            <a class="nav-link text-dark"  asp-controller="Orders" asp-action="Index">訂單</a>
+                            <a class="nav-link"  asp-controller="Orders" asp-action="Index">訂單</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark"  asp-controller="Returns" asp-action="Index">退貨</a>
+                            <a class="nav-link"  asp-controller="Returns" asp-action="Index">退貨</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark"  asp-controller="OrderDetails" asp-action="Index">訂單明細查詢</a>
+                            <a class="nav-link "  asp-controller="OrderDetails" asp-action="Index">訂單明細查詢</a>
                         </li>
         
                        
                         
                         
                     </ul>
-                    <partial name="_LoginPartial" />
+                 
                 </div>
             </div>
         </nav>

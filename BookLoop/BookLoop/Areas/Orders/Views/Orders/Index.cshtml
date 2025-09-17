@@ -5,6 +5,9 @@
 }
 @section Styles {
     <style>
+
+
+
         th.head-width, td.head-width {
             width: 140px;
             
@@ -29,11 +32,24 @@
             transition: all 0.3s ease;
         }
         .btn-new:hover {
-            background-color: #28a745; /* 滑鼠移上去變深綠 */
+            background-color: #28a745; /* 新增按鈕滑鼠移上去變深綠 */
             color: white;
         }
 
 
+
+
+        .btn-action {
+            width: 120px;
+            font-weight: 600;
+            border-radius: 12px; /* 圓角 */
+            transition: all 0.3s ease;
+        }
+        
+            .btn-action:hover {
+                transform: translateY(-2px); /* 輕微浮起 */
+                box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            }
 
     </style>
 }
@@ -75,6 +91,9 @@
             <th class="head-width">
                 @Html.DisplayNameFor(model => model.Status)
             </th>
+             <th class="head-width">
+                會員ID
+             </th>
             @*  <th class="head-width">
                 @Html.DisplayNameFor(model => model.DiscountAmount)
             </th> *@
@@ -138,6 +157,9 @@
                             }
                             @statusText
             </td>
+            <td>
+                 @(item.Customer?.MemberID?.ToString() ?? "無會員")
+            </td>
             @* <td>
                 @Html.DisplayFor(modelItem => item.DiscountAmount)
             </td> *@
@@ -175,11 +197,19 @@
                         </a>
                         </td>
 
-                        <td class="d-flex flex-column">
-                            <a asp-action="Edit" asp-route-id="@item.OrderID" class="btn btn-success mb-2" style="width:100px;">修改</a>
-                            <a asp-action="Details" asp-route-id="@item.OrderID" class="btn btn-info mb-2" style="width:100px;">詳細資訊</a>
-                            <a asp-action="OrderDetails" asp-route-id="@item.OrderID" class="btn btn-warning mb-2" style="width:100px;">訂單明細</a>
-                            <a asp-action="Delete" asp-route-id="@item.OrderID" class="btn btn-danger" style="width:100px;">刪除</a>
+                        <td class="text-center">
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    ⚙️ 操作
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" asp-action="Edit" asp-route-id="@item.OrderID">✏️ 修改</a></li>
+                                    <li><a class="dropdown-item" asp-action="Details" asp-route-id="@item.OrderID">ℹ️ 詳細資訊</a></li>
+                                    <li><a class="dropdown-item" asp-action="OrderDetails" asp-route-id="@item.OrderID">📑 訂單明細</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" asp-action="Delete" asp-route-id="@item.OrderID">🗑️ 刪除</a></li>
+                                </ul>
+                            </div>
                         </td>
         </tr>
 }

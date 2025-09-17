@@ -125,11 +125,27 @@
             @* <td>
                 @Html.DisplayFor(modelItem => item.Order.OrderID)
             </td> *@
-                        <td class="d-flex flex-column " style="width:120px">
-                            <a asp-action="Edit" asp-route-id="@item.ReturnID" class="btn btn-success mb-2" style="width:100px;">修改</a>
-                            <a asp-action="Details" asp-route-id="@item.ReturnID" class="btn btn-info mb-2" style="width:100px;">詳細資訊</a>
-                            <a asp-action="ReturnsDetails" asp-route-id="@item.ReturnID" class="btn btn-warning mb-2" style="width:100px;">訂單明細</a>
-                            <a asp-action="Delete" asp-route-id="@item.ReturnID" class="btn btn-danger" style="width:100px;">刪除</a>
+                        <td class="text-center" style="width:120px;">
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    ⚙️ 操作
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" asp-action="Edit" asp-route-id="@item.ReturnID">✏️ 修改</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-action="Details" asp-route-id="@item.ReturnID">ℹ️ 詳細資訊</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-action="ReturnsDetails" asp-route-id="@item.ReturnID">📑 訂單明細</a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" asp-action="Delete" asp-route-id="@item.ReturnID">🗑️ 刪除</a>
+                                    </li>
+                                </ul>
+                            </div>
                         </td>
                        
         </tr>
