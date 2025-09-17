@@ -23,28 +23,29 @@ namespace BookLoop
                 options.UseSqlServer(connectionString));
 
 			builder.Services.AddDbContext<OrdersysContext>(options =>
-				options.UseSqlServer(builder.Configuration.GetConnectionString("Ordersys"))); // ·s¼W OrdersysContext
+				options.UseSqlServer(builder.Configuration.GetConnectionString("Ordersys"))); // æ–°å¢ OrdersysContext
 
             builder.Services.AddDbContext<BorrowSystemContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("BorrowSystem"))); // ·s¼W BorrowSystemContext
-            builder.Services.AddScoped<ReservationExpiryService>(); // BorrowSystem ªA°È
-            builder.Services.AddHostedService<ReservationExpiryWorker>(); // BorrowSystem ªA°È
-            builder.Services.AddScoped<ReservationQueueService>(); // BorrowSystem ªA°È
-			// ReportMail¡]¥i¼g¡B¶]¾E²¾¡F«ü¦V¦X¨Ö«áªº DB¡^
-			builder.Services.AddDbContext<ReportMailDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("BorrowSystem"))); // æ–°å¢ BorrowSystemContext
+            builder.Services.AddScoped<ReservationExpiryService>(); // BorrowSystem æœå‹™
+            builder.Services.AddHostedService<ReservationExpiryWorker>(); // BorrowSystem æœå‹™
+            builder.Services.AddScoped<ReservationQueueService>(); // BorrowSystem æœå‹™
+
+            // ReportMail çš„è³‡æ–™åº«ï¼ˆå ±è¡¨å®šç¾©/åŒ¯å‡ºç´€éŒ„ç­‰ï¼‰
+            builder.Services.AddDbContext<ReportMailDbContext>(options =>
 				options.UseSqlServer(
 					builder.Configuration.GetConnectionString("ReportMail"),
 					x => x.MigrationsAssembly(typeof(ReportMailDbContext).Assembly.FullName)));
 
-			// Shop¡]°ßÅª¬d¸ß¼h¡F¤@©w­n¦³ ShopConnection¡A¤£¦^°h DefaultConnection¡^
+			// Shopï¼ˆå”¯è®€æŸ¥è©¢å±¤ï¼›ä¸€å®šè¦æœ‰ ShopConnectionï¼Œä¸å›é€€ DefaultConnectionï¼‰
 			builder.Services.AddDbContext<ShopDbContext>(options =>
 			{
 				var shopConn = builder.Configuration.GetConnectionString("ShopConnection");
 				if (string.IsNullOrWhiteSpace(shopConn))
-					throw new InvalidOperationException("¯Ê¤Ö³s½u¦r¦ê¡GShopConnection¡]½Ğ«ü¦V¦X¨Ö«áªº¸ê®Æ®w¡^¡C");
+					throw new InvalidOperationException("ç¼ºå°‘é€£ç·šå­—ä¸²ï¼šShopConnectionï¼ˆè«‹æŒ‡å‘åˆä½µå¾Œçš„è³‡æ–™åº«ï¼‰ã€‚");
 
 				options.UseSqlServer(shopConn);
-				options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking); // °ßÅª³Ì¨Î¤Æ
+				options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking); // å”¯è®€æœ€ä½³åŒ–
 #if DEBUG
 				options.EnableDetailedErrors();
 				options.EnableSensitiveDataLogging();
@@ -52,16 +53,16 @@ namespace BookLoop
 			});
 
 
-			// Åv­­ªA°È(³øªíÅv­­)
+			// æ¬Šé™æœå‹™(å ±è¡¨æ¬Šé™)
 			//builder.Services.AddScoped<IPublisherScopeService, PublisherScopeService>();
 
 
-			// ³øªíªA°È
+			// å ±è¡¨æœå‹™
 			builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
 			builder.Services.AddScoped<ReportQueryBuilder>();
 
 
-			// ¶×¥X/±H«H
+			// åŒ¯å‡º/å¯„ä¿¡
 			builder.Services.AddSingleton<IExcelExporter, ClosedXmlExcelExporter>();
 			builder.Services.AddScoped<MailService>();
 
@@ -76,7 +77,7 @@ namespace BookLoop
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
-				app.UseDeveloperExceptionPage();   // ¡ö ·s¼W¡GÅı 500 ª½±µÅã¥Ü°ïÅ|²Ó¸`
+				app.UseDeveloperExceptionPage();   // â† æ–°å¢ï¼šè®“ 500 ç›´æ¥é¡¯ç¤ºå †ç–Šç´°ç¯€
 				app.UseMigrationsEndPoint();
             }
             else

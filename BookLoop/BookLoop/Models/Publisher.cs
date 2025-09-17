@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace BookLoop.Models;
 
+
 public partial class Publisher
 {
     public int PublisherID { get; set; }

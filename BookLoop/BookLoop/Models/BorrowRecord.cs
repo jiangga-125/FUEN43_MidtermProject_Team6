@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BookLoop.Models;
 
+
 public partial class BorrowRecord
 {
     public int RecordID { get; set; }

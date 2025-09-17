@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace BookLoop.Models;
 
+
 public partial class Member
 {
     public int MemberID { get; set; }

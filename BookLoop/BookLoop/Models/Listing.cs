@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BookLoop.Models;
 
+
 public partial class Listing
 {
     public int ListingID { get; set; }

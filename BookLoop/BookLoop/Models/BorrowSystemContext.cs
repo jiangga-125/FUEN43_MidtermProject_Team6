@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BookLoop.Models;
 
+
 public partial class BorrowSystemContext : DbContext
 {
     public BorrowSystemContext()
