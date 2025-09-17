@@ -2,9 +2,10 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using BookLoop.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookLoop.Data.Entities;
+namespace BookLoop.Models;
 
 [Table("ReportDefinition")]
 [Index("IsActive", "Category", Name = "IX_ReportDefinition_IsActive_Category")]

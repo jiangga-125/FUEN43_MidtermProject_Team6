@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using BookLoop.Data.Shop;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookLoop.Data.Shop;
+namespace BookLoop.Models;
 
 public partial class ShopDbContext : DbContext
 {
@@ -25,7 +26,8 @@ public partial class ShopDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Book>(entity =>
+
+		modelBuilder.Entity<Book>(entity =>
         {
             entity.HasKey(e => e.BookID).HasName("PK__Books__3DE0C227772A1333");
 
@@ -59,22 +61,23 @@ public partial class ShopDbContext : DbContext
                 .HasConstraintName("FK_BorrowRecords_Listing");
         });
 
-        modelBuilder.Entity<Category>(entity =>
-        {
-            entity.HasIndex(e => e.Slug, "UQ_Categories_Slug").IsUnique();
+		modelBuilder.Entity<Category>(entity =>
+		{
+			entity.HasIndex(e => e.Slug, "UQ_Categories_Slug").IsUnique();
 
-            entity.HasIndex(e => new { e.ParentID, e.CategoryName }, "UX_Categories_ParentID_CategoryName").IsUnique();
+			entity.HasIndex(e => new { e.ParentID, e.CategoryName }, "UX_Categories_ParentID_CategoryName").IsUnique();
 
-            entity.Property(e => e.CategoryName).HasMaxLength(100);
-            entity.Property(e => e.Code).HasMaxLength(50);
-            entity.Property(e => e.Slug).HasMaxLength(200);
+			entity.Property(e => e.CategoryName).HasMaxLength(100);
+			entity.Property(e => e.Code).HasMaxLength(50);
+			entity.Property(e => e.Slug).HasMaxLength(200);
 
-            entity.HasOne(d => d.Parent).WithMany(p => p.InverseParent)
-                .HasForeignKey(d => d.ParentID)
-                .HasConstraintName("FK_Categories_Parent");
-        });
+			entity.HasOne(d => d.Parent).WithMany(p => p.InverseParent)
+				.HasForeignKey(d => d.ParentID)
+				.HasConstraintName("FK_Categories_Parent");
+		});
 
-        modelBuilder.Entity<Listing>(entity =>
+
+		modelBuilder.Entity<Listing>(entity =>
         {
             entity.HasIndex(e => e.CategoryID, "IX_Listings_CategoryID");
 

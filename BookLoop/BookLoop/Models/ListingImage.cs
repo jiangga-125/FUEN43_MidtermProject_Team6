@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace BookLoop.BorrowSystem.Models;
+namespace BookLoop.Models;
+
 
 public partial class ListingImage
 {

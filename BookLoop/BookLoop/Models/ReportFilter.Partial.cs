@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ReportMail.Data.Entities
+namespace BookLoop.Models
 {
     [ModelMetadataType(typeof(ReportFilterMeta))]
     public partial class ReportFilter { }

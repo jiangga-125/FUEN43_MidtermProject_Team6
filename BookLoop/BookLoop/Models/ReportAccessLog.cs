@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookLoop.Data.Entities;
+namespace BookLoop.Models;
 
 [Table("ReportAccessLog")]
 [Index("AccessedAt", Name = "IX_ReportAccessLog_AccessedAt")]

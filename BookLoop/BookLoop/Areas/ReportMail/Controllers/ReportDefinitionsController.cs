@@ -6,14 +6,13 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using BookLoop.Data.Contexts;
-using BookLoop.Data.Entities;
 using System.IdentityModel.Tokens.Jwt;
+using BookLoop.Models;
 
 namespace ReportMail.Areas.ReportMail.Controllers
 {
     [Area("ReportMail")]
-    [Authorize(Roles = "Admin,Marketing")]
+    //[Authorize(Roles = "Admin,Marketing")]
 public class ReportDefinitionsController : Controller
     {
         private readonly ReportMailDbContext _context;

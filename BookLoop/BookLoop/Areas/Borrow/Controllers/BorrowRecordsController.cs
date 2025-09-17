@@ -3,8 +3,9 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using BorrowSystem.ViewModels;
 using static BorrowSystem.ViewModels.BorrowRecordsViewModel;
-using BookLoop.BorrowSystem.Models;
-using static BookLoop.BorrowSystem.Models.BorrowRecord;
+using BookLoop.Models;
+using static BookLoop.Models.BorrowRecord;
+
 using BorrowSystem.Services;
 
 namespace BorrowSystem.Controllers

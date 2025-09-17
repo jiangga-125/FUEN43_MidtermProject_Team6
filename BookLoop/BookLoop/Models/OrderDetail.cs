@@ -1,8 +1,9 @@
-﻿using System;
+﻿using BookLoop.Data.Shop;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace BookLoop.Ordersys.Models;
+namespace BookLoop.Models;
 
 public partial class OrderDetail
 {
@@ -30,8 +31,9 @@ public partial class OrderDetail
 	[Display(Name = "建立時間")]
 	public DateTime CreatedAt { get; set; }
 
-    //public DateTime UpdatedAt { get; set; }
+	//public DateTime UpdatedAt { get; set; }
 
+	public virtual Book Book { get; set; } = null!;
 
-    public virtual Order Order { get; set; } = null!;
+	public virtual Order Order { get; set; } = null!;
 }

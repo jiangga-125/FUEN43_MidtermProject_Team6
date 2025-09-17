@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace BookLoop.BorrowSystem.Models;
+namespace BookLoop.Models;
+
 
 public partial class Listing
 {

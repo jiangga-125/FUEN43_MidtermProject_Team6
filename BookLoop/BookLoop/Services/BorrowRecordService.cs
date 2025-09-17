@@ -1,7 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System;
 using static BorrowSystem.ViewModels.BorrowRecordsViewModel;
-using BookLoop.BorrowSystem.Models;
+using BookLoop.Models;
+
 namespace BorrowSystem.Services
 {
     public class BorrowRecordService

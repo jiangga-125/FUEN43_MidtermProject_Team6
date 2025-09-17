@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace BookLoop.Ordersys.Models;
+namespace BookLoop.Models;
 
 public partial class Shipment
 {

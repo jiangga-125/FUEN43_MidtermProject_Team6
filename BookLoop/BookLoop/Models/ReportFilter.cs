@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookLoop.Data.Entities;
+namespace BookLoop.Models;
 
 [Table("ReportFilter")]
 [Index("ReportDefinitionID", "OrderIndex", Name = "IX_ReportFilter_ReportDefinitionID_OrderIndex")]

@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookLoop.BorrowSystem.Models;
+namespace BookLoop.Models;
+
 
 public partial class BorrowSystemContext : DbContext
 {

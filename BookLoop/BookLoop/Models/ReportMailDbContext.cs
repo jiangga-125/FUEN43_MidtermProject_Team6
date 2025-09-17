@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using BookLoop.Data.Entities;
+using BookLoop.Models;
 using Microsoft.EntityFrameworkCore;
-using ReportMail.Data.Entities;
-using ReportDefinition = BookLoop.Data.Entities.ReportDefinition;
-using ReportFilter = BookLoop.Data.Entities.ReportFilter;
+using ReportDefinition = BookLoop.Models.ReportDefinition;
+using ReportFilter = BookLoop.Models.ReportFilter;
 
-namespace BookLoop.Data.Contexts;
+namespace BookLoop.Models;
 
 public partial class ReportMailDbContext : DbContext
 {

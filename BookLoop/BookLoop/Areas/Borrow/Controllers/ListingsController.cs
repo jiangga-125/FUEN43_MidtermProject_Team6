@@ -7,7 +7,8 @@ using System.Drawing.Printing;
 using System.Linq;
 using System.Threading.Tasks;
 using BorrowSystem.ViewModels;
-using BookLoop.BorrowSystem.Models;
+using BookLoop.Models;
+
 
 namespace BorrowSystem.Controllers
 {

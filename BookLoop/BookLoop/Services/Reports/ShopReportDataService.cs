@@ -1,10 +1,10 @@
 ﻿// Services/Reports/ShopReportDataService.cs
 using Microsoft.EntityFrameworkCore;
-using BookLoop.Data.Shop;                   // 你 Scaffold 出來的 DbContext 命名空間
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using BookLoop.Models;
 
 namespace BookLoop.Services.Reports
 {

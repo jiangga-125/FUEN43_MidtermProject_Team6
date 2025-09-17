@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ReportMail.Data.Entities
+namespace BookLoop.Models
 {
     // 這個 partial 不會被 re-scaffold 覆蓋
     [ModelMetadataType(typeof(ReportDefinitionMeta))]

@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace ReportMail.Areas.ReportMail.Controllers
 {
 	[Area("ReportMail")]
-	[Authorize(Roles = "Admin,Marketing,Publisher")]
+	//[Authorize(Roles = "Admin,Marketing,Publisher")]
 [Route("ReportMail/[controller]/[action]")]
 	public class ReportExportController : Controller
 	{

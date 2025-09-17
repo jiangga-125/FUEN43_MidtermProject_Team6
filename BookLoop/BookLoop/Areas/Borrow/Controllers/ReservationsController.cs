@@ -8,8 +8,9 @@ using System.Reflection;
 using System.Threading.Tasks;
 using BorrowSystem.Services;
 using BorrowSystem.ViewModels;
-using BookLoop.BorrowSystem.Models;
-using static BookLoop.BorrowSystem.Models.BorrowRecord;
+using BookLoop.Models;
+using static BookLoop.Models.BorrowRecord;
+
 namespace BorrowSystem.Controllers
 {
     [Area("Borrow")]

@@ -3,7 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace BookLoop.BorrowSystem.Models;
+namespace BookLoop.Models;
+
 
 public partial class BorrowRecord
 {

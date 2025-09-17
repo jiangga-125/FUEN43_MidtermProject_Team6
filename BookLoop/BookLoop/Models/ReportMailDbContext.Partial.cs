@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace BookLoop.Data.Contexts
+namespace BookLoop.Models
 {
     public partial class ReportMailDbContext
     {
