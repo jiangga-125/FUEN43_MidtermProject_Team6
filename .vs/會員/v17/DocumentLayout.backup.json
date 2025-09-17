@@ -1,0 +1,1025 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\models\\order.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\models\\order.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\models\\membercontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\models\\membercontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\reviews\\controllers\\reviewsapicontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\reviews\\controllers\\reviewsapicontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\reviews\\reviewrulepipeline.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\reviews\\reviewrulepipeline.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\reviews\\controllers\\reviewscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\reviews\\controllers\\reviewscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\reviews\\reviewmoderationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\reviews\\reviewmoderationservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\models\\member.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\models\\member.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\controllers\\rulescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\controllers\\rulescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\contract\\rulescontracts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\contract\\rulescontracts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\reviews\\views\\reviews\\pendinglist.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\reviews\\views\\reviews\\pendinglist.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\points\\views\\points\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\points\\views\\points\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\points\\views\\points\\adjust.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\points\\views\\points\\adjust.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\coupons\\views\\coupons\\create.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\coupons\\views\\coupons\\create.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\coupons\\views\\coupons\\edit.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\coupons\\views\\coupons\\edit.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\coupons\\views\\coupons\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\coupons\\views\\coupons\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\reviews\\views\\reviews\\create.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\reviews\\views\\reviews\\create.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\reviews\\rules\\ireviewruleprovider.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\reviews\\rules\\ireviewruleprovider.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\reviews\\rules\\extrarules.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\reviews\\rules\\extrarules.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\reviews\\rules\\dbreviewruleprovider.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\reviews\\rules\\dbreviewruleprovider.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\reviews\\rules\\contracts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\reviews\\rules\\contracts.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\reviews\\rules\\builtinrules.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\reviews\\rules\\builtinrules.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\areas\\reviews\\controllers\\reviewrulesapicontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\areas\\reviews\\controllers\\reviewrulesapicontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\views\\checkout\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\views\\checkout\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\views\\_viewstart.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\views\\_viewstart.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\views\\_viewimports.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\views\\_viewimports.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\views\\shared\\error.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\views\\shared\\error.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\views\\shared\\_validationscriptspartial.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\views\\shared\\_validationscriptspartial.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\views\\shared\\_layout.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\views\\shared\\_layout.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\views\\home\\privacy.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\views\\home\\privacy.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\views\\home\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\views\\home\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\viewmodels\\createreviewvm.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\viewmodels\\createreviewvm.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\viewmodels\\checkoutpreviewvm.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\viewmodels\\checkoutpreviewvm.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\viewmodels\\checkoutplaceordervm.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\viewmodels\\checkoutplaceordervm.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\controllers\\homecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\controllers\\homecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\controllers\\checkoutcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\controllers\\checkoutcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\services\\pricing\\pricingresult.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\services\\pricing\\pricingresult.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\services\\pricing\\pricinginputs.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\services\\pricing\\pricinginputs.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\services\\pricing\\pricingengine.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\services\\pricing\\pricingengine.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\services\\pricing\\ipricingengine.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\services\\pricing\\ipricingengine.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\services\\points\\pointsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\services\\points\\pointsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\services\\points\\ipointsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\services\\points\\ipointsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\services\\orders\\orderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\services\\orders\\orderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\services\\orders\\iorderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\services\\orders\\iorderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\services\\common\\result.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\services\\common\\result.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\services\\coupons\\icouponservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\services\\coupons\\icouponservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\services\\coupons\\couponservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\services\\coupons\\couponservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\models\\ruleapplication.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\models\\ruleapplication.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\models\\reviewrulesetting.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\models\\reviewrulesetting.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\models\\reviewmoderation.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\models\\reviewmoderation.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\models\\review.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\models\\review.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\models\\pointsledger.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\models\\pointsledger.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\models\\ordercouponsnapshot.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\models\\ordercouponsnapshot.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\models\\memberpoint.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\models\\memberpoint.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\models\\membercoupon.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\models\\membercoupon.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\models\\coupon.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\models\\coupon.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\user\\AppData\\Roaming\\Microsoft\\UserSecrets\\8195805a-5d21-40da-98f0-e8e1a1038a2d\\secrets.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|c:\\users\\user\\desktop\\ispan\\\u6703\u54E1\\\u6703\u54E1\\models\\errorviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{ED0AE78C-1F91-4E59-9B00-69ABF46B8800}|\u6703\u54E1\\\u6703\u54E1.csproj|solutionrelative:\u6703\u54E1\\models\\errorviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 1,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedHeight": 157,
+          "SelectedChildIndex": 5,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "ReviewRulePipeline.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\ReviewRulePipeline.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Reviews\\ReviewRulePipeline.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\ReviewRulePipeline.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Reviews\\ReviewRulePipeline.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAoAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T11:23:22.191Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "ReviewsApiController.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Controllers\\ReviewsApiController.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Reviews\\Controllers\\ReviewsApiController.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Controllers\\ReviewsApiController.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Reviews\\Controllers\\ReviewsApiController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-15T01:36:14.604Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Order.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\Order.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Models\\Order.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\Order.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Models\\Order.cs",
+              "ViewState": "AgIAABcAAAAAAAAAAAAQwCsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T18:52:41.128Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "MemberContext.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\MemberContext.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Models\\MemberContext.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\MemberContext.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Models\\MemberContext.cs",
+              "ViewState": "AgIAAJMAAAAAAAAAAAAgwKMAAAAqAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T18:52:50.976Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Program.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Program.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Program.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Program.cs",
+              "ViewState": "AgIAACMAAAAAAAAAAAA0wEcAAAAtAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:05:57.474Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "ReviewsController.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Controllers\\ReviewsController.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Reviews\\Controllers\\ReviewsController.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Controllers\\ReviewsController.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Reviews\\Controllers\\ReviewsController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T11:47:07.797Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "ReviewModerationService.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\ReviewModerationService.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Reviews\\ReviewModerationService.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\ReviewModerationService.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Reviews\\ReviewModerationService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T11:24:22.245Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "Member.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\Member.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Models\\Member.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\Member.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Models\\Member.cs",
+              "ViewState": "AgIAABUAAAAAAAAAAAAkwCcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:02:54.437Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "RulesController.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Controllers\\RulesController.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Controllers\\RulesController.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Controllers\\RulesController.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Controllers\\RulesController.cs",
+              "ViewState": "AgIAABMAAAAAAAAAAAAowB4AAAAuAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:12:45.086Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "RulesContracts.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Contract\\RulesContracts.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Contract\\RulesContracts.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Contract\\RulesContracts.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Contract\\RulesContracts.cs",
+              "ViewState": "AgIAABEAAAAAAAAAAAAswB8AAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T07:04:27.553Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "PendingList.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Views\\Reviews\\PendingList.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Reviews\\Views\\Reviews\\PendingList.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Views\\Reviews\\PendingList.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Reviews\\Views\\Reviews\\PendingList.cshtml",
+              "ViewState": "AgIAABEAAAAAAAAAAAA0wCoAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-14T11:48:47.599Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "Index.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Points\\Views\\Points\\Index.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Points\\Views\\Points\\Index.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Points\\Views\\Points\\Index.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Points\\Views\\Points\\Index.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-15T07:03:42.91Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "Adjust.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Points\\Views\\Points\\Adjust.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Points\\Views\\Points\\Adjust.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Points\\Views\\Points\\Adjust.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Points\\Views\\Points\\Adjust.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-15T07:04:04.982Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "Create.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Coupons\\Views\\Coupons\\Create.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Coupons\\Views\\Coupons\\Create.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Coupons\\Views\\Coupons\\Create.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Coupons\\Views\\Coupons\\Create.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-15T07:06:58.592Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "Edit.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Coupons\\Views\\Coupons\\Edit.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Coupons\\Views\\Coupons\\Edit.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Coupons\\Views\\Coupons\\Edit.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Coupons\\Views\\Coupons\\Edit.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-15T07:07:10.956Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "Index.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Coupons\\Views\\Coupons\\Index.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Coupons\\Views\\Coupons\\Index.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Coupons\\Views\\Coupons\\Index.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Coupons\\Views\\Coupons\\Index.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-15T07:06:44.616Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "Create.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Views\\Reviews\\Create.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Reviews\\Views\\Reviews\\Create.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Views\\Reviews\\Create.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Reviews\\Views\\Reviews\\Create.cshtml",
+              "ViewState": "AgIAACcAAAAAAAAAAAAAADQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-14T12:38:25.234Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "IReviewRuleProvider.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Rules\\IReviewRuleProvider.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Reviews\\Rules\\IReviewRuleProvider.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Rules\\IReviewRuleProvider.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Reviews\\Rules\\IReviewRuleProvider.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T13:01:20.452Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "ExtraRules.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Rules\\ExtraRules.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Reviews\\Rules\\ExtraRules.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Rules\\ExtraRules.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Reviews\\Rules\\ExtraRules.cs",
+              "ViewState": "AgIAACMAAAAAAAAAAAAywDwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T13:03:02.178Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "DbReviewRuleProvider.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Rules\\DbReviewRuleProvider.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Reviews\\Rules\\DbReviewRuleProvider.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Rules\\DbReviewRuleProvider.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Reviews\\Rules\\DbReviewRuleProvider.cs",
+              "ViewState": "AgIAAB0AAAAAAAAAAAA0wDkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T13:00:42.845Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "Contracts.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Rules\\Contracts.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Reviews\\Rules\\Contracts.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Rules\\Contracts.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Reviews\\Rules\\Contracts.cs",
+              "ViewState": "AgIAACAAAAAAAAAAAAAwwC4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T11:22:17.468Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "BuiltinRules.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Rules\\BuiltinRules.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Reviews\\Rules\\BuiltinRules.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Rules\\BuiltinRules.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Reviews\\Rules\\BuiltinRules.cs",
+              "ViewState": "AgIAAH4AAAAAAAAAAAAAwJcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T11:22:46.802Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
+              "Title": "ReviewRulesApiController.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Controllers\\ReviewRulesApiController.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Areas\\Reviews\\Controllers\\ReviewRulesApiController.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Areas\\Reviews\\Controllers\\ReviewRulesApiController.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Areas\\Reviews\\Controllers\\ReviewRulesApiController.cs",
+              "ViewState": "AgIAABgAAAAAAAAAAAAAwDEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-15T01:11:36.948Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "Index.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\Checkout\\Index.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Views\\Checkout\\Index.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\Checkout\\Index.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Views\\Checkout\\Index.cshtml",
+              "ViewState": "AgIAAKcAAAAAAAAAAAA0wMMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-13T19:04:23.839Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "_ViewStart.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\_ViewStart.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Views\\_ViewStart.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\_ViewStart.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Views\\_ViewStart.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-16T07:26:55.829Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 26,
+              "Title": "Error.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\Shared\\Error.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Views\\Shared\\Error.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\Shared\\Error.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Views\\Shared\\Error.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-16T07:26:51.665Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 28,
+              "Title": "_Layout.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\Shared\\_Layout.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Views\\Shared\\_Layout.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\Shared\\_Layout.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Views\\Shared\\_Layout.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-13T19:02:56.045Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 29,
+              "Title": "Privacy.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\Home\\Privacy.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Views\\Home\\Privacy.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\Home\\Privacy.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Views\\Home\\Privacy.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-16T02:42:07.247Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 30,
+              "Title": "Index.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\Home\\Index.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Views\\Home\\Index.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\Home\\Index.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Views\\Home\\Index.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-16T02:42:04.603Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "_ViewImports.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\_ViewImports.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Views\\_ViewImports.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\_ViewImports.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Views\\_ViewImports.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-16T02:46:24.948Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 27,
+              "Title": "_ValidationScriptsPartial.cshtml",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\Shared\\_ValidationScriptsPartial.cshtml",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Views\\Shared\\_ValidationScriptsPartial.cshtml",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Views\\Shared\\_ValidationScriptsPartial.cshtml",
+              "RelativeToolTip": "\u6703\u54E1\\Views\\Shared\\_ValidationScriptsPartial.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-09-13T19:02:56.936Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 31,
+              "Title": "CreateReviewVm.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\ViewModels\\CreateReviewVm.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\ViewModels\\CreateReviewVm.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\ViewModels\\CreateReviewVm.cs",
+              "RelativeToolTip": "\u6703\u54E1\\ViewModels\\CreateReviewVm.cs",
+              "ViewState": "AgIAAAEAAAAAAAAAAAAYwBgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T12:36:48.532Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 32,
+              "Title": "CheckoutPreviewVm.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\ViewModels\\CheckoutPreviewVm.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\ViewModels\\CheckoutPreviewVm.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\ViewModels\\CheckoutPreviewVm.cs",
+              "RelativeToolTip": "\u6703\u54E1\\ViewModels\\CheckoutPreviewVm.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:02:58.176Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 33,
+              "Title": "CheckoutPlaceOrderVm.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\ViewModels\\CheckoutPlaceOrderVm.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\ViewModels\\CheckoutPlaceOrderVm.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\ViewModels\\CheckoutPlaceOrderVm.cs",
+              "RelativeToolTip": "\u6703\u54E1\\ViewModels\\CheckoutPlaceOrderVm.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:02:58.999Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 34,
+              "Title": "HomeController.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Controllers\\HomeController.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Controllers\\HomeController.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Controllers\\HomeController.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Controllers\\HomeController.cs",
+              "ViewState": "AgIAAAsAAAAAAAAAAAAYwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:03:38.897Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 35,
+              "Title": "CheckoutController.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Controllers\\CheckoutController.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Controllers\\CheckoutController.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Controllers\\CheckoutController.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Controllers\\CheckoutController.cs",
+              "ViewState": "AgIAACMAAAAAAAAAAAAswDAAAAAEAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:03:33.599Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 36,
+              "Title": "PricingResult.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Pricing\\PricingResult.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Services\\Pricing\\PricingResult.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Pricing\\PricingResult.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Services\\Pricing\\PricingResult.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:04:19.875Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 37,
+              "Title": "PricingInputs.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Pricing\\PricingInputs.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Services\\Pricing\\PricingInputs.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Pricing\\PricingInputs.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Services\\Pricing\\PricingInputs.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:04:19.026Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 38,
+              "Title": "PricingEngine.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Pricing\\PricingEngine.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Services\\Pricing\\PricingEngine.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Pricing\\PricingEngine.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Services\\Pricing\\PricingEngine.cs",
+              "ViewState": "AgIAACYAAAAAAAAAAAA0wEIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:04:17.795Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 39,
+              "Title": "IPricingEngine.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Pricing\\IPricingEngine.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Services\\Pricing\\IPricingEngine.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Pricing\\IPricingEngine.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Services\\Pricing\\IPricingEngine.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:04:17.186Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 40,
+              "Title": "PointsService.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Points\\PointsService.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Services\\Points\\PointsService.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Points\\PointsService.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Services\\Points\\PointsService.cs",
+              "ViewState": "AgIAADsAAAAAAAAAAAA0wEAAAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T18:59:31.354Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 41,
+              "Title": "IPointsService.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Points\\IPointsService.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Services\\Points\\IPointsService.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Points\\IPointsService.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Services\\Points\\IPointsService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:02:49.688Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 42,
+              "Title": "OrderService.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Orders\\OrderService.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Services\\Orders\\OrderService.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Orders\\OrderService.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Services\\Orders\\OrderService.cs",
+              "ViewState": "AgIAAEYAAAAAAAAAAAA0wGEAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T18:56:46.244Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 43,
+              "Title": "IOrderService.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Orders\\IOrderService.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Services\\Orders\\IOrderService.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Orders\\IOrderService.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Services\\Orders\\IOrderService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T18:58:32.18Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 44,
+              "Title": "Result.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Common\\Result.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Services\\Common\\Result.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Common\\Result.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Services\\Common\\Result.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:03:06.075Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 45,
+              "Title": "ICouponService.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Coupons\\ICouponService.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Services\\Coupons\\ICouponService.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Coupons\\ICouponService.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Services\\Coupons\\ICouponService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T18:56:45.43Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 46,
+              "Title": "CouponService.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Coupons\\CouponService.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Services\\Coupons\\CouponService.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Services\\Coupons\\CouponService.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Services\\Coupons\\CouponService.cs",
+              "ViewState": "AgIAAD4AAAAAAAAAAAA0wFgAAAACAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T18:58:31.053Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 47,
+              "Title": "RuleApplication.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\RuleApplication.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Models\\RuleApplication.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\RuleApplication.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Models\\RuleApplication.cs",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAQwCMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T18:58:27.227Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 48,
+              "Title": "ReviewRuleSetting.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\ReviewRuleSetting.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Models\\ReviewRuleSetting.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\ReviewRuleSetting.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Models\\ReviewRuleSetting.cs",
+              "ViewState": "AgIAABoAAAAAAAAAAAAgwB8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-14T13:01:57.588Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 49,
+              "Title": "ReviewModeration.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\ReviewModeration.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Models\\ReviewModeration.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\ReviewModeration.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Models\\ReviewModeration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T18:58:28.191Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 50,
+              "Title": "Review.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\Review.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Models\\Review.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\Review.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Models\\Review.cs",
+              "ViewState": "AgIAAAcAAAAAAAAAAAAQwBsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:03:30.261Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 51,
+              "Title": "PointsLedger.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\PointsLedger.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Models\\PointsLedger.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\PointsLedger.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Models\\PointsLedger.cs",
+              "ViewState": "AgIAAAcAAAAAAAAAAAAkwBkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:02:52.26Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 52,
+              "Title": "OrderCouponSnapshot.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\OrderCouponSnapshot.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Models\\OrderCouponSnapshot.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\OrderCouponSnapshot.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Models\\OrderCouponSnapshot.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:03:10.66Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 53,
+              "Title": "MemberPoint.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\MemberPoint.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Models\\MemberPoint.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\MemberPoint.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Models\\MemberPoint.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:03:26.932Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 54,
+              "Title": "MemberCoupon.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\MemberCoupon.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Models\\MemberCoupon.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\MemberCoupon.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Models\\MemberCoupon.cs",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAQwCMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T18:56:39.385Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 55,
+              "Title": "Coupon.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\Coupon.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Models\\Coupon.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\Coupon.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Models\\Coupon.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T19:03:23.785Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 56,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\appsettings.json",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\appsettings.json",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\appsettings.json",
+              "RelativeToolTip": "\u6703\u54E1\\appsettings.json",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-09-16T02:30:34.697Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 57,
+              "Title": "secrets.json",
+              "DocumentMoniker": "C:\\Users\\user\\AppData\\Roaming\\Microsoft\\UserSecrets\\8195805a-5d21-40da-98f0-e8e1a1038a2d\\secrets.json",
+              "RelativeDocumentMoniker": "..\\..\\..\\AppData\\Roaming\\Microsoft\\UserSecrets\\8195805a-5d21-40da-98f0-e8e1a1038a2d\\secrets.json",
+              "ToolTip": "C:\\Users\\user\\AppData\\Roaming\\Microsoft\\UserSecrets\\8195805a-5d21-40da-98f0-e8e1a1038a2d\\secrets.json",
+              "RelativeToolTip": "..\\..\\..\\AppData\\Roaming\\Microsoft\\UserSecrets\\8195805a-5d21-40da-98f0-e8e1a1038a2d\\secrets.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-09-16T02:30:18.065Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 58,
+              "Title": "ErrorViewModel.cs",
+              "DocumentMoniker": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\ErrorViewModel.cs",
+              "RelativeDocumentMoniker": "\u6703\u54E1\\Models\\ErrorViewModel.cs",
+              "ToolTip": "C:\\Users\\user\\Desktop\\ISpan\\\u6703\u54E1\\\u6703\u54E1\\Models\\ErrorViewModel.cs",
+              "RelativeToolTip": "\u6703\u54E1\\Models\\ErrorViewModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T18:56:37.336Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
