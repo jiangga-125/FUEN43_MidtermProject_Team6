@@ -14,70 +14,76 @@
 
 <div class="container my-5">
     <div class="row g-4">
-        <!-- 書籍 -->
+        <!-- 書籍管理 -->
         <div class="col-md-4 col-sm-6">
-            <a asp-area="Books" asp-controller="Books" asp-action="Index" class="card h-100 shadow-sm text-decoration-none feature-card">
-                <div class="card-body text-center">
+            <div class="card shadow-lg h-100 text-center border-0 feature-card">
+                <div class="card-body">
                     <div class="icon mb-3">📘</div>
-                    <h4 class="fw-bold text-dark">書籍管理</h4>
+                    <h4 class="fw-bold">書籍管理</h4>
                     <p class="text-muted">管理新書資訊、分類與出版社。</p>
+                    <a asp-area="Books" asp-controller="Books" asp-action="Index" class="btn btn-dark">進入</a>
                 </div>
-            </a>
+            </div>
         </div>
 
-        <!-- 訂單 -->
+        <!-- 訂單管理 -->
         <div class="col-md-4 col-sm-6">
-            <a asp-area="Orders" asp-controller="Orders" asp-action="Index" class="card h-100 shadow-sm text-decoration-none feature-card">
-                <div class="card-body text-center">
+            <div class="card shadow-lg h-100 text-center border-0 feature-card">
+                <div class="card-body">
                     <div class="icon mb-3">🛒</div>
-                    <h4 class="fw-bold text-dark">訂單管理</h4>
+                    <h4 class="fw-bold">訂單管理</h4>
                     <p class="text-muted">檢視與管理用戶的訂單資料。</p>
+                    <a asp-area="Orders" asp-controller="Orders" asp-action="Index" class="btn btn-dark">進入</a>
                 </div>
-            </a>
+            </div>
         </div>
 
         <!-- 二手書籍 -->
         <div class="col-md-4 col-sm-6">
-            <a asp-area="Borrow" asp-controller="Listings" asp-action="Index" class="card h-100 shadow-sm text-decoration-none feature-card">
-                <div class="card-body text-center">
+            <div class="card shadow-lg h-100 text-center border-0 feature-card">
+                <div class="card-body">
                     <div class="icon mb-3">📚</div>
-                    <h4 class="fw-bold text-dark">二手書籍</h4>
+                    <h4 class="fw-bold">二手書籍</h4>
                     <p class="text-muted">共享、借閱與二手書交易。</p>
+                    <a asp-area="Borrow" asp-controller="Listings" asp-action="Index" class="btn btn-dark">進入</a>
                 </div>
-            </a>
+            </div>
         </div>
 
-        <!-- 報表 -->
+        <!-- 報表分析 -->
         <div class="col-md-4 col-sm-6">
-            <a asp-area="ReportMail" asp-controller="Reports" asp-action="Index" class="card h-100 shadow-sm text-decoration-none feature-card">
-                <div class="card-body text-center">
+            <div class="card shadow-lg h-100 text-center border-0 feature-card">
+                <div class="card-body">
                     <div class="icon mb-3">📊</div>
-                    <h4 class="fw-bold text-dark">報表分析</h4>
+                    <h4 class="fw-bold">報表分析</h4>
                     <p class="text-muted">產生與匯出營運統計報表。</p>
+                    <a asp-area="ReportMail" asp-controller="Reports" asp-action="Index" class="btn btn-dark">進入</a>
                 </div>
-            </a>
+            </div>
         </div>
 
-        <!-- 帳號 -->
+        <!-- 帳號管理 -->
         <div class="col-md-4 col-sm-6">
-            <a asp-area="Account" asp-controller="Home" asp-action="Index" class="card h-100 shadow-sm text-decoration-none feature-card">
-                <div class="card-body text-center">
+            <div class="card shadow-lg h-100 text-center border-0 feature-card">
+                <div class="card-body">
                     <div class="icon mb-3">👤</div>
-                    <h4 class="fw-bold text-dark">帳號管理</h4>
+                    <h4 class="fw-bold">帳號管理</h4>
                     <p class="text-muted">會員帳號與權限控管。</p>
+                    <a asp-area="Account" asp-controller="Home" asp-action="Index" class="btn btn-dark">進入</a>
                 </div>
-            </a>
+            </div>
         </div>
 
         <!-- 優惠券 -->
         <div class="col-md-4 col-sm-6">
-            <a asp-area="Members" asp-controller="Checkout" asp-action="Index" class="card h-100 shadow-sm text-decoration-none feature-card">
-                <div class="card-body text-center">
+            <div class="card shadow-lg h-100 text-center border-0 feature-card">
+                <div class="card-body">
                     <div class="icon mb-3">🎟️</div>
-                    <h4 class="fw-bold text-dark">優惠券</h4>
+                    <h4 class="fw-bold">優惠券</h4>
                     <p class="text-muted">建立與管理優惠活動。</p>
+                    <a asp-area="Members" asp-controller="Checkout" asp-action="Index" class="btn btn-dark">進入</a>
                 </div>
-            </a>
+            </div>
         </div>
     </div>
 </div>
@@ -106,6 +112,10 @@
             }
 
         /* 功能卡片 */
+        .feature-card .icon {
+            font-size: 3rem;
+        }
+
         .feature-card {
             transition: transform 0.2s, box-shadow 0.2s;
             border-radius: 12px;
@@ -113,11 +123,7 @@
 
             .feature-card:hover {
                 transform: translateY(-5px);
-                box-shadow: 0 6px 18px rgba(0,0,0,0.15);
-            }
-
-            .feature-card .icon {
-                font-size: 3rem;
+                box-shadow: 0 8px 20px rgba(0,0,0,0.2);
             }
     </style>
 }
