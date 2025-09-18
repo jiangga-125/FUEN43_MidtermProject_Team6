@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace BookLoop.BorrowSystem.Models;
+namespace BookLoop.Models;
 
 public partial class Member
 {
-    public int MemberID { get; set; }
-
-    public int? UserID { get; set; }
+    public int MemberId { get; set; }
 
     public string Account { get; set; } = null!;
 
@@ -17,17 +15,25 @@ public partial class Member
 
     public string? Phone { get; set; }
 
-    public byte Role { get; set; }
-
     public byte Status { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
 
-    public virtual ICollection<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();
+    public int? UserId { get; set; }
 
-    public virtual ICollection<PenaltyTransaction> PenaltyTransactions { get; set; } = new List<PenaltyTransaction>();
+    public byte Role { get; set; }
 
-    public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+    public int? TotalBooks { get; set; }
+
+    public int? TotalBorrows { get; set; }
+
+    public virtual MemberPoint? MemberPoint { get; set; }
+
+    public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
+
+    public virtual ICollection<PointsLedger> PointsLedgers { get; set; } = new List<PointsLedger>();
+
+    public virtual ICollection<RuleApplication> RuleApplications { get; set; } = new List<RuleApplication>();
 }

@@ -13,19 +13,12 @@
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.18" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.18" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.18" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.4" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Areas\Books\" />
-    <Folder Include="Data\Contexts\" />
+    <Folder Include="Areas\Members\Points\Controllers\" />
   </ItemGroup>
-
-<ItemGroup>
-  <PackageReference Include="ClosedXML" Version="0.105.0" />
-  <PackageReference Include="MailKit" Version="4.13.0" />
-  <PackageReference Include="NuGet.Configuration" Version="6.14.0" />
-  <PackageReference Include="NuGet.Versioning" Version="6.14.0" />
-</ItemGroup>
-
 
 </Project>
