@@ -1,0 +1,25 @@
+﻿@model BookLoop.Models.Category
+
+@{
+    ViewData["Title"] = "分類詳情";
+}
+
+<h1>分類詳情</h1>
+
+<!-- 顯示完整的分類資料 -->
+<div>
+    <dl class="row">
+        <dt class="col-sm-2">分類名稱</dt>
+        <dd class="col-sm-10">@Model.CategoryName</dd>
+        <dt class="col-sm-2">建立時間</dt>
+        <dd class="col-sm-10">@Model.CreatedAt</dd>
+        <dt class="col-sm-2">最後更新</dt>
+        <dd class="col-sm-10">@Model.UpdatedAt</dd>
+    </dl>
+</div>
+
+<!-- 操作按鈕 -->
+<p>
+    <a asp-action="Edit" asp-route-id="@Model.CategoryID" class="btn btn-primary">編輯</a> |
+    <a asp-action="Index" class="btn btn-secondary">返回清單</a>
+</p>

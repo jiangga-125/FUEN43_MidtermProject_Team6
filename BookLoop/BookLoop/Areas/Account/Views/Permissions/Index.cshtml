@@ -1,0 +1,301 @@
+@model Account.Controllers.PermissionsController.IndexVM
+@{
+    ViewData["Title"] = "權限管理";
+    var rowStart = (Model.Page - 1) * Model.PageSize;
+}
+<h2 class="mb-3">權限管理</h2>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-sm-5">
+        <input type="text" name="keyword" value="@Model.Keyword" class="form-control" placeholder="搜尋名稱 (例：ADMIN / VENDOR / SALES)" />
+    </div>
+    <div class="col-sm-2">
+        <button class="btn btn-outline-secondary">搜尋</button>
+        <a class="btn btn-outline-dark ms-1" asp-action="Index">重置</a>
+    </div>
+    <div class="col text-end">
+        <button type="button" class="btn btn-primary" id="btnCreate">新增權限</button>
+    </div>
+</form>
+
+<div class="table-responsive">
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th style="width:70px;">#</th>
+            <th>名稱</th>
+            <th style="width:140px;">帳號數</th>
+            <th style="width:140px;">功能數</th>
+            <th style="width:420px;">操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        @for (int i=0; i< Model.Items.Count; i++)
+        {
+            var x = Model.Items[i];
+            <tr>
+                <td>@(rowStart + i + 1)</td>
+                <td>@x.Key</td>
+                <td><span class="badge bg-info">@x.GrantedUserCount</span></td>
+                <td><span class="badge bg-secondary">@x.FeatureCount</span></td>
+                <td>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-sm btn-outline-secondary btn-rename" data-id="@x.PermissionID" data-key="@x.Key">重新命名</button>
+                        <button class="btn btn-sm btn-outline-primary btn-assign" data-id="@x.PermissionID" data-key="@x.Key">適用帳號</button>
+                        <button class="btn btn-sm btn-outline-success btn-features" data-id="@x.PermissionID" data-key="@x.Key">功能設定</button>
+                        <button class="btn btn-sm btn-outline-danger btn-delete" data-id="@x.PermissionID" data-key="@x.Key">刪除</button>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+</div>
+
+@{
+    int totalPages = (int)Math.Ceiling((double)Model.Total / Model.PageSize);
+    if (totalPages < 1) totalPages = 1;
+}
+<nav>
+    <ul class="pagination">
+        <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+            <a class="page-link" asp-action="Index" asp-route-page="@(Model.Page - 1)" asp-route-keyword="@Model.Keyword">上一頁</a>
+        </li>
+        <li class="page-item disabled"><span class="page-link">@Model.Page / @totalPages（共 @Model.Total 筆）</span></li>
+        <li class="page-item @(Model.Page >= totalPages ? "disabled" : "")">
+            <a class="page-link" asp-action="Index" asp-route-page="@(Model.Page + 1)" asp-route-keyword="@Model.Keyword">下一頁</a>
+        </li>
+    </ul>
+</nav>
+
+<!-- 新增 -->
+<div class="modal fade" id="createModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">新增權限</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+            <label class="form-label">名稱（Key）</label>
+            <input type="text" class="form-control" id="newKey" placeholder="例如：CUSTOM_SALES" />
+        </div>
+        <hr/>
+        <div id="featureList"></div>
+      </div>
+      <div class="modal-footer">
+        <form id="createForm" method="post" asp-action="Create">
+            <input type="hidden" name="key" id="create_key" />
+            <div id="create_features"></div>
+            <button class="btn btn-primary">建立</button>
+            @Html.AntiForgeryToken()
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 重新命名 -->
+<div class="modal fade" id="renameModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">重新命名</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="rename_id" />
+        <div class="mb-2">
+            <label class="form-label">新名稱（Key）</label>
+            <input type="text" class="form-control" id="rename_key" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <form id="renameForm" method="post" asp-action="Rename">
+            <input type="hidden" name="id" id="rename_post_id" />
+            <input type="hidden" name="newKey" id="rename_post_key" />
+            <button class="btn btn-primary">儲存</button>
+            @Html.AntiForgeryToken()
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 適用帳號 -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">適用帳號</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="assign_id" />
+        <div id="assignedUsers"></div>
+        <hr/>
+        <input type="text" id="userQuery" class="form-control" placeholder="搜尋帳號（ID/Email/Phone）" />
+        <div id="candidateUsers" class="mt-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 功能設定 -->
+<div class="modal fade" id="featModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">功能設定</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="feat_perm_id" />
+        <div id="feat_body"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+@section Scripts{
+<script>
+(function(){
+    // 取得所有功能 (for 新增 modal)
+    function loadAllFeaturesForCreate(){
+        $.get("@Url.Action("GetFeatures")", { id: 0 }) // id=0 只為了取得 features 列表
+         .done(function(res){
+            var html = "<div class='row'>";
+            res.features.forEach(function(f){
+                html += `<div class="col-6 col-md-4">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" value="${f.featureID}" id="feat_${f.featureID}">
+                      <label class="form-check-label" for="feat_${f.featureID}">${f.isPageLevel ? "頁:" : ""}${f.code}</label>
+                    </div>
+                </div>`;
+            });
+            html += "</div>";
+            $("#featureList").html(html);
+         });
+    }
+
+    $("#btnCreate").on("click", function(){
+        $("#newKey").val("");
+        $("#create_features").empty();
+        loadAllFeaturesForCreate();
+        new bootstrap.Modal(document.getElementById('createModal')).show();
+    });
+
+    $("#createForm").on("submit", function(e){
+        e.preventDefault();
+        var key = $("#newKey").val().trim();
+        if(!key){ alert("請輸入名稱"); return; }
+        $("#create_key").val(key);
+        // 收集勾選的 features
+        var checks = $("#featureList input[type=checkbox]:checked").map(function(){ return $(this).val(); }).get();
+        $("#create_features").empty();
+        checks.forEach(function(v){
+            $("#create_features").append(`<input type="hidden" name="featureIds" value="${v}"/>`);
+        });
+        this.submit();
+    });
+
+    // 重新命名
+    $(".btn-rename").on("click", function(){
+        var id = $(this).data("id");
+        var key = $(this).data("key");
+        $("#rename_id").val(id);
+        $("#rename_key").val(key);
+        new bootstrap.Modal(document.getElementById('renameModal')).show();
+    });
+    $("#renameForm").on("submit", function(e){
+        e.preventDefault();
+        $("#rename_post_id").val($("#rename_id").val());
+        $("#rename_post_key").val($("#rename_key").val().trim());
+        this.submit();
+    });
+
+    // 適用帳號
+    $(".btn-assign").on("click", function(){
+        var id = $(this).data("id");
+        $("#assign_id").val(id);
+        loadAssigned(id);
+        new bootstrap.Modal(document.getElementById('assignModal')).show();
+    });
+    $("#userQuery").on("keyup", function(){
+        var id = $("#assign_id").val();
+        loadAssigned(id, $(this).val());
+    });
+    function loadAssigned(id, q){
+        $.get("@Url.Action("GetAssignedUsers")", { id:id, q:q }).done(function(res){
+            var a = "<h6>已指派</h6><ul class='list-unstyled'>";
+            res.assigned.forEach(function(u){
+                a += `<li>${u.email} (${u.phone ?? ""})
+                    <button class="btn btn-sm btn-danger ms-2 act-remove" data-id="${id}" data-uid="${u.userID}">移除</button></li>`;
+            });
+            a += "</ul>";
+            $("#assignedUsers").html(a);
+
+            var c = "<h6 class='mt-3'>可新增</h6><ul class='list-unstyled'>";
+            (res.candidates || []).forEach(function(u){
+                c += `<li>${u.email} (${u.phone ?? ""})
+                    <button class="btn btn-sm btn-success ms-2 act-add" data-id="${id}" data-uid="${u.userID}">新增</button></li>`;
+            });
+            c += "</ul>";
+            $("#candidateUsers").html(c);
+        });
+    }
+    $(document).on("click", ".act-add", function(){
+        $.post("@Url.Action("AddUser")", { id: $(this).data("id"), userId: $(this).data("uid"), __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val() })
+         .done(()=>{ loadAssigned($("#assign_id").val(), $("#userQuery").val()); });
+    });
+    $(document).on("click", ".act-remove", function(){
+        $.post("@Url.Action("RemoveUser")", { id: $(this).data("id"), userId: $(this).data("uid"), __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val() })
+         .done(()=>{ loadAssigned($("#assign_id").val(), $("#userQuery").val()); });
+    });
+
+    // 功能設定
+    $(".btn-features").on("click", function(){
+        var id = $(this).data("id");
+        $("#feat_perm_id").val(id);
+        $.get("@Url.Action("GetFeatures")", { id:id }).done(function(res){
+            var html = "<div class='row'>";
+            res.features.forEach(function(f){
+                var checked = res.checkedIds.indexOf(f.featureID) >= 0 ? "checked" : "";
+                html += `<div class="col-6 col-md-4">
+                    <div class="form-check">
+                      <input class="form-check-input feat-toggle" type="checkbox" data-id="${id}" data-fid="${f.featureID}" ${checked}>
+                      <label class="form-check-label">${f.isPageLevel ? "頁:" : ""}${f.code}</label>
+                    </div></div>`;
+            });
+            html += "</div>";
+            $("#feat_body").html(html);
+            new bootstrap.Modal(document.getElementById('featModal')).show();
+        });
+    });
+    $(document).on("change", ".feat-toggle", function(){
+        $.post("@Url.Action("ToggleFeature")", {
+            id: $(this).data("id"),
+            featureId: $(this).data("fid"),
+            check: $(this).is(":checked"),
+            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+        });
+    });
+
+    // 刪除
+    $(".btn-delete").on("click", function(){
+        if(!confirm("確定要刪除此權限？")) return;
+        var id = $(this).data("id");
+        $.post("@Url.Action("Delete")", { id:id, __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val() })
+         .done(function(){ location.reload(); });
+    });
+})();    
+</script>
+}
+

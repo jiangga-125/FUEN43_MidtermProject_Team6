@@ -1,4 +1,4 @@
-using BookLoop.Data.Shop;
+using BookLoop.Data;
 using BookLoop.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

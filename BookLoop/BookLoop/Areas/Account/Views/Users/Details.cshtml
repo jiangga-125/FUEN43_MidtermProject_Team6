@@ -1,0 +1,59 @@
+﻿@model BookLoop.User
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "帳號詳情";
+}
+
+<h3>帳號詳情</h3>
+
+@if (TempData["ok"] != null)
+{
+    <div class="alert alert-success">@TempData["ok"]</div>
+}
+@if (TempData["err"] != null)
+{
+    <div class="alert alert-danger">@TempData["err"]</div>
+}
+
+<table class="table">
+    <tr><th>ID</th><td>@Model.UserID</td></tr>
+    <tr><th>Email</th><td>@Model.Email</td></tr>
+    <tr><th>UserType</th><td>@Model.UserType</td></tr>
+    <tr><th>Status</th><td>@Model.Status</td></tr>
+    <tr><th>LastLoginAt</th><td>@Model.LastLoginAt</td></tr>
+</table>
+
+<div class="d-flex gap-2">
+    @if (User.HasClaim("perm", "Accounts.Edit"))
+    {
+        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.UserID">編輯</a>
+        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#resetPwdModal">重設密碼</button>
+    }
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPwdModal" tabindex="-1" aria-labelledby="resetPwdLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="ResetPassword">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.UserID" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resetPwdLabel">重設密碼 - @Model.Email</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">新密碼</label>
+                        <input name="newPwd" type="password" class="form-control" required minlength="8" />
+                        <div class="form-text">至少 8 碼，建議含大小寫、數字與符號。</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning">確認重設</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

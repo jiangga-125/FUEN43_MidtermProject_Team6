@@ -1,0 +1,65 @@
+﻿@model Account.Controllers.MembersController.MemberIndexVM
+@{
+    ViewData["Title"] = "會員清單";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">會員清單</h2>
+    @if (User.HasClaim("perm", "Members.Edit"))
+    {
+        <a class="btn btn-primary" asp-action="Create">新增會員</a>
+    }
+</div>
+
+@await Html.PartialAsync("_Alerts")
+
+<form id="filter-form" method="get" class="row g-2 mb-3">
+    <div class="col-sm-4">
+        <input name="keyword" class="form-control" placeholder="關鍵字（姓名 / Email / Phone）" value="@Model.Keyword" />
+    </div>
+    <div class="col-sm-3">
+        @await Html.PartialAsync(
+        "_StatusSelect",
+                viewData: new ViewDataDictionary(ViewData)
+                {
+                    ["selected"] = Model.Status,
+                    ["includeAll"] = true,
+                    ["allText"] = "全部狀態",
+                    ["name"] = "status",
+                    ["class"] = "form-select js-auto-submit"
+                })
+    </div>
+    <div class="col-sm-2">
+        @await Html.PartialAsync(
+                "_PageSizeSelect",
+                viewData: new ViewDataDictionary(ViewData)
+                {
+                    ["selected"] = Model.PageSize,
+                    ["name"] = "pageSize",
+                    ["class"] = "form-select js-auto-submit",
+                    ["sizes"] = new[] { 10, 20, 50 }
+                })
+    </div>
+    <div class="col-sm-3">
+        <button class="btn btn-outline-secondary">搜尋</button>
+        <a class="btn btn-outline-dark ms-1" asp-action="Index">重置</a>
+    </div>
+</form>
+
+<div id="list-container">
+    @await Html.PartialAsync("_MembersList", Model)  @* 首次 SSR，之後 AJAX 置換 *@
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync(
+    "_ListAjaxScripts",
+        viewData: new ViewDataDictionary(ViewData)
+        {
+            ["controller"] = "Members",
+            ["listAction"] = "List",
+            ["indexAction"] = "Index",
+            ["formId"] = "filter-form",
+            ["containerId"] = "list-container",
+            // ["fixedQuery"] = "supplierId=3" // 如需固定參數可開啟
+        })
+}

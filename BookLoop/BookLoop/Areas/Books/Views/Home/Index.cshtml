@@ -1,0 +1,14 @@
+﻿@{
+    ViewData["Title"] = "Books 主頁";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<p>這是 Books 區域的主頁。</p>
+
+<ul>
+    <li><a asp-area="Books" asp-controller="Books" asp-action="Index">📚 書籍清單</a></li>
+    <li><a asp-area="Books" asp-controller="Publishers" asp-action="Index">🏢 出版社管理</a></li>
+    <li><a asp-area="Books" asp-controller="Categories" asp-action="Index">📂 分類管理</a></li>
+    <li><a asp-area="Books" asp-controller="Import" asp-action="Index">⬆ 匯入書籍</a></li>
+</ul>

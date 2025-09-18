@@ -1,0 +1,49 @@
+﻿@model BookLoop.UserFormVm
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "新增帳號";
+}
+<h3>新增帳號</h3>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input asp-for="Email" class="form-control" required />
+        <span asp-validation-for="Email" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">UserType</label>
+        <select asp-for="UserType" class="form-select">
+            <option value="2">員工</option>
+            <option value="3">書商</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Phone</label>
+        <input asp-for="Phone" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Status</label>
+        <select asp-for="Status" class="form-select">
+            <option value="0">未啟用</option>
+            <option value="1">啟用</option>
+            <option value="2">停用</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">（可選）設定初始密碼</label>
+        <input asp-for="NewPassword" class="form-control" type="password" />
+        <div class="form-text">若不填，帳號建立後需由管理者「重設密碼」才能登入</div>
+    </div>
+
+    <button class="btn btn-primary">儲存</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

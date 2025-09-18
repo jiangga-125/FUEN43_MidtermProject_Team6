@@ -1,0 +1,96 @@
+﻿@model BookLoop.Models.Book
+
+@{
+    ViewData["Title"] = "新增書籍";
+}
+
+<h2>新增書籍</h2>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <!-- 表單開始，指定 Area/Controller/Action -->
+        <form asp-area="Books" asp-controller="Books" asp-action="Create" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken() <!-- 防止 CSRF 攻擊 -->
+            <!-- 驗證錯誤顯示 -->
+            <div asp-validation-summary="All" class="text-danger"></div>
+
+            <!-- ISBN -->
+            <div class="form-group">
+                <label asp-for="ISBN" class="control-label"></label>
+                <input asp-for="ISBN" class="form-control"
+                       maxlength="13" pattern="\d{13}" title="請輸入 13 碼數字的 ISBN" />
+                <span asp-validation-for="ISBN" class="text-danger"></span>
+            </div>
+
+            <!-- 書名 -->
+            <div class="form-group">
+                <label asp-for="Title" class="control-label"></label>
+                <input asp-for="Title" class="form-control" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <!-- 出版社 (下拉 + 快速新增) -->
+            <div class="form-group">
+                <label asp-for="PublisherID" class="control-label">出版社</label>
+                <div class="input-group">
+                    <select asp-for="PublisherID" class="form-control" asp-items="ViewBag.PublisherList">
+                        <option value="">— 請選擇出版社 —</option>
+                    </select>
+                    <!-- 快速新增出版社 -->
+                    <a class="btn btn-outline-secondary"
+                       asp-area="Books" asp-controller="Publishers" asp-action="Create">
+                        新增出版社
+                    </a>
+                </div>
+                <span asp-validation-for="PublisherID" class="text-danger"></span>
+            </div>
+
+            <!-- 分類 (下拉 + 快速新增) -->
+            <div class="form-group">
+                <label asp-for="CategoryID" class="control-label">分類</label>
+                <div class="input-group">
+                    <select asp-for="CategoryID" class="form-control" asp-items="ViewBag.CategoryList">
+                        <option value="">— 請選擇分類 —</option>
+                    </select>
+                    <!-- 快速新增分類 -->
+                    <a class="btn btn-outline-secondary"
+                       asp-area="Books" asp-controller="Categories" asp-action="Create">
+                        新增分類
+                    </a>
+                </div>
+                <span asp-validation-for="CategoryID" class="text-danger"></span>
+            </div>
+
+            <!-- 發行日期 -->
+            <div class="form-group">
+                <label asp-for="PublishDate" class="control-label"></label>
+                <input asp-for="PublishDate" class="form-control" type="date" />
+                <span asp-validation-for="PublishDate" class="text-danger"></span>
+            </div>
+            <!-- 封面圖片（檔案） -->
+            <div class="form-group">
+                <label for="coverFile" class="control-label">封面圖片 (檔案)</label>
+                <input type="file" name="coverFile" class="form-control" />
+            </div>
+            <!-- 或輸入圖片 URL -->
+            <div class="form-group">
+                <label for="coverUrl" class="control-label">或：封面圖片 URL</label>
+                <input type="url" name="coverUrl" class="form-control" placeholder="https://example.com/cover.jpg" />
+                <small class="form-text text-muted">如果輸入 URL，系統會直接使用外部圖片，不會存檔案。</small>
+            </div>
+            <!-- 送出 / 取消 -->
+            <div class="form-group">
+                <input type="submit" value="儲存" class="btn btn-primary mb-2 mt-3" />
+                <a asp-action="Index" class="btn btn-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 載入驗證腳本 -->
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

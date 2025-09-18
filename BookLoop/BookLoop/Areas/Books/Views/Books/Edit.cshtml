@@ -1,0 +1,105 @@
+﻿@model BookLoop.Models.Book
+
+@{
+    ViewData["Title"] = "編輯書籍";
+}
+
+<h2>編輯書籍</h2>
+
+<form asp-action="Edit" method="post" enctype="multipart/form-data">
+
+    <!-- 主鍵隱藏欄位 -->
+    <input type="hidden" asp-for="BookID" />
+
+    <!-- ISBN -->
+    <div class="form-group">
+        <label asp-for="ISBN" class="control-label"></label>
+        <input asp-for="ISBN" class="form-control"
+               maxlength="13" pattern="\d{13}" title="請輸入 13 碼數字的 ISBN" />
+        <span asp-validation-for="ISBN" class="text-danger"></span>
+    </div>
+
+    <!-- 書名 -->
+    <div class="form-group">
+        <label asp-for="Title" class="control-label"></label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+
+    <!-- 出版社 (下拉 + 快速新增) -->
+    <div class="form-group">
+        <label asp-for="PublisherID" class="control-label">出版社</label>
+        <div class="input-group">
+            <select asp-for="PublisherID" class="form-control" asp-items="ViewBag.PublisherList">
+                <option value="">— 請選擇出版社 —</option>
+            </select>
+            <a class="btn btn-outline-secondary"
+               asp-area="Books" asp-controller="Publishers" asp-action="Create">
+                新增出版社
+            </a>
+        </div>
+        <span asp-validation-for="PublisherID" class="text-danger"></span>
+    </div>
+
+    <!-- 分類 (下拉 + 快速新增) -->
+    <div class="form-group">
+        <label asp-for="CategoryID" class="control-label">分類</label>
+        <div class="input-group">
+            <select asp-for="CategoryID" class="form-control" asp-items="ViewBag.CategoryList">
+                <option value="">— 請選擇分類 —</option>
+            </select>
+            <a class="btn btn-outline-secondary"
+               asp-area="Books" asp-controller="Categories" asp-action="Create">
+                新增分類
+            </a>
+        </div>
+        <span asp-validation-for="CategoryID" class="text-danger"></span>
+    </div>
+
+    <!-- 發行日 -->
+    <div class="form-group">
+        <label asp-for="PublishDate" class="control-label"></label>
+        <input class="form-control" type="date"
+               name="PublishDate"
+               value="@(Model?.PublishDate?.ToString("yyyy-MM-dd"))" />
+        <span asp-validation-for="PublishDate" class="text-danger"></span>
+    </div>
+
+
+    <!-- 簡介 -->
+    <div class="form-group">
+        <label asp-for="Description" class="control-label"></label>
+        <textarea asp-for="Description" class="form-control"></textarea>
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+
+    <!-- 封面圖片（檔案上傳） -->
+    <div class="form-group">
+        <label for="coverFile" class="control-label">封面圖片 (檔案)</label>
+        <input type="file" name="coverFile" class="form-control" />
+    </div>
+
+    <!-- 封面圖片（URL） -->
+    <div class="form-group">
+        <label for="coverUrl" class="control-label">或：封面圖片 URL</label>
+        <input type="url" name="coverUrl" class="form-control" placeholder="https://example.com/cover.jpg" />
+        <small class="form-text text-muted">若輸入 URL，系統會直接使用外部圖片，不會存本地檔案。</small>
+    </div>
+
+    <!-- 顯示目前主圖 -->
+    @if (Model?.BookImages?.Any(bi => bi.IsPrimary) == true)
+    {
+        var cover = Model.BookImages.First(bi => bi.IsPrimary);
+        <div class="mt-2">
+            <label>目前主圖</label>
+            <div>
+                <img src="@(cover.FilePath.StartsWith("http") ? cover.FilePath : Url.Content("~/images/books/" + cover.FilePath))"
+                     alt="目前封面" style="max-height:150px;" />
+            </div>
+        </div>
+    }
+
+    <!-- 按鈕 -->
+    <button type="submit" class="btn btn-primary mt-3">儲存</button>
+    <a asp-area="Books" asp-controller="Books" asp-action="Index" class="btn btn-secondary mt-3">取消</a>
+</form>
