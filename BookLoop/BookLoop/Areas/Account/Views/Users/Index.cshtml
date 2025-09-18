@@ -1,0 +1,61 @@
+﻿@model Account.Controllers.UsersController.UserIndexVM
+@{
+    ViewData["Title"] = "後台帳號清單";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">後台帳號清單</h2>
+    @if (User.HasClaim("perm", "Accounts.Edit"))
+    {
+        <a class="btn btn-primary" asp-action="Create">新增帳號</a>
+    }
+</div>
+
+@await Html.PartialAsync("_Alerts")
+
+<form id="filter-form" method="get" class="row g-2 mb-3">
+    <div class="col-sm-4">
+        <input name="keyword" class="form-control" placeholder="關鍵字（Email / Phone）" value="@Model.Keyword" />
+    </div>
+    <div class="col-sm-3">
+        @await Html.PartialAsync("_StatusSelect",
+        viewData: new ViewDataDictionary(ViewData)
+        {
+            ["selected"] = Model.Status,
+            ["includeAll"] = true,
+            ["allText"] = "全部狀態",
+            ["name"] = "status",
+            ["class"] = "form-select js-auto-submit"
+        })
+    </div>
+    <div class="col-sm-2">
+        @await Html.PartialAsync("_PageSizeSelect",
+                viewData: new ViewDataDictionary(ViewData)
+                {
+                    ["selected"] = Model.PageSize,
+                    ["name"] = "pageSize",
+                    ["class"] = "form-select js-auto-submit",
+                    ["sizes"] = new[] { 10, 20, 50 }
+                })
+    </div>
+    <div class="col-sm-3">
+        <button class="btn btn-outline-secondary">搜尋</button>
+        <a class="btn btn-outline-dark ms-1" asp-action="Index">重置</a>
+    </div>
+</form>
+
+<div id="list-container">
+    @await Html.PartialAsync("_UsersList", Model)
+</div>
+
+@section Scripts {
+@await Html.PartialAsync("_ListAjaxScripts",
+viewData: new ViewDataDictionary(ViewData)
+{
+    ["controller"] = "Users",
+    ["listAction"] = "List",
+    ["indexAction"] = "Index",
+    ["formId"] = "filter-form",
+    ["containerId"] = "list-container"
+})
+}

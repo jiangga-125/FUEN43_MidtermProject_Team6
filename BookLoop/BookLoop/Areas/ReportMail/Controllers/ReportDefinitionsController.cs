@@ -5,14 +5,14 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using BookLoop.Data.Contexts;
-using BookLoop.Data.Entities;
 using System.IdentityModel.Tokens.Jwt;
+using BookLoop.Models;
 
 namespace ReportMail.Areas.ReportMail.Controllers
 {
     [Area("ReportMail")]
-    public class ReportDefinitionsController : Controller
+    //[Authorize(Roles = "Admin,Marketing")]
+public class ReportDefinitionsController : Controller
     {
         private readonly ReportMailDbContext _context;
 
@@ -50,19 +50,19 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			{
 				var c = category.Trim().ToLowerInvariant();
 				if (c == "line" || c == "bar" || c == "pie")
-					model.Category = c; // Åı Create.cshtml ªº <select asp-for="Category"> ¹w³]¿ï¨ì¹ïÀ³¶µ¥Ø
+					model.Category = c; // è®?Create.cshtml ??<select asp-for="Category"> ?è¨­?¸åˆ°å°æ??…ç›®
 			}
 			return View(model);
 		}
 
-		// ¥Î¨Ó©Ó±µ«eºİ FiltersJson ªº¯ó½Z DTO¡]¥u«O¯d ValueJson¡^
+		// ?¨ä??¿æ¥?ç«¯ FiltersJson ?„è?ç¨?DTOï¼ˆåªä¿ç? ValueJsonï¼?
 		private class ReportFilterDraft
         {
             public string? FieldName { get; set; }
             public string? DisplayName { get; set; }
             public string? DataType { get; set; }
             public string? Operator { get; set; }
-            public string? ValueJson { get; set; }    // °ß¤@¨Ó·½
+            public string? ValueJson { get; set; }    // ?¯ä?ä¾†æ?
             public string? Options { get; set; }
             public int? OrderIndex { get; set; }
             public bool? IsRequired { get; set; }
@@ -70,7 +70,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
         }
 
         // POST: ReportMail/ReportDefinitions/Create
-        // §â BaseKind ¯Ç¤J Bind¡F®É¶¡ÂW«áºİ¦Û°Ê¸É¡FFiltersJson ·|®i¶}¬°¦hµ§ ReportFilter¡]¥u¼g ValueJson¡^
+        // ??BaseKind ç´å…¥ Bindï¼›æ??“æˆ³å¾Œç«¯?ªå?è£œï?FiltersJson ?ƒå??‹ç‚ºå¤šç? ReportFilterï¼ˆåªå¯?ValueJsonï¼?
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(
@@ -83,16 +83,16 @@ namespace ReportMail.Areas.ReportMail.Controllers
             var now = DateTime.Now;
             reportDefinition.CreatedAt = now;
             reportDefinition.UpdatedAt = now;
-            //«OÃÒ³o¨â­ÓÄæ¦ì¼Ğ·Ç¤Æ¡]¥hªÅ¥Õ + ¤p¼g¡^¡AªÅ­Èµ¹¹w³]
+            //ä¿è??™å…©?‹æ?ä½æ?æº–å?ï¼ˆå»ç©ºç™½ + å°å¯«ï¼‰ï?ç©ºå€¼çµ¦?è¨­
             reportDefinition.Category = (reportDefinition.Category ?? "line").Trim().ToLowerInvariant();
             reportDefinition.BaseKind = (reportDefinition.BaseKind ?? "sales").Trim().ToLowerInvariant();
 
-            // ¡]«ØÄ³¡^·s¼W¤@«ß±Ò¥Î¡AÁ×§K³Q Index() ¹LÂo±¼
+            // ï¼ˆå»ºè­°ï??°å?ä¸€å¾‹å??¨ï??¿å?è¢?Index() ?æ¿¾??
             reportDefinition.IsActive = true;
 
 
             _context.Add(reportDefinition);
-            await _context.SaveChangesAsync(); // ¥ı²£¥Í ReportDefinitionID
+            await _context.SaveChangesAsync(); // ?ˆç”¢??ReportDefinitionID
 
             if (!string.IsNullOrWhiteSpace(FiltersJson))
             {
@@ -102,20 +102,20 @@ namespace ReportMail.Areas.ReportMail.Controllers
                     int order = 1;
                     foreach (var d in drafts)
                     {
-                        // ¤Íµ½ªº DisplayName «á´©¡]­Y«eºİ¥¼µ¹¡^
+                        // ?‹å???DisplayName å¾Œæ´ï¼ˆè‹¥?ç«¯?ªçµ¦ï¼?
                         var display = (d.DisplayName ?? d.FieldName) ?? "";
                         if (string.IsNullOrWhiteSpace(display))
                         {
                             display = (d.FieldName ?? "").ToLowerInvariant() switch
                             {
-                                "orderdate" => "¤é´Á°Ï¶¡",
-                                "borrowdate" => "¤é´Á°Ï¶¡",
-                                "categoryid" => "®ÑÄyºØÃş",
-                                "saleprice" => "³æ¥»»ù¦ì",
-                                "metric" => "«ü¼Ğ",
-                                "orderstatus" => "­q³æª¬ºA",
-                                "orderamount" => "³æµ§­q³æª÷ÃB",
-                                _ => "(¥¼©R¦W)"
+                                "orderdate" => "?¥æ??€??,
+                                "borrowdate" => "?¥æ??€??,
+                                "categoryid" => "?¸ç?ç¨®é?",
+                                "saleprice" => "?®æœ¬?¹ä?",
+                                "metric" => "?‡æ?",
+                                "orderstatus" => "è¨‚å–®?€??,
+                                "orderamount" => "?®ç?è¨‚å–®?‘é?",
+                                _ => "(?ªå‘½??"
                             };
                         }
 
@@ -126,12 +126,12 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             DisplayName = display,
                             DataType = d.DataType ?? "text",
                             Operator = d.Operator ?? "eq",
-                            ValueJson = d.ValueJson ?? "{}",   //  ¥u¼g ValueJson
+                            ValueJson = d.ValueJson ?? "{}",   //  ?ªå¯« ValueJson
                             Options = d.Options ?? "{}",
                             OrderIndex = d.OrderIndex ?? order++,
                             IsRequired = d.IsRequired ?? false,
                             IsActive = d.IsActive ?? true,
-                            CreatedAt = now,                   //  «áºİ¦Û°Ê¤Æ
+                            CreatedAt = now,                   //  å¾Œç«¯?ªå???
                             UpdatedAt = now
                         });
                     }
@@ -139,7 +139,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                 }
                 catch (Exception ex)
                 {
-                    // ¸ÑªR¿ù»~¤£ªıÂ_¥D­n¬yµ{¡]¥²­n¥i¥[ ModelState Åã¥Ü¡^
+                    // è§???¯èª¤ä¸é˜»?·ä¸»è¦æ?ç¨‹ï?å¿…è??¯å? ModelState é¡¯ç¤ºï¼?
                     Console.WriteLine(ex);
                 }
             }
@@ -157,37 +157,37 @@ namespace ReportMail.Areas.ReportMail.Controllers
         }
 
         // POST: ReportMail/ReportDefinitions/Edit/5
-        // §â BaseKind ¯Ç¤J Bind¡A¨Ã¦bÀx¦s«e¨ê·s UpdatedAt
+        // ??BaseKind ç´å…¥ Bindï¼Œä¸¦?¨å„²å­˜å??·æ–° UpdatedAt
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id,
             [Bind("ReportDefinitionID,ReportName,Category,BaseKind,Description,IsActive,CreatedAt,UpdatedAt")]
             ReportDefinition reportDefinition,
-            [FromForm] string? FiltersJson // ±µ¦¬«eºİ²Õ¦nªº Filter ¯ó½Z(JSON)
+            [FromForm] string? FiltersJson // ?¥æ”¶?ç«¯çµ„å¥½??Filter ?‰ç¨¿(JSON)
         )
         {
             if (id != reportDefinition.ReportDefinitionID) return NotFound();
             if (!ModelState.IsValid) return View(reportDefinition);
-            // «OÃÒ³o¨â­ÓÄæ¦ì¼Ğ·Ç¤Æ¡]¥hªÅ¥Õ + ¤p¼g¡^¡AªÅ­Èµ¹¹w³]
+            // ä¿è??™å…©?‹æ?ä½æ?æº–å?ï¼ˆå»ç©ºç™½ + å°å¯«ï¼‰ï?ç©ºå€¼çµ¦?è¨­
             reportDefinition.Category = (reportDefinition.Category ?? "line").Trim().ToLowerInvariant();
             reportDefinition.BaseKind = (reportDefinition.BaseKind ?? "sales").Trim().ToLowerInvariant();
 
-            // ¤@«ß±Ò¥Î¡AÁ×§K³Q Index() ¹LÂo±¼
+            // ä¸€å¾‹å??¨ï??¿å?è¢?Index() ?æ¿¾??
             reportDefinition.IsActive = true;
-            reportDefinition.UpdatedAt = DateTime.Now;// «áºİ¦Û°Ê¨ê·s
+            reportDefinition.UpdatedAt = DateTime.Now;// å¾Œç«¯?ªå??·æ–°
 
             using var tx = await _context.Database.BeginTransactionAsync();
             try
-            {   // 1) ¥ı§ó·s Definition ¥»Åé
+            {   // 1) ?ˆæ›´??Definition ?¬é?
                 _context.Update(reportDefinition);
                 await _context.SaveChangesAsync();
 
-                // 2)¬å±¼ÂÂªºFilters(³ÌÂ²¼ä¡BÁ×§K¤ñ¹ï¶¶§Ç²§°Ê)
+                // 2)?æ??Šç?Filters(?€ç°¡æ??é¿?æ?å°é?åºç•°??
                 var olds = _context.ReportFilters.Where(f => f.ReportDefinitionID == reportDefinition.ReportDefinitionID);
                 _context.ReportFilters.RemoveRange(olds);
                 await _context.SaveChangesAsync();
 
-                // 3)ÁÙ­ì·s¼W¤Qªº¡u¯ó½Z¸ÑªR¡v:³vµ§¥[¤J·sªºFilters
+                // 3)?„å??°å??ç??Œè?ç¨¿è§£?ã€??ç?? å…¥?°ç?Filters
                 if (!string.IsNullOrWhiteSpace(FiltersJson))
                 {
                     var drafts = System.Text.Json.JsonSerializer.Deserialize<List<ReportFilterDraft>>(FiltersJson) ?? new();
@@ -203,10 +203,10 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             DisplayName = string.IsNullOrWhiteSpace(d.DisplayName) ? d.FieldName!.Trim() : d.DisplayName!.Trim(),
                             DataType = (d.DataType ?? "text").Trim().ToLowerInvariant(),
                             Operator = (d.Operator ?? "eq").Trim().ToLowerInvariant(),
-                            ValueJson = d.ValueJson ?? "{}",   // ·sª©¥u¥Î ValueJson
+                            ValueJson = d.ValueJson ?? "{}",   // ?°ç??ªç”¨ ValueJson
                             Options = d.Options,
                             OrderIndex = order++,
-                            IsRequired = d.IsRequired ?? false,   // ©Î d.IsRequired.GetValueOrDefault(false)                            IsActive = true,
+                            IsRequired = d.IsRequired ?? false,   // ??d.IsRequired.GetValueOrDefault(false)                            IsActive = true,
                             CreatedAt = now,
                             UpdatedAt = now
                         };
@@ -254,7 +254,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			return RedirectToAction("Index", "Reports", new { area = "ReportMail" });
 		}
 
-        // ¨Ñ¥D­¶¤U©Ô¸ü¤J¦Û­q¡u§é½u¹Ï¡v³øªí©Ò»İ°Ñ¼Æ¡GCategory + BaseKind + Filters¡]¥u§t ValueJson¡^
+        // ä¾›ä¸»?ä??‰è??¥è‡ªè¨‚ã€Œæ?ç·šå??å ±è¡¨æ??€?ƒæ•¸ï¼šCategory + BaseKind + Filtersï¼ˆåª??ValueJsonï¼?
         [HttpGet]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public async Task<IActionResult> DefinitionPayload(int id)
@@ -281,8 +281,8 @@ namespace ReportMail.Areas.ReportMail.Controllers
             {
                 def.ReportDefinitionID,
                 def.ReportName,
-                Category = category,   // ¡¹ ¼Ğ·Ç¤Æ«á¦^µ¹«eºİ
-                BaseKind = baseKind,   // ¡¹ ¼Ğ·Ç¤Æ«á¦^µ¹«eºİ
+                Category = category,   // ??æ¨™æ??–å??çµ¦?ç«¯
+                BaseKind = baseKind,   // ??æ¨™æ??–å??çµ¦?ç«¯
                 Filters = filters
             });
         }

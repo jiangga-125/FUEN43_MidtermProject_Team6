@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookLoop.Ordersys.Models;
+namespace BookLoop.Models;
 
 public partial class OrdersysContext : DbContext
 {

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 ﻿using BookLoop.Services;
 using BookLoop.Services.Export;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +11,8 @@ using System.Threading.Tasks;
 namespace ReportMail.Areas.ReportMail.Controllers
 {
 	[Area("ReportMail")]
-	[Route("ReportMail/[controller]/[action]")]
+	//[Authorize(Roles = "Admin,Marketing,Publisher")]
+[Route("ReportMail/[controller]/[action]")]
 	public class ReportExportController : Controller
 	{
 		private readonly IExcelExporter _excel;

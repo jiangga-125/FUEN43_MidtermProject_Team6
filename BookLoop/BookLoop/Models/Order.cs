@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace BookLoop.Ordersys.Models;
+namespace BookLoop.Models;
 
 public partial class Order
 {

@@ -1,0 +1,208 @@
+﻿@model IEnumerable<BookLoop.Models.Listing>
+
+@{
+    ViewData["Title"] = "二手書清單";
+}
+
+@section Scripts {
+    <script>
+        const baseIndexUrl = '@Url.Action("Index", "Listings", new { area = "Borrow" })';
+        // 全域保存 DataTable 實例，避免多次初始化
+        let bookDT = null;
+
+        // 初始化/重建 DataTable（避免跟伺服端分頁打架：這裡建議關掉 DataTables 的 paging）
+        function initBookTable() {
+          const $table = $('#bookTable');
+
+          // 若已有實例先銷毀
+          if ( $.fn.DataTable.isDataTable($table) ) {
+            $table.DataTable().destroy();
+          }
+
+          bookDT = $table.DataTable({
+            dom: 't',
+            paging: false,
+            pageLength: 10,
+            info: false,
+            lengthChange: false,
+            lengthMenu: false,
+            ordering: true,      // 可保留欄位排序（純前端排序目前頁資料）
+            searching: false,
+            language: { url: '//cdn.datatables.net/plug-ins/1.13.8/i18n/zh-HANT.json' },
+            columnDefs: [
+              { targets: -1, orderable: false, searchable: false }
+            ],
+            order: [[5, 'desc']]
+          });
+        }
+
+        // 初次載入也要初始化
+        $(function(){ initBookTable(); });
+
+        // 工具：啟用 loading 狀態並鎖住高度，避免布局跳動
+        function lockHeightWhileLoading(container) {
+          const rect = container.getBoundingClientRect();
+          container.style.minHeight = rect.height + 'px';
+          container.classList.add('loading');
+          return () => {
+            container.style.minHeight = '';
+            container.classList.remove('loading');
+          };
+        }
+
+        // 監聽：送出搜尋（按鈕或 Enter）
+        document.getElementById('searchForm').addEventListener('submit', async function (e) {
+          e.preventDefault();
+          await fetchAndSwap();
+        });
+
+        // 監聽：下拉選單變更就即時查詢
+        $('#searchForm select').on('change', async function(){
+          await fetchAndSwap();
+        });
+
+        async function fetchAndSwap() {
+          const form = document.getElementById('searchForm');
+          const params = new URLSearchParams(new FormData(form));
+          const url = `${baseIndexUrl}?${params.toString()}`;
+
+          const wrap = document.getElementById('tableWrap');
+          const unlock = lockHeightWhileLoading(wrap);
+
+          try {
+            const res = await fetch(url, {
+              headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const html = await res.text();
+
+            // 置換表格區域 HTML
+            wrap.innerHTML = html;
+
+            // 重新初始化 DataTable
+            initBookTable();
+
+            // 同步 URL（可用上一頁/重新整理保留條件）
+            window.history.replaceState(null, '', url);
+          } catch (err) {
+            console.error(err);
+            // 簡單失敗提示
+            wrap.innerHTML = '<div class="alert alert-danger">載入失敗，請重試。</div>';
+          } finally {
+            unlock();
+          }
+        };
+                // 監聽 tableWrap 內的分頁連結（由 Partial 動態產生）
+        $(document).on('click', '#tableWrap .page-link', async function (e) {
+          e.preventDefault();
+          const page = $(this).data('page');
+          const form = document.getElementById('searchForm');
+          const params = new URLSearchParams(new FormData(form));
+          params.set('page', page);
+          const url = `${baseIndexUrl}?${params.toString()}`;
+
+          const wrap = document.getElementById('tableWrap');
+          const unlock = lockHeightWhileLoading(wrap);
+          try {
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const html = await res.text();
+            wrap.innerHTML = html;
+            initBookTable();
+            window.history.replaceState(null, '', url);
+          } catch (err) {
+            console.error(err);
+            wrap.innerHTML = '<div class="alert alert-danger">載入失敗，請重試。</div>';
+          } finally {
+            unlock();
+          }
+        });
+                $(document).on('click', '#btnClear', async function (e) {
+          // 清空條件
+          e.preventDefault();
+          $('#searchForm')[0].reset();
+          // 可選：顯式把 select 重設成空值
+          // $('#CategoryID').val('');
+          // $('#PublisherID').val('');
+
+          await fetchAndSwap();
+        });
+                // 監聽：每頁筆數（在 Partial 內的下拉選單）變更
+        $(document).on('change', '#tableWrap #pageSizeSelector', async function () {
+          const newSize = $(this).val();
+          // 同步到表單的 hidden input，並把頁碼重設為 1
+          $('#pageSizeInput').val(newSize);
+
+          // 建出新的 URL（page=1）
+          const form = document.getElementById('searchForm');
+          const params = new URLSearchParams(new FormData(form));
+          params.set('page', 1);
+
+          const url = `${baseIndexUrl}?${params.toString()}`;
+          const wrap = document.getElementById('tableWrap');
+          const unlock = lockHeightWhileLoading(wrap);
+
+          try {
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const html = await res.text();
+            wrap.innerHTML = html;
+            initBookTable();
+            window.history.replaceState(null, '', url);
+          } catch (err) {
+            console.error(err);
+            wrap.innerHTML = '<div class="alert alert-danger">載入失敗，請重試。</div>';
+          } finally {
+            unlock();
+          }
+        });
+
+
+    </script>
+
+    <style>
+        /* loading 視覺，避免白屏閃爍與跳動 */
+        #tableWrap.loading {
+            opacity: .6;
+            pointer-events: none;
+            transition: opacity .2s ease;
+        }
+
+        #tableWrap tbody tr:hover {
+            background-color: sandybrown !important;
+        }
+    </style>   
+}
+
+<form asp-area="Borrow" asp-controller="Listings" asp-action="Index" method="get" class="row g-2 mb-3" id="searchForm">
+    <input type="hidden" name="pageSize" id="pageSizeInput" value="@(Context.Request.Query["pageSize"].FirstOrDefault() ?? (ViewData["PageSize"]?.ToString() ?? "10"))" />
+
+    <div class="col-auto">
+        <input name="q"
+               value="@Context.Request.Query["q"]"
+               class="form-control"
+               placeholder="輸入書名 搜尋" />
+    </div>
+    <div class="col-auto">
+        @Html.DropDownList(
+        "CategoryID",
+                (SelectList)ViewData["CategoryID"],
+                "全部分類",
+                new { @class = "form-select" })
+    </div>
+    <div class="col-auto">
+        @Html.DropDownList(
+                "PublisherID",
+                (SelectList)ViewData["PublisherID"],
+                "全部出版社",
+                new { @class = "form-select" })
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary">查詢</button>
+        <a class="btn btn-danger" id="btnClear" href="@Url.Action("Index")">清除</a>
+        <a class="btn btn-success" href="@Url.Action("Create")">上架</a>
+    </div>
+</form>
+
+<div id="tableWrap">
+    @Html.Partial("_IndexTable", Model)
+</div>
+@await Html.PartialAsync("_MessageModal")
+

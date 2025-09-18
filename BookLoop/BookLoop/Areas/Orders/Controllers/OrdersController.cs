@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using BookLoop.Ordersys.Models;
+using BookLoop.Models;
 
 
 //EntityFrameworkCore.Tools -Version 9.0.8

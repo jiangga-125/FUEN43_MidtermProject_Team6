@@ -1,0 +1,42 @@
+﻿@model BookLoop.Blacklist
+@{
+    ViewData["Title"] = "新增黑名單";
+}
+
+<h2 class="mb-3">新增黑名單</h2>
+
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label class="form-label">會員ID</label>
+        <input asp-for="MemberID" class="form-control" value="@ViewBag.MemberID" />
+        <span asp-validation-for="MemberID" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">原因</label>
+        <input asp-for="Reason" class="form-control" />
+        <span asp-validation-for="Reason" class="text-danger"></span>
+    </div>
+
+    <div class="row">
+        <div class="col-sm-6 mb-3">
+            <label class="form-label">開始時間 (UTC)</label>
+            <input asp-for="StartAt" type="datetime-local" class="form-control" />
+            <span asp-validation-for="StartAt" class="text-danger"></span>
+        </div>
+        <div class="col-sm-6 mb-3">
+            <label class="form-label">結束時間 (UTC，可空)</label>
+            <input asp-for="EndAt" type="datetime-local" class="form-control" />
+            <span asp-validation-for="EndAt" class="text-danger"></span>
+        </div>
+    </div>
+
+    <button class="btn btn-primary">新增</button>
+    <a asp-action="Index" class="btn btn-outline-secondary ms-2">取消</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
