@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("會員")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+79e60dd97e61f20fd525a22246e2b4089399ffa4")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5ce6bb00d408602a61c0a4092591aee807eee974")]
 [assembly: System.Reflection.AssemblyProductAttribute("會員")]
 [assembly: System.Reflection.AssemblyTitleAttribute("會員")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
