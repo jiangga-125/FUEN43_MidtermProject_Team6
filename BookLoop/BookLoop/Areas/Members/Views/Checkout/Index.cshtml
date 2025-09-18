@@ -1,0 +1,195 @@
+﻿@{
+    ViewData["Title"] = "結帳試算與下單（優惠券＋點數）";
+}
+<!-- 外層容器 -->
+<div class="container py-4">
+
+    <!-- 頁面標題 -->
+    <h1 class="mb-4">@ViewData["Title"]</h1>
+
+    <!-- 提示訊息區（成功/失敗） -->
+    <div id="alertBox" class="alert d-none" role="alert"><!-- 先隱藏 --></div>
+
+    <!-- 表單：用於下單（因為下單需要 Anti-forgery Token） -->
+    <form id="orderForm" method="post" asp-controller="Checkout" asp-action="PlaceOrder">
+        @* ASP.NET 防跨站驗證 Token（後端 [ValidateAntiForgeryToken] 會驗證） *@
+        @Html.AntiForgeryToken()
+
+        <div class="row g-3">
+            <!-- 會員ID -->
+            <div class="col-md-3">
+                <label for="MemberId" class="form-label">會員ID</label>
+                <input id="MemberId" name="MemberId" type="number" class="form-control" value="1" />
+                <div class="form-text">測試可先用 101</div>
+            </div>
+
+            <!-- 小計（未折扣前） -->
+            <div class="col-md-3">
+                <label for="Subtotal" class="form-label">小計（元）</label>
+                <input id="Subtotal" name="Subtotal" type="number" step="1" min="0" class="form-control" value="1000" />
+            </div>
+
+            <!-- 優惠碼 -->
+            <div class="col-md-3">
+                <label for="CouponCode" class="form-label">優惠碼</label>
+                <input id="CouponCode" name="CouponCode" type="text" class="form-control" value="TEST90" />
+                <div class="form-text">先用測試券 TEST90（九折，上限200）</div>
+            </div>
+
+            <!-- 想使用的點數 -->
+            <div class="col-md-3">
+                <label for="UsePoints" class="form-label">使用點數（點=元）</label>
+                <input id="UsePoints" name="UsePoints" type="number" step="1" min="0" class="form-control" value="" />
+                <div class="form-text">系統會自動限制：券後金額的20% 或 餘額</div>
+            </div>
+        </div>
+
+        <!-- 按鈕列：預覽與下單 -->
+        <div class="mt-4 d-flex gap-2">
+            <button id="btnPreview" type="button" class="btn btn-primary">
+                預覽試算
+            </button>
+            <button id="btnPlaceOrder" type="button" class="btn btn-success">
+                建立訂單
+            </button>
+            <button id="btnReset" type="button" class="btn btn-outline-secondary">
+                清除結果
+            </button>
+        </div>
+
+        <!-- 試算結果卡片 -->
+        <div class="card mt-4">
+            <div class="card-header">試算結果</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">原小計</label>
+                        <input id="resSubtotal" class="form-control" readonly />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">優惠券折抵</label>
+                        <input id="resCouponDiscount" class="form-control" readonly />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">券後金額</label>
+                        <input id="resAfterCoupon" class="form-control" readonly />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">實際點數折抵</label>
+                        <input id="resPointsUsed" class="form-control" readonly />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">應付金額</label>
+                        <input id="resPayable" class="form-control fw-bold" readonly />
+                    </div>
+                    <div class="col-md-9">
+                        <label class="form-label">系統訊息</label>
+                        <textarea id="resMessages" class="form-control" rows="2" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        // =============== 小工具：顯示提示 ===============
+        function showAlert(type, text) {
+            // type: 'success' | 'danger' | 'warning' | 'info'
+            const box = document.getElementById('alertBox');       // 找到提示容器
+            box.className = 'alert alert-' + type;                 // 設定樣式
+            box.textContent = text;                                // 設定文字
+            box.classList.remove('d-none');                        // 顯示
+            setTimeout(() => box.classList.add('d-none'), 5000);   // 5秒後自動隱藏
+        }
+
+        // =============== 小工具：讀取表單值 ===============
+        function readForm() {
+            // 從輸入欄位讀取資料，並做好型別轉換與預設
+            const memberId = parseInt(document.getElementById('MemberId').value || '0', 10);
+            const subtotal = parseFloat(document.getElementById('Subtotal').value || '0');
+            const couponCode = document.getElementById('CouponCode').value || null;
+            const usePoints = parseInt(document.getElementById('UsePoints').value || '0', 10);
+            return { memberId, subtotal, couponCode, usePoints };
+        }
+
+        // =============== 小工具：渲染試算結果到畫面 ===============
+        function renderPreview(res) {
+            // 把回傳的 JSON 寫進結果欄位
+            document.getElementById('resSubtotal').value = res.subtotal?.toString() ?? '';
+            document.getElementById('resCouponDiscount').value = res.couponDiscount?.toString() ?? '';
+            document.getElementById('resAfterCoupon').value = res.afterCoupon?.toString() ?? '';
+            document.getElementById('resPointsUsed').value = res.pointsUsed?.toString() ?? '';
+            document.getElementById('resPayable').value = res.payable?.toString() ?? '';
+
+            // 整理訊息（券/點數提示）
+            const msgs = [];
+            if (res.couponMessage) msgs.push('優惠券：' + res.couponMessage);
+            if (res.pointsMessage) msgs.push('點數：' + res.pointsMessage);
+            document.getElementById('resMessages').value = msgs.join('\n');
+        }
+
+        // =============== 預覽試算（呼叫 /Checkout/Preview） ===============
+        document.getElementById('btnPreview').addEventListener('click', async function () {
+            const payload = readForm(); // 讀表單
+            // 基本檢查
+            if (!payload.memberId || payload.subtotal < 0) {
+                showAlert('warning', '請先輸入正確的會員ID與小計');
+                return;
+            }
+
+            try {
+                // 送 AJAX（JSON）
+                const resp = await fetch('/Members/Checkout/Preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!resp.ok) throw new Error('伺服器回傳狀態碼：' + resp.status);
+                const data = await resp.json();
+                renderPreview(data);                   // 顯示結果
+                showAlert('info', '試算完成');        // 彈提示
+            } catch (err) {
+                showAlert('danger', '預覽失敗：' + err.message);
+            }
+        });
+
+        // =============== 清除結果 ===============
+        document.getElementById('btnReset').addEventListener('click', function () {
+            // 清空結果欄位與訊息
+            ['resSubtotal','resCouponDiscount','resAfterCoupon','resPointsUsed','resPayable','resMessages']
+                .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            showAlert('info', '已清除試算結果');
+        });
+
+        // =============== 建立訂單（AJAX POST，帶防跨站 Token） ===============
+        document.getElementById('btnPlaceOrder').addEventListener('click', async function () {
+            const form = document.getElementById('orderForm');     // 取表單
+            const token = form.querySelector('input[name="__RequestVerificationToken"]')?.value; // 取 Anti-forgery Token
+
+            // 用 URL 編碼的表單方式送出（符合 MVC Model Binding）
+            const formData = new URLSearchParams(new FormData(form));
+
+            try {
+                const resp = await fetch('/Checkout/PlaceOrder', {
+                    method: 'POST',
+                    headers: {
+                        // 這個標頭名稱是 ASP.NET Core 預設會抓的 Anti-forgery Token 位置
+                        'RequestVerificationToken': token
+                    },
+                    body: formData
+                });
+                if (!resp.ok) throw new Error('伺服器回傳狀態碼：' + resp.status);
+                const res = await resp.json(); // 後端在 AJAX 情境回 JSON（已在 Controller 寫好）
+                if (res.ok) {
+                    showAlert('success', `下單成功！訂單編號：${res.data}`);
+                } else {
+                    showAlert('warning', `下單失敗：${res.message}`);
+                }
+            } catch (err) {
+                showAlert('danger', '建立訂單失敗：' + err.message);
+            }
+        });
+    </script>
+}

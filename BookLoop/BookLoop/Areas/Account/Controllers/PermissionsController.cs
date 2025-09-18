@@ -168,11 +168,11 @@ namespace Account.Controllers
         [HttpGet]
         public async Task<IActionResult> GetFeatures(int id)
         {
-            var all = await _db.Features.AsNoTracking().OrderBy(f => f.Group).ThenBy(f => f.SortOrder).ToListAsync();
+            var all = await _db.Features.AsNoTracking().OrderBy(f => f.FeatureGroup).ThenBy(f => f.SortOrder).ToListAsync();
             var checkedIds = await _db.PermissionFeatures.AsNoTracking().Where(pf => pf.PermissionID == id).Select(pf => pf.FeatureID).ToListAsync();
             return Json(new
             {
-                features = all.Select(f => new { f.FeatureID, f.Code, f.Name, f.Group, f.IsPageLevel }).ToList(),
+                features = all.Select(f => new { f.FeatureID, f.Code, f.Name, f.FeatureGroup, f.IsPageLevel }).ToList(),
                 checkedIds
             });
         }

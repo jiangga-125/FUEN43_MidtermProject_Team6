@@ -1,0 +1,45 @@
+﻿@model IEnumerable<BookLoop.Models.Review>
+@{
+    ViewData["Title"] = "待審評論";
+}
+<h1>@ViewData["Title"]</h1>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ReviewID</th>
+            <th>Member</th>
+            <th>Target</th>
+            <th>Rating</th>
+            <th>Content</th>
+            <th>CreatedAt</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var r in Model)
+        {
+            <tr>
+                <td>@r.ReviewId</td>
+                <td>@r.MemberId</td>
+                <td>@r.TargetType-@r.TargetId</td>
+                <td>@r.TargetId</td>
+                <td style="max-width:420px">@r.Rating</td>
+                <td>@r.Content</td>
+                <td>
+                    <form method="post" asp-controller="Reviews" asp-action="Approve" class="d-inline">
+                        <input type="hidden" name="reviewId" value="@r.ReviewId" />
+                        <input type="hidden" name="adminId" value="1" />
+                        <button class="btn btn-sm btn-success">通過</button>
+                    </form>
+                    <form method="post" asp-controller="Reviews" asp-action="Reject" class="d-inline">
+                        <input type="hidden" name="reviewId" value="@r.ReviewId" />
+                        <input type="hidden" name="adminId" value="1" />
+                        <input type="hidden" name="reason" value="不符合規範" />
+                        <button class="btn btn-sm btn-danger">拒絕</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

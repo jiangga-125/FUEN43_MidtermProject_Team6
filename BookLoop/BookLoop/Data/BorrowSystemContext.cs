@@ -37,7 +37,7 @@ public partial class BorrowSystemContext : DbContext
     public virtual DbSet<Reservation> Reservations { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer("Name=ConnectionStrings:BorrowSystem");
+        => optionsBuilder.UseSqlServer("Name=ConnectionStrings:BookLoop");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -156,7 +156,7 @@ public partial class BorrowSystemContext : DbContext
 
         modelBuilder.Entity<PenaltyRule>(entity =>
         {
-            entity.HasKey(e => e.RuleID).HasName("PK__PenaltyR__110458C22A9F1E42");
+            entity.HasKey(e => e.PenaltyRuleID).HasName("PK__PenaltyR__110458C22A9F1E42");
 
             entity.Property(e => e.ChargeType).HasMaxLength(20);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
@@ -165,7 +165,7 @@ public partial class BorrowSystemContext : DbContext
 
         modelBuilder.Entity<PenaltyTransaction>(entity =>
         {
-            entity.HasKey(e => e.PenaltyID).HasName("PK__PenaltyT__567E06E7E1D099D2");
+            entity.HasKey(e => e.PenaltyTransactionID).HasName("PK__PenaltyT__567E06E7E1D099D2");
 
             entity.HasIndex(e => e.MemberID, "IX_PenaltyTransactions_MemberID");
 

@@ -6,7 +6,7 @@ namespace BookLoop.Models;
 
 public partial class PenaltyRule
 {
-    public int RuleID { get; set; }
+    public int PenaltyRuleID { get; set; }
 
     public string ReasonCode { get; set; } = null!;
 
