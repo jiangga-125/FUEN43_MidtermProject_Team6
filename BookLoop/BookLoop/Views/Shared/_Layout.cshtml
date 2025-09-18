@@ -6,69 +6,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" />
-    <style>
-        body {
-            background-color: #f8f9fa; /* 淺灰背景 */
-        }
-
-        main {
-            min-height: 70vh; /* 保持頁面高度，不會太擠 */
-        }
-
-        footer {
-            margin-top: 50px;
-            padding: 20px 0;
-            background-color: #212529; /* 深灰底 */
-            color: #f8f9fa;
-            text-align: center;
-        }
-    </style>
+    @RenderSection("Styles", required: false)   <!-- ✅ 允許每頁加專屬 CSS -->
 </head>
 <body>
     <!-- 導覽列 -->
     <header>
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
             <div class="container-fluid">
-                <!-- 左邊 Logo -->
                 <a class="navbar-brand fw-bold" asp-area="" asp-controller="Home" asp-action="Index">📚 BookLoop</a>
-
-                <!-- 漢堡選單 -->
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-
-                <!-- 導覽列內容 -->
                 <div class="collapse navbar-collapse" id="navbarNav">
-                    <!-- 左邊選單 -->
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">🏠 首頁</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="Books" asp-controller="Books" asp-action="Index">📘 書籍</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="Orders" asp-controller="Orders" asp-action="Index">訂單</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="Borrow" asp-controller="Listings" asp-action="Index">📘 二手書籍</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="ReportMail" asp-controller="Reports" asp-action="Index">報表</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="Account" asp-controller="Home" asp-action="Index">帳號</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="Members" asp-controller="Checkout" asp-action="Index">優惠券</a>
-                        </li>
-
-                        @* <li class="nav-item">
-                            <a class="nav-link" asp-area="XXXX" asp-controller="XXXX" asp-action="Index">範例</a>
-                        </li> *@
+                        <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">🏠 首頁</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-area="Books" asp-controller="Books" asp-action="Index">📘 書籍</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-area="Orders" asp-controller="Orders" asp-action="Index">訂單</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-area="Borrow" asp-controller="Listings" asp-action="Index">📚 二手書籍</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-area="ReportMail" asp-controller="Reports" asp-action="Index">報表</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-area="Account" asp-controller="Home" asp-action="Index">帳號</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-area="Members" asp-controller="Checkout" asp-action="Index">優惠券</a></li>
                     </ul>
-
-                    <!-- 右邊登入/註冊 -->
                     <div class="d-flex">
                         <a class="btn btn-outline-light me-2" asp-area="Account" asp-controller="Account" asp-action="Login">登入</a>
                         <a class="btn btn-warning" asp-area="Account" asp-controller="Account" asp-action="Register">註冊</a>
@@ -79,18 +37,16 @@
     </header>
 
     <!-- 主內容 -->
-    <main class="container mt-4">
+    <main>
         @RenderBody()
     </main>
 
     <!-- 頁尾 -->
-    <footer>
+    <footer class="text-center bg-dark text-light py-3">
         <div class="container">
             <p class="mb-0">© 2025 BookLoop 專案 | FUEN43 Team 6</p>
         </div>
     </footer>
-
-    <!-- 其他像 bootstrap, chart.js 之類的再往後放 -->
 
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     @RenderSection("Scripts", required: false)
