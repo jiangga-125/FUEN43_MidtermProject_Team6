@@ -1,0 +1,25 @@
+﻿@model BookLoop.Models.Publisher
+
+@{
+    ViewData["Title"] = "出版社詳情";
+}
+
+<h1>出版社詳情</h1>
+
+<!-- 顯示完整的出版社資料 -->
+<div>
+    <dl class="row">
+        <dt class="col-sm-2">出版社名稱</dt>
+        <dd class="col-sm-10">@Model.PublisherName</dd>
+        <dt class="col-sm-2">建立時間</dt>
+        <dd class="col-sm-10">@Model.CreatedAt</dd>
+        <dt class="col-sm-2">最後更新</dt>
+        <dd class="col-sm-10">@Model.UpdatedAt</dd>
+    </dl>
+</div>
+
+<!-- 操作按鈕 -->
+<p>
+    <a asp-action="Edit" asp-route-id="@Model.PublisherID" class="btn btn-primary">編輯</a> |
+    <a asp-action="Index" class="btn btn-secondary">返回清單</a>
+</p>

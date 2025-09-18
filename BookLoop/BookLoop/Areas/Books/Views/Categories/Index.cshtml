@@ -1,0 +1,51 @@
+﻿@model IEnumerable<BookLoop.Models.Category>
+
+@{
+    ViewData["Title"] = "分類清單";
+}
+
+<h1>分類清單</h1>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@* <!-- 共用訊息提示區塊 -->
+<alert-messages /> *@
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">新增分類</a>
+</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>分類名稱</th>
+            <th>Slug</th>
+            <th>建立時間</th>
+            <th>最後更新</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.CategoryName</td>
+                <td>@item.Slug</td>
+                <td>@item.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                <td>@item.UpdatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.CategoryID" class="btn btn-sm btn-warning">編輯</a>
+                    <a asp-action="Details" asp-route-id="@item.CategoryID" class="btn btn-sm btn-info">詳細</a>
+                    <a asp-action="Delete" asp-route-id="@item.CategoryID" class="btn btn-sm btn-danger">刪除</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

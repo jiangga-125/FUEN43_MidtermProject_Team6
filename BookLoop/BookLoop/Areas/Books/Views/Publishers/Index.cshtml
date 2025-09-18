@@ -1,0 +1,50 @@
+﻿@model IEnumerable<BookLoop.Models.Publisher>
+
+@{
+    ViewData["Title"] = "出版社清單";
+} 
+@*<alert-messages /> *@
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<h1>出版社清單</h1>
+
+<p>
+    <!-- 連結到 Create 動作，新增出版社 -->
+    <a asp-action="Create" class="btn btn-primary">新增出版社</a>
+</p>
+
+<!-- 顯示出版社清單 -->
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>出版社名稱</th>
+            <th>建立時間</th>
+            <th>最後更新</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <!-- 顯示基本欄位 -->
+                <td>@item.PublisherName</td>
+                <td>@item.CreatedAt.ToString("yyyy/MM/dd HH:mm")</td>
+                <td>@item.UpdatedAt.ToString("yyyy/MM/dd HH:mm")</td>
+                <td>
+                    <!-- 動作連結：Details、Edit、Delete -->
+                    <a asp-action="Details" asp-route-id="@item.PublisherID">詳細</a> |
+                    <a asp-action="Edit" asp-route-id="@item.PublisherID">編輯</a> |
+                    <a asp-action="Delete" asp-route-id="@item.PublisherID">刪除</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

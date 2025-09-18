@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using BookLoop.Data.Shop;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookLoop.Models;
@@ -39,13 +38,11 @@ public partial class ShopDbContext : DbContext
             entity.Property(e => e.ISBN)
                 .HasMaxLength(13)
                 .IsUnicode(false);
-            entity.Property(e => e.LanguageCode)
-                .HasMaxLength(10)
-                .IsUnicode(false);
+            //entity.Property(e => e.LanguageCode).HasMaxLength(10).IsUnicode(false);
             entity.Property(e => e.ListPrice).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.SalePrice).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.Slug).HasMaxLength(200);
-            entity.Property(e => e.Subtitle).HasMaxLength(200);
+            //entity.Property(e => e.Subtitle).HasMaxLength(200);
             entity.Property(e => e.Title).HasMaxLength(100);
         });
 

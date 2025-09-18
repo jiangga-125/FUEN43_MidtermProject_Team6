@@ -1,12 +1,92 @@
-﻿@{
-    ViewData["Title"] = "Books - Index";
+﻿@model IEnumerable<BookLoop.Models.Book>
+
+@{
+    ViewData["Title"] = "書籍清單";
 }
 
-<h2>Books模組首頁</h2>
+<!-- 匯入完成通知 -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
 
-<a class="btn btn-secondary mt-3"
-   asp-area=""
-   asp-controller="Home"
-   asp-action="Index">
-    返回首頁
-</a>
+<h2>書籍清單</h2>
+
+<!-- 新增書籍的按鈕 -->
+<p>
+    <a asp-area="Books" asp-controller="Books" asp-action="Create" class="btn btn-success">新增書籍</a>
+</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ISBN</th>
+            <th>書名</th>
+            <th>出版社</th>
+            <th>分類</th>
+            <th>發行日</th>
+            <th>封面</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var b in Model)
+        {
+            <tr>
+                <td>@b.ISBN</td>
+                <td>
+                    <a asp-area="Books" asp-controller="Books" asp-action="Details" asp-route-id="@b.BookID">
+                        @b.Title
+                    </a>
+                </td>
+                <td>@b.Publisher?.PublisherName</td>
+                <td>@b.Category?.CategoryName</td>
+                <td>
+                    @(b.PublishDate.HasValue? b.PublishDate.Value.ToString("yyyy-MM-dd") : "")
+                </td>
+
+                <td>
+                    @{
+                        var map = ViewBag.PrimaryImages as IDictionary<int, string>;
+                        string file = null;
+                        if (map != null)
+                        {
+                            map.TryGetValue(b.BookID, out file);
+                        }
+                    }
+                    @if (!string.IsNullOrWhiteSpace(file))
+                    {
+                        if (file.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <!-- 外部 URL -->
+                            <img src="@file" alt="封面" style="max-height:80px;" />
+                        }
+                        else
+                        {
+                            <!-- 本地端 -->
+                            <img src="~/images/books/@file" alt="封面" style="max-height:80px;" />
+                        }
+                    }
+                    else
+                    {
+                        <span>無封面</span>
+                    }
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@b.BookID" class="btn btn-sm btn-warning">編輯</a>
+                    <a asp-action="Delete" asp-route-id="@b.BookID" class="btn btn-sm btn-danger">刪除</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

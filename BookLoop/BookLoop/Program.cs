@@ -2,6 +2,7 @@ using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services;
 using BookLoop.Services.Export;
+using BookLoop.Services.Import;
 using BookLoop.Services.Reports;
 using BorrowSystem.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -28,7 +29,9 @@ namespace BookLoop
 			builder.Services.AddDbContext<OrdersysContext>(options =>
 				options.UseSqlServer(builder.Configuration.GetConnectionString("Ordersys"))); // 新增 OrdersysContext
 
-            builder.Services.AddDbContext<BorrowSystemContext>(options =>
+			builder.Services.AddDbContext<BookSystemContext>(options =>
+				options.UseSqlServer(builder.Configuration.GetConnectionString("BookSystem"))); // 新增 BookSystem
+			builder.Services.AddDbContext<BorrowSystemContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("BorrowSystem"))); // 新增 BorrowSystemContext
             builder.Services.AddScoped<ReservationExpiryService>(); // BorrowSystem 服務
             builder.Services.AddHostedService<ReservationExpiryWorker>(); // BorrowSystem 服務
@@ -40,20 +43,23 @@ namespace BookLoop
 					builder.Configuration.GetConnectionString("ReportMail"),
 					x => x.MigrationsAssembly(typeof(ReportMailDbContext).Assembly.FullName)));
 
-			// Shop（唯讀查詢層；一定要有 ShopConnection，不回退 DefaultConnection）
+			// 報表預設三張圖用的資料來源（書/訂單/借閱）
 			builder.Services.AddDbContext<ShopDbContext>(options =>
-			{
-				var shopConn = builder.Configuration.GetConnectionString("ShopConnection");
-				if (string.IsNullOrWhiteSpace(shopConn))
-					throw new InvalidOperationException("缺少連線字串：ShopConnection（請指向合併後的資料庫）。");
+				options.UseSqlServer(
+					builder.Configuration.GetConnectionString("ShopConnection")
+					?? builder.Configuration.GetConnectionString("DefaultConnection")));
 
-				options.UseSqlServer(shopConn);
-				options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking); // 唯讀最佳化
-#if DEBUG
-				options.EnableDetailedErrors();
-				options.EnableSensitiveDataLogging();
-#endif
+			//book圖片處理
+			builder.Services.Configure<BookLoop.Services.ImageValidationOptions>(opts =>
+			{
+				opts.MaxFileBytes = 5 * 1024 * 1024; // 5MB
+				opts.PermittedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 			});
+
+			// 註冊 BookService、ImportCategoryDto、ImageValidator、HttpClient
+			builder.Services.AddScoped<ImportCategoryDto>();
+			builder.Services.AddScoped<BookService>();
+			builder.Services.AddHttpClient<IImageValidator, ImageValidator>();
 
 
 			// 權限服務(報表權限)
