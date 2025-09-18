@@ -1,0 +1,60 @@
+﻿@model IEnumerable<BookLoop.Models.Book>
+@{
+    var map = ViewBag.PrimaryImages as IDictionary<int, string>;
+}
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ISBN</th>
+            <th>書名</th>
+            <th>出版社</th>
+            <th>分類</th>
+            <th>發行日</th>
+            <th>封面</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var b in Model)
+        {
+            <tr>
+                <td>@b.ISBN</td>
+                <td>
+                    <a asp-area="Books" asp-controller="Books" asp-action="Details" asp-route-id="@b.BookID">
+                        @b.Title
+                    </a>
+                </td>
+                <td>@b.Publisher?.PublisherName</td>
+                <td>@b.Category?.CategoryName</td>
+                <td>@(b.PublishDate?.ToString("yyyy-MM-dd"))</td>
+                <td>
+                    @{
+                        string file = null;
+                        map?.TryGetValue(b.BookID, out file);
+                    }
+                    @if (!string.IsNullOrWhiteSpace(file))
+                    {
+                        var imgPath = file.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                        ? file
+                        : Url.Content("~/images/books/" + file);
+                        <img src="@imgPath" alt="封面" style="max-height:80px;" class="img-thumbnail" />
+                    }
+                    else
+                    {
+                        <span>
+                            <img src="~/images/books/no-cover.png"
+                                 alt="無封面"
+                                 style="max-height:80px;"
+                                 class="img-thumbnail" />
+                        </span>
+                    }
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@b.BookID" class="btn btn-sm btn-warning">編輯</a>
+                    <a asp-action="Delete" asp-route-id="@b.BookID" class="btn btn-sm btn-danger">刪除</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+ï»¿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BookLoop.Data;
 using BookLoop.Models;
@@ -9,18 +9,18 @@ namespace BookSystem.Controllers
 	[Area("Books")]
 	public class PublishersController : Controller
 	{
-		private readonly BookSystemContext _context; // ¸ê®Æ®w¦s¨ú¥Îªº DbContext
+		private readonly BookSystemContext _context; // è³‡æ–™åº«å­˜å–ç”¨çš„ DbContext
 
-		// «Øºc¤l¡Gª`¤J DbContext
+		// å»ºæ§‹å­ï¼šæ³¨å…¥ DbContext
 		public PublishersController(BookSystemContext context)
 		{
 			_context = context;
 		}
 
-		#region ¦Cªí(Index)
+		#region åˆ—è¡¨(Index)
 
 		// GET: /Books/Publishers
-		// Åã¥Ü¥Xª©ªÀ²M³æ
+		// é¡¯ç¤ºå‡ºç‰ˆç¤¾æ¸…å–®
 		public async Task<IActionResult> Index()
 		{
 			var list = await _context.Publishers.ToListAsync();
@@ -29,17 +29,17 @@ namespace BookSystem.Controllers
 
 		#endregion
 
-		#region ·s¼W(Create)
+		#region æ–°å¢(Create)
 
 		// GET: /Books/Publishers/Create
-		// Åã¥Ü¡u·s¼W¥Xª©ªÀ¡vªºªí³æ­¶­±
+		// é¡¯ç¤ºã€Œæ–°å¢å‡ºç‰ˆç¤¾ã€çš„è¡¨å–®é é¢
 		public IActionResult Create()
 		{
 			return View();
 		}
 
 		// POST: /Books/Publishers/Create
-		// ·í¨Ï¥ÎªÌ¦bªí³æ«ö¤U¡uÀx¦s¡v«á¡A·|¶i¨ì³o¸Ì
+		// ç•¶ä½¿ç”¨è€…åœ¨è¡¨å–®æŒ‰ä¸‹ã€Œå„²å­˜ã€å¾Œï¼Œæœƒé€²åˆ°é€™è£¡
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> Create(Publisher publisher)
@@ -50,7 +50,7 @@ namespace BookSystem.Controllers
 
 			if (_context.Publishers.Any(p => p.PublisherName == publisher.PublisherName))
 			{
-				ModelState.AddModelError("PublisherName", "¦¹¥Xª©ªÀ¤w¦s¦b¡I");
+				ModelState.AddModelError("PublisherName", "æ­¤å‡ºç‰ˆç¤¾å·²å­˜åœ¨ï¼");
 				return View(publisher);
 			}
 
@@ -61,17 +61,17 @@ namespace BookSystem.Controllers
 			_context.Add(publisher);
 			await _context.SaveChangesAsync();
 
-			TempData["Success"] = "¥Xª©ªÀ·s¼W¦¨¥\¡I"; // ·s¼W§¹¦¨°T®§
+			TempData["Success"] = "å‡ºç‰ˆç¤¾æ–°å¢æˆåŠŸï¼"; // æ–°å¢å®Œæˆè¨Šæ¯
 
 			return RedirectToAction(nameof(Index));
 		}
 
 		#endregion
 
-		#region ­×§ï(Edit)
+		#region ä¿®æ”¹(Edit)
 
 		// GET: /Books/Publishers/Edit/5
-		// ¨Ì·Ó PublisherID §â¸ê®Æ§ì¥X¨Ó¡AÅã¥Ü¦b½s¿èªí³æ
+		// ä¾ç…§ PublisherID æŠŠè³‡æ–™æŠ“å‡ºä¾†ï¼Œé¡¯ç¤ºåœ¨ç·¨è¼¯è¡¨å–®
 		public async Task<IActionResult> Edit(int? id)
 		{
 			if (id == null) return NotFound();
@@ -83,7 +83,7 @@ namespace BookSystem.Controllers
 		}
 
 		// POST: /Books/Publishers/Edit/5
-		// §ó·s¥Xª©ªÀ¤º®e
+		// æ›´æ–°å‡ºç‰ˆç¤¾å…§å®¹
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> Edit(int id, Publisher publisher)
@@ -94,24 +94,24 @@ namespace BookSystem.Controllers
 
 			if (_context.Publishers.Any(p => p.PublisherName == publisher.PublisherName && p.PublisherID != publisher.PublisherID))
 			{
-				ModelState.AddModelError("PublisherName", "¦¹¥Xª©ªÀ¤w¦s¦b¡I");
+				ModelState.AddModelError("PublisherName", "æ­¤å‡ºç‰ˆç¤¾å·²å­˜åœ¨ï¼");
 				return View(publisher);
 			}
 			publisher.UpdatedAt = DateTime.Now;
 			_context.Update(publisher);
 			await _context.SaveChangesAsync();
 
-			TempData["Success"] = "¥Xª©ªÀ­×§ï¦¨¥\¡I"; // ­×§ï§¹¦¨°T®§
+			TempData["Success"] = "å‡ºç‰ˆç¤¾ä¿®æ”¹æˆåŠŸï¼"; // ä¿®æ”¹å®Œæˆè¨Šæ¯
 
 			return RedirectToAction(nameof(Index));
 		}
 
 		#endregion
 
-		#region §R°£(Delete)
+		#region åˆªé™¤(Delete)
 
 		// GET: /Books/Publishers/Delete/5
-		// Åã¥Ü§R°£½T»{­¶­±
+		// é¡¯ç¤ºåˆªé™¤ç¢ºèªé é¢
 		public async Task<IActionResult> Delete(int? id)
 		{
 			if (id == null) return NotFound();
@@ -119,11 +119,11 @@ namespace BookSystem.Controllers
 			var publisher = await _context.Publishers.FirstOrDefaultAsync(m => m.PublisherID == id);
 			if (publisher == null) return NotFound();
 
-			return View(publisher); // ¶Ç¼Ò«¬¨ì§R°£½T»{­¶
+			return View(publisher); // å‚³æ¨¡å‹åˆ°åˆªé™¤ç¢ºèªé 
 		}
 
 		// POST: /Books/Publishers/Delete/5
-		[HttpPost, ActionName("Delete")] // »P GET ¦@¥Î URL
+		[HttpPost, ActionName("Delete")] // èˆ‡ GET å…±ç”¨ URL
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> DeleteConfirmed(int id)
 		{
@@ -133,21 +133,21 @@ namespace BookSystem.Controllers
 				_context.Publishers.Remove(publisher);
 				await _context.SaveChangesAsync();
 
-				TempData["Success"] = "¥Xª©ªÀ§R°£¦¨¥\¡I"; // §R°£§¹¦¨°T®§
+				TempData["Success"] = "å‡ºç‰ˆç¤¾åˆªé™¤æˆåŠŸï¼"; // åˆªé™¤å®Œæˆè¨Šæ¯
 			}
 			else
 			{
-				TempData["Error"] = "§R°£¥¢±Ñ¡A¥Xª©ªÀ¤£¦s¦b¡I"; // §R°£¥¢±Ñ°T®§
+				TempData["Error"] = "åˆªé™¤å¤±æ•—ï¼Œå‡ºç‰ˆç¤¾ä¸å­˜åœ¨ï¼"; // åˆªé™¤å¤±æ•—è¨Šæ¯
 			}
 			return RedirectToAction(nameof(Index));
 		}
 
 		#endregion
 
-		#region ¸Ô²Ó¸ê°T(Details)
+		#region è©³ç´°è³‡è¨Š(Details)
 
 		// GET: /Books/Publishers/Details/5
-		// Åã¥Ü³æ¤@¥Xª©ªÀªº§¹¾ã¸ê°T
+		// é¡¯ç¤ºå–®ä¸€å‡ºç‰ˆç¤¾çš„å®Œæ•´è³‡è¨Š
 		public async Task<IActionResult> Details(int? id)
 		{
 			if (id == null) return NotFound();
@@ -155,8 +155,29 @@ namespace BookSystem.Controllers
 			var publisher = await _context.Publishers.FirstOrDefaultAsync(m => m.PublisherID == id);
 			if (publisher == null) return NotFound();
 
-			return View(publisher); // §â¼Ò«¬¶Çµ¹ View
+			return View(publisher); // æŠŠæ¨¡å‹å‚³çµ¦ View
 		}
+
+		#endregion
+
+		#region æœå°‹(Search)
+
+		public async Task<IActionResult> Search(string search)
+		{
+			var query = _context.Publishers.AsQueryable();
+
+			if (!string.IsNullOrWhiteSpace(search))
+			{
+				query = query.Where(p => p.PublisherName.Contains(search));
+			}
+
+			var result = await query
+				.OrderBy(p => p.PublisherName)   // çµ±ä¸€æ’åº
+				.ToListAsync();
+
+			return PartialView("_PublishersTable", result);
+		}
+
 
 		#endregion
 	}

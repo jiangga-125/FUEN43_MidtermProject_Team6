@@ -333,6 +333,32 @@ namespace BookSystem.Controllers
 
 		#endregion
 
+		#region 搜尋 (Search)
+		[HttpGet]
+		public async Task<IActionResult> Search(string search)
+		{
+			var query = _context.Books
+				.Include(b => b.Publisher)
+				.Include(b => b.Category)
+				.AsQueryable();
+
+			if (!string.IsNullOrWhiteSpace(search))
+			{
+				query = query.Where(b => b.Title.Contains(search) || b.ISBN.Contains(search));
+			}
+
+			var books = await query.ToListAsync();
+
+			// 帶回封面
+			ViewBag.PrimaryImages = await _context.BookImages
+				.Where(i => i.IsPrimary)
+				.GroupBy(i => i.BookID)
+				.ToDictionaryAsync(g => g.Key, g => g.First().FilePath);
+
+			return PartialView("_BooksTable", books);
+		}
+		#endregion
+
 		#region 下拉選單
 
 		private async Task LoadDropdownsAsync()
@@ -368,5 +394,6 @@ namespace BookSystem.Controllers
 
 			return View(books);
 		}
+		
 	}
 }

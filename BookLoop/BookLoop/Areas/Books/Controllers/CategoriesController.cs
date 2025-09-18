@@ -1,4 +1,4 @@
-using BookLoop.Data;
+ï»¿using BookLoop.Data;
 using BookLoop.Helpers;
 using BookLoop.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -9,18 +9,18 @@ namespace BookSystem.Controllers
 	[Area("Books")]
 	public class CategoriesController : Controller
 	{
-		private readonly BookSystemContext _context; // ¸ê®Æ®w¦s¨ú¥Îªº DbContext
+		private readonly BookSystemContext _context; // è³‡æ–™åº«å­˜å–ç”¨çš„ DbContext
 
-		// «Øºc¤l¡Gª`¤J DbContext
+		// å»ºæ§‹å­ï¼šæ³¨å…¥ DbContext
 		public CategoriesController(BookSystemContext context)
 		{
 			_context = context;
 		}
 
-		#region ¦Cªí(Index)
+		#region åˆ—è¡¨(Index)
 
 		// GET: /Books/Categories
-		// Åã¥Ü¤ÀÃş²M³æ
+		// é¡¯ç¤ºåˆ†é¡æ¸…å–®
 		public async Task<IActionResult> Index()
 		{
 			var list = await _context.Categories.ToListAsync();
@@ -29,29 +29,29 @@ namespace BookSystem.Controllers
 
 		#endregion
 
-		#region ·s¼W(Create)
+		#region æ–°å¢(Create)
 
 		// GET: /Books/Categories/Create
-		// Åã¥Ü¡u·s¼W¤ÀÃş¡vªºªí³æ­¶­±
+		// é¡¯ç¤ºã€Œæ–°å¢åˆ†é¡ã€çš„è¡¨å–®é é¢
 		public IActionResult Create()
 		{
 			return View();
 		}
 
 		// POST: /Books/Categories/Create
-		// Àx¦s·s¤ÀÃş¸ê®Æ
+		// å„²å­˜æ–°åˆ†é¡è³‡æ–™
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> Create(Category category)
 		{
 			category.Slug = SlugHelper.Generate(category.CategoryName);
-			ModelState.Remove("Slug"); // «OÀI
+			ModelState.Remove("Slug"); // ä¿éšª
 
 			if (!ModelState.IsValid) return View(category);
 
 			if (_context.Categories.Any(c => c.CategoryName == category.CategoryName))
 			{
-				ModelState.AddModelError("CategoryName", "¦¹¤ÀÃş¤w¦s¦b¡I");
+				ModelState.AddModelError("CategoryName", "æ­¤åˆ†é¡å·²å­˜åœ¨ï¼");
 				return View(category);
 			}
 
@@ -62,17 +62,17 @@ namespace BookSystem.Controllers
 			_context.Add(category);
 			await _context.SaveChangesAsync();
 
-			TempData["Success"] = "¤ÀÃş·s¼W¦¨¥\¡I";//·s¼W§¹¦¨°T®§
+			TempData["Success"] = "åˆ†é¡æ–°å¢æˆåŠŸï¼";//æ–°å¢å®Œæˆè¨Šæ¯
 
 			return RedirectToAction(nameof(Index));
 		}
 
 		#endregion
 
-		#region ­×§ï(Edit)
+		#region ä¿®æ”¹(Edit)
 
 		// GET: /Books/Categories/Edit/5
-		// ¨Ì·Ó CategoryID §â¸ê®Æ§ì¥X¨Ó¡AÅã¥Ü¦b½s¿èªí³æ
+		// ä¾ç…§ CategoryID æŠŠè³‡æ–™æŠ“å‡ºä¾†ï¼Œé¡¯ç¤ºåœ¨ç·¨è¼¯è¡¨å–®
 		public async Task<IActionResult> Edit(int? id)
 		{
 			if (id == null) return NotFound();
@@ -84,7 +84,7 @@ namespace BookSystem.Controllers
 		}
 
 		// POST: /Books/Categories/Edit/5
-		// §ó·s¤ÀÃş¤º®e
+		// æ›´æ–°åˆ†é¡å…§å®¹
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> Edit(int id, Category category)
@@ -98,7 +98,7 @@ namespace BookSystem.Controllers
 
 			if (_context.Categories.Any(c => c.CategoryName == category.CategoryName && c.CategoryID != category.CategoryID))
 			{
-				ModelState.AddModelError("CategoryName", "¦¹¤ÀÃş¤w¦s¦b¡I");
+				ModelState.AddModelError("CategoryName", "æ­¤åˆ†é¡å·²å­˜åœ¨ï¼");
 				return View(category);
 			}
 
@@ -106,17 +106,17 @@ namespace BookSystem.Controllers
 			_context.Update(category);
 			await _context.SaveChangesAsync();
 
-			TempData["Success"] = "¤ÀÃş­×§ï¦¨¥\¡I";//­×§ï§¹¦¨°T®§
+			TempData["Success"] = "åˆ†é¡ä¿®æ”¹æˆåŠŸï¼";//ä¿®æ”¹å®Œæˆè¨Šæ¯
 
 			return RedirectToAction(nameof(Index));
 		}
 
 		#endregion
 
-		#region §R°£(Delete)
+		#region åˆªé™¤(Delete)
 
 		// GET: /Books/Categories/Delete/5
-		// Åã¥Ü§R°£½T»{­¶­±
+		// é¡¯ç¤ºåˆªé™¤ç¢ºèªé é¢
 		public async Task<IActionResult> Delete(int? id)
 		{
 			if (id == null) return NotFound();
@@ -128,8 +128,8 @@ namespace BookSystem.Controllers
 		}
 
 		// POST: /Books/Categories/Delete/5
-		// ½T»{§R°£¤ÀÃş
-		[HttpPost, ActionName("Delete")] // »P GET ¦@¥Î URL
+		// ç¢ºèªåˆªé™¤åˆ†é¡
+		[HttpPost, ActionName("Delete")] // èˆ‡ GET å…±ç”¨ URL
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> DeleteConfirmed(int id)
 		{
@@ -140,22 +140,22 @@ namespace BookSystem.Controllers
 				_context.Categories.Remove(category);
 				await _context.SaveChangesAsync();
 
-				TempData["Success"] = "¤ÀÃş§R°£¦¨¥\¡I"; // §R°£§¹¦¨°T®§
+				TempData["Success"] = "åˆ†é¡åˆªé™¤æˆåŠŸï¼"; // åˆªé™¤å®Œæˆè¨Šæ¯
 			}
 
 		else
 			{
-				TempData["Error"] = "§R°£¥¢±Ñ¡A¤ÀÃş¤£¦s¦b¡I"; // §R°£¥¢±Ñ°T®§
+				TempData["Error"] = "åˆªé™¤å¤±æ•—ï¼Œåˆ†é¡ä¸å­˜åœ¨ï¼"; // åˆªé™¤å¤±æ•—è¨Šæ¯
 			}
 			return RedirectToAction(nameof(Index));
 		}
 
 		#endregion
 
-		#region ¸Ô²Ó¸ê°T(Details)
+		#region è©³ç´°è³‡è¨Š(Details)
 
 		// GET: /Books/Categories/Details/5
-		// Åã¥Ü³æ¤@¤ÀÃşªº§¹¾ã¸ê°T
+		// é¡¯ç¤ºå–®ä¸€åˆ†é¡çš„å®Œæ•´è³‡è¨Š
 		public async Task<IActionResult> Details(int? id)
 		{
 			if (id == null) return NotFound();
@@ -167,5 +167,27 @@ namespace BookSystem.Controllers
 		}
 
 		#endregion
+
+		#region æœå°‹(Search)
+
+		public async Task<IActionResult> Search(string search)
+		{
+			var query = _context.Categories.AsQueryable();
+
+			if (!string.IsNullOrWhiteSpace(search))
+			{
+				query = query.Where(c => c.CategoryName.Contains(search));
+			}
+
+			var result = await query
+				.OrderBy(c => c.CategoryName)   // çµ±ä¸€æ’åº
+				.ToListAsync();
+
+			return PartialView("_CategoriesTable", result);
+		}
+
+
+		#endregion
+
 	}
 }
