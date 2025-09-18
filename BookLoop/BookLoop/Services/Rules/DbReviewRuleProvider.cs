@@ -1,8 +1,9 @@
 ﻿// Services/Reviews/Rules/DbReviewRuleProvider.cs
 using Microsoft.EntityFrameworkCore;
+using BookLoop.Models;
 using System.Collections.Generic;
-using BookLoop.Areas.Reviews.Rules;
 using BookLoop.Data;
+using BookLoop.Services.Rules;
 
 public class DbReviewRuleProvider : IReviewRuleProvider
 {
@@ -12,8 +13,29 @@ public class DbReviewRuleProvider : IReviewRuleProvider
 
 	public IEnumerable<IReviewRule> GetRules()
 	{
-		// 讀單一設定（Id=1）
-		var s = _db.ReviewRuleSettings.AsNoTracking().First(x => x.Id == 1);
+		// 嘗試抓 Id=1，如果沒有就給一個預設
+		var s = _db.ReviewRuleSettings.AsNoTracking().FirstOrDefault(x => x.Id == 1);
+		if (s == null)
+		{
+			// 沒找到 → 給預設值，避免炸掉
+			s = new ReviewRuleSettings
+			{
+				Id = 1,
+				MinContentLength = 5,
+				RatingMin = 1,
+				RatingMax = 5,
+				BlockSelfReview = false,
+				TargetTypeForMember = 0,
+				ForbidUrls = false,
+				DuplicateWindowHours = 0,
+				DuplicatePolicy = 0,
+				ForbiddenKeywords = "",
+				UpdatedAt = DateTime.UtcNow
+			};
+		}
+		//新增防呆
+		//// 讀單一設定（Id=1）
+		//var s = _db.ReviewRuleSettings.AsNoTracking().First(x => x.Id == 1);
 
 		// 1) 字數
 		yield return new MinLengthRule(s.MinContentLength);
@@ -45,13 +67,13 @@ public class DbReviewRuleProvider : IReviewRuleProvider
 		{
 			var severity = s.DuplicatePolicy == 2 ? RuleSeverity.Block : RuleSeverity.Warn;
 			yield return new RepeatedContentRule(
-	check: (authorId, content) =>
-		_db.Reviews.Any(r =>
-			r.MemberId == authorId &&
-			r.Content == content.Trim() &&
-			r.CreatedAt >= DateTime.UtcNow.AddHours(-s.DuplicateWindowHours)),
-	severity: s.DuplicatePolicy == 2 ? RuleSeverity.Block : RuleSeverity.Warn
-);
+			check: (authorId, content) =>
+				_db.Reviews.Any(r =>
+					r.MemberId == authorId &&
+					r.Content == content.Trim() &&
+					r.CreatedAt >= DateTime.UtcNow.AddHours(-s.DuplicateWindowHours)),
+			severity: s.DuplicatePolicy == 2 ? RuleSeverity.Block : RuleSeverity.Warn
+		);
 		}
 	}
 }

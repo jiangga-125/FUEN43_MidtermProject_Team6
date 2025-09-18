@@ -41,31 +41,46 @@
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <!-- 左邊選單 -->
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">🏠 首頁</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="Books" asp-controller="Home" asp-action="Index">📘 書籍</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="Orders" asp-controller="Orders" asp-action="Index">訂單</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="Borrow" asp-controller="Listings" asp-action="Index">📘 二手書籍</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="ReportMail" asp-controller="Reports" asp-action="Index">報表</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="Account" asp-controller="Home" asp-action="Index">帳號</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="Members" asp-controller="Home" asp-action="Index">優惠券與評論管理</a>
-                        </li>
-
                         @* <li class="nav-item">
                             <a class="nav-link" asp-area="XXXX" asp-controller="XXXX" asp-action="Index">範例</a>
                         </li> *@
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="couponsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                🎟️ 優惠券
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="couponsDropdown">
+                                <li class="nav-item">
+                                    <a href="~/Members/Coupons/Index" class="nav-link">📋 優惠券清單</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="~/Members/Coupons/Create" class="nav-link">➕ 新增優惠券</a>
+                                </li>
+                            </ul>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="Members" asp-controller="Checkout" asp-action="Index">🧾 優惠券試算/下單</a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="reviewsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                🗨️ 評論
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="reviewsDropdown">
+                                <li class="nav-item">
+                                    <a href="~/Members/Reviews/PendingList" class="nav-link">
+                                        ⏳ 待審清單
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="~/Members/Reviews/Create" class="nav-link">➕ 建立評論</a>
+                                </li>
+                            </ul>
+
+
+                            @* <li class="nav-item">
+                            <a class="nav-link" asp-area="Members" asp-controller="Reviews" asp-action="PendingList">🎟️ 評論12</a>
+                        </li> *@
+
+
                     </ul>
 
                     <!-- 右邊登入/註冊 -->
@@ -89,8 +104,6 @@
             <p class="mb-0">© 2025 BookLoop 專案 | FUEN43 Team 6</p>
         </div>
     </footer>
-
-    <!-- 其他像 bootstrap, chart.js 之類的再往後放 -->
 
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     @RenderSection("Scripts", required: false)

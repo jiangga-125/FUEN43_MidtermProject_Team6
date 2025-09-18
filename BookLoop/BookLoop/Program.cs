@@ -1,5 +1,4 @@
 using BookLoop.Areas.Reviews;
-using BookLoop.Areas.Reviews.Rules;
 using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services;
@@ -10,6 +9,7 @@ using BookLoop.Services.Orders;
 using BookLoop.Services.Points;
 using BookLoop.Services.Pricing;
 using BookLoop.Services.Reports;
+using BookLoop.Services.Rules;
 using BorrowSystem.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;

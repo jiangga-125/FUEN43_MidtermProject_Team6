@@ -1,5 +1,5 @@
 ﻿// Services/Reviews/Rules/ExtraRules.cs
-using BookLoop.Areas.Reviews.Rules;
+using BookLoop.Services.Rules;
 
 public class RatingRangeRule : IReviewRule
 {

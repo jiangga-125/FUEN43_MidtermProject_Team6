@@ -1,0 +1,52 @@
+﻿@model BookLoop.Models.Coupon
+@{
+    ViewData["Title"] = "新增優惠券";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<form asp-area="Members" asp-controller="Coupons" asp-action="Create" method="post">
+    @Html.AntiForgeryToken()
+
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label">優惠券名稱</label>
+        <input asp-for="Name" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Code" class="form-label">優惠碼</label>
+        <input asp-for="Code" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="DiscountType" class="form-label">折扣類型</label>
+        <select asp-for="DiscountType" class="form-select">
+            <option value="0">金額折抵</option>
+            <option value="1">百分比折扣</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="DiscountValue" class="form-label">折扣值</label>
+        <input asp-for="DiscountValue" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="StartAt" class="form-label">開始時間</label>
+        <input asp-for="StartAt" type="datetime-local" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="EndAt" class="form-label">結束時間</label>
+        <input asp-for="EndAt" type="datetime-local" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="IsActive" class="form-label">啟用狀態</label>
+        <input asp-for="IsActive" type="checkbox" />
+    </div>
+
+    <!-- ✅ 正確放在 form 裡 -->
+    <button type="submit" class="btn btn-primary">新增</button>
+</form>
+
