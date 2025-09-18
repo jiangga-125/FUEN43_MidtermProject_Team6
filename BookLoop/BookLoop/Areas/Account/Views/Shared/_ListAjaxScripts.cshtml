@@ -1,0 +1,90 @@
+﻿@* 通用：列表 AJAX 載入（排序 / 分頁 / 下拉自動提交 / 搜尋） *@
+@{
+    // 可傳入的參數（含預設值）
+    var controller = (string)(ViewData["controller"] ?? ViewContext.RouteData.Values["controller"]?.ToString() ?? "");
+    var listAction = (string)(ViewData["listAction"] ?? "List");   // 部分頁載入
+    var indexAction = (string)(ViewData["indexAction"] ?? "Index");  // 整頁網址（pushState 用）
+    var formId = (string)(ViewData["formId"] ?? "filter-form");
+    var containerId = (string)(ViewData["containerId"] ?? "list-container");
+
+    // 允許附帶固定參數（例如某些頁固定帶 supplierId）
+    var fixedQuery = (string)(ViewData["fixedQuery"] ?? ""); // 例如 "supplierId=3&foo=bar"
+}
+
+<script>
+    (function(){
+        const container = document.getElementById('@containerId');
+        const form = document.getElementById('@formId');
+
+        if (!container) { console.warn('Container not found: @containerId'); return; }
+        if (!form) { console.warn('Form not found: @formId'); return; }
+
+        // 將目前表單參數 + 固定參數，組成查詢字串
+        function buildParams() {
+            const params = new URLSearchParams(new FormData(form));
+            const fixed = '@fixedQuery'.trim();
+            if (fixed) {
+                const extra = new URLSearchParams(fixed);
+                for (const [k,v] of extra) {
+                    if (!params.has(k)) params.set(k, v);
+                }
+            }
+            return params;
+        }
+
+        async function load(urlOrParams) {
+            let params, url;
+
+            if (typeof urlOrParams === 'string' && urlOrParams.startsWith('http')) {
+                const u = new URL(urlOrParams, window.location.origin);
+                params = new URLSearchParams(u.search);
+            } else if (urlOrParams instanceof URLSearchParams) {
+                params = urlOrParams;
+            } else {
+                params = buildParams();
+            }
+
+            // 呼叫部分頁 List
+            url = new URL('@Url.Action((string)ViewData["listAction"] ?? "List", (string)ViewData["controller"] ?? ViewContext.RouteData.Values["controller"]?.ToString())', window.location.origin);
+            url.search = params.toString();
+
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+            const html = await res.text();
+            container.innerHTML = html;
+
+            // pushState 成整頁 Index（保持相同參數）
+            const idxUrl = new URL('@Url.Action((string)ViewData["indexAction"] ?? "Index", (string)ViewData["controller"] ?? ViewContext.RouteData.Values["controller"]?.ToString())', window.location.origin);
+            idxUrl.search = params.toString();
+            history.pushState({}, '', idxUrl);
+        }
+
+        // 表單提交（搜尋）：只負責 keyword 等輸入框，改走 AJAX
+        form.addEventListener('submit', function(ev){
+            ev.preventDefault();
+            load(buildParams());
+        });
+
+        // 任何 select.js-auto-submit 改變就自動送出（狀態 / 每頁筆數）
+        form.querySelectorAll('select.js-auto-submit').forEach(sel => {
+            sel.addEventListener('change', function(){
+                // 變更 pageSize 或 status 時恢復到第 1 頁
+                const params = buildParams();
+                params.set('page', '1');
+                load(params);
+            });
+        });
+
+        // 容器內排序 / 分頁：攔截 .ajax-link
+        container.addEventListener('click', function(ev){
+            const a = ev.target.closest('a.ajax-link');
+            if (!a) return;
+            ev.preventDefault();
+            load(a.href);
+        });
+
+        // 瀏覽器返回鍵：用目前網址參數重新載入
+        window.addEventListener('popstate', function(){
+            load(window.location.href);
+        });
+    })();
+</script>

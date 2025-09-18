@@ -1,0 +1,76 @@
+﻿@model BookLoop.Member
+@{
+    ViewData["Title"] = "編輯會員";
+    var statusList = (IEnumerable<dynamic>)ViewBag.StatusList;
+    var roleList = (IEnumerable<dynamic>)ViewBag.RoleList;
+}
+<h2>編輯會員</h2>
+
+<div class="mb-3">
+    <a class="btn btn-outline-secondary" asp-action="Index">回清單</a>
+    <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.MemberID">檢視</a>
+</div>
+
+<form method="post">
+    <input type="hidden" asp-for="MemberID" />
+    <input type="hidden" asp-for="RowVersion" />
+
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label class="form-label">姓名</label>
+        <input asp-for="Username" class="form-control" />
+        <span asp-validation-for="Username" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input asp-for="Email" class="form-control" />
+        <span class="form-text text-muted">可留空；若填寫需唯一。</span>
+        <span asp-validation-for="Email" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">電話</label>
+        <input asp-for="Phone" class="form-control" />
+        <span class="form-text text-muted">可留空；若填寫需唯一。</span>
+        <span asp-validation-for="Phone" class="text-danger"></span>
+    </div>
+
+    <div class="row">
+        <div class="col-sm-6 mb-3">
+            <label class="form-label">狀態</label>
+            <select asp-for="Status" class="form-select">
+                <option value="0" selected="@(Model.Status == 0)">未啟用</option>
+                <option value="1" selected="@(Model.Status == 1)">啟用</option>
+                <option value="2" selected="@(Model.Status == 2)">停權</option>
+                <option value="3" selected="@(Model.Status == 3)">關閉</option>
+            </select>
+        </div>
+        <div class="col-sm-6 mb-3">
+            <label class="form-label">角色</label>
+            <select asp-for="Role" class="form-select">
+                <option value="0" selected="@(Model.Role == 0)">一般</option>
+                <option value="1" selected="@(Model.Role == 1)">管理會員</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-sm-6 mb-3">
+            <label class="form-label">累計購買</label>
+            <input asp-for="TotalBooks" class="form-control" />
+        </div>
+        <div class="col-sm-6 mb-3">
+            <label class="form-label">累計借閱</label>
+            <input asp-for="TotalBorrows" class="form-control" />
+        </div>
+    </div>
+
+    <button class="btn btn-primary">儲存</button>
+    <a class="btn btn-outline-secondary" asp-action="Index">取消</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

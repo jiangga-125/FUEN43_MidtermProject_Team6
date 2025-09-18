@@ -1,0 +1,15 @@
+﻿@model BookLoop.Member
+@{
+    ViewData["Title"] = "刪除會員";
+}
+<h2>刪除會員</h2>
+
+<div class="alert alert-warning">
+    確定要刪除 <strong>@Model.Username</strong>（ID: @Model.MemberID）？
+</div>
+
+<form method="post">
+    <input type="hidden" asp-for="MemberID" />
+    <button class="btn btn-danger">確定刪除</button>
+    <a class="btn btn-outline-secondary" asp-action="Index">取消</a>
+</form>

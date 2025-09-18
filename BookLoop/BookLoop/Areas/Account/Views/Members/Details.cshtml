@@ -1,0 +1,61 @@
+﻿@model BookLoop.Member
+@{
+    ViewData["Title"] = "會員資料";
+    bool isBlack = (bool?)ViewBag.IsBlacklisted ?? false;
+}
+<h2>會員資料</h2>
+
+<div class="mb-3">
+    <a class="btn btn-outline-secondary" asp-action="Index">回清單</a>
+    @if (User.HasClaim("perm", "Members.Edit"))
+    {
+        <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model.MemberID">編輯</a>
+    }
+</div>
+
+<dl class="row">
+    <dt class="col-sm-2">ID</dt>
+    <dd class="col-sm-10">@Model.MemberID</dd>
+
+    <dt class="col-sm-2">姓名</dt>
+    <dd class="col-sm-10">@Model.Username</dd>
+
+    <dt class="col-sm-2">Email</dt>
+    <dd class="col-sm-10">@Model.Email</dd>
+
+    <dt class="col-sm-2">電話</dt>
+    <dd class="col-sm-10">@Model.Phone</dd>
+
+    <dt class="col-sm-2">狀態</dt>
+    <dd class="col-sm-10">
+        @{
+            string s = Model.Status switch { 0 => "未啟用", 1 => "啟用", 2 => "停權", 3 => "關閉", _ => "?" };
+        }
+ @s
+    </dd>
+
+    <dt class="col-sm-2">目前黑名單</dt>
+    <dd class="col-sm-10">
+        @if (isBlack)
+        {
+            <span class="badge bg-danger">生效中</span>
+        }
+        else
+        {
+
+            <span class="text-muted">-</span>
+        }
+    </dd>
+
+    <dt class="col-sm-2">累計購買</dt>
+    <dd class="col-sm-10">@Model.TotalBooks</dd>
+
+    <dt class="col-sm-2">累計借閱</dt>
+    <dd class="col-sm-10">@Model.TotalBorrows</dd>
+
+    <dt class="col-sm-2">建立時間 (UTC)</dt>
+    <dd class="col-sm-10">@Model.CreatedAt:yyyy-MM-dd HH:mm:ss</dd>
+
+    <dt class="col-sm-2">更新時間 (UTC)</dt>
+    <dd class="col-sm-10">@Model.UpdatedAt:yyyy-MM-dd HH:mm:ss</dd>
+</dl>
