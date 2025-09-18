@@ -1,0 +1,196 @@
+﻿@model Account.Controllers.MembersController.MemberIndexVM
+@{
+    string sort = (ViewBag.Sort as string) ?? "id";
+    string dir = (ViewBag.Dir as string) ?? "desc";
+    string Next(string key) => (sort == key && dir == "asc") ? "desc" : "asc";
+    string Arrow(string key) => sort == key ? (dir == "asc" ? "↑" : "↓") : "";
+}
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover table-sm align-middle">
+        <thead>
+            <tr>
+                <th>
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List"
+                       asp-route-sort="id" asp-route-dir="@Next("id")"
+                       asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize"># @Arrow("id")</a>
+                </th>
+                <th>
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List"
+                       asp-route-sort="name" asp-route-dir="@Next("name")"
+                       asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize">姓名 @Arrow("name")</a>
+                </th>
+                <th>
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List"
+                       asp-route-sort="email" asp-route-dir="@Next("email")"
+                       asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize">Email @Arrow("email")</a>
+                </th>
+                <th>
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List"
+                       asp-route-sort="phone" asp-route-dir="@Next("phone")"
+                       asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize">電話 @Arrow("phone")</a>
+                </th>
+                <th>
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List"
+                       asp-route-sort="status" asp-route-dir="@Next("status")"
+                       asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize">狀態 @Arrow("status")</a>
+                </th>
+                <th class="text-end">
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List"
+                       asp-route-sort="books" asp-route-dir="@Next("books")"
+                       asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize">總購買 @Arrow("books")</a>
+                </th>
+                <th class="text-end">
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List"
+                       asp-route-sort="borrows" asp-route-dir="@Next("borrows")"
+                       asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize">總借閱 @Arrow("borrows")</a>
+                </th>
+                <th>
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List"
+                       asp-route-sort="blacklist" asp-route-dir="@Next("blacklist")"
+                       asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize">黑名單 @Arrow("blacklist")</a>
+                </th>
+                <th style="width:160px;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var x in Model.Items)
+            {
+                <tr>
+                    <td>@x.MemberID</td>
+                    <td>@x.Username</td>
+                    <td>@x.Email</td>
+                    <td>@x.Phone</td>
+                    <td>
+                        @{
+                            string s = x.Status switch { 0 => "未啟用", 1 => "啟用", 2 => "停權", 3 => "關閉", _ => "?" };
+                            string badge = x.Status switch { 1 => "bg-success", 2 => "bg-warning text-dark", 3 => "bg-secondary", _ => "bg-light text-dark" };
+                        }
+                        <span class="badge @badge">@s</span>
+                    </td>
+                    <td class="text-end">@x.TotalBooks</td>
+                    <td class="text-end">@x.TotalBorrows</td>
+                    <td>
+                        @if (x.IsBlacklistedNow)
+                        {
+                            <span class="badge bg-danger">生效中</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-route-id="@x.MemberID">檢視</a>
+                        @if (User.HasClaim("perm", "Members.Edit"))
+                        {
+                            <a class="btn btn-sm btn-outline-primary ms-1" asp-action="Edit" asp-route-id="@x.MemberID">編輯</a>
+                            <a class="btn btn-sm btn-outline-danger ms-1" asp-action="Delete" asp-route-id="@x.MemberID">刪除</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@{
+    int totalPages = (int)Math.Ceiling((double)Model.Total / Model.PageSize);
+    if (totalPages < 1) totalPages = 1;
+
+    int window = 2;
+    int start = Math.Max(1, Model.Page - window);
+    int end = Math.Min(totalPages, Model.Page + window);
+}
+
+<nav aria-label="pager">
+    <ul class="pagination">
+        <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+            <a class="page-link ajax-link"
+               asp-action="List"
+               asp-route-page="@(Model.Page - 1)"
+               asp-route-pageSize="@Model.PageSize"
+               asp-route-keyword="@Model.Keyword"
+               asp-route-status="@Model.Status"
+               asp-route-sort="@sort"
+               asp-route-dir="@dir">上一頁</a>
+        </li>
+
+        @if (start > 1)
+        {
+            <li class="page-item">
+                <a class="page-link ajax-link"
+                   asp-action="List"
+                   asp-route-page="1"
+                   asp-route-pageSize="@Model.PageSize"
+                   asp-route-keyword="@Model.Keyword"
+                   asp-route-status="@Model.Status"
+                   asp-route-sort="@sort"
+                   asp-route-dir="@dir">1</a>
+            </li>
+            if (start > 2)
+            {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+            }
+        }
+
+        @for (int i = start; i <= end; i++)
+        {
+            <li class="page-item @(i == Model.Page ? "active" : "")">
+                <a class="page-link ajax-link"
+                   asp-action="List"
+                   asp-route-page="@i"
+                   asp-route-pageSize="@Model.PageSize"
+                   asp-route-keyword="@Model.Keyword"
+                   asp-route-status="@Model.Status"
+                   asp-route-sort="@sort"
+                   asp-route-dir="@dir">@i</a>
+            </li>
+        }
+
+        @if (end < totalPages)
+        {
+            if (end < totalPages - 1)
+            {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+            }
+            <li class="page-item">
+                <a class="page-link ajax-link"
+                   asp-action="List"
+                   asp-route-page="@totalPages"
+                   asp-route-pageSize="@Model.PageSize"
+                   asp-route-keyword="@Model.Keyword"
+                   asp-route-status="@Model.Status"
+                   asp-route-sort="@sort"
+                   asp-route-dir="@dir">@totalPages</a>
+            </li>
+        }
+
+        <li class="page-item @(Model.Page >= totalPages ? "disabled" : "")">
+            <a class="page-link ajax-link"
+               asp-action="List"
+               asp-route-page="@(Model.Page + 1)"
+               asp-route-pageSize="@Model.PageSize"
+               asp-route-keyword="@Model.Keyword"
+               asp-route-status="@Model.Status"
+               asp-route-sort="@sort"
+               asp-route-dir="@dir">下一頁</a>
+        </li>
+    </ul>
+</nav>

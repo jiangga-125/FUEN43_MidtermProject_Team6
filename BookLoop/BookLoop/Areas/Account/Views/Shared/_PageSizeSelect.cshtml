@@ -1,0 +1,14 @@
+﻿@* 共用：每頁筆數下拉，預設 10/20/50 *@
+@{
+    int selected = (ViewData["selected"] as int?) ?? 20;
+    string name = (ViewData["name"] as string) ?? "pageSize";
+    string css = (ViewData["class"] as string) ?? "form-select js-auto-submit";
+    int[] sizes = (ViewData["sizes"] as int[]) ?? new[] { 10, 20, 50 };
+}
+
+<select name="@name" class="@css">
+    @foreach (var s in sizes)
+    {
+        <option value="@s" selected="@(selected == s)">@s</option>
+    }
+</select>

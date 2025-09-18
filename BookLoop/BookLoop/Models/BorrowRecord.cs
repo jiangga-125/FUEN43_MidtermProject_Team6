@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BookLoop.Models;
@@ -8,7 +9,8 @@ namespace BookLoop.Models;
 
 public partial class BorrowRecord
 {
-    public int RecordID { get; set; }
+    [Key]
+	public int RecordID { get; set; }
 
     public int ListingID { get; set; }
 

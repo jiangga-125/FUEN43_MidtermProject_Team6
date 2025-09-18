@@ -1,0 +1,15 @@
+﻿@model BookLoop.Blacklist
+@{
+    ViewData["Title"] = "解除黑名單";
+}
+
+<h2 class="mb-3">解除黑名單</h2>
+
+<div class="alert alert-warning">
+    確定要解除 <strong>@(Model.Member?.Username ?? ("#" + Model.MemberID))</strong> 的黑名單嗎？
+</div>
+
+<form method="post">
+    <button class="btn btn-danger">確定解除</button>
+    <a asp-action="Index" class="btn btn-outline-secondary ms-2">取消</a>
+</form>

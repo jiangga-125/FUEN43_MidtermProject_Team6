@@ -1,11 +1,14 @@
-using BookLoop.Models;
 using BookLoop.Data;
+using BookLoop.Models;
 using BookLoop.Services;
 using BookLoop.Services.Export;
 using BookLoop.Services.Reports;
 using BorrowSystem.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
+
 
 
 
@@ -13,7 +16,7 @@ namespace BookLoop
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -72,10 +75,54 @@ namespace BookLoop
             builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true).AddEntityFrameworkStores<ApplicationDbContext>();
             builder.Services.AddControllersWithViews();
 
-            var app = builder.Build();
+			// ① DbContext 註冊
+			builder.Services.AddDbContext<AppDbContext>(opt =>
+				opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+			// ② Cookie 驗證（沒用 Identity 時）
+			builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+				.AddCookie(opt =>
+				{
+					opt.LoginPath = "/Auth/Login";        // 若你的登入頁在外面，這樣即可
+					opt.AccessDeniedPath = "/Auth/Denied";
+					opt.ExpireTimeSpan = TimeSpan.FromHours(8);
+					opt.SlidingExpiration = true;
+				});
+
+			// ③ 授權政策（依你的權限鍵）
+			builder.Services.AddAuthorization(options =>
+			{
+				foreach (var key in new[] {
+		"Accounts.View","Accounts.Edit",
+		"Permissions.Manage",
+		"Blacklists.View","Blacklists.Manage",
+		"Members.View","Members.Edit"
+	})
+				{
+					options.AddPolicy(key, p => p.RequireClaim("perm", key));
+				}
+			});
+
+			// ④ 服務註冊
+			builder.Services.AddScoped<AuthService>();
+			builder.Services.AddScoped<PermissionService>();
+			builder.Services.AddScoped<DbInitializer>();
+
+
+
+			var app = builder.Build();
+
+			// ⑤ 啟動時資料初始化（可放在 builder.Build() 之後）
+			using (var scope = app.Services.CreateScope())
+			{
+				var init = scope.ServiceProvider.GetRequiredService<DbInitializer>();
+				await init.EnsureAdminPasswordAsync("admin@bookstore.local", "Admin@12345!");
+				await init.EnsurePermissionAndFeatureSeedAsync("admin@bookstore.local");
+			}
+
+
+			// Configure the HTTP request pipeline.
+			if (app.Environment.IsDevelopment())
             {
 				app.UseDeveloperExceptionPage();   // ← 新增：讓 500 直接顯示堆疊細節
 				app.UseMigrationsEndPoint();
