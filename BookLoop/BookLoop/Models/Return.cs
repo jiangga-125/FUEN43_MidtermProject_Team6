@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -24,6 +25,6 @@ public partial class Return
 	[Display(Name = "申請退貨日期")]
 	public DateTime? ReturnedDate { get; set; }
 
-	
+	[ValidateNever]
 	public virtual Order Order { get; set; } = null!;
 }

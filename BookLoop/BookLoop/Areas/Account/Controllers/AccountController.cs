@@ -10,6 +10,7 @@ using BookLoop;
 
 namespace Account.Controllers
 {
+	[Area("Account")]
 	[Authorize]
 	public class AccountController : Controller
 	{

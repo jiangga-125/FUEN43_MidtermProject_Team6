@@ -33,10 +33,14 @@ namespace BorrowSystem.Controllers
                 {
                     ListingID = b.ListingID,
                     RecordID = b.RecordID,
+
+
                     BookTitle = b.Listing.Title,
                     MemberName = b.Member.Username,
                     BorrowDate = b.BorrowDate,
                     ReturnDate = b.ReturnDate,
+
+
                     ReservationID = b.ReservationID,
                     DueDate = b.DueDate,
                     StatusCode = b.StatusCode,

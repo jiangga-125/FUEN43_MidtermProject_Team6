@@ -1,8 +1,14 @@
+using BookLoop.Areas.Reviews;
+using BookLoop.Areas.Reviews.Rules;
 using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services;
+using BookLoop.Services.Coupons;
 using BookLoop.Services.Export;
 using BookLoop.Services.Import;
+using BookLoop.Services.Orders;
+using BookLoop.Services.Points;
+using BookLoop.Services.Pricing;
 using BookLoop.Services.Reports;
 using BorrowSystem.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -27,12 +33,12 @@ namespace BookLoop
                 options.UseSqlServer(connectionString));
 
 			builder.Services.AddDbContext<OrdersysContext>(options =>
-				options.UseSqlServer(builder.Configuration.GetConnectionString("Ordersys"))); // 新增 OrdersysContext
+				options.UseSqlServer(builder.Configuration.GetConnectionString("BookLoop"))); // 新增 OrdersysContext
 
 			builder.Services.AddDbContext<BookSystemContext>(options =>
-				options.UseSqlServer(builder.Configuration.GetConnectionString("BookSystem"))); // 新增 BookSystem
+				options.UseSqlServer(builder.Configuration.GetConnectionString("BookLoop"))); // 新增 BookSystem
 			builder.Services.AddDbContext<BorrowSystemContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("BorrowSystem"))); // 新增 BorrowSystemContext
+                options.UseSqlServer(builder.Configuration.GetConnectionString("BookLoop"))); // 新增 BorrowSystemContext
             builder.Services.AddScoped<ReservationExpiryService>(); // BorrowSystem 服務
             builder.Services.AddHostedService<ReservationExpiryWorker>(); // BorrowSystem 服務
             builder.Services.AddScoped<ReservationQueueService>(); // BorrowSystem 服務
@@ -40,13 +46,13 @@ namespace BookLoop
             // ReportMail 的資料庫（報表定義/匯出紀錄等）
             builder.Services.AddDbContext<ReportMailDbContext>(options =>
 				options.UseSqlServer(
-					builder.Configuration.GetConnectionString("ReportMail"),
+					builder.Configuration.GetConnectionString("BookLoop"),
 					x => x.MigrationsAssembly(typeof(ReportMailDbContext).Assembly.FullName)));
 
 			// 報表預設三張圖用的資料來源（書/訂單/借閱）
 			builder.Services.AddDbContext<ShopDbContext>(options =>
 				options.UseSqlServer(
-					builder.Configuration.GetConnectionString("ShopConnection")
+					builder.Configuration.GetConnectionString("BookLoop")
 					?? builder.Configuration.GetConnectionString("DefaultConnection")));
 
 			//book圖片處理
@@ -80,6 +86,50 @@ namespace BookLoop
 
             builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true).AddEntityFrameworkStores<ApplicationDbContext>();
             builder.Services.AddControllersWithViews();
+
+			// 會員模組
+
+			if (builder.Environment.IsDevelopment())
+			{
+				builder.Configuration.AddUserSecrets<Program>();
+			}
+			// DI 註冊
+			builder.Services.AddControllersWithViews();
+			builder.Services.AddDbContext<MemberContext>(options =>
+				options.UseSqlServer(builder.Configuration.GetConnectionString("Member")));
+
+			builder.Services.AddScoped<IReviewRule>(sp =>
+			{
+				var db = sp.GetRequiredService<MemberContext>();
+				return new RepeatedContentHintRule((authorMemberId, comment) =>
+				{
+					var nowUtc = DateTime.UtcNow;
+					var text = comment.Trim();
+
+					return db.Reviews.Any(r =>
+						r.MemberId == authorMemberId &&
+						r.Content == text &&
+						r.CreatedAt >= nowUtc.AddHours(-24)); // 24 小時內有同樣留言就視為重複
+				});
+			});
+
+
+			builder.Services.AddScoped<ICouponService, CouponService>();   // 優惠券服務
+			builder.Services.AddScoped<IPointsService, PointsService>();   // 點數服務
+			builder.Services.AddScoped<IPricingEngine, PricingEngine>();   // 試算引擎
+			builder.Services.AddScoped<IOrderService, OrderService>();     // 下單服務（若採外部訂單可不必）
+			builder.Services.AddScoped<IReviewRulePipeline, ReviewRulePipeline>();
+			builder.Services.AddScoped<IReviewModerationService, ReviewModerationService>();
+			builder.Services.AddScoped<IReviewRule, ForbiddenKeywordsRule>(); // 用預設字詞
+																			  // 或用工廠載入你自訂清單再 new ForbiddenKeywordsRule(list)
+			builder.Services.AddScoped<IReviewRuleProvider, DbReviewRuleProvider>(); // 從 DB 讀規則
+			builder.Services.AddScoped<IReviewRulePipeline>(sp =>
+			{
+				var provider = sp.GetRequiredService<IReviewRuleProvider>();
+				return new ReviewRulePipeline(provider.GetRules()); // 每次請求依 DB 設定組出規則
+			});
+
+			builder.Services.AddHttpContextAccessor();
 
 			// ① DbContext 註冊
 			builder.Services.AddDbContext<AppDbContext>(opt =>

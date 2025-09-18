@@ -1,0 +1,52 @@
+﻿@model BookLoop.Models.ViewModels.CreateReviewVm
+
+@{
+    ViewData["Title"] = "建立評論";
+}
+<h1>@ViewData["Title"]</h1>
+
+@if (TempData["Msg"] != null)
+{
+    <div class="alert alert-success">@TempData["Msg"]</div>
+}
+
+<form asp-action="Create" method="post">
+    @Html.AntiForgeryToken()
+
+    <div class="mb-3">
+        <label asp-for="MemberID" class="form-label"></label>
+        <input asp-for="MemberID" class="form-control" />
+        <span asp-validation-for="MemberID" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="TargetType" class="form-label"></label>
+        <input asp-for="TargetType" class="form-control" />
+        <small class="text-muted">例如：0=商品，2=會員（依你的代碼）</small>
+        <span asp-validation-for="TargetType" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="TargetID" class="form-label"></label>
+        <input asp-for="TargetID" class="form-control" />
+        <span asp-validation-for="TargetID" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Rating" class="form-label"></label>
+        <input asp-for="Rating" class="form-control" />
+        <span asp-validation-for="Rating" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Content" class="form-label"></label>
+        <textarea asp-for="Content" class="form-control" rows="4"></textarea>
+        <span asp-validation-for="Content" class="text-danger"></span>
+    </div>
+
+    <button class="btn btn-primary" type="submit">送出</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
