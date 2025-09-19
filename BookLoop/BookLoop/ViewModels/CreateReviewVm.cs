@@ -1,24 +1,28 @@
-﻿// Models/ViewModels/CreateReviewVm.cs
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace BookLoop.Models.ViewModels
 {
 	public class CreateReviewVm
 	{
-		[Required(ErrorMessage = "請輸入會員編號")]
-		public int MemberID { get; set; }                 // 發評會員
+		[Required(ErrorMessage = "會員編號必填")]
+		public int MemberID { get; set; }
 
-		[Range(0, 255, ErrorMessage = "TargetType 不正確")]
-		public byte TargetType { get; set; }              // 0=商品, 2=會員(依你設定)
+		[Required(ErrorMessage = "目標類型必填")]
+		public byte TargetType { get; set; }  // 1=書本，2=會員
 
-		[Required(ErrorMessage = "請輸入評論對象 ID")]
-		public int TargetID { get; set; }                 // 目標ID
+		// 書名（TargetType = 1 時必填）
+		public string? TargetBookName { get; set; }
 
-		[Range(1, 5, ErrorMessage = "評分需介於 {1}~{2}")]
-		public byte Rating { get; set; }                  // 1~5
+		// 會員暱稱（TargetType = 2 時必填）
+		public string? TargetMemberNickname { get; set; }
 
-		[Required(ErrorMessage = "請輸入評論內容")]
-		[MinLength(10, ErrorMessage = "內容至少 {1} 個字")]
-		public string Content { get; set; } = "";         // 內容( ≥ 10 字)
+		[Required(ErrorMessage = "評分必填")]
+		[Range(1, 5, ErrorMessage = "評分必須介於 1 到 5 之間")]
+		public byte Rating { get; set; }
+
+		[Required(ErrorMessage = "評論內容不能空白")]
+		[MinLength(10, ErrorMessage = "評論至少需要 10 個字")]
+		[MaxLength(200, ErrorMessage = "評論不能超過 200 個字")]
+		public string Content { get; set; } = null!;
 	}
 }

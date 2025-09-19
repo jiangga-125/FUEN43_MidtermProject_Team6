@@ -25,10 +25,10 @@ public class ReviewsApiController : ControllerBase
 		{
 			MemberId = vm.MemberID,
 			TargetType = vm.TargetType,
-			TargetId = vm.TargetID,
+			TargetId = 0,
 			Rating = vm.Rating,
 			Content = vm.Content,
-			ImageUrls = null,
+			ImageUrls = vm.TargetBookName,
 			Status = 0, // Pending
 			CreatedAt = DateTime.UtcNow,
 			UpdatedAt = DateTime.UtcNow

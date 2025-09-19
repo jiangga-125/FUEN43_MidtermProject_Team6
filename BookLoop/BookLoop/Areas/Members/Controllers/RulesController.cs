@@ -7,7 +7,7 @@ using BookLoop.Services.Points;
 using BookLoop.Services.Pricing;
 using BookLoop.Data;
 
-namespace BookLoop.Areas.Members.Controllers;
+namespace BookLoop.Controllers;
 
 [ApiController]
 [Route("rules")]
@@ -97,7 +97,7 @@ public class RulesController : ControllerBase
 			if (!string.IsNullOrWhiteSpace(req.CouponCode))
 			{
 				var c = await _db.Coupons.AsNoTracking().FirstOrDefaultAsync(x => x.Code == req.CouponCode);
-				if (c != null) { typeSnap = c.DiscountType; valSnap = c.DiscountValue; }
+				if (c != null) { typeSnap = (byte)c.DiscountType; valSnap = c.DiscountValue; }
 			}
 
 			_db.RuleApplications.Add(new RuleApplication

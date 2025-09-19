@@ -4,11 +4,9 @@ using BookLoop.Services.Pricing;
 using BookLoop.ViewModels;
 
 [Area("Members")]
-//[Route("[controller]/[action]")]
+[Route("[controller]/[action]")]
 public class CheckoutController : Controller
 {
-	
-
 	private readonly IOrderService _order;
 
 	public CheckoutController(IOrderService order) => _order = order;

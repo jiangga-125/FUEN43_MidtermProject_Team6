@@ -1,5 +1,5 @@
 ﻿// Services/Reviews/Rules/IReviewRuleProvider.cs
-using BookLoop.Areas.Reviews.Rules;
+using BookLoop.Services.Rules;
 
 public interface IReviewRuleProvider
 {
