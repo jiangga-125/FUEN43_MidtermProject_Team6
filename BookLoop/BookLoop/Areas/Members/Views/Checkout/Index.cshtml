@@ -141,7 +141,7 @@
 
             try {
                 // 送 AJAX（JSON）
-                const resp = await fetch('/Members/Checkout/Preview', {
+                const resp = await fetch('/Checkout/Preview', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)

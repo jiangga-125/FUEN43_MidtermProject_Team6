@@ -1,7 +1,7 @@
 ﻿// Services/Reviews/ReviewRulePipeline.cs
 using System.Collections.Generic;
 using System.Linq;
-using BookLoop.Areas.Reviews.Rules;
+using BookLoop.Services.Rules;
 
 namespace BookLoop.Areas.Reviews
 {

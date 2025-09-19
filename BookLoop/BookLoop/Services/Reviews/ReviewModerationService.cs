@@ -3,9 +3,9 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using BookLoop.Areas.Reviews.Rules;
 using BookLoop.Models;
 using BookLoop.Data;
+using BookLoop.Services.Rules;
 
 namespace BookLoop.Areas.Reviews
 {

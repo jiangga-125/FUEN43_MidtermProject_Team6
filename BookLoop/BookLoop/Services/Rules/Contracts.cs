@@ -1,7 +1,7 @@
 ﻿// Services/Reviews/Rules/Contracts.cs
 using System.Collections.Generic;
 
-namespace BookLoop.Areas.Reviews.Rules
+namespace BookLoop.Services.Rules
 {
 	// 審核輸入上下文（規則只讀）
 	public class ReviewContext

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 
-namespace BookLoop.Areas.Reviews.Rules
+namespace BookLoop.Services.Rules
 {
 	// 1. 最小字數：太短容易灌水
 	public class MinLengthRule : IReviewRule
