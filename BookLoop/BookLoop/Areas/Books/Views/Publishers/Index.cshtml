@@ -1,50 +1,102 @@
 ﻿@model IEnumerable<BookLoop.Models.Publisher>
 
 @{
-    ViewData["Title"] = "出版社清單";
-} 
-@*<alert-messages /> *@
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success">@TempData["Success"]</div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger">@TempData["Error"]</div>
+    ViewData["Title"] = "出版社管理";
 }
 
-<h1>出版社清單</h1>
+<div class="container py-3">
+    <!-- 標題列 -->
+    <div class="row align-items-center mb-3 gx-3 page-header">
+        <div class="col-12 col-md-6">
+            <h2 class="fw-bold">🏢 出版社管理</h2>
+        </div>
+        <div class="col-12 col-md-6 d-flex justify-content-md-end gap-2 flex-wrap">
+            <!-- 搜尋框 -->
+            <form id="searchForm" class="input-group" style="max-width: 400px;">
+                <input type="text" id="searchInput" class="form-control" placeholder="輸入出版社名稱搜尋..." />
+                <button type="submit" class="btn btn-primary">🔍 搜尋</button>
+            </form>
 
-<p>
-    <!-- 連結到 Create 動作，新增出版社 -->
-    <a asp-action="Create" class="btn btn-primary">新增出版社</a>
-</p>
+            <!-- 新增按鈕 -->
+            <a asp-action="Create" class="btn btn-success">➕ 新增出版社</a>
+        </div>
+    </div>
 
-<!-- 顯示出版社清單 -->
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>出版社名稱</th>
-            <th>建立時間</th>
-            <th>最後更新</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model)
-        {
-            <tr>
-                <!-- 顯示基本欄位 -->
-                <td>@item.PublisherName</td>
-                <td>@item.CreatedAt.ToString("yyyy/MM/dd HH:mm")</td>
-                <td>@item.UpdatedAt.ToString("yyyy/MM/dd HH:mm")</td>
-                <td>
-                    <!-- 動作連結：Details、Edit、Delete -->
-                    <a asp-action="Details" asp-route-id="@item.PublisherID">詳細</a> |
-                    <a asp-action="Edit" asp-route-id="@item.PublisherID">編輯</a> |
-                    <a asp-action="Delete" asp-route-id="@item.PublisherID">刪除</a>
-                </td>
-            </tr>
+    <!-- 成功/錯誤訊息 -->
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- 表格容器（AJAX） -->
+    <div id="publishersTableContainer">
+        @await Html.PartialAsync("_PublishersTable", Model)
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* 標題美化 */
+        .page-header h2.fw-bold {
+            color: #212529;
+            border-left: 5px solid #0d6efd;
+            padding-left: 10px;
         }
-    </tbody>
-</table>
+
+        /* 表格 padding & hover */
+        table.table th,
+        table.table td {
+            padding: 12px 16px;
+            vertical-align: middle;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #f1f3f5;
+        }
+
+        /* 按鈕一致化 */
+        .btn-success {
+            font-weight: 600;
+            padding: 8px 18px;
+        }
+
+        .btn-sm {
+            font-weight: 600;
+            padding: 6px 14px;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        const form = document.getElementById("searchForm");
+        const input = document.getElementById("searchInput");
+        const container = document.getElementById("publishersTableContainer");
+
+        form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            fetchData(input.value);
+        });
+
+        input.addEventListener("keyup", function () {
+            fetchData(input.value);
+        });
+
+        function fetchData(keyword) {
+            fetch(`/Books/Publishers/Search?search=${encodeURIComponent(keyword)}`)
+                .then(resp => resp.text())
+                .then(html => { container.innerHTML = html; })
+                .catch(err => console.error(err));
+        }
+    </script>
+}
