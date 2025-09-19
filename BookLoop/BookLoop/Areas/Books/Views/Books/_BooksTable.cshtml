@@ -11,6 +11,8 @@
             <th>出版社</th>
             <th>分類</th>
             <th>發行日</th>
+            <th>實際售價</th>
+            <th>建議售價</th>
             <th>封面</th>
             <th>操作</th>
         </tr>
@@ -28,6 +30,8 @@
                 <td>@b.Publisher?.PublisherName</td>
                 <td>@b.Category?.CategoryName</td>
                 <td>@(b.PublishDate?.ToString("yyyy-MM-dd"))</td>
+                <td>@($"{b.ListPrice} 元")</td>
+                <td>@($"{b.SalePrice} 元")</td>
                 <td>
                     @{
                         string file = null;
@@ -43,7 +47,7 @@
                     else
                     {
                         <span>
-                            <img src="~/images/books/no-cover.png"
+                            <img src="@Url.Content("~/images/books/no-cover.png")"
                                  alt="無封面"
                                  style="max-height:80px;"
                                  class="img-thumbnail" />
