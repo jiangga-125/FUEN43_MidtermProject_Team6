@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,14 +5,14 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using BookLoop.Data.Contexts;
+using BookLoop.Data.Entities;
 using System.IdentityModel.Tokens.Jwt;
-using BookLoop.Models;
 
 namespace ReportMail.Areas.ReportMail.Controllers
 {
     [Area("ReportMail")]
-    //[Authorize(Roles = "Admin,Marketing")]
-public class ReportDefinitionsController : Controller
+    public class ReportDefinitionsController : Controller
     {
         private readonly ReportMailDbContext _context;
 
@@ -51,19 +50,19 @@ public class ReportDefinitionsController : Controller
 			{
 				var c = category.Trim().ToLowerInvariant();
 				if (c == "line" || c == "bar" || c == "pie")
-					model.Category = c; //  Create.cshtml  <select asp-for="Category"> w]
+					model.Category = c; // Åý Create.cshtml ªº <select asp-for="Category"> ¹w³]¿ï¨ì¹ïÀ³¶µ¥Ø
 			}
 			return View(model);
 		}
 
-		// Î¨Ó©Ó±e FiltersJson Z DTO]uOd ValueJson^
+		// ¥Î¨Ó©Ó±µ«eºÝ FiltersJson ªº¯ó½Z DTO¡]¥u«O¯d ValueJson¡^
 		private class ReportFilterDraft
         {
             public string? FieldName { get; set; }
             public string? DisplayName { get; set; }
             public string? DataType { get; set; }
             public string? Operator { get; set; }
-            public string? ValueJson { get; set; }    // ß¤@Ó·
+            public string? ValueJson { get; set; }    // °ß¤@¨Ó·½
             public string? Options { get; set; }
             public int? OrderIndex { get; set; }
             public bool? IsRequired { get; set; }
@@ -71,7 +70,7 @@ public class ReportDefinitionsController : Controller
         }
 
         // POST: ReportMail/ReportDefinitions/Create
-        //  BaseKind Ç¤J BindFÉ¶WÝ¦Û°Ê¸É¡FFiltersJson |i}h ReportFilter]ug ValueJson^
+        // §â BaseKind ¯Ç¤J Bind¡F®É¶¡ÂW«áºÝ¦Û°Ê¸É¡FFiltersJson ·|®i¶}¬°¦hµ§ ReportFilter¡]¥u¼g ValueJson¡^
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(
@@ -84,16 +83,16 @@ public class ReportDefinitionsController : Controller
             var now = DateTime.Now;
             reportDefinition.CreatedAt = now;
             reportDefinition.UpdatedAt = now;
-            //OÒ³oÐ·Ç¤Æ¡]hÅ¥ + pg^AÅ­Èµw]
+            //«OÃÒ³o¨â­ÓÄæ¦ì¼Ð·Ç¤Æ¡]¥hªÅ¥Õ + ¤p¼g¡^¡AªÅ­Èµ¹¹w³]
             reportDefinition.Category = (reportDefinition.Category ?? "line").Trim().ToLowerInvariant();
             reportDefinition.BaseKind = (reportDefinition.BaseKind ?? "sales").Trim().ToLowerInvariant();
 
-            // ]Ä³^sW@ß±Ò¥Î¡A×§KQ Index() Lo
+            // ¡]«ØÄ³¡^·s¼W¤@«ß±Ò¥Î¡AÁ×§K³Q Index() ¹LÂo±¼
             reportDefinition.IsActive = true;
 
 
             _context.Add(reportDefinition);
-            await _context.SaveChangesAsync(); //  ReportDefinitionID
+            await _context.SaveChangesAsync(); // ¥ý²£¥Í ReportDefinitionID
 
             if (!string.IsNullOrWhiteSpace(FiltersJson))
             {
@@ -103,20 +102,20 @@ public class ReportDefinitionsController : Controller
                     int order = 1;
                     foreach (var d in drafts)
                     {
-                        // Íµ DisplayName á´©]YeÝ¥^
+                        // ¤Íµ½ªº DisplayName «á´©¡]­Y«eºÝ¥¼µ¹¡^
                         var display = (d.DisplayName ?? d.FieldName) ?? "";
                         if (string.IsNullOrWhiteSpace(display))
                         {
                             display = (d.FieldName ?? "").ToLowerInvariant() switch
                             {
-                                "orderdate" => "Ï¶",
-                                "borrowdate" => "Ï¶",
-                                "categoryid" => "y",
-                                "saleprice" => "æ¥»",
-                                "metric" => "",
-                                "orderstatus" => "qæª¬A",
-                                "orderamount" => "æµ§qB",
-                                _ => "(RW)"
+                                "orderdate" => "¤é´Á°Ï¶¡",
+                                "borrowdate" => "¤é´Á°Ï¶¡",
+                                "categoryid" => "®ÑÄyºØÃþ",
+                                "saleprice" => "³æ¥»»ù¦ì",
+                                "metric" => "«ü¼Ð",
+                                "orderstatus" => "­q³æª¬ºA",
+                                "orderamount" => "³æµ§­q³æª÷ÃB",
+                                _ => "(¥¼©R¦W)"
                             };
                         }
 
@@ -127,12 +126,12 @@ public class ReportDefinitionsController : Controller
                             DisplayName = display,
                             DataType = d.DataType ?? "text",
                             Operator = d.Operator ?? "eq",
-                            ValueJson = d.ValueJson ?? "{}",   //  ug ValueJson
+                            ValueJson = d.ValueJson ?? "{}",   //  ¥u¼g ValueJson
                             Options = d.Options ?? "{}",
                             OrderIndex = d.OrderIndex ?? order++,
                             IsRequired = d.IsRequired ?? false,
                             IsActive = d.IsActive ?? true,
-                            CreatedAt = now,                   //  Ý¦Û°Ê¤
+                            CreatedAt = now,                   //  «áºÝ¦Û°Ê¤Æ
                             UpdatedAt = now
                         });
                     }
@@ -140,7 +139,7 @@ public class ReportDefinitionsController : Controller
                 }
                 catch (Exception ex)
                 {
-                    // ÑªR~_Dny{]ni[ ModelState Ü¡^
+                    // ¸ÑªR¿ù»~¤£ªýÂ_¥D­n¬yµ{¡]¥²­n¥i¥[ ModelState Åã¥Ü¡^
                     Console.WriteLine(ex);
                 }
             }
@@ -158,37 +157,37 @@ public class ReportDefinitionsController : Controller
         }
 
         // POST: ReportMail/ReportDefinitions/Edit/5
-        //  BaseKind Ç¤J BindAÃ¦bxses UpdatedAt
+        // §â BaseKind ¯Ç¤J Bind¡A¨Ã¦bÀx¦s«e¨ê·s UpdatedAt
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id,
             [Bind("ReportDefinitionID,ReportName,Category,BaseKind,Description,IsActive,CreatedAt,UpdatedAt")]
             ReportDefinition reportDefinition,
-            [FromForm] string? FiltersJson // eÝ²Õ¦n Filter Z(JSON)
+            [FromForm] string? FiltersJson // ±µ¦¬«eºÝ²Õ¦nªº Filter ¯ó½Z(JSON)
         )
         {
             if (id != reportDefinition.ReportDefinitionID) return NotFound();
             if (!ModelState.IsValid) return View(reportDefinition);
-            // OÒ³oÐ·Ç¤Æ¡]hÅ¥ + pg^AÅ­Èµw]
+            // «OÃÒ³o¨â­ÓÄæ¦ì¼Ð·Ç¤Æ¡]¥hªÅ¥Õ + ¤p¼g¡^¡AªÅ­Èµ¹¹w³]
             reportDefinition.Category = (reportDefinition.Category ?? "line").Trim().ToLowerInvariant();
             reportDefinition.BaseKind = (reportDefinition.BaseKind ?? "sales").Trim().ToLowerInvariant();
 
-            // @ß±Ò¥Î¡A×§KQ Index() Lo
+            // ¤@«ß±Ò¥Î¡AÁ×§K³Q Index() ¹LÂo±¼
             reportDefinition.IsActive = true;
-            reportDefinition.UpdatedAt = DateTime.Now;// Ý¦Û°Ê¨s
+            reportDefinition.UpdatedAt = DateTime.Now;// «áºÝ¦Û°Ê¨ê·s
 
             using var tx = await _context.Database.BeginTransactionAsync();
             try
-            {   // 1) s Definition 
+            {   // 1) ¥ý§ó·s Definition ¥»Åé
                 _context.Update(reportDefinition);
                 await _context.SaveChangesAsync();
 
-                // 2)å±¼ÂªFilters(Â²B×§Kï¶¶Ç²)
+                // 2)¬å±¼ÂÂªºFilters(³ÌÂ²¼ä¡BÁ×§K¤ñ¹ï¶¶§Ç²§°Ê)
                 var olds = _context.ReportFilters.Where(f => f.ReportDefinitionID == reportDefinition.ReportDefinitionID);
                 _context.ReportFilters.RemoveRange(olds);
                 await _context.SaveChangesAsync();
 
-                // 3)Ù­sWQuZÑªRv:v[JsFilters
+                // 3)ÁÙ­ì·s¼W¤Qªº¡u¯ó½Z¸ÑªR¡v:³vµ§¥[¤J·sªºFilters
                 if (!string.IsNullOrWhiteSpace(FiltersJson))
                 {
                     var drafts = System.Text.Json.JsonSerializer.Deserialize<List<ReportFilterDraft>>(FiltersJson) ?? new();
@@ -204,10 +203,10 @@ public class ReportDefinitionsController : Controller
                             DisplayName = string.IsNullOrWhiteSpace(d.DisplayName) ? d.FieldName!.Trim() : d.DisplayName!.Trim(),
                             DataType = (d.DataType ?? "text").Trim().ToLowerInvariant(),
                             Operator = (d.Operator ?? "eq").Trim().ToLowerInvariant(),
-                            ValueJson = d.ValueJson ?? "{}",   // su ValueJson
+                            ValueJson = d.ValueJson ?? "{}",   // ·sª©¥u¥Î ValueJson
                             Options = d.Options,
                             OrderIndex = order++,
-                            IsRequired = d.IsRequired ?? false,   //  d.IsRequired.GetValueOrDefault(false)                            IsActive = true,
+                            IsRequired = d.IsRequired ?? false,   // ©Î d.IsRequired.GetValueOrDefault(false)                            IsActive = true,
                             CreatedAt = now,
                             UpdatedAt = now
                         };
@@ -255,7 +254,7 @@ public class ReportDefinitionsController : Controller
 			return RedirectToAction("Index", "Reports", new { area = "ReportMail" });
 		}
 
-        // Ñ¥DUÔ¸JÛ­quuÏ¡vÒ»Ý°Ñ¼Æ¡GCategory + BaseKind + Filters]ut ValueJson^
+        // ¨Ñ¥D­¶¤U©Ô¸ü¤J¦Û­q¡u§é½u¹Ï¡v³øªí©Ò»Ý°Ñ¼Æ¡GCategory + BaseKind + Filters¡]¥u§t ValueJson¡^
         [HttpGet]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public async Task<IActionResult> DefinitionPayload(int id)
@@ -282,8 +281,8 @@ public class ReportDefinitionsController : Controller
             {
                 def.ReportDefinitionID,
                 def.ReportName,
-                Category = category,   //  Ð·Ç¤Æ«^e
-                BaseKind = baseKind,   //  Ð·Ç¤Æ«^e
+                Category = category,   // ¡¹ ¼Ð·Ç¤Æ«á¦^µ¹«eºÝ
+                BaseKind = baseKind,   // ¡¹ ¼Ð·Ç¤Æ«á¦^µ¹«eºÝ
                 Filters = filters
             });
         }
