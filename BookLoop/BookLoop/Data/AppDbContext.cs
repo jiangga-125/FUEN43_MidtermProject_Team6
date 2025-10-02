@@ -114,7 +114,15 @@ namespace BookLoop.Data
 			// PERMISSION_FEATURES
 			b.Entity<PermissionFeature>(e =>
 			{
+<<<<<<< HEAD
 				e.ToTable("PERMISSION_FEATURES"); // ← 與 DB 一致
+=======
+<<<<<<< HEAD
+				e.ToTable("Permission_Features"); // 修改PermissionFeatures成Permission_Features
+=======
+				e.ToTable("PERMISSION_FEATURES"); // ← 與 DB 一致
+>>>>>>> RMupload
+>>>>>>> dev
 				e.HasKey(x => new { x.PermissionID, x.FeatureID });
 				e.HasOne(x => x.Permission).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.PermissionID);
 				e.HasOne(x => x.Feature).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.FeatureID);

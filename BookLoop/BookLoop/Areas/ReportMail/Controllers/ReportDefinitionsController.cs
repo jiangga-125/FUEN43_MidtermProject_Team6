@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -51,19 +50,19 @@ public class ReportDefinitionsController : Controller
 			{
 				var c = category.Trim().ToLowerInvariant();
 				if (c == "line" || c == "bar" || c == "pie")
-					model.Category = c; //  Create.cshtml  <select asp-for="Category"> w]
+					model.Category = c; // è®?Create.cshtml ??<select asp-for="Category"> ?è¨­?¸åˆ°å°æ??…ç›®
 			}
 			return View(model);
 		}
 
-		// Î¨Ó©Ó±e FiltersJson Z DTO]uOd ValueJson^
+		// ?¨ä??¿æ¥?ç«¯ FiltersJson ?„è?ç¨?DTOï¼ˆåªä¿ç? ValueJsonï¼?
 		private class ReportFilterDraft
         {
             public string? FieldName { get; set; }
             public string? DisplayName { get; set; }
             public string? DataType { get; set; }
             public string? Operator { get; set; }
-            public string? ValueJson { get; set; }    // ß¤@Ó·
+            public string? ValueJson { get; set; }    // ?¯ä?ä¾†æ?
             public string? Options { get; set; }
             public int? OrderIndex { get; set; }
             public bool? IsRequired { get; set; }
@@ -71,7 +70,7 @@ public class ReportDefinitionsController : Controller
         }
 
         // POST: ReportMail/ReportDefinitions/Create
-        //  BaseKind Ç¤J BindFÉ¶Wİ¦Û°Ê¸É¡FFiltersJson |i}h ReportFilter]ug ValueJson^
+        // ??BaseKind ç´å…¥ Bindï¼›æ??“æˆ³å¾Œç«¯?ªå?è£œï?FiltersJson ?ƒå??‹ç‚ºå¤šç? ReportFilterï¼ˆåªå¯?ValueJsonï¼?
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(
@@ -84,16 +83,16 @@ public class ReportDefinitionsController : Controller
             var now = DateTime.Now;
             reportDefinition.CreatedAt = now;
             reportDefinition.UpdatedAt = now;
-            //OÒ³oĞ·Ç¤Æ¡]hÅ¥ + pg^AÅ­Èµw]
+            //ä¿è??™å…©?‹æ?ä½æ?æº–å?ï¼ˆå»ç©ºç™½ + å°å¯«ï¼‰ï?ç©ºå€¼çµ¦?è¨­
             reportDefinition.Category = (reportDefinition.Category ?? "line").Trim().ToLowerInvariant();
             reportDefinition.BaseKind = (reportDefinition.BaseKind ?? "sales").Trim().ToLowerInvariant();
 
-            // ]Ä³^sW@ß±Ò¥Î¡A×§KQ Index() Lo
+            // ï¼ˆå»ºè­°ï??°å?ä¸€å¾‹å??¨ï??¿å?è¢?Index() ?æ¿¾??
             reportDefinition.IsActive = true;
 
 
             _context.Add(reportDefinition);
-            await _context.SaveChangesAsync(); //  ReportDefinitionID
+            await _context.SaveChangesAsync(); // ?ˆç”¢??ReportDefinitionID
 
             if (!string.IsNullOrWhiteSpace(FiltersJson))
             {
@@ -103,20 +102,20 @@ public class ReportDefinitionsController : Controller
                     int order = 1;
                     foreach (var d in drafts)
                     {
-                        // Íµ DisplayName á´©]Yeİ¥^
+                        // ?‹å???DisplayName å¾Œæ´ï¼ˆè‹¥?ç«¯?ªçµ¦ï¼?
                         var display = (d.DisplayName ?? d.FieldName) ?? "";
                         if (string.IsNullOrWhiteSpace(display))
                         {
                             display = (d.FieldName ?? "").ToLowerInvariant() switch
                             {
-                                "orderdate" => "Ï¶",
-                                "borrowdate" => "Ï¶",
-                                "categoryid" => "y",
-                                "saleprice" => "æ¥»",
-                                "metric" => "",
-                                "orderstatus" => "qæª¬A",
-                                "orderamount" => "æµ§qB",
-                                _ => "(RW)"
+                                "orderdate" => "?¥æ??€??,
+                                "borrowdate" => "?¥æ??€??,
+                                "categoryid" => "?¸ç?ç¨®é?",
+                                "saleprice" => "?®æœ¬?¹ä?",
+                                "metric" => "?‡æ?",
+                                "orderstatus" => "è¨‚å–®?€??,
+                                "orderamount" => "?®ç?è¨‚å–®?‘é?",
+                                _ => "(?ªå‘½??"
                             };
                         }
 
@@ -127,12 +126,12 @@ public class ReportDefinitionsController : Controller
                             DisplayName = display,
                             DataType = d.DataType ?? "text",
                             Operator = d.Operator ?? "eq",
-                            ValueJson = d.ValueJson ?? "{}",   //  ug ValueJson
+                            ValueJson = d.ValueJson ?? "{}",   //  ?ªå¯« ValueJson
                             Options = d.Options ?? "{}",
                             OrderIndex = d.OrderIndex ?? order++,
                             IsRequired = d.IsRequired ?? false,
                             IsActive = d.IsActive ?? true,
-                            CreatedAt = now,                   //  İ¦Û°Ê¤
+                            CreatedAt = now,                   //  å¾Œç«¯?ªå???
                             UpdatedAt = now
                         });
                     }
@@ -140,7 +139,7 @@ public class ReportDefinitionsController : Controller
                 }
                 catch (Exception ex)
                 {
-                    // ÑªR~_Dny{]ni[ ModelState Ü¡^
+                    // è§???¯èª¤ä¸é˜»?·ä¸»è¦æ?ç¨‹ï?å¿…è??¯å? ModelState é¡¯ç¤ºï¼?
                     Console.WriteLine(ex);
                 }
             }
@@ -158,37 +157,37 @@ public class ReportDefinitionsController : Controller
         }
 
         // POST: ReportMail/ReportDefinitions/Edit/5
-        //  BaseKind Ç¤J BindAÃ¦bxses UpdatedAt
+        // ??BaseKind ç´å…¥ Bindï¼Œä¸¦?¨å„²å­˜å??·æ–° UpdatedAt
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id,
             [Bind("ReportDefinitionID,ReportName,Category,BaseKind,Description,IsActive,CreatedAt,UpdatedAt")]
             ReportDefinition reportDefinition,
-            [FromForm] string? FiltersJson // eİ²Õ¦n Filter Z(JSON)
+            [FromForm] string? FiltersJson // ?¥æ”¶?ç«¯çµ„å¥½??Filter ?‰ç¨¿(JSON)
         )
         {
             if (id != reportDefinition.ReportDefinitionID) return NotFound();
             if (!ModelState.IsValid) return View(reportDefinition);
-            // OÒ³oĞ·Ç¤Æ¡]hÅ¥ + pg^AÅ­Èµw]
+            // ä¿è??™å…©?‹æ?ä½æ?æº–å?ï¼ˆå»ç©ºç™½ + å°å¯«ï¼‰ï?ç©ºå€¼çµ¦?è¨­
             reportDefinition.Category = (reportDefinition.Category ?? "line").Trim().ToLowerInvariant();
             reportDefinition.BaseKind = (reportDefinition.BaseKind ?? "sales").Trim().ToLowerInvariant();
 
-            // @ß±Ò¥Î¡A×§KQ Index() Lo
+            // ä¸€å¾‹å??¨ï??¿å?è¢?Index() ?æ¿¾??
             reportDefinition.IsActive = true;
-            reportDefinition.UpdatedAt = DateTime.Now;// İ¦Û°Ê¨s
+            reportDefinition.UpdatedAt = DateTime.Now;// å¾Œç«¯?ªå??·æ–°
 
             using var tx = await _context.Database.BeginTransactionAsync();
             try
-            {   // 1) s Definition 
+            {   // 1) ?ˆæ›´??Definition ?¬é?
                 _context.Update(reportDefinition);
                 await _context.SaveChangesAsync();
 
-                // 2)å±¼ÂªFilters(Â²B×§Kï¶¶Ç²)
+                // 2)?æ??Šç?Filters(?€ç°¡æ??é¿?æ?å°é?åºç•°??
                 var olds = _context.ReportFilters.Where(f => f.ReportDefinitionID == reportDefinition.ReportDefinitionID);
                 _context.ReportFilters.RemoveRange(olds);
                 await _context.SaveChangesAsync();
 
-                // 3)Ù­sWQuZÑªRv:v[JsFilters
+                // 3)?„å??°å??ç??Œè?ç¨¿è§£?ã€??ç?? å…¥?°ç?Filters
                 if (!string.IsNullOrWhiteSpace(FiltersJson))
                 {
                     var drafts = System.Text.Json.JsonSerializer.Deserialize<List<ReportFilterDraft>>(FiltersJson) ?? new();
@@ -204,10 +203,10 @@ public class ReportDefinitionsController : Controller
                             DisplayName = string.IsNullOrWhiteSpace(d.DisplayName) ? d.FieldName!.Trim() : d.DisplayName!.Trim(),
                             DataType = (d.DataType ?? "text").Trim().ToLowerInvariant(),
                             Operator = (d.Operator ?? "eq").Trim().ToLowerInvariant(),
-                            ValueJson = d.ValueJson ?? "{}",   // su ValueJson
+                            ValueJson = d.ValueJson ?? "{}",   // ?°ç??ªç”¨ ValueJson
                             Options = d.Options,
                             OrderIndex = order++,
-                            IsRequired = d.IsRequired ?? false,   //  d.IsRequired.GetValueOrDefault(false)                            IsActive = true,
+                            IsRequired = d.IsRequired ?? false,   // ??d.IsRequired.GetValueOrDefault(false)                            IsActive = true,
                             CreatedAt = now,
                             UpdatedAt = now
                         };
@@ -255,7 +254,7 @@ public class ReportDefinitionsController : Controller
 			return RedirectToAction("Index", "Reports", new { area = "ReportMail" });
 		}
 
-        // Ñ¥DUÔ¸JÛ­quuÏ¡vÒ»İ°Ñ¼Æ¡GCategory + BaseKind + Filters]ut ValueJson^
+        // ä¾›ä¸»?ä??‰è??¥è‡ªè¨‚ã€Œæ?ç·šå??å ±è¡¨æ??€?ƒæ•¸ï¼šCategory + BaseKind + Filtersï¼ˆåª??ValueJsonï¼?
         [HttpGet]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public async Task<IActionResult> DefinitionPayload(int id)
@@ -282,8 +281,8 @@ public class ReportDefinitionsController : Controller
             {
                 def.ReportDefinitionID,
                 def.ReportName,
-                Category = category,   //  Ğ·Ç¤Æ«^e
-                BaseKind = baseKind,   //  Ğ·Ç¤Æ«^e
+                Category = category,   // ??æ¨™æ??–å??çµ¦?ç«¯
+                BaseKind = baseKind,   // ??æ¨™æ??–å??çµ¦?ç«¯
                 Filters = filters
             });
         }

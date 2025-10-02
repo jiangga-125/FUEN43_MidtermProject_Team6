@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 ﻿using BookLoop.Services;
 using BookLoop.Services.Export;
 using Microsoft.AspNetCore.Mvc;
