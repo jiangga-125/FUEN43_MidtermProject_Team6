@@ -7,7 +7,50 @@
     var previewUrl = Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" }) ?? "#";
     var catsUrl = Url.Action("Categories", "Lookup", new { area = "ReportMail" }) ?? "#";
 }
-<h1 class="mb-3">新增報表</h1>
+<style>
+    .action-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        margin-bottom: 1rem;
+    }
+
+        .action-bar h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+    .action-buttons {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+    @@media (max-width:576px) {
+        .action-bar
+
+    {
+        flex-wrap: wrap;
+    }
+
+    .action-buttons {
+        width: 100%;
+    }
+
+        .action-buttons .btn {
+            flex: 1;
+        }
+
+    }</style>
+
+<div class="d-flex align-items-center mb-3 mt-4">
+    <h1 class="h3 mb-0">新增報表</h1>
+    <a href="@Url.Action("Index", "Reports", new { area = "ReportMail" })"
+       class="btn btn-outline-secondary btn-sm px-3 py-1 rounded-1 ms-2">返回</a>
+</div>
+
+
+
 
 <div class="row g-4">
     <div class="col-lg-6">
@@ -16,11 +59,19 @@
                 <form asp-action="Create" method="post">
                     @Html.AntiForgeryToken()
                     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
                     <!-- 基本欄位 -->
                     <div class="mb-3">
                         <label asp-for="ReportName" class="form-label">報表名稱</label>
-                        <input asp-for="ReportName" class="form-control" />
+
+                        <!-- 輸入框 + 儲存按鈕並排 -->
+                        <div class="input-group">
+                            <input asp-for="ReportName" class="form-control" />
+                            <button type="submit" id="btnSubmit"
+                                    class="btn btn-primary btn-sm px-3 py-2 rounded-1">
+                                儲存
+                            </button>
+                        </div>
+
                         <span asp-validation-for="ReportName" class="text-danger"></span>
                     </div>
 
@@ -69,6 +120,12 @@
                     <div id="section-sales" class="border rounded p-3 mb-3" style="display:none">
                         <div class="mb-2 fw-bold">銷售篩選</div>
 
+                        <div class="mb-3">
+                            <label class="form-label">書籍種類</label>
+                            <select id="salesCategories" class="form-select" multiple></select>
+                            @* <div class="form-text">選「（全部）」或不選＝全部</div> *@
+                        </div>
+
                         <!-- 排行區間（bar/pie 用） -->
                         <div class="row g-2 align-items-end mb-3" id="rank-sales" style="display:none">
                             <div class="col-6">
@@ -83,12 +140,6 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">書籍種類</label>
-                            <select id="salesCategories" class="form-select" multiple></select>
-                            <div class="form-text">選「（全部）」或不選＝全部</div>
-                        </div>
-
-                        <div class="mb-3">
                             <label class="form-label">單本價位</label>
                             <select id="priceRange" class="form-select"></select>
                             <div class="form-text">每 100 元一區間（1~1000）</div>
@@ -98,6 +149,12 @@
                     <!-- borrow：for line/bar/pie -->
                     <div id="section-borrow" class="border rounded p-3 mb-3" style="display:none">
                         <div class="mb-2 fw-bold">借閱篩選</div>
+
+                        <div class="mb-3">
+                            <label class="form-label">書籍種類</label>
+                            <select id="borrowCategories" class="form-select" multiple></select>
+                            @* <div class="form-text">選「（全部）」或不選＝全部</div> *@
+                        </div>
 
                         <!-- 排行區間（bar/pie 用） -->
                         <div class="row g-2 align-items-end mb-3" id="rank-borrow" style="display:none">
@@ -110,12 +167,6 @@
                                 <select id="rankToBorrow" class="form-select"></select>
                             </div>
                             <div class="form-text">預設 1~10 名。</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">書籍種類</label>
-                            <select id="borrowCategories" class="form-select" multiple></select>
-                            <div class="form-text">選「（全部）」或不選＝全部</div>
                         </div>
                         <!-- 出版年份（十年區間）：預設隱藏 -->
                         <div id="publishDecadeRow" class="mb-3" style="display:none">
@@ -168,7 +219,7 @@
                                     <label class="form-check-label" for="os_4">已取消</label>
                                 </div>
                             </div>
-                            <div class="form-text">預設只勾「已完成」。全選＝不加狀態條件；全不勾＝送空集合（回空結果）。</div>
+                            @* <div class="form-text">預設只勾「已完成」。全選＝不加狀態條件；全不勾＝送空集合（回空結果）。</div> *@
                         </div>
                         <div class="row g-2">
                             <div class="col"><label class="form-label">單筆金額（Min）</label><input type="number" id="ordAmtMin" class="form-control" placeholder="0" /></div>
@@ -180,12 +231,7 @@
                     <input type="hidden" asp-for="IsActive" value="true" />
                     <input type="hidden" id="FiltersJson" name="FiltersJson" />
 
-                    <div class="mt-4 d-flex gap-2">
-                        <a href="@Url.Action("Index", "Reports", new { area = "ReportMail" })"
-                           class="btn btn-outline-secondary">返回</a>
-                        @*<button type="button" id="btnPreview" class="btn btn-info">更新預覽</button>*@
-                        <button type="submit" id="btnSubmit" class="btn btn-primary">儲存</button>
-                    </div>
+
                 </form>
             </div>
         </div>

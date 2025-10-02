@@ -5,9 +5,11 @@
 }
 @section Styles {
     <style>
+
+
+
         th.head-width, td.head-width {
             width: 140px;
-            
             text-overflow: ellipsis;
             white-space: nowrap;
         }
@@ -28,25 +30,39 @@
             font-weight: 600;
             transition: all 0.3s ease;
         }
-        .btn-new:hover {
-            background-color: #28a745; /* 滑鼠移上去變深綠 */
-            color: white;
+
+            .btn-new:hover {
+                background-color: #28a745; /* 新增按鈕滑鼠移上去變深綠 */
+                color: white;
+            }
+
+
+
+
+        .btn-action {
+            width: 120px;
+            font-weight: 600;
+            border-radius: 12px; /* 圓角 */
+            transition: all 0.3s ease;
         }
 
-
+            .btn-action:hover {
+                transform: translateY(-2px); /* 輕微浮起 */
+                box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            }
 
     </style>
 }
 
 
 <div class="text-center">
-<h1 class="border-2">訂單</h1>
+    <h1 class="border-2">訂單</h1>
 
 
     @if (TempData["Success"] != null)
     {
-            <div class="alert alert-success">@TempData["Success"]</div>
-        }
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
 
     <div class="d-flex justify-content-between mb-3">
         <form asp-action="Index" method="get" class="d-flex">
@@ -56,75 +72,79 @@
         </form>
     </div>
 
-<p>
+    <p>
         <a asp-action="Create" class="btn btn-new">新增</a>
-</p>
+    </p>
     <div class="d-flex justify-content-center">
         <table class="table" style="table-layout: fixed; width:100%;">
-    <thead>
-        <tr>
-            <th class="head-width">
-                @Html.DisplayNameFor(model => model.OrderID)
-            </th>
-            <th class="head-width">
-                @Html.DisplayNameFor(model => model.OrderDate)
-            </th>
-            <th class="head-width">
-                @Html.DisplayNameFor(model => model.TotalAmount)
-            </th>
-            <th class="head-width">
-                @Html.DisplayNameFor(model => model.Status)
-            </th>
-            @*  <th class="head-width">
+            <thead>
+                <tr>
+                    <th class="head-width">
+                        @Html.DisplayNameFor(model => model.OrderID)
+                    </th>
+                    <th class="head-width">
+                        @Html.DisplayNameFor(model => model.OrderDate)
+                    </th>
+                    <th class="head-width">
+                        @Html.DisplayNameFor(model => model.TotalAmount)
+                    </th>
+                    <th class="head-width">
+                        @Html.DisplayNameFor(model => model.Status)
+                    </th>
+                    <th class="head-width">
+                        會員ID
+                    </th>
+                    @*  <th class="head-width">
                 @Html.DisplayNameFor(model => model.DiscountAmount)
             </th> *@
-             <th class="head-width">
-                @Html.DisplayNameFor(model => model.DiscountCode)
-            </th>
-             
-            @*  <th class="head-width">
+                    <th class="head-width">
+                        @Html.DisplayNameFor(model => model.DiscountCode)
+                    </th>
+
+                    @*  <th class="head-width">
                 @Html.DisplayNameFor(model => model.MemberCouponID)
             </th> *@
-             <th class="head-width">
-                @Html.DisplayNameFor(model => model.CouponTypeSnap)
-            </th>
-            @* <th class="head-width">
+                    <th class="head-width">
+                        @Html.DisplayNameFor(model => model.CouponTypeSnap)
+                    </th>
+                    @* <th class="head-width">
                 @Html.DisplayNameFor(model => model.CouponValueSnap)
             </th> *@
-            <th class="head-width">
-                @Html.DisplayNameFor(model => model.CouponNameSnap)
-            </th>
-            <th class="head-width">
-                @Html.DisplayNameFor(model => model.CouponDiscountAmount)
-            </th>
-            <th class="head-width">
-                @Html.DisplayNameFor(model => model.Customer)
-            </th>
+                    <th class="head-width">
+                        @Html.DisplayNameFor(model => model.CouponNameSnap)
+                    </th>
+                    <th class="head-width">
+                        @Html.DisplayNameFor(model => model.CouponDiscountAmount)
+                    </th>
+                    <th class="head-width">
+                        @Html.DisplayNameFor(model => model.Customer)
+                    </th>
 
-             <th class="head-width">
-                 物流資訊
-             </th>
-             <th class="head-width">
-                   租借書籍資訊
-             </th>
+                    <th class="head-width">
+                        物流資訊
+                    </th>
+                    <th class="head-width">
+                        租借書籍資訊
+                    </th>
 
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr class="order-row" data-id="@item.OrderID">
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr class="order-row" data-id="@item.OrderID">
 
                         <td>
                             @Html.DisplayFor(modelItem => item.OrderID)
                         </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.OrderDate)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.TotalAmount)
-            </td>
-            <td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.OrderDate)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.TotalAmount)
+                        </td>
+                        <td>
                             @{
                                 string statusText = item.Status switch
                                 {
@@ -137,54 +157,65 @@
                                 };
                             }
                             @statusText
-            </td>
-            @* <td>
+                        </td>
+                        <td>
+                            @(item.Customer?.MemberID?.ToString() ?? "無會員")
+                        </td>
+                        @* <td>
                 @Html.DisplayFor(modelItem => item.DiscountAmount)
             </td> *@
-            <td>
-                @Html.DisplayFor(modelItem => item.DiscountCode)
-            </td>
-     
-            @* <td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.DiscountCode)
+                        </td>
+
+                        @* <td>
                 @Html.DisplayFor(modelItem => item.MemberCouponID)
             </td> *@
-            <td>
-                @Html.DisplayFor(modelItem => item.CouponTypeSnap)
-            </td>
-            @* <td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.CouponTypeSnap)
+                        </td>
+                        @* <td>
                 @Html.DisplayFor(modelItem => item.CouponValueSnap)
             </td> *@
-            <td>
-                @Html.DisplayFor(modelItem => item.CouponNameSnap)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.CouponDiscountAmount)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Customer.CustomerID)
-            </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.CouponNameSnap)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.CouponDiscountAmount)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.Customer.CustomerID)
+                        </td>
                         <td>
                             <button type="button" class="btn btn-primary" data-bs-toggle="modal"
                                     data-bs-target="#shipmentModal" data-orderid="@item.OrderID">
                                 查看物流
                             </button>
                         </td>
-                       <td>
-                        <a asp-controller="Rentals" asp-action="ByID" asp-route-orderID="@item.OrderID" class="btn btn-secondary">
-                            查看租借書籍
-                        </a>
+                        <td>
+                            <a asp-controller="Rentals" asp-action="ByID" asp-route-orderID="@item.OrderID" class="btn btn-secondary">
+                                查看租借書籍
+                            </a>
                         </td>
 
-                        <td class="d-flex flex-column">
-                            <a asp-action="Edit" asp-route-id="@item.OrderID" class="btn btn-success mb-2" style="width:100px;">修改</a>
-                            <a asp-action="Details" asp-route-id="@item.OrderID" class="btn btn-info mb-2" style="width:100px;">詳細資訊</a>
-                            <a asp-action="OrderDetails" asp-route-id="@item.OrderID" class="btn btn-warning mb-2" style="width:100px;">訂單明細</a>
-                            <a asp-action="Delete" asp-route-id="@item.OrderID" class="btn btn-danger" style="width:100px;">刪除</a>
+                        <td class="text-center">
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    ⚙️ 操作
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" asp-action="Edit" asp-route-id="@item.OrderID">✏️ 修改</a></li>
+                                    <li><a class="dropdown-item" asp-action="Details" asp-route-id="@item.OrderID">ℹ️ 詳細資訊</a></li>
+                                    <li><a class="dropdown-item" asp-action="OrderDetails" asp-route-id="@item.OrderID">📑 訂單明細</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" asp-action="Delete" asp-route-id="@item.OrderID">🗑️ 刪除</a></li>
+                                </ul>
+                            </div>
                         </td>
-        </tr>
-}
-    </tbody>
-</table>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 </div>
 
@@ -244,29 +275,28 @@
         </div>
     </div>
 </div>
-@section Scripts{
+@section Scripts {
     <script>
-
-
         $(document).ready(function() {
             $('#shipmentModal').on('show.bs.modal', function (event) {
-                var button = $(event.relatedTarget);
-                var orderID = button.data('orderid');
+                var button = $(event.relatedTarget);  // 取得點擊的按鈕
+                var orderID = button.data('orderid'); // 從按鈕抓 orderID
                 var modal = $(this);
-                modal.find('#shipmentContent').load('/Shipments/DetailsByOrder?orderID=' + orderID);
+
+                // 這裡就是放 URL
+                var url = '/Orders/Shipments/DetailsByOrder?orderID=' + orderID;
+
+                // 載入 PartialView
+                modal.find('#shipmentContent').load(url);
+            });
+
+            // 點行列跳轉訂單明細
+            $(document).on("click", ".order-row", function (e) {
+                if (!$(e.target).closest("a, button").length) {
+                    var orderID = $(this).data("id");
+                    window.location = '/Orders/OrderDetails/' + orderID;
+                }
             });
         });
-
-
-
-       
-        $(document).on("click", ".order-row", function (e) {
-            // 如果點到按鈕或超連結，就不要觸發
-            if (!$(e.target).closest("a, button").length) {
-                var orderID = $(this).data("id");
-                window.location = '/Orders/OrderDetails/' + orderID;
-            }
-        });
-
     </script>
 }

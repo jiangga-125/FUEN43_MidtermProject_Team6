@@ -5,7 +5,7 @@ namespace BookLoop.Models;
 
 public partial class OrderStatusHistory
 {
-    public int StatusHistoryID { get; set; }
+    public int OrderStatusHistoryID { get; set; }
 
     public int OrderID { get; set; }
 

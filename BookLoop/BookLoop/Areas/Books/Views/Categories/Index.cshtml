@@ -1,51 +1,102 @@
 ﻿@model IEnumerable<BookLoop.Models.Category>
 
 @{
-    ViewData["Title"] = "分類清單";
+    ViewData["Title"] = "分類管理";
 }
 
-<h1>分類清單</h1>
+<div class="container py-3">
+    <!-- 標題列 -->
+    <div class="row align-items-center mb-3 gx-3 page-header">
+        <div class="col-12 col-md-6">
+            <h2 class="fw-bold">📂 分類管理</h2>
+        </div>
+        <div class="col-12 col-md-6 d-flex justify-content-md-end gap-2 flex-wrap">
+            <!-- 搜尋框 -->
+            <form id="searchForm" class="input-group" style="max-width: 400px;">
+                <input type="text" id="searchInput" class="form-control" placeholder="輸入分類名稱搜尋..." />
+                <button type="submit" class="btn btn-primary">🔍 搜尋</button>
+            </form>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success">@TempData["Success"]</div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger">@TempData["Error"]</div>
-}
+            <!-- 新增按鈕 -->
+            <a asp-action="Create" class="btn btn-success">➕ 新增分類</a>
+        </div>
+    </div>
 
-@* <!-- 共用訊息提示區塊 -->
-<alert-messages /> *@
+    <!-- 成功/錯誤訊息 -->
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
 
-<p>
-    <a asp-action="Create" class="btn btn-primary">新增分類</a>
-</p>
+    <!-- 表格容器（AJAX） -->
+    <div id="categoriesTableContainer">
+        @await Html.PartialAsync("_CategoriesTable", Model)
+    </div>
+</div>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>分類名稱</th>
-            <th>Slug</th>
-            <th>建立時間</th>
-            <th>最後更新</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model)
-        {
-            <tr>
-                <td>@item.CategoryName</td>
-                <td>@item.Slug</td>
-                <td>@item.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
-                <td>@item.UpdatedAt.ToString("yyyy-MM-dd HH:mm")</td>
-                <td>
-                    <a asp-action="Edit" asp-route-id="@item.CategoryID" class="btn btn-sm btn-warning">編輯</a>
-                    <a asp-action="Details" asp-route-id="@item.CategoryID" class="btn btn-sm btn-info">詳細</a>
-                    <a asp-action="Delete" asp-route-id="@item.CategoryID" class="btn btn-sm btn-danger">刪除</a>
-                </td>
-            </tr>
+@section Styles {
+    <style>
+        /* 標題美化 */
+        .page-header h2.fw-bold {
+            color: #212529;
+            border-left: 5px solid #0d6efd;
+            padding-left: 10px;
         }
-    </tbody>
-</table>
+
+        /* 表格 padding & hover */
+        table.table th,
+        table.table td {
+            padding: 12px 16px;
+            vertical-align: middle;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #f1f3f5;
+        }
+
+        /* 按鈕一致化 */
+        .btn-success {
+            font-weight: 600;
+            padding: 8px 18px;
+        }
+
+        .btn-sm {
+            font-weight: 600;
+            padding: 6px 14px;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        const form = document.getElementById("searchForm");
+        const input = document.getElementById("searchInput");
+        const container = document.getElementById("categoriesTableContainer");
+
+        form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            fetchData(input.value);
+        });
+
+        input.addEventListener("keyup", function () {
+            fetchData(input.value);
+        });
+
+        function fetchData(keyword) {
+            fetch(`/Books/Categories/Search?search=${encodeURIComponent(keyword)}`)
+                .then(resp => resp.text())
+                .then(html => { container.innerHTML = html; })
+                .catch(err => console.error(err));
+        }
+    </script>
+}

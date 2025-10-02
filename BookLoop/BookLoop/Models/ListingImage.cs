@@ -6,7 +6,8 @@ namespace BookLoop.Models;
 
 public partial class ListingImage
 {
-    public int ImageID { get; set; }
+	public int ListingImageID { get; set; }
+	public int ImageID { get; set; }
 
     public int ListingID { get; set; }
 
