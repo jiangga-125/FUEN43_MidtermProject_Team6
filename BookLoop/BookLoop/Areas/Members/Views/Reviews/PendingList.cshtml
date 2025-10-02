@@ -1,0 +1,109 @@
+﻿@model IEnumerable<BookLoop.Models.Review>
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    ViewData["Title"] = "待審評論";
+}
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"] - BookLoop</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    <style>
+        body {
+            background-color: #f8f9fa; /* 淺灰背景 */
+        }
+
+        main {
+            min-height: 70vh; /* 保持頁面高度，不會太擠 */
+            padding: 20px; /* 加點內距讓內容不貼邊 */
+        }
+
+        footer {
+            margin-top: 50px;
+            padding: 20px 0;
+            background-color: #212529; /* 深灰底 */
+            color: #f8f9fa;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <header class="container">
+        <h1 class="mt-4">@ViewData["Title"]</h1>
+    </header>
+
+    @if (TempData["Msg"] != null)
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            @TempData["Msg"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <main class="container">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ReviewID</th>
+                    <th>會員</th>
+                    <th>目標</th>
+                    <th>評分</th>
+                    <th style="width:420px">內容</th>
+                    <th>建立時間</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td>@r.ReviewId</td>
+                        <td>@r.MemberId</td>
+                        <td>
+                            @if (r.TargetType == 1)
+                            {
+                                <span>書本：@r.ImageUrls</span>
+                            }
+                            else if (r.TargetType == 2)
+                            {
+                                <span>會員：@r.ImageUrls</span>
+                            }
+                            else
+                            {
+                                <span>其他</span>
+                            }
+                        </td>
+
+                        <td>@r.Rating</td>
+                        <td>@r.Content</td>
+                        <td>@r.CreatedAt.ToLocalTime()</td>
+                        <td class="text-nowrap">
+                            <form asp-area="Members" asp-controller="Reviews" asp-action="Approve" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="reviewId" value="@r.ReviewId" />
+                                <input type="hidden" name="adminId" value="1" />
+                                <button type="submit" class="btn btn-sm btn-success">通過</button>
+                            </form>
+
+                            <form method="post" asp-area="Members" asp-controller="Reviews" asp-action="Reject" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="reviewId" value="@r.ReviewId" />
+                                <input type="hidden" name="adminId" value="1" />
+                                <input type="hidden" name="reason" value="不符合規範" />
+                                <button class="btn btn-sm btn-danger">拒絕</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </main>
+
+    <footer>
+        BookLoop © 2025
+    </footer>
+</body>
+</html>

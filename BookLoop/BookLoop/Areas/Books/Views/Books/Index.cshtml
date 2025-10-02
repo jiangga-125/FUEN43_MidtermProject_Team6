@@ -1,12 +1,89 @@
-﻿@{
-    ViewData["Title"] = "Books - Index";
+﻿<div class="container py-3">
+    <!-- 讓頁面不要貼邊 -->
+    <div class="row align-items-center mb-3 gx-3">
+        <!-- 標題 -->
+        <div class="col-12 col-md-4">
+            <h2 class="mb-0 fw-bold">📚 書籍清單</h2>
+        </div>
+
+        <!-- 右側：搜尋 + 新增（同一行） -->
+        <div class="col-12 col-md-8">
+            <form id="searchForm" class="d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+                <!-- 搜尋框 + 搜尋鈕 綁在同一個 input-group，不會分家 -->
+                <div class="input-group flex-grow-1 flex-md-grow-0" style="max-width: 520px;">
+                    <input type="text"
+                           name="search"
+                           id="searchInput"
+                           class="form-control"
+                           placeholder="輸入書名或 ISBN 搜尋..."
+                           aria-label="輸入書名或 ISBN 搜尋..." />
+                    <button class="btn btn-primary" type="submit" id="searchBtn">
+                        🔍 搜尋
+                    </button>
+                </div>
+
+                <!-- 新增書籍在右邊 -->
+                <a asp-area="Books"
+                   asp-controller="Books"
+                   asp-action="Create"
+                   class="btn btn-success">
+                    ➕ 新增書籍
+                </a>
+            </form>
+        </div>
+    </div>
+
+    <!-- 表格區 -->
+    <div id="booksTableContainer">
+        @await Html.PartialAsync("_BooksTable", (IEnumerable<BookLoop.Models.Book>)Model)
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* 標題有視覺錨點 */
+        h2.fw-bold {
+            color: #212529;
+            border-left: 5px solid #0d6efd;
+            padding-left: 10px;
+        }
+
+        /* 搜尋框聚焦效果 */
+        #searchInput:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13,110,253,.25);
+        }
+
+        /* 表格字距 & 置中，閱讀更舒服 */
+        table.table th,
+        table.table td {
+            padding: 12px 16px;
+            vertical-align: middle;
+        }
+    </style>
 }
 
-<h2>Books模組首頁</h2>
+@section Scripts {
+    <script>
+        const form = document.getElementById("searchForm");
+        const input = document.getElementById("searchInput");
+        const container = document.getElementById("booksTableContainer");
 
-<a class="btn btn-secondary mt-3"
-   asp-area=""
-   asp-controller="Home"
-   asp-action="Index">
-    返回首頁
-</a>
+        form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            fetchBooks(input.value);
+        });
+
+        // 即時搜尋（輸入就查）
+        input.addEventListener("keyup", function () {
+            fetchBooks(input.value);
+        });
+
+        function fetchBooks(keyword) {
+            fetch(`/Books/Books/Search?search=${encodeURIComponent(keyword)}`)
+                .then(resp => resp.text())
+                .then(html => { container.innerHTML = html; })
+                .catch(err => console.error(err));
+        }
+    </script>
+}

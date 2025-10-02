@@ -152,7 +152,7 @@ namespace BorrowSystem.Controllers
             .ToList();
 
             if (vm.Authors.Count == 0)
-                ModelState.AddModelError(nameof(vm.Authors), "至少需要 1 位作者");
+                ModelState.AddModelError(string.Empty, "至少需要 1 位作者");
 
             if (vm.PrimaryIndex == null || vm.PrimaryIndex < 0 || vm.PrimaryIndex >= vm.Authors.Count)
                 ModelState.AddModelError(nameof(vm.PrimaryIndex), "請選擇主作者");

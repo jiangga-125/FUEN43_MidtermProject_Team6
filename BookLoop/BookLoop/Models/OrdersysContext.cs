@@ -106,11 +106,11 @@ public partial class OrdersysContext : DbContext
 
         modelBuilder.Entity<OrderManagement>(entity =>
         {
-            entity.HasKey(e => e.OrderMgmtID).HasName("PK__OrderMan__1F0B9535D9BD6B5F");
+            entity.HasKey(e => e.OrderManagementID).HasName("PK__OrderMan__1F0B9535D9BD6B5F");
 
             entity.ToTable("OrderManagement");
 
-            entity.Property(e => e.OrderMgmtID).HasColumnName("OrderMgmtID");
+            entity.Property(e => e.OrderManagementID).HasColumnName("OrderMgmtID");
             entity.Property(e => e.LastAction).HasMaxLength(50);
             entity.Property(e => e.Notes).HasMaxLength(200);
             entity.Property(e => e.OrderID).HasColumnName("OrderID");
@@ -123,11 +123,11 @@ public partial class OrdersysContext : DbContext
 
         modelBuilder.Entity<OrderStatusHistory>(entity =>
         {
-            entity.HasKey(e => e.StatusHistoryID).HasName("PK__OrderSta__DB9734B1DB1409E5");
+            entity.HasKey(e => e.OrderStatusHistoryID).HasName("PK__OrderSta__DB9734B1DB1409E5");
 
             entity.ToTable("OrderStatusHistory");
 
-            entity.Property(e => e.StatusHistoryID).HasColumnName("StatusHistoryID");
+            entity.Property(e => e.OrderStatusHistoryID).HasColumnName("StatusHistoryID");
             entity.Property(e => e.OrderID).HasColumnName("OrderID");
             entity.Property(e => e.Status).HasMaxLength(50);
 

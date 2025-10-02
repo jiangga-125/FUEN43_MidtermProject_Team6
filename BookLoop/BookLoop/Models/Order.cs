@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -8,6 +9,9 @@ public partial class Order
 {
 	[Display(Name = "訂單編號")]
 	public int OrderID { get; set; }
+
+	[ValidateNever]
+	public int? MemberID { get; set; }
 
 	[Display(Name = "顧客編號ID")]
 	public int CustomerID { get; set; }
@@ -30,6 +34,8 @@ public partial class Order
 	[Display(Name = "建立時間")]
 	public DateTime CreatedAt { get; set; }
 
+	public string? Notes { get; set; }
+
 	[Display(Name = "會員優惠券ID")]
 	public long? MemberCouponID { get; set; }
 
@@ -46,9 +52,16 @@ public partial class Order
 	public decimal CouponDiscountAmount { get; set; }
 
 	[Display(Name = "客戶ID號碼")]
+
+	
+	[ValidateNever]
 	public virtual Customer Customer { get; set; } = null!;
 
-    public virtual ICollection<OrderAddress> OrderAddresses { get; set; } = new List<OrderAddress>();
+	public virtual MemberCoupon? MemberCoupon { get; set; }
+
+	public virtual Member? Member { get; set; } = null!;
+
+	public virtual ICollection<OrderAddress> OrderAddresses { get; set; } = new List<OrderAddress>();
 
     public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
 
@@ -61,4 +74,7 @@ public partial class Order
     public virtual ICollection<Return> Returns { get; set; } = new List<Return>();
 
     public virtual ICollection<Shipment> Shipments { get; set; } = new List<Shipment>();
+
+	public virtual ICollection<OrderCouponSnapshot> OrderCouponSnapshots { get; set; } = new List<OrderCouponSnapshot>();
+	public virtual ICollection<PointsLedger> PointsLedgers { get; set; } = new List<PointsLedger>();
 }

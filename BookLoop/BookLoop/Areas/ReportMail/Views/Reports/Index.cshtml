@@ -63,9 +63,19 @@
 	}
 </style>
 
+<style>
+	.page-title {
+		padding-left: clamp(16px, 3vw, 40px);
+		padding-right: clamp(16px, 3vw, 40px);
+	}
+</style>
 
-<div class="container-fluid py-3">
-	<h1 class="mb-4">報表主頁</h1>
+<div class="container-fluid">
+	<h1 class="mb-0 py-3 page-title">報表主頁</h1>
+</div>
+<div class="container-xxl py-3">
+	<div class="row justify-content-center gx-5">
+		<div class="col-12 col-lg-11 col-xxl-12">
 	<!-- === 版面：左（圓餅）｜右（折線在上、長條在下） === -->
 	<div class="row g-4 align-items-stretch">
 
@@ -180,9 +190,10 @@
 
 			</div>
 		</div>
+			</div>
 
+		</div>
 	</div>
-
 </div>
 
 <form id="defDeleteForm"

@@ -1,0 +1,26 @@
+﻿@model BookLoop.Models.Publisher
+
+@{
+    ViewData["Title"] = "編輯出版社";
+}
+
+<h1>編輯出版社</h1>
+
+<!-- 表單送到 POST: Edit -->
+<form asp-action="Edit" method="post">
+    <!-- 隱藏欄位：PublisherID -->
+    <input type="hidden" asp-for="PublisherID" />
+
+    <div class="form-group">
+        <!-- 出版社名稱輸入框 -->
+        <label asp-for="PublisherName" class="control-label"></label>
+        <input asp-for="PublisherName" class="form-control" />
+        <span asp-validation-for="PublisherName" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mt-3">
+        <!-- 送出 / 返回按鈕 -->
+        <input type="submit" value="儲存變更" class="btn btn-primary" />
+        <a asp-action="Index" class="btn btn-secondary">返回清單</a>
+    </div>
+</form>

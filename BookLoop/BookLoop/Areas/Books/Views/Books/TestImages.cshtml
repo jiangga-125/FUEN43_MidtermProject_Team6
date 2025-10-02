@@ -1,0 +1,32 @@
+﻿@model IEnumerable<BookLoop.Models.Book>
+
+<h2>測試 Book ↔ BookImages 關聯</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>BookID</th>
+            <th>書名</th>
+            <th>圖片數量</th>
+            <th>圖片預覽</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var b in Model)
+        {
+            <tr>
+                <td>@b.BookID</td>
+                <td>@b.Title</td>
+                <td>@b.BookImages.Count</td>
+                <td>
+                    @foreach (var img in b.BookImages)
+                    {
+                        <img src="@(img.FilePath.StartsWith("http")
+                                                               ? img.FilePath
+                                                               : Url.Content("~/images/books/" + img.FilePath))"
+                     style="max-height:60px;" />
+                                }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

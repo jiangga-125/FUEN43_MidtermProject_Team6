@@ -33,10 +33,14 @@ namespace BorrowSystem.Controllers
                 {
                     ListingID = b.ListingID,
                     RecordID = b.RecordID,
+
+
                     BookTitle = b.Listing.Title,
                     MemberName = b.Member.Username,
                     BorrowDate = b.BorrowDate,
                     ReturnDate = b.ReturnDate,
+
+
                     ReservationID = b.ReservationID,
                     DueDate = b.DueDate,
                     StatusCode = b.StatusCode,
@@ -227,40 +231,37 @@ namespace BorrowSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> Return(int id)
         {
-            var br = await _context.BorrowRecords
-            .Include(x => x.Member)
-            .Include(x => x.Listing)
-            .FirstOrDefaultAsync(x => x.RecordID == id);
+            var vm = await _context.BorrowRecords
+                .Where(x => x.RecordID == id)
+                .Select(br => new BorrowRecordsViewModel
+                {
+                    RecordID = br.RecordID,
+                    ListingID = br.ListingID,
+                    MemberName = br.Member.Username, // 只取 Username，不會去撈 Account
+                    MemberID = br.MemberID,
+                    BorrowDate = br.BorrowDate,
+                    DueDate = br.DueDate,
+                    ReturnDate = DateTime.Today,
+                    StatusCode = br.StatusCode,
+                    BookTitle = br.Listing.Title
+                })
+                .FirstOrDefaultAsync();
 
-            if (br == null)
+            if (vm == null)
             {
                 TempData["ErrorMessage"] = "找不到借閱紀錄。";
                 return RedirectToAction(nameof(Index));
             }
 
-            if ((BorrowCondition)br.StatusCode == BorrowCondition.Returned)
+            if ((BorrowCondition)vm.StatusCode == BorrowCondition.Returned)
             {
                 TempData["ErrorMessage"] = "此書已經歸還，無法再次操作。";
                 return RedirectToAction(nameof(Index));
             }
 
-            var vm = new BorrowRecordsViewModel
-            {
-                RecordID = br.RecordID,
-                ListingID = br.ListingID,
-                MemberName = br.Member.Username,
-                MemberID = br.MemberID,
-                BorrowDate = br.BorrowDate,
-                DueDate = br.DueDate,
-                ReturnDate = DateTime.Today,
-                StatusCode = br.StatusCode,
-                BookTitle = br.Listing.Title,
-
-            };
-
             return PartialView("_ReturnConfirm", vm);
-
         }
+
         // POST: /BorrowRecords/Return/5
         [HttpPost]
         [ValidateAntiForgeryToken]

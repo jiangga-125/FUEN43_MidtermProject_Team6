@@ -120,7 +120,7 @@ namespace BookLoop.Data
 			// PERMISSION_FEATURES (many-to-many)
 			b.Entity<PermissionFeature>(e =>
 			{
-				e.ToTable("PERMISSION_FEATURES");
+				e.ToTable("Permission_Features"); // ­×§ïPermissionFeatures¦¨Permission_Features
 				e.HasKey(x => new { x.PermissionID, x.FeatureID });
 				e.HasOne(x => x.Permission).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.PermissionID);
 				e.HasOne(x => x.Feature).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.FeatureID);
