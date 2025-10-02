@@ -31,5 +31,11 @@ namespace Account.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
-    }
+
+
+		[HttpGet]
+		public IActionResult Claims()
+		=> Content(string.Join("\n", User.Claims.Select(c => $"{c.Type} = {c.Value}")),
+				   "text/plain; charset=utf-8");
+	}
 }

@@ -1,6 +1,5 @@
 using BookLoop.Models;
 using Microsoft.EntityFrameworkCore;
-using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Reflection;
@@ -11,7 +10,6 @@ namespace BookLoop.Data
 	{
 		public AppDbContext(DbContextOptions<AppDbContext> opt) : base(opt) { }
 
-		// 只列出你要由這個 Context 管理的實體
 		public DbSet<User> Users => Set<User>();
 		public DbSet<Role> Roles => Set<Role>();
 		public DbSet<Permission> Permissions => Set<Permission>();
@@ -28,7 +26,7 @@ namespace BookLoop.Data
 		{
 			base.OnModelCreating(b);
 
-			// ===== 1) 以「本 DbContext 宣告的 DbSet<>」建立白名單 =====
+			// ===== 1) 白名單：只保留本 DbContext 宣告的 DbSet<> =====
 			var allowedTypes = this.GetType()
 				.GetProperties(BindingFlags.Public | BindingFlags.Instance)
 				.Where(p => p.PropertyType.IsGenericType &&
@@ -36,18 +34,14 @@ namespace BookLoop.Data
 				.Select(p => p.PropertyType.GetGenericArguments()[0])
 				.ToHashSet();
 
-			// 目前被模型收錄的型別（可能包含外部專案/同事的實體）
 			var toIgnore = b.Model.GetEntityTypes()
 				.Where(et => et.ClrType != null && !allowedTypes.Contains(et.ClrType))
 				.ToList();
 
-			// 一律忽略「不在白名單」的實體（避免缺主鍵等問題）
 			foreach (var et in toIgnore)
-			{
 				b.Ignore(et.ClrType!);
-			}
 
-			// ===== 2) 你的原本 Fluent 設定（只設定白名單內的實體） =====
+			// ===== 2) Fluent 設定 =====
 
 			// USERS
 			b.Entity<User>(e =>
@@ -66,7 +60,7 @@ namespace BookLoop.Data
 				e.HasIndex(x => x.RoleCode).IsUnique();
 			});
 
-			// USER_ROLES (many-to-many)
+			// USER_ROLES
 			b.Entity<UserRole>(e =>
 			{
 				e.ToTable("USER_ROLES");
@@ -83,7 +77,7 @@ namespace BookLoop.Data
 				e.HasIndex(x => x.PermKey).IsUnique();
 			});
 
-			// USER_PERMISSIONS (many-to-many)
+			// USER_PERMISSIONS
 			b.Entity<UserPermission>(e =>
 			{
 				e.ToTable("USER_PERMISSIONS");
@@ -117,10 +111,14 @@ namespace BookLoop.Data
 				e.HasIndex(x => x.Code).IsUnique();
 			});
 
-			// PERMISSION_FEATURES (many-to-many)
+			// PERMISSION_FEATURES
 			b.Entity<PermissionFeature>(e =>
 			{
+<<<<<<< HEAD
 				e.ToTable("Permission_Features"); // 修改PermissionFeatures成Permission_Features
+=======
+				e.ToTable("PERMISSION_FEATURES"); // ← 與 DB 一致
+>>>>>>> RMupload
 				e.HasKey(x => new { x.PermissionID, x.FeatureID });
 				e.HasOne(x => x.Permission).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.PermissionID);
 				e.HasOne(x => x.Feature).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.FeatureID);
