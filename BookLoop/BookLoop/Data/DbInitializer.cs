@@ -69,7 +69,7 @@ namespace BookLoop.Data
             foreach (var f in featureSeeds)
             {
                 if (!fexist.Contains(f.code))
-                    _db.Features.Add(new Feature { Code = f.code, Name = f.name, Group = f.group, IsPageLevel = f.isPage, SortOrder = f.sort });
+                    _db.Features.Add(new Feature { Code = f.code, Name = f.name, FeatureGroup = f.group, IsPageLevel = f.isPage, SortOrder = f.sort });
             }
             await _db.SaveChangesAsync();
 

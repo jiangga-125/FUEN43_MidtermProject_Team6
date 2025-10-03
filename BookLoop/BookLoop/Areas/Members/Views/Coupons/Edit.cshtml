@@ -1,0 +1,65 @@
+﻿@model BookLoop.Models.Coupon
+@{
+    ViewData["Title"] = "修改優惠券";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<form asp-action="Edit" method="post">
+    @* 隱藏欄位：保持 CouponId 傳回 *@
+    <input type="hidden" asp-for="CouponId" />
+
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label">優惠券名稱</label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Code" class="form-label">優惠碼</label>
+        <input asp-for="Code" class="form-control" />
+        <span asp-validation-for="Code" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="DiscountType" class="form-label">折扣類型</label>
+        <select asp-for="DiscountType" class="form-select">
+            <option value="0">金額折抵</option>
+            <option value="1">百分比折扣</option>
+        </select>
+        <span asp-validation-for="DiscountType" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="DiscountValue" class="form-label">折扣值</label>
+        <input asp-for="DiscountValue" class="form-control" />
+        <span asp-validation-for="DiscountValue" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="StartAt" class="form-label">開始時間</label>
+        <input asp-for="StartAt" type="datetime-local" class="form-control"
+               value="@Model.StartAt?.ToString("yyyy-MM-ddTHH:mm")" />
+        <span asp-validation-for="StartAt" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="EndAt" class="form-label">結束時間</label>
+        <input asp-for="EndAt" type="datetime-local" class="form-control"
+               value="@(Model.EndAt?.ToString("yyyy-MM-ddTHH:mm"))" />
+        <span asp-validation-for="EndAt" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3 form-check">
+        <input asp-for="IsActive" type="checkbox" class="form-check-input" />
+        <label asp-for="IsActive" class="form-check-label">啟用狀態</label>
+    </div>
+
+    <button type="submit" class="btn btn-success">儲存修改</button>
+    <a asp-action="Index" class="btn btn-secondary">返回清單</a>
+</form>
+
+@section Scripts {
+    @* 驗證需要 *@
+    <partial name="_ValidationScriptsPartial" />
+}

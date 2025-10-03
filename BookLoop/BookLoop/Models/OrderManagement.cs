@@ -5,7 +5,7 @@ namespace BookLoop.Models;
 
 public partial class OrderManagement
 {
-    public int OrderMgmtID { get; set; }
+    public int OrderManagementID { get; set; }
 
     public int OrderID { get; set; }
 

@@ -192,23 +192,18 @@ namespace BookSystem.Controllers
 				await LoadDropdownsAsync();
 				return View(book);
 			}
-			try
-			{
-				var existing = await _context.Books.AsNoTracking().FirstOrDefaultAsync(b => b.BookID == id);
-				if (existing == null) return NotFound();
+			var existing = await _context.Books
+			.Include(b => b.BookImages)
+			.FirstOrDefaultAsync(b => b.BookID == id);
+			if (existing == null) return NotFound();
 
-				// 保留 CreatedAt，更新 UpdatedAt
-				book.CreatedAt = existing.CreatedAt;
-				book.UpdatedAt = DateTime.UtcNow;
-
-				await _bookService.UpdateBookAsync(book);
-			}
-			catch (DbUpdateConcurrencyException)
-			{
-				if (!await _context.Books.AnyAsync(e => e.BookID == book.BookID))
-					return NotFound();
-				throw;
-			}
+			// 只更新有改的欄位
+			existing.Title = book.Title;
+			existing.ISBN = book.ISBN;
+			existing.PublisherID = book.PublisherID;
+			existing.CategoryID = book.CategoryID;
+			existing.Slug = SlugHelper.Generate(book.Title);
+			existing.UpdatedAt = DateTime.UtcNow;
 
 			if (_context.Books.Any(b => b.ISBN == book.ISBN && b.BookID != book.BookID))
 			{
@@ -338,6 +333,32 @@ namespace BookSystem.Controllers
 
 		#endregion
 
+		#region 搜尋 (Search)
+		[HttpGet]
+		public async Task<IActionResult> Search(string search)
+		{
+			var query = _context.Books
+				.Include(b => b.Publisher)
+				.Include(b => b.Category)
+				.AsQueryable();
+
+			if (!string.IsNullOrWhiteSpace(search))
+			{
+				query = query.Where(b => b.Title.Contains(search) || b.ISBN.Contains(search));
+			}
+
+			var books = await query.ToListAsync();
+
+			// 帶回封面
+			ViewBag.PrimaryImages = await _context.BookImages
+				.Where(i => i.IsPrimary)
+				.GroupBy(i => i.BookID)
+				.ToDictionaryAsync(g => g.Key, g => g.First().FilePath);
+
+			return PartialView("_BooksTable", books);
+		}
+		#endregion
+
 		#region 下拉選單
 
 		private async Task LoadDropdownsAsync()
@@ -373,5 +394,6 @@ namespace BookSystem.Controllers
 
 			return View(books);
 		}
+		
 	}
 }

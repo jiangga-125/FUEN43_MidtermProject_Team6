@@ -38,7 +38,7 @@ public partial class Book
 
 	public decimal ListPrice { get; set; }
 
-	public decimal? SalePrice { get; set; }
+	public decimal? SalePrice { get; set; } 
 
 
 	//public string? LanguageCode { get; set; }

@@ -6,7 +6,7 @@ namespace BookLoop.Models;
 
 public partial class PenaltyTransaction
 {
-    public int PenaltyID { get; set; }
+    public int PenaltyTransactionID { get; set; }
 
     public int RecordID { get; set; }
 
