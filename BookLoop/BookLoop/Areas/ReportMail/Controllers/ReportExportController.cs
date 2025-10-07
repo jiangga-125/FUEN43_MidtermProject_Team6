@@ -79,16 +79,17 @@ namespace ReportMail.Areas.ReportMail.Controllers
                     <p style=""margin-top:12px"">請查收附件。</p>
                 </div>";
 
-			_mail.SendReport(
-				to: dto.To,
-				subject: subject,
-				body: body,
-				attachmentName: safeName,
-				attachmentBytes: bytes,
-				contentType: string.IsNullOrWhiteSpace(contentType)
-					? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-					: contentType
-			);
+			await _mail.SendReportAsync(
+								to: dto.To,
+								subject: subject,
+								body: body,
+								attachmentName: safeName,
+								attachmentBytes: bytes,
+								contentType: string.IsNullOrWhiteSpace(contentType)
+										? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+										: contentType,
+								cancellationToken: HttpContext.RequestAborted
+						);
 
 			return Ok(new { message = "已寄出", to = dto.To, file = safeName });
 		}

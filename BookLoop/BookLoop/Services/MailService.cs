@@ -1,6 +1,8 @@
 ﻿using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace BookLoop.Services
 {
@@ -12,17 +14,18 @@ namespace BookLoop.Services
 		/// <summary>
 		/// 寄送一般通知（無附件）
 		/// </summary>
-		public void SendReport(string to, string subject, string body)
+		public Task SendReportAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
 		{
-			SendReport(to, subject, body, null, null);
+			return SendReportAsync(to, subject, body, null, null, cancellationToken: cancellationToken);
 		}
 
 		/// <summary>
 		/// 寄送郵件，可附加 Excel 等附件
 		/// </summary>
-		public void SendReport(string to, string subject, string body,
-							   string? attachmentName, byte[]? attachmentBytes,
-							   string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+		public async Task SendReportAsync(string to, string subject, string body,
+											   string? attachmentName, byte[]? attachmentBytes,
+											   string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+											   CancellationToken cancellationToken = default)
 		{
 			var smtp = _config.GetSection("Smtp");
 
@@ -55,14 +58,14 @@ namespace BookLoop.Services
 			using var client = new SmtpClient();
 
 			var options = (port == 465) ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
-			client.Connect(host, port, options);
+			await client.ConnectAsync(host, port, options, cancellationToken);
 
 			// 防止 MailKit 嘗試 XOAUTH2 → Brevo 不支援
 			client.AuthenticationMechanisms.Remove("XOAUTH2");
 
-			client.Authenticate(user, pass);
-			client.Send(msg);
-			client.Disconnect(true);
+			await client.AuthenticateAsync(user, pass, cancellationToken);
+			await client.SendAsync(msg, cancellationToken);
+			await client.DisconnectAsync(true, cancellationToken);
 		}
 	}
 }
