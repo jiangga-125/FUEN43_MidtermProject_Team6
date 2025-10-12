@@ -95,14 +95,14 @@ namespace ReportMail.Areas.ReportMail.Controllers
 
         }
 
-        // === Add: 計算不同基礎報表在指定條件下的可排行上限 ===
+        // 依「所選日期區間」+「已選書籍種類」回傳排行上限：
+        //   sales → distinct BookID；borrow → distinct ListingID（用 Listings.CategoryID 篩）
         [HttpPost]
         public async Task<IActionResult> MaxRank([FromBody] MaxRankRequest req)
         {
-            // "sales" / "borrow"
             var kind = (req?.BaseKind ?? "sales").Trim().ToLowerInvariant();
 
-            // 解析日期區間（你的 JS 會把日期塞在 Filters 的 ValueJson）
+            // 解析日期（含當日）
             DateTime? startDate = null, endExclusive = null;
             var dateFilter = req?.Filters?.FirstOrDefault(f =>
                 string.Equals(f.FieldName, "OrderDate", StringComparison.OrdinalIgnoreCase) ||
@@ -111,43 +111,67 @@ namespace ReportMail.Areas.ReportMail.Controllers
             {
                 try
                 {
-                    using var doc = JsonDocument.Parse(dateFilter!.ValueJson!);
+                    using var doc = System.Text.Json.JsonDocument.Parse(dateFilter!.ValueJson!);
                     var root = doc.RootElement;
                     if (root.TryGetProperty("from", out var fromEl) &&
                         DateTime.TryParse(fromEl.GetString(), out var fromDt))
                         startDate = fromDt.Date;
-
                     if (root.TryGetProperty("to", out var toEl) &&
                         DateTime.TryParse(toEl.GetString(), out var toDt))
-                        endExclusive = toDt.Date.AddDays(1); // < end+1 天，含當日
+                        endExclusive = toDt.Date.AddDays(1); // < end+1（含當日）
                 }
-                catch { /* 忽略解析錯誤，以 fallback 處理 */ }
+                catch { }
+            }
+
+            // 解析已選的 CategoryIDs（可多選）
+            var categoryIds = new List<int>();
+            var catFilter = req?.Filters?.FirstOrDefault(f =>
+                string.Equals(f.FieldName, "CategoryID", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(catFilter?.ValueJson))
+            {
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(catFilter!.ValueJson!);
+                    if (doc.RootElement.TryGetProperty("values", out var arr))
+                        foreach (var x in arr.EnumerateArray())
+                            if (x.TryGetInt32(out var id) && id > 0) categoryIds.Add(id);
+                }
+                catch { }
             }
 
             int count;
+
             if (kind == "borrow")
             {
-                // 借閱：以 BorrowRecords 的 Listing 計數
-                var q = _shop.BorrowRecords.AsNoTracking().AsQueryable();
+                // 借閱：BorrowRecords × Listings（用 Listings.CategoryID 直接過濾）
+                var q = from br in _shop.BorrowRecords.AsNoTracking()
+                        join l in _shop.Listings.AsNoTracking() on br.ListingID equals l.ListingID
+                        select new { br.BorrowDate, l.CategoryID, br.ListingID };
+
                 if (startDate.HasValue) q = q.Where(x => x.BorrowDate >= startDate.Value);
                 if (endExclusive.HasValue) q = q.Where(x => x.BorrowDate < endExclusive.Value);
+                if (categoryIds.Count > 0) q = q.Where(x => categoryIds.Contains(x.CategoryID));
+
                 count = await q.Select(x => x.ListingID).Distinct().CountAsync();
             }
             else
             {
-                // 銷售：以 OrderDetails 的 Book 計數，排除取消/無效訂單（Status=0）
+                // 銷售：OrderDetails × Orders × Books（Books.CategoryID 過濾；Orders.Status != 0）
                 var q = from d in _shop.OrderDetails.AsNoTracking()
                         join o in _shop.Orders.AsNoTracking() on d.OrderID equals o.OrderID
+                        join b in _shop.Books.AsNoTracking() on d.BookID equals b.BookID
                         where o.Status != 0
-                        select new { o.OrderDate, d.BookID };
+                        select new { o.OrderDate, b.CategoryID, d.BookID };
 
                 if (startDate.HasValue) q = q.Where(x => x.OrderDate >= startDate.Value);
                 if (endExclusive.HasValue) q = q.Where(x => x.OrderDate < endExclusive.Value);
+                if (categoryIds.Count > 0) q = q.Where(x => categoryIds.Contains(x.CategoryID));
 
                 count = await q.Select(x => x.BookID).Distinct().CountAsync();
             }
 
-            var maxRank = Math.Max(1, Math.Min(100, count)); // 1..100
+            // 需要更大上限可把 100 調整或拿掉
+            var maxRank = Math.Max(1, Math.Min(100, count));
             return Json(new { maxRank });
         }
 

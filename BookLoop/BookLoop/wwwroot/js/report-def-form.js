@@ -1,7 +1,6 @@
 ﻿// @ts-nocheck
 (function () {
     function __narrowPage() {
-        // 1) 注入樣式：限制寬度並置中
         if (!document.getElementById('app-narrow-css')) {
             const s = document.createElement('style');
             s.id = 'app-narrow-css';
@@ -10,7 +9,6 @@
     `;
             document.head.appendChild(s);
         }
-        // 2) 嘗試把 class 套在常見外層
         const targets = [
             document.querySelector('main'),
             document.querySelector('.container-fluid'),
@@ -20,24 +18,25 @@
         const host = targets.find(Boolean);
         if (host) host.classList.add('app-narrow');
     }
-    // 在 init() 一開始呼叫
     __narrowPage();
 
     const $ = (id) => document.getElementById(id);
 
-    // === API 來源（維持你原本的注入方式） ===
+    // === API 來源 ===
     const apiPreview = window.__API_PREVIEW__
         || document.querySelector('script[src*="report-def-form.js"]')?.dataset?.apiPreview
         || (typeof previewUrl !== "undefined" ? previewUrl : null) || "@previewUrl";
     const apiCats = window.__API_CATS__
         || (typeof catsUrl !== "undefined" ? catsUrl : null)
-        || "/ReportMail/Lookup/Categories"; // ← 安全預設：走 Areas/ReportMail 既有路由
-    const apiDef = window.__DEF_URL__ || null; // 只有 Edit 頁有
+        || "/ReportMail/Lookup/Categories";
+    const apiDef = window.__DEF_URL__ || null;
 
-    // 出版年功能旗標（暫關）
     const FEATURE_PUBLISH_DECADE = false;
 
-    // ===== Tom Select：動態載入 & 單一框樣式 =====
+    // 全域：分類「全集」（不含空值），用於精準判斷是否全選
+    const __CATS_ALL_IDS__ = { sales: [], borrow: [] };
+
+    // ===== Tom Select 資源與外觀 =====
     async function __ensureAsset(id, tag, attrs) {
         if (document.getElementById(id)) return;
         await new Promise((res, rej) => {
@@ -56,7 +55,6 @@
         const style = document.createElement('style');
         style.id = 'rf-singlebox-css';
         style.textContent = `
-/* 單一框外觀（貼近 Bootstrap .form-select），不顯示外層箭頭 */
 select.form-select + .ts-wrapper.form-select { border:0; background:transparent; padding:0; }
 select.form-select + .ts-wrapper.form-select .ts-control{
   min-height: calc(1.5em + .75rem + 2px);
@@ -74,7 +72,6 @@ select.form-select + .ts-wrapper.form-select .ts-control:focus-within{
   box-shadow: 0 0 0 .25rem rgba(13,110,253,.25);
   outline:0;
 }
-/* 多選：單行逗號分隔（不要彩色小籤） */
 select[multiple].form-select + .ts-wrapper.form-select .ts-control{
   overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
 }
@@ -84,20 +81,15 @@ select[multiple].form-select + .ts-wrapper.form-select .ts-control .item{
 select[multiple].form-select + .ts-wrapper.form-select .ts-control .item ~ .item::before{
   content:"、"; margin-right:.25rem;
 }
-select[multiple].form-select + .ts-wrapper.form-select .ts-control .remove{ display:none !important; }
-/* 下拉面板與搜尋框 */
+select[multiple].form-select + .ts-wrapper.form-select .ts-control .remove{ display:none !重要; }
 .ts-dropdown{
-border:1px solid var(--bs-border-color,#dee2e6);
-border-radius:.375rem; box-shadow:0 .5rem 1rem rgba(0,0,0,.15);
-margin-top:.25rem;
-max-height: 24rem;    /* 顯示更多行 */
-overflow: auto;       /* 允許滾動（關鍵） */
- }
- /* Tom Select 預設讓 .ts-dropdown-content 負責捲動；這裡同步放大高度 */
-.ts-dropdown .ts-dropdown-content{
-max-height: inherit;
-overflow-y: auto;
- }
+  border:1px solid var(--bs-border-color,#dee2e6);
+  border-radius:.375rem; box-shadow:0 .5rem 1rem rgba(0,0,0,.15);
+  margin-top:.25rem;
+  max-height: 24rem;
+  overflow: auto;
+}
+.ts-dropdown .ts-dropdown-content{ max-height: inherit; overflow-y: auto; }
 .ts-dropdown .ts-dropdown-input{
   margin:0; padding:.5rem .75rem;
   border:0; border-bottom:1px solid var(--bs-border-color,#dee2e6);
@@ -105,16 +97,14 @@ overflow-y: auto;
 }
 .ts-dropdown .option{ padding:.375rem .75rem; }
 .ts-dropdown .option.active{ background: var(--bs-primary-bg-subtle,#e7f1ff); color:inherit; }
-/* 驗證/禁用沿用 select 類別 */
 select.is-invalid + .ts-wrapper .ts-control{ border-color: var(--bs-danger,#dc3545); box-shadow:0 0 0 .25rem rgba(220,53,69,.25); }
 select.is-valid   + .ts-wrapper .ts-control{ border-color: var(--bs-success,#198754); box-shadow:0 0 0 .25rem rgba(25,135,84,.25); }
 select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondary-bg,#e9ecef); opacity:.65; pointer-events:none; }
 `;
         document.head.appendChild(style);
-
     }
 
-    // 可搜尋下拉初始化（按下不動作、放開時依停留選項做加入/取消）
+    // 可搜尋下拉：mouseup 決定，且每次變動都 dispatch 'change'
     function __enhanceSearchableSelect(selId, extra) {
         const el = document.getElementById(selId);
         if (!el) return;
@@ -131,7 +121,7 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             allowEmptyOption: true,
             openOnFocus: true,
             closeAfterSelect: !isMulti,
-            hideSelected: false,                 // 已選仍顯示，才能被再次取消
+            hideSelected: false,
             maxOptions: 1000,
             sortField: { field: 'text', direction: 'asc' },
             render: { option: (d, esc) => `<div>${esc(d.text || (d.value === '' ? '（全部）' : ''))}</div>` },
@@ -143,9 +133,8 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
 
         let armed = false;
 
-        // 攔 mousedown（捕獲）→ 不讓 TS 在按下就處理；改等 mouseup
         ddContent.addEventListener('mousedown', (evt) => {
-            if (evt.button !== 0) return; // 左鍵
+            if (evt.button !== 0) return;
             const opt = evt.target.closest('.option[data-value]');
             if (!opt) return;
             armed = true;
@@ -162,7 +151,6 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             if (!armed) return;
             armed = false;
 
-            // 以當下 hover 的選項為準；若沒有，嘗試用事件目標
             let optEl = ts.activeOption;
             if (!optEl) {
                 const maybe = evt.target && (evt.target.closest ? evt.target.closest('.ts-dropdown .option[data-value]') : null);
@@ -172,16 +160,15 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
 
             const value = optEl.getAttribute('data-value');
 
-            // 空值（「全部」）→ 清空
             if (value === '') {
                 ts.clear();
                 if (!isMulti) ts.close();
                 ts.refreshOptions(false);
+                el.dispatchEvent(new Event('change', { bubbles: true }));
                 return;
             }
 
             if (!isMulti) {
-                // 單選：放開在「目前已選」→ 清空；否則選取該值
                 if (ts.items.length && ts.items[0] === value) {
                     ts.clear();
                     ts.close();
@@ -190,10 +177,10 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
                     ts.close();
                 }
                 ts.refreshOptions(false);
+                el.dispatchEvent(new Event('change', { bubbles: true }));
                 return;
             }
 
-            // 多選：toggle
             if (ts.items.includes(value) || optEl.classList.contains('selected')) {
                 ts.removeItem(value);
             } else {
@@ -201,13 +188,14 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             }
             ts.refreshOptions(false);
             ts.setCaret(ts.items.length);
+            el.dispatchEvent(new Event('change', { bubbles: true }));
         };
 
         el.__rfDocMouseup = handleDocMouseup;
         document.addEventListener('mouseup', handleDocMouseup, true);
     }
 
-    // ===== 你的現有 UI/邏輯 =====
+    // ===== UI 切換 =====
     function getChartCategoryUi() {
         const sel = $('Category') || $('category');
         if (sel && sel.value) return sel.value.toLowerCase();
@@ -263,17 +251,16 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             decRow.style.display = showDecade ? '' : 'none';
         }
     }
-    // 讓高頻事件（input/blur）彙整成一次刷新
     function __debounce(fn, delay = 250) {
         let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
     }
 
-    // 日期變更後要做的事：重抓分類、重算排行、刷新 UI/預覽
+    // 日期改變：預設把排行迄設為上限
     const __onDateChange = __debounce(async () => {
         try {
             await loadCategories();
-            await __updateMaxRank('sales');
-            await __updateMaxRank('borrow');
+            await __updateMaxRank('sales', { forceToMax: true });
+            await __updateMaxRank('borrow', { forceToMax: true });
             if (typeof showSections === 'function') showSections();
             if (typeof syncUiByCategoryAndKind === 'function') syncUiByCategoryAndKind();
             if (typeof preview === 'function') preview();
@@ -282,55 +269,48 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         }
     }, 250);
 
-
-    // === Data sources ===
+    // ===== 下拉資料 =====
     function applyCategoryOptions(selId, items) {
         const sel = (typeof selId === 'string') ? document.getElementById(selId) : selId;
         if (!sel) return;
 
-        // 1) 資料清洗：去空/去重（保留你的規則）
         const seen = new Set();
         const cleaned = (Array.isArray(items) ? items : [])
             .filter(x => x && x.value !== null && x.value !== undefined && String(x.value).trim() !== '' && String(x.value) !== '0')
             .filter(x => { const k = String(x.value); if (seen.has(k)) return false; seen.add(k); return true; })
             .map(x => ({ value: String(x.value), text: String(x.text ?? '') }));
 
-        // 2) 若已有 Tom Select 實例，先記住選取值，然後**乾淨地摧毀**
         let keep = [];
         if (sel.tomselect) {
             try { keep = sel.tomselect.items.filter(v => v !== ''); } catch { }
             try { sel.tomselect.destroy(); } catch { }
         }
 
-        // 3) 重建原生 <option>
         sel.innerHTML = '';
-        sel.add(new Option('（全部）', '')); // 統一的空值
+        sel.add(new Option('（全部）', ''));
         cleaned.forEach(o => sel.add(new Option(o.text, o.value)));
 
-        // 4) 重建 Tom Select（用你原本的初始化函式）
-        try {
-            if (typeof __enhanceSearchableSelect === 'function') {
-                __enhanceSearchableSelect(selId);
-            }
-        } catch (e) {
-            console.warn('Tom Select 初始化失敗，先使用原生下拉：', e);
-        }
+        try { __enhanceSearchableSelect(selId); } catch (e) { console.warn('Tom Select 初始化失敗：', e); }
 
-        // 5) 還原選取（僅還原仍存在於新清單的）
         const exists = new Set(Array.from(sel.options).map(o => o.value));
         keep = (keep || []).filter(v => exists.has(v));
         if (sel.tomselect) {
             if (keep.length) sel.tomselect.setValue(keep, true);
             else sel.tomselect.clear(true);
         } else {
-            // 尚未有 TS，就用原生方式還原
             keep.forEach(v => { const o = Array.from(sel.options).find(o => o.value === v); if (o) o.selected = true; });
         }
+
+        // 更新分類全集（不含空值）
+        try {
+            const ids = Array.from(sel.options || []).map(o => o.value).filter(v => v !== '');
+            if (sel.id === 'salesCategories') __CATS_ALL_IDS__.sales = ids;
+            if (sel.id === 'borrowCategories') __CATS_ALL_IDS__.borrow = ids;
+        } catch { }
     }
 
-    async function loadCategories(opts = {}) {
+    async function loadCategories() {
         if (!apiCats) return;
-        const { reinit = true } = opts;
 
         const fetchList = async (kind) => {
             try {
@@ -340,8 +320,6 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
                 const dt = $('dateTo')?.value;
                 if (df) url.searchParams.set('start', df);
                 if (dt) url.searchParams.set('end', dt);
-
-                // 改：帶上 cookie 並關閉快取
                 const res = await fetch(url.toString(), { cache: 'no-store', credentials: 'same-origin' });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const json = await res.json();
@@ -360,6 +338,7 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         applyCategoryOptions('salesCategories', salesList);
         applyCategoryOptions('borrowCategories', borrowList);
     }
+
     function genPrice() {
         const sel = $('priceRange'); if (!sel) return;
         sel.innerHTML = ''; sel.add(new Option('（全部）', ''));
@@ -387,7 +366,7 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         }
     }
 
-    // === Filters ===
+    // ===== Filters =====
     function buildFilters() {
         const cat = getChartCategoryUi();
         const kind = ($('baseKind')?.value || 'sales').toLowerCase();
@@ -400,8 +379,18 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         filters.push({ FieldName: dateField, DataType: 'date', Operator: 'between', ValueJson: JSON.stringify({ from: df, to: dt, gran }) });
 
         if (kind === 'sales') {
-            const cats = Array.from($('salesCategories')?.selectedOptions || []).map(o => Number(o.value)).filter(v => !!v);
-            if (cats.length) filters.push({ FieldName: 'CategoryID', DataType: 'select', Operator: 'in', ValueJson: JSON.stringify({ values: cats }) });
+            const elS = $('salesCategories');
+            const picked = elS?.tomselect
+                ? elS.tomselect.items.map(v => String(v)).filter(v => v !== '')
+                : Array.from(elS?.selectedOptions || []).map(o => String(o.value)).filter(v => v !== '');
+            const allIds = (__CATS_ALL_IDS__.sales || []).map(String);
+            const pickedSet = new Set(picked);
+            const isNone = pickedSet.size === 0;
+            const isAll = pickedSet.size === allIds.length && allIds.every(id => pickedSet.has(id));
+            if (!isNone && !isAll) {
+                filters.push({ FieldName: 'CategoryID', DataType: 'select', Operator: 'in', ValueJson: JSON.stringify({ values: picked.map(Number) }) });
+            }
+
             const pr = $('priceRange')?.value;
             if (pr) {
                 const [min, max] = pr.split('-').map(Number);
@@ -414,8 +403,17 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             }
         }
         else if (kind === 'borrow') {
-            const cats = Array.from($('borrowCategories')?.selectedOptions || []).map(o => Number(o.value)).filter(v => !!v);
-            if (cats.length) filters.push({ FieldName: 'CategoryID', DataType: 'select', Operator: 'in', ValueJson: JSON.stringify({ values: cats }) });
+            const elB = $('borrowCategories');
+            const picked = elB?.tomselect
+                ? elB.tomselect.items.map(v => String(v)).filter(v => v !== '')
+                : Array.from(elB?.selectedOptions || []).map(o => String(o.value)).filter(v => v !== '');
+            const allIds = (__CATS_ALL_IDS__.borrow || []).map(String);
+            const pickedSet = new Set(picked);
+            const isNone = pickedSet.size === 0;
+            const isAll = pickedSet.size === allIds.length && allIds.every(id => pickedSet.has(id));
+            if (!isNone && !isAll) {
+                filters.push({ FieldName: 'CategoryID', DataType: 'select', Operator: 'in', ValueJson: JSON.stringify({ values: picked.map(Number) }) });
+            }
 
             if (FEATURE_PUBLISH_DECADE) {
                 const dec = $('publishDecade')?.value;
@@ -448,7 +446,6 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         return filters;
     }
 
-    // 動態推導圖例（後端沒給 title 時）
     function computeLegend(cat, baseKind, filters) {
         try {
             const kind = (baseKind || '').toLowerCase();
@@ -475,7 +472,7 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         } catch { return '預覽'; }
     }
 
-    // === Chart Preview ===
+    // === 預覽 ===
     let chart;
     async function preview() {
         if (!apiPreview) return;
@@ -516,7 +513,7 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         });
     }
 
-    // === Hydrate（Edit 回填） ===
+    // === Edit 回填 ===
     async function hydrateFromServer() {
         if (!apiDef) return;
         const r = await fetch(apiDef, { cache: 'no-store', credentials: 'same-origin' }); if (!r.ok) return;
@@ -555,7 +552,7 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
                 if (el?.tomselect) el.tomselect.setValue(picks, true);
             }
             const fp = find('SalePrice'); if (fp) { const v = val(fp); if (v.min != null && v.max != null) $('priceRange').value = `${v.min}-${v.max}`; }
-            const fr = find('RankRange'); if (fr) { const v = val(fr); if (v.from) $('rankFrom').value = String(v.from); if (v.to) $('rankTo').value = String(v.to); }
+            const fr = find('RankRange'); if (fr) { const v = val(fr); if (v.from) $('rankFrom').value = String(v.from); if (v.to) $('rankTo').value = String(v.to); $('rankTo').dataset.touched = '1'; $('rankFrom').dataset.touched = '1'; }
         }
         if (bk === 'borrow') {
             const fc = find('CategoryID');
@@ -572,10 +569,9 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
                     if (v.fromYear && v.toYear) $('publishDecade').value = `${v.fromYear}-${v.toYear}`;
                 }
             }
-            const fr = find('RankRange'); if (fr) { const v = val(fr); if (v.from) $('rankFromBorrow').value = String(v.from); if (v.to) $('rankToBorrow').value = String(v.to); }
+            const fr = find('RankRange'); if (fr) { const v = val(fr); if (v.from) $('rankFromBorrow').value = String(v.from); if (v.to) $('rankToBorrow').value = String(v.to); $('rankToBorrow').dataset.touched = '1'; $('rankFromBorrow').dataset.touched = '1'; }
         }
 
-        // 回填完成後，動態重算可排行上限
         await __updateMaxRank('sales');
         await __updateMaxRank('borrow');
     }
@@ -598,21 +594,17 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         });
         boxes.forEach(b => b.addEventListener('change', () => { syncAllState(); preview(); }));
 
-        // 預設只勾「已完成」
         boxes.forEach(b => b.checked = false);
         const done = document.getElementById('os_3');
         if (done) done.checked = true;
         syncAllState();
     }
 
-    // ===== 排行上限：前端+（可選）後端 =====
-    function __getMaxRankFromSelect(selectEl) {
+    // ===== 排行上限 =====
+    function __getMaxRankFromSelect_TotalOptions(selectEl) {
         if (!selectEl) return 0;
-        const picked = Array.from(selectEl.selectedOptions || []).filter(o => o.value !== '');
-        if (picked.length > 0) return picked.length;
         return Array.from(selectEl.options || []).filter(o => o.value !== '').length;
     }
-    // 依 max 重新填 rank，下方新增 opts.forceToMax 來控制是否把「迄」強制設為最大值
     function __fillRankSelects(fromId, toId, max, opts = {}) {
         const { forceToMax = false } = opts;
 
@@ -623,25 +615,28 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         const oldFrom = Number(fromEl.value || 1);
         const oldTo = Number(toEl.value || 10);
 
-        const upper = Math.max(1, max);
+        const upper = Math.max(1, Number(max) || 1);
         const refill = (el) => { el.innerHTML = ''; for (let i = 1; i <= upper; i++) el.add(new Option(String(i), String(i))); };
         refill(fromEl); refill(toEl);
 
+        const userTouchedTo = !!toEl.dataset.touched;
+        const shouldMax = forceToMax || !userTouchedTo;
+
         fromEl.value = String(Math.min(Math.max(1, oldFrom || 1), upper));
-        // ★ 關鍵：如果指定 forceToMax，就把「迄」設到最大；否則維持舊值（超出則壓回上限）
-        toEl.value = forceToMax ? String(upper) : String(Math.min(Math.max(1, oldTo || Math.min(10, upper)), upper));
+        toEl.value = shouldMax ? String(upper) : String(Math.min(Math.max(1, oldTo || Math.min(10, upper)), upper));
     }
-    // 重新計算並套用「可排行到幾名」；opts 可帶 { forceToMax:true }
     async function __updateMaxRank(kind, opts = {}) {
         const isSales = kind === 'sales';
         const selEl = document.getElementById(isSales ? 'salesCategories' : 'borrowCategories');
 
-        // 先用前端估算（勾選數量或全部類別數）
-        const localMax = __getMaxRankFromSelect(selEl);
-        if (isSales) __fillRankSelects('rankFrom', 'rankTo', localMax, opts);
-        else __fillRankSelects('rankFromBorrow', 'rankToBorrow', localMax, opts);
+        // 本地先用「非空選項總數」填充，避免已選數造成假下降
+        const totalNonEmpty = __getMaxRankFromSelect_TotalOptions(selEl);
+        if (totalNonEmpty > 0) {
+            if (isSales) __fillRankSelects('rankFrom', 'rankTo', totalNonEmpty, opts);
+            else __fillRankSelects('rankFromBorrow', 'rankToBorrow', totalNonEmpty, opts);
+        }
 
-        // 若提供後端 API，再覆蓋（含日期等條件）
+        // 呼叫後端覆蓋（成功才更新）
         const apiMax = (window.__API_MAXRANK__)
             || (typeof apiCats === 'string' && apiCats ? apiCats.replace(/Categories\b/i, 'MaxRank') : null);
         if (!apiMax) return;
@@ -653,19 +648,21 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             const payload = { BaseKind: kind, Filters: currentFilters };
 
             const res = await fetch(apiMax, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'same-origin' });
-            if (!res.ok) return;
+            if (!res.ok) { console.warn('MaxRank API HTTP', res.status); return; }
+
             const j = await res.json();
             const m = Number(j?.maxRank || 0);
             if (m > 0) {
                 if (isSales) __fillRankSelects('rankFrom', 'rankTo', m, opts);
                 else __fillRankSelects('rankFromBorrow', 'rankToBorrow', m, opts);
             }
-        } catch { }
+        } catch (e) {
+            console.warn('MaxRank API error:', e);
+        }
     }
 
     // === Wire ===
     function wire() {
-        // submit：塞 FiltersJson
         document.addEventListener('submit', (ev) => {
             const form = ev.target;
             if (form && form.querySelector('#FiltersJson')) {
@@ -673,7 +670,6 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             }
         });
 
-        // 即時預覽觸發
         const handleUiChange = () => { showSections(); syncUiByCategoryAndKind(); preview(); };
 
         ['Category', 'category', 'gDay', 'gMonth', 'gYear', 'salesCategories', 'borrowCategories', 'priceRange',
@@ -684,23 +680,21 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             if (el) el.addEventListener('change', handleUiChange);
         });
 
-        // —— 會影響排行上限的欄位 ——
-
-        // 書籍種類變動：把「迄」強制設為最大
         const elSalesCats = document.getElementById('salesCategories');
         const elBorrowCats = document.getElementById('borrowCategories');
         if (elSalesCats) {
-            elSalesCats.addEventListener('change', () => {
-                __updateMaxRank('sales', { forceToMax: true });
+            elSalesCats.addEventListener('change', async () => {
+                await __updateMaxRank('sales', { forceToMax: true });
+                preview();
             });
         }
         if (elBorrowCats) {
-            elBorrowCats.addEventListener('change', () => {
-                __updateMaxRank('borrow', { forceToMax: true });
+            elBorrowCats.addEventListener('change', async () => {
+                await __updateMaxRank('borrow', { forceToMax: true });
+                preview();
             });
         }
 
-        // 日期變動：改為監聽 change + input + blur，並用 debounce 彙整
         const elDateFrom = document.getElementById('dateFrom');
         const elDateTo = document.getElementById('dateTo');
         ['change', 'input', 'blur'].forEach(evt => {
@@ -711,28 +705,31 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         const elBaseKind = $('baseKind');
         if (elBaseKind) elBaseKind.addEventListener('change', async () => {
             await loadCategories();
-            await __updateMaxRank('sales');
-            await __updateMaxRank('borrow');
+            await __updateMaxRank('sales', { forceToMax: true });
+            await __updateMaxRank('borrow', { forceToMax: true });
             handleUiChange();
         });
 
-        // 圖型切換按鈕（Edit 可能存在）
         document.querySelectorAll('[data-chart]').forEach(btn => {
             btn.addEventListener('click', () => setTimeout(() => { showSections(); syncUiByCategoryAndKind(); preview(); }, 0));
         });
 
-        // 預覽按鈕
         $('btnPreview')?.addEventListener('click', preview);
+
+        // 使用者調整排行 → 打上 touched，避免自動覆蓋
+        ['rankFrom', 'rankTo', 'rankFromBorrow', 'rankToBorrow'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', () => { el.dataset.touched = '1'; });
+        });
     }
 
     // === init ===
     (async function init() {
-        // 預設日期 30 天
         const today = new Date(); const from = new Date(); from.setDate(today.getDate() - 29);
         if ($('dateFrom')) $('dateFrom').value ||= from.toISOString().slice(0, 10);
         if ($('dateTo')) $('dateTo').value ||= today.toISOString().slice(0, 10);
 
-        await loadCategories({ reinit: false });
+        await loadCategories();
 
         try {
             await __ensureTomSelect();
@@ -743,18 +740,17 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         }
 
         genPrice();
-        genDecades(); // 即使旗標關閉也安全
+        genDecades();
 
         showSections();
         syncUiByCategoryAndKind();
         wire();
         wireStatusCheckboxes();
 
-        // 初次動態排行上限（取代原本固定 1..100）
-        await __updateMaxRank('sales');
-        await __updateMaxRank('borrow');
+        // 初次：把排行迄設為上限
+        await __updateMaxRank('sales', { forceToMax: true });
+        await __updateMaxRank('borrow', { forceToMax: true });
 
-        // Edit 頁：載回已存
         if (apiDef) {
             await hydrateFromServer();
             try {
@@ -764,7 +760,6 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             showSections(); syncUiByCategoryAndKind();
         }
 
-        // 首次預覽
         preview();
     })();
 })();
