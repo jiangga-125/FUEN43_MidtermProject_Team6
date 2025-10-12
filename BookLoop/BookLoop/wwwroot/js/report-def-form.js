@@ -145,8 +145,11 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             ts.focus();
         }, { capture: true });
 
-        // 在文件 mouseup（捕獲）：以 TS 的 activeOption（目前 hover）為準
-        document.addEventListener('mouseup', (evt) => {
+        if (el.__rfDocMouseup) {
+            document.removeEventListener('mouseup', el.__rfDocMouseup, true);
+        }
+
+        const handleDocMouseup = (evt) => {
             if (!armed) return;
             armed = false;
 
@@ -189,7 +192,10 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             }
             ts.refreshOptions(false);
             ts.setCaret(ts.items.length);
-        }, { capture: true });
+        };
+
+        el.__rfDocMouseup = handleDocMouseup;
+        document.addEventListener('mouseup', handleDocMouseup, true);
     }
 
     // ===== 你的現有 UI/邏輯 =====
@@ -250,17 +256,72 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
     }
 
     // === Data sources ===
-    async function loadCategories() {
+    function applyCategoryOptions(selId, items, opts = {}) {
+        const { reinit = true } = opts;
+        const sel = $(selId);
+        if (!sel) return;
+
+        const previous = sel.tomSelect
+            ? [...sel.tomSelect.items].filter(v => v !== '')
+            : Array.from(sel.selectedOptions || []).map(o => o.value).filter(v => v !== '');
+
+        sel.innerHTML = '';
+        sel.add(new Option('（全部）', ''));
+
+        const safeItems = Array.isArray(items) ? items : [];
+        safeItems.forEach(x => {
+            if (!x) return;
+            const value = (x.value ?? '').toString();
+            if (!value) return;
+            const text = (x.text ?? '').toString();
+            sel.add(new Option(text, value));
+        });
+
+        const keep = previous.filter(val => Array.from(sel.options).some(o => o.value === val));
+        keep.forEach(val => {
+            const opt = Array.from(sel.options).find(o => o.value === val);
+            if (opt) opt.selected = true;
+        });
+
+        if (reinit && typeof __enhanceSearchableSelect === 'function') {
+            __enhanceSearchableSelect(selId);
+            if (sel.tomSelect) {
+                if (keep.length) sel.tomSelect.setValue(keep, true);
+                else sel.tomSelect.clear(true);
+            }
+        }
+    }
+
+    async function loadCategories(opts = {}) {
         if (!apiCats) return;
-        const res = await fetch(apiCats, { cache: 'no-store' });
-        const list = await res.json();
-        const fill = (selId) => {
-            const sel = $(selId); if (!sel) return;
-            sel.innerHTML = '';
-            sel.add(new Option('（全部）', ''));
-            list.forEach(x => sel.add(new Option(x.text, x.value)));
+        const { reinit = true } = opts;
+
+        const fetchList = async (kind) => {
+            try {
+                const url = new URL(apiCats, window.location.origin);
+                url.searchParams.set('baseKind', kind);
+                const df = $('dateFrom')?.value;
+                const dt = $('dateTo')?.value;
+                if (df) url.searchParams.set('start', df);
+                if (dt) url.searchParams.set('end', dt);
+
+                const res = await fetch(url.toString(), { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const json = await res.json();
+                return Array.isArray(json) ? json : [];
+            } catch (err) {
+                console.warn('載入分類清單失敗：', err);
+                return [];
+            }
         };
-        fill('salesCategories'); fill('borrowCategories');
+
+        const [salesList, borrowList] = await Promise.all([
+            fetchList('sales'),
+            fetchList('borrow')
+        ]);
+
+        applyCategoryOptions('salesCategories', salesList, { reinit });
+        applyCategoryOptions('borrowCategories', borrowList, { reinit });
     }
     function genPrice() {
         const sel = $('priceRange'); if (!sel) return;
@@ -446,6 +507,8 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         showSections();
         syncUiByCategoryAndKind();
 
+        await loadCategories();
+
         if (bk === 'sales') {
             const fc = find('CategoryID');
             if (fc) {
@@ -574,13 +637,14 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         });
 
         // 即時預覽觸發
-        ['Category', 'category', 'baseKind', 'dateFrom', 'dateTo', 'gDay', 'gMonth', 'gYear',
-            'salesCategories', 'borrowCategories', 'priceRange',
+        const handleUiChange = () => { showSections(); syncUiByCategoryAndKind(); preview(); };
+
+        ['Category', 'category', 'gDay', 'gMonth', 'gYear',            'salesCategories', 'borrowCategories', 'priceRange',
             'rankFrom', 'rankTo', 'rankFromBorrow', 'rankToBorrow', 'publishDecade',
             'mAmount', 'mCount', 'ordAmtMin', 'ordAmtMax'
         ].forEach(id => {
             const el = $(id);
-            if (el) el.addEventListener('change', () => { showSections(); syncUiByCategoryAndKind(); preview(); });
+            if (el) el.addEventListener('change', handleUiChange);
         });
 
         // —— 會影響排行上限的欄位 ——
@@ -602,13 +666,25 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         // 日期變動：只重算上限（不強制改「迄」）
         const elDateFrom = document.getElementById('dateFrom');
         const elDateTo = document.getElementById('dateTo');
-        if (elDateFrom) elDateFrom.addEventListener('change', () => {
-            __updateMaxRank('sales');
-            __updateMaxRank('borrow');
+        if (elDateFrom) elDateFrom.addEventListener('change', async () => {
+            await loadCategories();
+            await __updateMaxRank('sales');
+            await __updateMaxRank('borrow');
+            handleUiChange();
         });
-        if (elDateTo) elDateTo.addEventListener('change', () => {
-            __updateMaxRank('sales');
-            __updateMaxRank('borrow');
+        if (elDateTo) elDateTo.addEventListener('change', async () => {
+            await loadCategories();
+            await __updateMaxRank('sales');
+            await __updateMaxRank('borrow');
+            handleUiChange();
+        });
+
+        const elBaseKind = $('baseKind');
+        if (elBaseKind) elBaseKind.addEventListener('change', async () => {
+            await loadCategories();
+            await __updateMaxRank('sales');
+            await __updateMaxRank('borrow');
+            handleUiChange();
         });
 
 
@@ -623,7 +699,12 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
 
     // === init ===
     (async function init() {
-        await loadCategories();
+        // 預設日期 30 天
+        const today = new Date(); const from = new Date(); from.setDate(today.getDate() - 29);
+        if ($('dateFrom')) $('dateFrom').value ||= from.toISOString().slice(0, 10);
+        if ($('dateTo')) $('dateTo').value ||= today.toISOString().slice(0, 10);
+
+        await loadCategories({ reinit: false });
 
         try {
             await __ensureTomSelect();
@@ -635,11 +716,6 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
 
         genPrice();
         genDecades(); // 即使旗標關閉也安全
-
-        // 預設日期 30 天
-        const today = new Date(); const from = new Date(); from.setDate(today.getDate() - 29);
-        if ($('dateFrom')) $('dateFrom').value ||= from.toISOString().slice(0, 10);
-        if ($('dateTo')) $('dateTo').value ||= today.toISOString().slice(0, 10);
 
         showSections();
         syncUiByCategoryAndKind();
