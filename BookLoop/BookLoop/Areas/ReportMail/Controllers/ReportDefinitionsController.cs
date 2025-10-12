@@ -113,8 +113,6 @@ public class ReportDefinitionsController : Controller
 			_context.Add(reportDefinition);
 			await _context.SaveChangesAsync(); // 先產生 ReportDefinitionID
 
-			_context.Add(reportDefinition);
-			await _context.SaveChangesAsync(); // 先產生 ReportDefinitionID
 
 			if (drafts.Count > 0)
 			{

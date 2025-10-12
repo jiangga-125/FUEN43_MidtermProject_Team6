@@ -22,14 +22,29 @@
 
     const $ = (id) => document.getElementById(id);
 
-    // === API 來源 ===
-    const apiPreview = window.__API_PREVIEW__
-        || document.querySelector('script[src*="report-def-form.js"]')?.dataset?.apiPreview
-        || (typeof previewUrl !== "undefined" ? previewUrl : null) || "@previewUrl";
-    const apiCats = window.__API_CATS__
+    // === API 來源（升級：穩定讀取 data-* 或全域變數） ===
+    const SCRIPT_EL =
+        document.currentScript
+        || document.querySelector('script[data-api-preview],script[data-def-url],script[data-cats-url]')
+        || document.querySelector('script[src*="report-def-form.js"]');
+
+    const apiPreview =
+        window.__API_PREVIEW__
+        || SCRIPT_EL?.dataset?.apiPreview
+        || (typeof previewUrl !== "undefined" ? previewUrl : null)
+        || null;
+
+    const apiCats =
+        window.__API_CATS__
+        || SCRIPT_EL?.dataset?.catsUrl
         || (typeof catsUrl !== "undefined" ? catsUrl : null)
         || "/ReportMail/Lookup/Categories";
-    const apiDef = window.__DEF_URL__ || null;
+
+    const apiDef =
+        window.__DEF_URL__
+        || SCRIPT_EL?.dataset?.defUrl
+        || (typeof defUrl !== "undefined" ? defUrl : null)
+        || null;
 
     const FEATURE_PUBLISH_DECADE = false;
 
@@ -77,9 +92,6 @@ select[multiple].form-select + .ts-wrapper.form-select .ts-control{
 }
 select[multiple].form-select + .ts-wrapper.form-select .ts-control .item{
   background:transparent; border:0; padding:0; margin:0 .25rem 0 0;
-}
-select[multiple].form-select + .ts-wrapper.form-select .ts-control .item ~ .item::before{
-  content:"、"; margin-right:.25rem;
 }
 select[multiple].form-select + .ts-wrapper.form-select .ts-control .remove{ display:none !重要; }
 .ts-dropdown{
@@ -317,7 +329,8 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
                 const url = new URL(apiCats, window.location.origin);
                 url.searchParams.set('baseKind', kind);
                 const df = $('dateFrom')?.value;
-                const dt = $('dateTo')?.value;
+                the_dt = $('dateTo')?.value;
+                const dt = the_dt; // 兼容舊版
                 if (df) url.searchParams.set('start', df);
                 if (dt) url.searchParams.set('end', dt);
                 const res = await fetch(url.toString(), { cache: 'no-store', credentials: 'same-origin' });
@@ -477,6 +490,17 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
     async function preview() {
         if (!apiPreview) return;
 
+        // 升級：若頁面未預載 Chart.js，自動載一次
+        if (typeof window.Chart === 'undefined') {
+            await new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                s.onload = resolve; s.onerror = reject;
+                document.head.appendChild(s);
+            }).catch(() => console.warn('Chart.js load failed'));
+            if (typeof window.Chart === 'undefined') return;
+        }
+
         const cat = getChartCategoryUi();
         const baseKind = ($('baseKind')?.value || 'sales');
         const filts = buildFilters();
@@ -513,67 +537,66 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         });
     }
 
-    // === Edit 回填 ===
+    // === Edit 回填（升級：防呆＆只處理 JSON） ===
     async function hydrateFromServer() {
-        if (!apiDef) return;
-        const r = await fetch(apiDef, { cache: 'no-store', credentials: 'same-origin' }); if (!r.ok) return;
-        const d = await r.json();
-
-        const cat = (d.Category || d.category || 'line').toLowerCase();
-        const bk = (d.BaseKind || d.baseKind || 'sales').toLowerCase();
-        if ($('Category')) $('Category').value = cat;
-        if ($('baseKind')) $('baseKind').value = bk;
-
-        const filters = d.Filters || d.filters || [];
-        const find = (name) => filters.find(f => (f.FieldName || f.fieldName) === name) || null;
-        const val = (f) => { try { return JSON.parse(f.ValueJson || f.valueJson || '{}'); } catch { return {} } };
-
-        const dateField = (bk === 'borrow') ? 'BorrowDate' : 'OrderDate';
-        const fDate = find(dateField);
-        if (fDate) {
-            const v = val(fDate);
-            if ($('dateFrom') && v.from) $('dateFrom').value = v.from;
-            if ($('dateTo') && v.to) $('dateTo').value = v.to;
-            const g = (v.gran || 'day').toLowerCase();
-            (g === 'month' ? $('gMonth') : g === 'year' ? $('gYear') : $('gDay')).checked = true;
+        if (!apiDef || apiDef === '#') {
+            console.warn('hydrate skipped: apiDef is empty', apiDef);
+            return;
         }
-
-        showSections();
-        syncUiByCategoryAndKind();
-
-        await loadCategories();
-
-        if (bk === 'sales') {
-            const fc = find('CategoryID');
-            if (fc) {
-                const picks = (val(fc).values || []).map(Number);
-                const el = $('salesCategories');
-                Array.from(el.options).forEach(o => o.selected = picks.includes(Number(o.value)));
-                if (el?.tomselect) el.tomselect.setValue(picks, true);
+        try {
+            const r = await fetch(apiDef, { cache: 'no-store', credentials: 'same-origin' });
+            if (!r.ok) { console.warn('hydrate http', r.status); return; }
+            const ct = (r.headers.get('content-type') || '').toLowerCase();
+            if (!ct.includes('application/json')) {
+                console.warn('hydrate content-type not json:', ct);
+                return;
             }
-            const fp = find('SalePrice'); if (fp) { const v = val(fp); if (v.min != null && v.max != null) $('priceRange').value = `${v.min}-${v.max}`; }
-            const fr = find('RankRange'); if (fr) { const v = val(fr); if (v.from) $('rankFrom').value = String(v.from); if (v.to) $('rankTo').value = String(v.to); $('rankTo').dataset.touched = '1'; $('rankFrom').dataset.touched = '1'; }
-        }
-        if (bk === 'borrow') {
-            const fc = find('CategoryID');
-            if (fc) {
-                const picks = (val(fc).values || []).map(Number);
-                const el = $('borrowCategories');
-                Array.from(el.options).forEach(o => o.selected = picks.includes(Number(o.value)));
-                if (el?.tomselect) el.tomselect.setValue(picks, true);
+            const d = await r.json();
+
+            const cat = (d.Category || d.category || 'line').toLowerCase();
+            const bk = (d.BaseKind || d.baseKind || 'sales').toLowerCase();
+            if ($('Category')) $('Category').value = cat;
+            if ($('baseKind')) $('baseKind').value = bk;
+
+            const filters = d.Filters || d.filters || [];
+            const find = (name) => filters.find(f => (f.FieldName || f.fieldName) === name) || null;
+            const val = (f) => { try { return JSON.parse(f.ValueJson || f.valueJson || '{}'); } catch { return {} } };
+
+            const dateField = (bk === 'borrow') ? 'BorrowDate' : 'OrderDate';
+            const fDate = find(dateField);
+            if (fDate) {
+                const v = val(fDate);
+                if ($('dateFrom') && v.from) $('dateFrom').value = v.from;
+                if ($('dateTo') && v.to) $('dateTo').value = v.to;
+                const g = (v.gran || 'day').toLowerCase();
+                (g === 'month' ? $('gMonth') : g === 'year' ? $('gYear') : $('gDay')).checked = true;
             }
-            if (FEATURE_PUBLISH_DECADE) {
-                const fd = find('PublishDecade');
-                if (fd) {
-                    const v = val(fd);
-                    if (v.fromYear && v.toYear) $('publishDecade').value = `${v.fromYear}-${v.toYear}`;
+
+            showSections();
+            syncUiByCategoryAndKind();
+            await loadCategories();
+
+            if (bk === 'sales') {
+                const fc = find('CategoryID'); if (fc) {
+                    const picks = (val(fc).values || []).map(String);
+                    const el = $('salesCategories'); if (el?.tomselect) el.tomselect.setValue(picks, true);
                 }
+                const fr = find('RankRange'); if (fr) { const v = val(fr); if (v.from) $('rankFrom').value = String(v.from); if (v.to) $('rankTo').value = String(v.to); $('rankTo').dataset.touched = '1'; $('rankFrom').dataset.touched = '1'; }
+            } else if (bk === 'borrow') {
+                const fc = find('CategoryID'); if (fc) {
+                    const picks = (val(fc).values || []).map(String);
+                    const el = $('borrowCategories'); if (el?.tomselect) el.tomselect.setValue(picks, true);
+                }
+                const fr = find('RankRange'); if (fr) { const v = val(fr); if (v.from) $('rankFromBorrow').value = String(v.from); if (v.to) $('rankToBorrow').value = String(v.to); $('rankToBorrow').dataset.touched = '1'; $('rankFromBorrow').dataset.touched = '1'; }
             }
-            const fr = find('RankRange'); if (fr) { const v = val(fr); if (v.from) $('rankFromBorrow').value = String(v.from); if (v.to) $('rankToBorrow').value = String(v.to); $('rankToBorrow').dataset.touched = '1'; $('rankFromBorrow').dataset.touched = '1'; }
-        }
 
-        await __updateMaxRank('sales');
-        await __updateMaxRank('borrow');
+            await __updateMaxRank('sales');
+            await __updateMaxRank('borrow');
+            showSections(); syncUiByCategoryAndKind();
+            preview();
+        } catch (e) {
+            console.warn('hydrateFromServer failed:', e);
+        }
     }
 
     // 訂單狀態群組
