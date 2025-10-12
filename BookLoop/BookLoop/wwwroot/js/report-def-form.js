@@ -29,7 +29,9 @@
     const apiPreview = window.__API_PREVIEW__
         || document.querySelector('script[src*="report-def-form.js"]')?.dataset?.apiPreview
         || (typeof previewUrl !== "undefined" ? previewUrl : null) || "@previewUrl";
-    const apiCats = window.__API_CATS__ || (typeof catsUrl !== "undefined" ? catsUrl : null) || "@catsUrl";
+    const apiCats = window.__API_CATS__
+        || (typeof catsUrl !== "undefined" ? catsUrl : null)
+        || "/ReportMail/Lookup/Categories"; // ← 安全預設：走 Areas/ReportMail 既有路由
     const apiDef = window.__DEF_URL__ || null; // 只有 Edit 頁有
 
     // 出版年功能旗標（暫關）
@@ -85,10 +87,17 @@ select[multiple].form-select + .ts-wrapper.form-select .ts-control .item ~ .item
 select[multiple].form-select + .ts-wrapper.form-select .ts-control .remove{ display:none !important; }
 /* 下拉面板與搜尋框 */
 .ts-dropdown{
-  border:1px solid var(--bs-border-color,#dee2e6);
-  border-radius:.375rem; box-shadow:0 .5rem 1rem rgba(0,0,0,.15);
-  margin-top:.25rem; overflow:hidden;
-}
+border:1px solid var(--bs-border-color,#dee2e6);
+border-radius:.375rem; box-shadow:0 .5rem 1rem rgba(0,0,0,.15);
+margin-top:.25rem;
+max-height: 24rem;    /* 顯示更多行 */
+overflow: auto;       /* 允許滾動（關鍵） */
+ }
+ /* Tom Select 預設讓 .ts-dropdown-content 負責捲動；這裡同步放大高度 */
+.ts-dropdown .ts-dropdown-content{
+max-height: inherit;
+overflow-y: auto;
+ }
 .ts-dropdown .ts-dropdown-input{
   margin:0; padding:.5rem .75rem;
   border:0; border-bottom:1px solid var(--bs-border-color,#dee2e6);
@@ -111,7 +120,7 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         if (!el) return;
 
         el.classList.add('form-select');
-        if (el.tomSelect) { try { el.tomSelect.destroy(); } catch { } }
+        if (el.tomselect) { try { el.tomselect.destroy(); } catch { } }
 
         if (typeof __injectSingleBoxCSS === 'function') __injectSingleBoxCSS();
 
@@ -254,41 +263,68 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             decRow.style.display = showDecade ? '' : 'none';
         }
     }
+    // 讓高頻事件（input/blur）彙整成一次刷新
+    function __debounce(fn, delay = 250) {
+        let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+    }
+
+    // 日期變更後要做的事：重抓分類、重算排行、刷新 UI/預覽
+    const __onDateChange = __debounce(async () => {
+        try {
+            await loadCategories();
+            await __updateMaxRank('sales');
+            await __updateMaxRank('borrow');
+            if (typeof showSections === 'function') showSections();
+            if (typeof syncUiByCategoryAndKind === 'function') syncUiByCategoryAndKind();
+            if (typeof preview === 'function') preview();
+        } catch (err) {
+            console.warn('date change refresh failed:', err);
+        }
+    }, 250);
+
 
     // === Data sources ===
-    function applyCategoryOptions(selId, items, opts = {}) {
-        const { reinit = true } = opts;
-        const sel = $(selId);
+    function applyCategoryOptions(selId, items) {
+        const sel = (typeof selId === 'string') ? document.getElementById(selId) : selId;
         if (!sel) return;
 
-        const previous = sel.tomSelect
-            ? [...sel.tomSelect.items].filter(v => v !== '')
-            : Array.from(sel.selectedOptions || []).map(o => o.value).filter(v => v !== '');
+        // 1) 資料清洗：去空/去重（保留你的規則）
+        const seen = new Set();
+        const cleaned = (Array.isArray(items) ? items : [])
+            .filter(x => x && x.value !== null && x.value !== undefined && String(x.value).trim() !== '' && String(x.value) !== '0')
+            .filter(x => { const k = String(x.value); if (seen.has(k)) return false; seen.add(k); return true; })
+            .map(x => ({ value: String(x.value), text: String(x.text ?? '') }));
 
+        // 2) 若已有 Tom Select 實例，先記住選取值，然後**乾淨地摧毀**
+        let keep = [];
+        if (sel.tomselect) {
+            try { keep = sel.tomselect.items.filter(v => v !== ''); } catch { }
+            try { sel.tomselect.destroy(); } catch { }
+        }
+
+        // 3) 重建原生 <option>
         sel.innerHTML = '';
-        sel.add(new Option('（全部）', ''));
+        sel.add(new Option('（全部）', '')); // 統一的空值
+        cleaned.forEach(o => sel.add(new Option(o.text, o.value)));
 
-        const safeItems = Array.isArray(items) ? items : [];
-        safeItems.forEach(x => {
-            if (!x) return;
-            const value = (x.value ?? '').toString();
-            if (!value) return;
-            const text = (x.text ?? '').toString();
-            sel.add(new Option(text, value));
-        });
-
-        const keep = previous.filter(val => Array.from(sel.options).some(o => o.value === val));
-        keep.forEach(val => {
-            const opt = Array.from(sel.options).find(o => o.value === val);
-            if (opt) opt.selected = true;
-        });
-
-        if (reinit && typeof __enhanceSearchableSelect === 'function') {
-            __enhanceSearchableSelect(selId);
-            if (sel.tomSelect) {
-                if (keep.length) sel.tomSelect.setValue(keep, true);
-                else sel.tomSelect.clear(true);
+        // 4) 重建 Tom Select（用你原本的初始化函式）
+        try {
+            if (typeof __enhanceSearchableSelect === 'function') {
+                __enhanceSearchableSelect(selId);
             }
+        } catch (e) {
+            console.warn('Tom Select 初始化失敗，先使用原生下拉：', e);
+        }
+
+        // 5) 還原選取（僅還原仍存在於新清單的）
+        const exists = new Set(Array.from(sel.options).map(o => o.value));
+        keep = (keep || []).filter(v => exists.has(v));
+        if (sel.tomselect) {
+            if (keep.length) sel.tomselect.setValue(keep, true);
+            else sel.tomselect.clear(true);
+        } else {
+            // 尚未有 TS，就用原生方式還原
+            keep.forEach(v => { const o = Array.from(sel.options).find(o => o.value === v); if (o) o.selected = true; });
         }
     }
 
@@ -305,7 +341,8 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
                 if (df) url.searchParams.set('start', df);
                 if (dt) url.searchParams.set('end', dt);
 
-                const res = await fetch(url.toString(), { cache: 'no-store' });
+                // 改：帶上 cookie 並關閉快取
+                const res = await fetch(url.toString(), { cache: 'no-store', credentials: 'same-origin' });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const json = await res.json();
                 return Array.isArray(json) ? json : [];
@@ -320,8 +357,8 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             fetchList('borrow')
         ]);
 
-        applyCategoryOptions('salesCategories', salesList, { reinit });
-        applyCategoryOptions('borrowCategories', borrowList, { reinit });
+        applyCategoryOptions('salesCategories', salesList);
+        applyCategoryOptions('borrowCategories', borrowList);
     }
     function genPrice() {
         const sel = $('priceRange'); if (!sel) return;
@@ -450,7 +487,7 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
 
         let labels = [], values = [], title = '';
         try {
-            const res = await fetch(apiPreview, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), cache: 'no-store' });
+            const res = await fetch(apiPreview, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), cache: 'no-store', credentials: 'same-origin' });
             const json = await res.json();
 
             if (Array.isArray(json.labels) && Array.isArray(json.data)) {
@@ -482,7 +519,7 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
     // === Hydrate（Edit 回填） ===
     async function hydrateFromServer() {
         if (!apiDef) return;
-        const r = await fetch(apiDef, { cache: 'no-store' }); if (!r.ok) return;
+        const r = await fetch(apiDef, { cache: 'no-store', credentials: 'same-origin' }); if (!r.ok) return;
         const d = await r.json();
 
         const cat = (d.Category || d.category || 'line').toLowerCase();
@@ -515,7 +552,7 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
                 const picks = (val(fc).values || []).map(Number);
                 const el = $('salesCategories');
                 Array.from(el.options).forEach(o => o.selected = picks.includes(Number(o.value)));
-                if (el?.tomSelect) el.tomSelect.setValue(picks, true);
+                if (el?.tomselect) el.tomselect.setValue(picks, true);
             }
             const fp = find('SalePrice'); if (fp) { const v = val(fp); if (v.min != null && v.max != null) $('priceRange').value = `${v.min}-${v.max}`; }
             const fr = find('RankRange'); if (fr) { const v = val(fr); if (v.from) $('rankFrom').value = String(v.from); if (v.to) $('rankTo').value = String(v.to); }
@@ -526,7 +563,7 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
                 const picks = (val(fc).values || []).map(Number);
                 const el = $('borrowCategories');
                 Array.from(el.options).forEach(o => o.selected = picks.includes(Number(o.value)));
-                if (el?.tomSelect) el.tomSelect.setValue(picks, true);
+                if (el?.tomselect) el.tomselect.setValue(picks, true);
             }
             if (FEATURE_PUBLISH_DECADE) {
                 const fd = find('PublishDecade');
@@ -615,7 +652,7 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
                 : [];
             const payload = { BaseKind: kind, Filters: currentFilters };
 
-            const res = await fetch(apiMax, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const res = await fetch(apiMax, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'same-origin' });
             if (!res.ok) return;
             const j = await res.json();
             const m = Number(j?.maxRank || 0);
@@ -639,7 +676,7 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         // 即時預覽觸發
         const handleUiChange = () => { showSections(); syncUiByCategoryAndKind(); preview(); };
 
-        ['Category', 'category', 'gDay', 'gMonth', 'gYear',            'salesCategories', 'borrowCategories', 'priceRange',
+        ['Category', 'category', 'gDay', 'gMonth', 'gYear', 'salesCategories', 'borrowCategories', 'priceRange',
             'rankFrom', 'rankTo', 'rankFromBorrow', 'rankToBorrow', 'publishDecade',
             'mAmount', 'mCount', 'ordAmtMin', 'ordAmtMax'
         ].forEach(id => {
@@ -663,20 +700,12 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             });
         }
 
-        // 日期變動：只重算上限（不強制改「迄」）
+        // 日期變動：改為監聽 change + input + blur，並用 debounce 彙整
         const elDateFrom = document.getElementById('dateFrom');
         const elDateTo = document.getElementById('dateTo');
-        if (elDateFrom) elDateFrom.addEventListener('change', async () => {
-            await loadCategories();
-            await __updateMaxRank('sales');
-            await __updateMaxRank('borrow');
-            handleUiChange();
-        });
-        if (elDateTo) elDateTo.addEventListener('change', async () => {
-            await loadCategories();
-            await __updateMaxRank('sales');
-            await __updateMaxRank('borrow');
-            handleUiChange();
+        ['change', 'input', 'blur'].forEach(evt => {
+            elDateFrom?.addEventListener(evt, __onDateChange);
+            elDateTo?.addEventListener(evt, __onDateChange);
         });
 
         const elBaseKind = $('baseKind');
@@ -686,7 +715,6 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
             await __updateMaxRank('borrow');
             handleUiChange();
         });
-
 
         // 圖型切換按鈕（Edit 可能存在）
         document.querySelectorAll('[data-chart]').forEach(btn => {
@@ -730,8 +758,8 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         if (apiDef) {
             await hydrateFromServer();
             try {
-                const elS = $('salesCategories'); if (elS?.tomSelect) elS.tomSelect.setValue([...elS.selectedOptions].map(o => o.value), true);
-                const elB = $('borrowCategories'); if (elB?.tomSelect) elB.tomSelect.setValue([...elB.selectedOptions].map(o => o.value), true);
+                const elS = $('salesCategories'); if (elS?.tomselect) elS.tomselect.setValue([...elS.selectedOptions].map(o => o.value), true);
+                const elB = $('borrowCategories'); if (elB?.tomselect) elB.tomselect.setValue([...elB.selectedOptions].map(o => o.value), true);
             } catch { }
             showSections(); syncUiByCategoryAndKind();
         }

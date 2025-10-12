@@ -199,20 +199,20 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="~/lib/jquery/jquery.min.js"></script>
+    <script src="~/lib/tom-select/tom-select.complete.min.js"></script>
+
     <script>
-        window.__API_PREVIEW__ = "@previewUrl";  // 你頁面上原本的 previewUrl 變數
-        window.__API_CATS__    = "@catsUrl";     // 分類清單 API
-        // 只有 Edit 頁才需要這行（Create 不要放）
-        window.__DEF_URL__     = "@defUrl";
+        window.__API_PREVIEW__ = "@previewUrl";
+        window.__API_CATS__    = "@catsUrl";
+        window.__API_MAXRANK__ = "@Url.Action("MaxRank", "Lookup", new { area = "ReportMail" })";
+        window.__DEF_URL__     = "@defUrl";   // 只有編輯頁需要
     </script>
 
     <script src="~/js/report-def-form.js" asp-append-version="true"></script>
-    <script>
-        // 編輯頁面專用：把後端定義套回（包含 bar/pie）
-        window.__DEF_URL__ = "@defUrl";
-    </script>
+
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
 }
+

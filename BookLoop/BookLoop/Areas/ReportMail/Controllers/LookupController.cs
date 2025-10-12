@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BookLoop.Models;
@@ -77,36 +78,90 @@ namespace ReportMail.Areas.ReportMail.Controllers
                 query = salesQuery.Select(x => x.Category);
             }
 
-            var list = await query
-                .Select(x => new { x.CategoryID, x.CategoryName })
-                .Distinct()
-                .OrderBy(x => x.CategoryName)
-                .Select(x => new { value = x.CategoryID, text = x.CategoryName })
+            // 先取「有紀錄」的唯一 CategoryID（排除 0）
+            var idQuery = query
+                .Select(c => c.CategoryID)
+                .Where(id => id != 0)
+                .Distinct();
+
+            // 再回到 Categories 表把名稱撈齊（由 DB 來排序）
+            var result = await _shop.Categories.AsNoTracking()
+                .Where(c => idQuery.Contains(c.CategoryID))
+                .Select(c => new { value = c.CategoryID, text = c.CategoryName })
+                .OrderBy(x => x.text)
                 .ToListAsync();
 
-            return Json(list);
+            return Json(result);
+
         }
 
-        //[HttpGet]
-        //public async Task<IActionResult> OrderStatuses()
-        //{
-        //    // 你的 Orders.Status 是 tinyint；這裡先給常見對照，找不到時顯示「狀態{code}」
-        //    var map = new Dictionary<int, string> {
-        //            { 0, "新訂單" }, { 1, "已付款" }, { 2, "已出貨" }, { 3, "已完成" }, { 4, "已取消" }
-        //    };
-        //
-        //    var codes = await _shop.Orders
-        //            .AsNoTracking()
-        //            .Select(x => x.Status)
-        //            .Distinct()
-        //            .OrderBy(x => x)
-        //            .ToListAsync();
-        //
-        //    var list = codes.Select(c => new {
-        //            value = (int)c,
-        //            text = map.TryGetValue((int)c, out var name) ? name : $"狀態{c}"
-        //    });
-        //    return Json(list);
-        //}
+        // === Add: 計算不同基礎報表在指定條件下的可排行上限 ===
+        [HttpPost]
+        public async Task<IActionResult> MaxRank([FromBody] MaxRankRequest req)
+        {
+            // "sales" / "borrow"
+            var kind = (req?.BaseKind ?? "sales").Trim().ToLowerInvariant();
+
+            // 解析日期區間（你的 JS 會把日期塞在 Filters 的 ValueJson）
+            DateTime? startDate = null, endExclusive = null;
+            var dateFilter = req?.Filters?.FirstOrDefault(f =>
+                string.Equals(f.FieldName, "OrderDate", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(f.FieldName, "BorrowDate", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(dateFilter?.ValueJson))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(dateFilter!.ValueJson!);
+                    var root = doc.RootElement;
+                    if (root.TryGetProperty("from", out var fromEl) &&
+                        DateTime.TryParse(fromEl.GetString(), out var fromDt))
+                        startDate = fromDt.Date;
+
+                    if (root.TryGetProperty("to", out var toEl) &&
+                        DateTime.TryParse(toEl.GetString(), out var toDt))
+                        endExclusive = toDt.Date.AddDays(1); // < end+1 天，含當日
+                }
+                catch { /* 忽略解析錯誤，以 fallback 處理 */ }
+            }
+
+            int count;
+            if (kind == "borrow")
+            {
+                // 借閱：以 BorrowRecords 的 Listing 計數
+                var q = _shop.BorrowRecords.AsNoTracking().AsQueryable();
+                if (startDate.HasValue) q = q.Where(x => x.BorrowDate >= startDate.Value);
+                if (endExclusive.HasValue) q = q.Where(x => x.BorrowDate < endExclusive.Value);
+                count = await q.Select(x => x.ListingID).Distinct().CountAsync();
+            }
+            else
+            {
+                // 銷售：以 OrderDetails 的 Book 計數，排除取消/無效訂單（Status=0）
+                var q = from d in _shop.OrderDetails.AsNoTracking()
+                        join o in _shop.Orders.AsNoTracking() on d.OrderID equals o.OrderID
+                        where o.Status != 0
+                        select new { o.OrderDate, d.BookID };
+
+                if (startDate.HasValue) q = q.Where(x => x.OrderDate >= startDate.Value);
+                if (endExclusive.HasValue) q = q.Where(x => x.OrderDate < endExclusive.Value);
+
+                count = await q.Select(x => x.BookID).Distinct().CountAsync();
+            }
+
+            var maxRank = Math.Max(1, Math.Min(100, count)); // 1..100
+            return Json(new { maxRank });
+        }
+
+        // === Add: 與前端 payload 對齊的模型 ===
+        public sealed class MaxRankRequest
+        {
+            public string? BaseKind { get; set; }           // "sales" / "borrow"
+            public List<FilterItem>? Filters { get; set; }  // 由 buildFilters() 送上來
+        }
+        public sealed class FilterItem
+        {
+            public string? FieldName { get; set; }          // 例如 OrderDate / BorrowDate / CategoryID / ...
+            public string? ValueJson { get; set; }          // JSON（e.g. {"from":"2025-10-01","to":"2025-10-12"}）
+        }
+
     }
 }
