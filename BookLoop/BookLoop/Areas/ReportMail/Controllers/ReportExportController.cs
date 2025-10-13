@@ -52,21 +52,30 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			var (labelHeader, valueHeader) = ResolveHeaders(cat, kind, gran, dto.Title, dto.ValueMetric);
 
 
-			// 呼叫 Exporter
-			var series = dto.Labels.Zip(dto.Values, (l, v) => (label: l, value: v)).ToList();
-			var (bytes, fileName, contentType) = await _excel.ExportSeriesAsync(
-				title: dto.Title ?? "報表",
-				subTitle: dto.SubTitle ?? string.Empty,
-				series: series,
-				sheetName: sheetName,
-				labelHeader: labelHeader,
-				valueHeader: valueHeader
-			);
+            // Category → ChartKind
+            var chartKind = (dto.Category ?? "").Trim().ToLowerInvariant() switch
+            {
+                "line" => ChartKind.Line,
+                "pie" => ChartKind.Pie,
+                _ => ChartKind.Column
+            };
 
-			// ---- 2) 組附件檔名（用 Title）----
-			// 要求：附件名稱 = 下拉選到的自訂報表名稱（= 前端送來的 Title）
-			// 需過濾非法字元，並確保加上 .xlsx 副檔名
-			var safeName = MakeSafeFileName(string.IsNullOrWhiteSpace(dto.Title) ? "report" : dto.Title);
+            //  組 series 並呼叫帶圖型重載
+            var series = dto.Labels.Zip(dto.Values, (l, v) => (label: l, value: v)).ToList();
+            var (bytes, fileName, contentType) = await _excel.ExportSeriesAsync(
+                title: dto.Title ?? "報表",
+                subTitle: dto.SubTitle ?? string.Empty,
+                series: series,
+                sheetName: sheetName,
+                chartKind: chartKind,
+                labelHeader: labelHeader,
+                valueHeader: valueHeader
+            );
+
+            // ---- 2) 組附件檔名（用 Title）----
+            // 要求：附件名稱 = 下拉選到的自訂報表名稱（= 前端送來的 Title）
+            // 需過濾非法字元，並確保加上 .xlsx 副檔名
+            var safeName = MakeSafeFileName(string.IsNullOrWhiteSpace(dto.Title) ? "report" : dto.Title);
 			if (!safeName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
 				safeName += ".xlsx";
 
