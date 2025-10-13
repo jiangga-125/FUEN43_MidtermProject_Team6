@@ -4,15 +4,20 @@ using BookLoop.Services.Export;
 using Microsoft.AspNetCore.Mvc;
 using ReportMail.Models.Dto;
 using System;
+using System.Text;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+
 
 namespace ReportMail.Areas.ReportMail.Controllers
 {
 	[Area("ReportMail")]
 	//[Authorize(Roles = "Admin,Marketing,Publisher")]
-[Route("ReportMail/[controller]/[action]")]
+	[Route("ReportMail/[controller]/[action]")]
 	public class ReportExportController : Controller
 	{
 		private readonly IExcelExporter _excel;
@@ -103,9 +108,155 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			return Ok(new { message = "已寄出", to = dto.To, file = safeName });
 		}
 
-		// ===== helpers =====
+        [HttpPost]
+        public async Task<IActionResult> SendPdf([FromBody] ReportExportDto dto)
+        {
+            if (dto is null) return BadRequest("缺少必要參數");
+            if (string.IsNullOrWhiteSpace(dto.To)) return BadRequest("請輸入收件者 Email");
+            if (dto.Labels is null || dto.Values is null) return BadRequest("沒有可匯出的資料");
+            if (dto.Labels.Count != dto.Values.Count) return BadRequest("資料長度不一致");
 
-		private static string MakeSafeFileName(string name)
+            var cat = (dto.Category ?? "").Trim().ToLowerInvariant();
+            var kind = (dto.BaseKind ?? "").Trim().ToLowerInvariant();
+            var gran = (dto.Granularity ?? "").Trim().ToLowerInvariant();
+            var (labelHeader, valueHeader) = ResolveHeaders(cat, kind, gran, dto.Title, dto.ValueMetric);
+
+            var series = dto.Labels.Zip(dto.Values, (l, v) => (label: l ?? string.Empty, value: v)).ToList();
+
+            // ★ 解析前端傳來的圖表 base64（允許帶 data:image/png;base64, 前綴）
+            byte[]? chartBytes = null;
+            if (!string.IsNullOrWhiteSpace(dto.ChartImageBase64))
+            {
+                var s = dto.ChartImageBase64!;
+                var comma = s.IndexOf(',');
+                if (s.StartsWith("data:", StringComparison.OrdinalIgnoreCase) && comma > 0)
+                    s = s.Substring(comma + 1);
+                try { chartBytes = Convert.FromBase64String(s); } catch { chartBytes = null; }
+            }
+
+            QuestPDF.Settings.License = LicenseType.Community;
+
+            byte[] pdfBytes;
+            using (var ms = new MemoryStream())
+            {
+                var doc = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Margin(36);
+                        page.Size(PageSizes.A4);
+                        page.DefaultTextStyle(x => x.FontSize(12));
+
+                        page.Header().Column(col =>
+                        {
+                            col.Item().Text(dto.Title ?? "報表匯出").Bold().FontSize(18);
+                            if (!string.IsNullOrWhiteSpace(dto.SubTitle))
+                                col.Item().Text(dto.SubTitle!).FontSize(10).FontColor(Colors.Grey.Darken2);
+                            col.Item().Text($"類型：{cat}　來源：{kind}　指標：{dto.ValueMetric ?? "-"}　粒度：{dto.Granularity ?? "-"}")
+                                      .FontSize(9).FontColor(Colors.Grey.Darken1);
+                        });
+
+                        page.Content().Column(col =>
+                        {
+                            // ★ 先放圖（如果有）
+                            if (chartBytes is not null && chartBytes.Length > 0)
+                            {
+                                col.Item()
+                                   .PaddingBottom(6)
+                                   .Text("圖表").Bold().FontSize(12);
+
+                                col.Item().Image(chartBytes);  // 放圖
+                                col.Item().PaddingBottom(10);  // 圖後留白
+
+                            }
+
+                            // 統計摘要
+                            var total = series.Sum(s => s.value);
+                            var max = series.Any() ? series.Max(s => s.value) : 0m;
+                            col.Item().PaddingBottom(10)
+                                      .Text($"總和：{total:#,0.##}　最高值：{max:#,0.##}")
+                                      .FontSize(10).FontColor(Colors.Grey.Darken2);
+
+                            // 明細表
+                            col.Item().Table(t =>
+                            {
+                                t.ColumnsDefinition(c =>
+                                {
+                                    c.ConstantColumn(40);   // #
+                                    c.RelativeColumn();     // 標籤
+                                    c.ConstantColumn(120);  // 數值
+                                });
+
+                                t.Header(h =>
+                                {
+                                    h.Cell().Element(H).Text("#");
+                                    h.Cell().Element(H).Text(labelHeader);
+                                    h.Cell().Element(H).AlignRight().Text(valueHeader);
+                                });
+
+                                for (int i = 0; i < series.Count; i++)
+                                {
+                                    var row = series[i];
+                                    t.Cell().Element(B).Text((i + 1).ToString());
+                                    t.Cell().Element(B).Text(row.label);
+                                    t.Cell().Element(B).AlignRight().Text(row.value.ToString("#,0.##"));
+                                }
+
+                                static IContainer H(IContainer x) =>
+                                    x.PaddingVertical(6).Background(Colors.Grey.Lighten3)
+                                     .BorderBottom(1).BorderColor(Colors.Grey.Medium);
+
+                                static IContainer B(IContainer x) =>
+                                    x.PaddingVertical(6).BorderBottom(1).BorderColor(Colors.Grey.Lighten2);
+                            });
+                        });
+
+                        page.Footer()
+                            .DefaultTextStyle(s => s.FontSize(9).FontColor(Colors.Grey.Darken1))
+                            .AlignRight()
+                            .Text(t => { t.Span("頁碼 "); t.CurrentPageNumber(); t.Span(" / "); t.TotalPages(); });
+                    });
+                });
+
+                doc.GeneratePdf(ms);
+                pdfBytes = ms.ToArray();
+            }
+
+            var safeName = MakeSafeFileName(dto.Title ?? "report");
+            if (!safeName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)) safeName += ".pdf";
+
+            var subject = dto.Title ?? "報表匯出 (PDF)";
+            var sb = new StringBuilder();
+            sb.AppendLine("<div style=\"font-family:Segoe UI,Arial,sans-serif;font-size:14px\">");
+            sb.Append("<h3 style=\"margin:0 0 8px 0;\">")
+              .Append(HtmlEncode(dto.Title ?? "報表匯出"))
+              .AppendLine("</h3>");
+            if (!string.IsNullOrWhiteSpace(dto.SubTitle))
+            {
+                sb.Append("<div style=\"color:#555\">")
+                  .Append(HtmlEncode(dto.SubTitle!))
+                  .AppendLine("</div>");
+            }
+            sb.AppendLine("<p style=\"margin-top:12px\">請查收附件（PDF）。</p>");
+            sb.AppendLine("</div>");
+            var body = sb.ToString();
+
+            await _mail.SendReportAsync(
+                to: dto.To,
+                subject: subject,
+                body: body,
+                attachmentName: safeName,
+                attachmentBytes: pdfBytes,
+                contentType: "application/pdf",
+                cancellationToken: HttpContext.RequestAborted
+            );
+
+            return Ok(new { ok = true });
+        }
+
+        // ===== helpers =====
+
+        private static string MakeSafeFileName(string name)
 		{
 			// Windows/檔名非法字元過濾
 			var safe = Regex.Replace(name, @"[\\/:*?""<>|]", "_");

@@ -529,6 +529,11 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         }
 
         const ctx = $('previewChart')?.getContext('2d'); if (!ctx) return;
+
+        // ★★ 新增：把最新的 labels/values 暫存給匯出用 ★★
+        window.__lastPreviewLabels = labels;
+        window.__lastPreviewValues = values;
+
         if (chart) chart.destroy();
         chart = new Chart(ctx, {
             type: (cat === 'pie' ? 'pie' : (cat === 'bar' ? 'bar' : 'line')),
@@ -785,4 +790,70 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
 
         preview();
     })();
+
+    // ====== ★ 新增：攔截你原本「匯出」按鈕 → 同頁開 Modal、送出 ======
+    (function wireExportModal() {
+        // 嘗試常見 selector；若你的按鈕不是這些，直接把 selector 加到陣列即可
+        const SELECTORS = ['#btnExport', '.js-export', '[data-action="export"]'];
+        let exportBtn = null;
+        for (const s of SELECTORS) { const el = document.querySelector(s); if (el) { exportBtn = el; break; } }
+        const modalEl = document.getElementById('exportModal');
+        if (!exportBtn || !modalEl || !window.bootstrap || !bootstrap.Modal) return;
+        const modal = new bootstrap.Modal(modalEl);
+
+        exportBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            modal.show();
+        });
+
+        const form = document.getElementById('exportForm');
+        form?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const emailInput = document.getElementById('exportEmail');
+            const email = (emailInput?.value || '').trim();
+            const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            if (!ok) { emailInput?.classList.add('is-invalid'); return; }
+            emailInput?.classList.remove('is-invalid');
+
+            const format = (document.querySelector('input[name="format"]:checked')?.value || 'xlsx').toLowerCase();
+            const Category = (typeof getChartCategoryUi === 'function') ? getChartCategoryUi() : 'line';
+            const BaseKind = document.getElementById('baseKind')?.value || '';
+            const Granularity = document.querySelector('input[name="gran"]:checked')?.value
+                || document.getElementById('granularity')?.value || '';
+            const ValueMetric = document.getElementById('valueMetric')?.value || '';
+            const Title = document.getElementById('title')?.value || '';
+            const SubTitle = document.getElementById('subTitle')?.value || '';
+
+            const Labels = Array.isArray(window.__lastPreviewLabels) ? window.__lastPreviewLabels : [];
+            const Values = Array.isArray(window.__lastPreviewValues) ? window.__lastPreviewValues : [];
+
+            const dto = { Category, BaseKind, Granularity, ValueMetric, Title, SubTitle, Labels, Values, To: email };
+
+            const url = (format === 'pdf')
+                ? '/ReportMail/ReportExport/SendPdf'
+                : '/ReportMail/ReportExport/SendExcel';
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            try {
+                const res = await fetch(url, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dto)
+                });
+                if (!res.ok) {
+                    const t = await res.text();
+                    alert('匯出失敗：' + t);
+                    return;
+                }
+                alert('已寄出到：' + email);
+                modal.hide();
+            } catch (err) {
+                console.error(err);
+                alert('匯出時發生錯誤');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+    })();
+
 })();

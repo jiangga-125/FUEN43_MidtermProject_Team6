@@ -27,5 +27,7 @@ namespace ReportMail.Models.Dto
 		[Required] 
 		public List<decimal> Values { get; set; } = new();
 		public string? ValueMetric { get; set; }// amount | count | quantity
-	}
+        public string? ChartImageBase64 { get; set; }  // data:image/png;base64
+
+    }
 }
