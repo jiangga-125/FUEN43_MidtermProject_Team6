@@ -1,5 +1,34 @@
 ﻿// @ts-nocheck
 (function () {
+    // === NoData 外掛：labels 為空，或所有 data 皆為 0/null → 顯示「無資料」 ===
+    const NoDataPlugin = {
+        id: 'no-data',
+        afterDraw(chart, _args, opts) {
+            const labels = chart?.data?.labels || [];
+            const ds = chart?.data?.datasets || [];
+            const hasData =
+                Array.isArray(labels) && labels.length > 0 &&
+                ds.some(d => Array.isArray(d.data) && d.data.some(v => v != null && Number(v) !== 0));
+
+            if (hasData) return;
+
+            const { ctx, chartArea } = chart;
+            if (!chartArea) return;
+            const { left, top, width, height } = chartArea;
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = (opts?.font) || '14px system-ui, -apple-system, Segoe UI, Roboto';
+            ctx.fillStyle = (opts?.color) || '#666';
+            // 若想保留格線就註解掉下一行
+            // ctx.clearRect(left, top, width, height);
+            ctx.fillText((opts?.text) || '無資料', left + width / 2, top + height / 2);
+            ctx.restore();
+        }
+    };
+    if (window.Chart && Chart.register) Chart.register(NoDataPlugin);
+
     function __narrowPage() {
         if (!document.getElementById('app-narrow-css')) {
             const s = document.createElement('style');
@@ -538,7 +567,9 @@ select:disabled   + .ts-wrapper .ts-control{ background-color: var(--bs-secondar
         chart = new Chart(ctx, {
             type: (cat === 'pie' ? 'pie' : (cat === 'bar' ? 'bar' : 'line')),
             data: { labels, datasets: [{ label: title, data: values }] },
-            options: { responsive: true, animation: false, scales: (cat === 'pie' ? {} : { y: { beginAtZero: true } }) }
+            options: {
+                responsive: true, animation: false, scales: (cat === 'pie' ? {} : { y: { beginAtZero: true } }),plugins: { 'no-data': { text: '無資料' } }
+}
         });
     }
 

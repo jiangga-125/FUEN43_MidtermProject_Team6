@@ -1,6 +1,35 @@
 ﻿// wwwroot/js/report-index.js
 (function () {
     'use strict';
+    // === NoData 外掛：labels 為空，或所有 data 皆為 0/null → 顯示「無資料」 ===
+    const NoDataPlugin = {
+        id: 'no-data',
+        afterDraw(chart, _args, opts) {
+            const labels = chart?.data?.labels || [];
+            const ds = chart?.data?.datasets || [];
+            const hasData =
+                Array.isArray(labels) && labels.length > 0 &&
+                ds.some(d => Array.isArray(d.data) && d.data.some(v => v != null && Number(v) !== 0));
+
+            if (hasData) return;
+
+            const { ctx, chartArea } = chart;
+            if (!chartArea) return;
+            const { left, top, width, height } = chartArea;
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = (opts?.font) || '14px system-ui, -apple-system, Segoe UI, Roboto';
+            ctx.fillStyle = (opts?.color) || '#666';
+            // 若想保留格線就註解掉下一行
+            // ctx.clearRect(left, top, width, height);
+            ctx.fillText((opts?.text) || '無資料', left + width / 2, top + height / 2);
+            ctx.restore();
+        }
+    };
+    if (window.Chart && Chart.register) Chart.register(NoDataPlugin);
+
 
     const cfg = window.ReportPageConfig || { api: {}, urls: {}, titles: {} };
     const lower = s => (s ?? '').toString().trim().toLowerCase();
@@ -27,7 +56,8 @@
         charts.line = new Chart(el, {
             type: 'line',
             data: { labels: labels || [], datasets: [{ label: title || '折線圖', data: data || [] }] },
-            options: { responsive: true, tension: .25, scales: { y: { beginAtZero: true } } }
+            options: {
+                responsive: true, tension: .25, scales: { y: { beginAtZero: true } }, plugins: { 'no-data': { text: '無資料' } },animation: false}
         });
     }
     function renderBar(labels, data, title) {
@@ -37,7 +67,7 @@
         charts.bar = new Chart(el, {
             type: 'bar',
             data: { labels: labels || [], datasets: [{ label: title || '長條圖', data: data || [] }] },
-            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+            options: { responsive: true, scales: { y: { beginAtZero: true } }, plugins: { 'no-data': { text: '無資料' } }, animation: false }
         });
     }
     function renderPie(labels, data, title) {
@@ -47,7 +77,7 @@
         charts.pie = new Chart(el, {
             type: 'pie',
             data: { labels: labels || [], datasets: [{ label: title || '圓餅圖', data: data || [] }] },
-            options: { responsive: true }
+            options: { responsive: true, plugins: { 'no-data': { text: '無資料' } }, animation: false }
         });
     }
 
