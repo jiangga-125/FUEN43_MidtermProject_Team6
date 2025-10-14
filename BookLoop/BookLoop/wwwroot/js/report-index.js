@@ -352,32 +352,46 @@
             if (!currentSource) { alert('請先選擇要匯出的圖表。'); return; }
 
             // 組 payload
-            function buildPayloadFor(category, chart, extra) {
-                const labels = chart?.data?.labels ?? [];
-                const values = chart?.data?.datasets?.[0]?.data ?? [];
-                const nowStr = `匯出日期：${new Date().toLocaleString()}`;
+            function buildPayloadFor(category, chart, extra, email) {
+                // 關動畫→同步刷新，避免截到半動畫的圖
+                if (chart && chart.options) {
+                    const prev = chart.options.animation;
+                    chart.options.animation = false;
+                    chart.update('none');
+                    queueMicrotask(() => { chart.options.animation = prev; });
+                }
+
+                // 取資料
+                const labels = Array.isArray(chart?.data?.labels)
+                    ? chart.data.labels.map(x => `${x}`) // 確保是字串
+                    : [];
+                const values = Array.isArray(chart?.data?.datasets) && chart.data.datasets[0]?.data
+                    ? chart.data.datasets[0].data
+                    : [];
+
+                // 決定標題（沿用你原本 ddl/預設標題邏輯）
                 const ddlId = category === 'line' ? 'ddlLine' : (category === 'bar' ? 'ddlBar' : 'ddlPie');
                 const ddl = document.getElementById(ddlId);
-                const defTitle = cfg.titles[category] || '報表';
+                const defTitle = (cfg?.titles && cfg.titles[category]) || '報表';
                 const titleText = ddl?.options?.[ddl.selectedIndex]?.text?.trim() || defTitle;
 
-                // 把 Chart.js 畫面轉成 PNG 的 data URL
+                // 把 Chart.js 畫面轉為 PNG base64
                 const imgDataUrl = (chart && typeof chart.toBase64Image === 'function')
                     ? chart.toBase64Image('image/png', 1.0)
                     : null;
 
-                // 帶進 payload
+                // 只回傳後端 DTO 需要的欄位（不再帶任何中文對照/Chips）
                 return {
-                    Category: category,
-                    BaseKind: extra.baseKind,
-                    Granularity: extra.granularity || '',
-                    ValueMetric: extra.valueMetric || '',
+                    To: email,
+                    Category: category,                    // line | bar | pie
                     Title: titleText,
-                    SubTitle: nowStr,
+                    SubTitle: `匯出日期：${new Date().toLocaleString()}`,
+                    BaseKind: extra?.baseKind || '',       // borrow | sales | orders
+                    Granularity: extra?.granularity || '', // 沒粒度就傳空字串
+                    ValueMetric: extra?.valueMetric || '', // amount | count | quantity
                     Labels: labels,
                     Values: values,
-                    To: email,
-                    ChartImageBase64: imgDataUrl  
+                    ChartImageBase64: imgDataUrl           // data:image/png;base64,...
                 };
             }
 
@@ -387,17 +401,17 @@
                     baseKind: state.line.baseKind,
                     granularity: state.line.granularity,
                     valueMetric: state.line.valueMetric
-                });
+                }, email);
             } else if (currentSource === 'bar') {
                 payload = buildPayloadFor('bar', charts.bar, {
                     baseKind: state.bar.baseKind,
                     valueMetric: state.bar.valueMetric
-                });
+                }, email);
             } else { // pie
                 payload = buildPayloadFor('pie', charts.pie, {
                     baseKind: state.pie.baseKind,
                     valueMetric: state.pie.valueMetric
-                });
+                }, email);
             }
 
             const url = (format === 'pdf') ? cfg.api.sendPdf : cfg.api.sendExcel;
@@ -422,6 +436,9 @@
             }
         });
     }
+
+
+
 
     // === 首次載入 ===
     document.addEventListener('DOMContentLoaded', () => {
