@@ -1,0 +1,137 @@
+﻿@model BookLoop.ViewModels.ListingsdetailViewModel
+@{
+    Layout = null;
+}
+@{
+    var hasImage = !string.IsNullOrWhiteSpace(Model.ImageUrl);
+    var currentImg = hasImage ? Url.Content(Model.ImageUrl) : Url.Content("~/images/noimage.jpeg");
+}
+
+<div id="viewArea">
+<div class="mb-2">
+    <strong><i class="bi bi-journal-text me-1"></i> 書名：</strong>
+    <span class="text-dark">@Model.Title</span>
+</div>
+
+<div class="mb-2">
+    <strong><i class="bi bi-person-fill me-1"></i> 作者：</strong>
+    <span class="text-secondary">
+        @(Model.ListingAuthors.Any()
+                ? string.Join(", ", Model.ListingAuthors.Select(a => a.AuthorName)
+                .Where(n => !string.IsNullOrWhiteSpace(n)).Distinct())
+                : "—")
+    </span>
+</div>
+
+<div class="mb-2">
+    <strong><i class="bi bi-tag me-1"></i> 種類：</strong>
+    <span class="text-info">@Model.CategoryName</span>
+</div>
+
+<div class="mb-2">
+    <strong><i class="bi bi-building me-1"></i> 出版社：</strong>
+    <span class="fw-bold text-danger">@Model.PublisherName</span>
+</div>
+
+<div class="mb-2">
+    <strong><i class="bi bi-clipboard-check me-1"></i> 書況：</strong>
+    <span class="fw-bold text-danger">@Model.Condition</span>
+</div>
+
+<div class="mb-2">
+    <strong><i class="bi bi-activity me-1"></i> 現況：</strong>
+    <span class="fw-bold text-danger">@Model.Status</span>
+</div>
+
+<div class="mb-2">
+    <strong><i class="bi bi-image me-1"></i> 圖：</strong>
+    <img src="@(string.IsNullOrWhiteSpace(Model.ImageUrl)
+                       ? Url.Content("~/images/noimage.jpeg")
+                       : Url.Content(Model.ImageUrl))"
+         alt="@Model.Title"
+         width="160" height="200" style="object-fit:cover;"
+         onerror="this.onerror=null;this.src='@Url.Content("~/images/noimage.jpeg")';" />
+</div>
+    <div class="text-end mt-2">
+        <button type="button" class="btn btn-primary" id="btnEdit">編輯</button>
+    </div>
+</div>
+<div id="editArea" class="d-none">
+    <form id="editForm" asp-action="EditInline" asp-controller="Listings" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="ListingId" />
+
+        <div class="mb-2">
+            <label class="form-label">書名</label>
+            <input asp-for="Title" class="form-control form-control-sm" />
+            <span asp-validation-for="Title" class="text-danger"></span>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label">作者</label>
+            <input asp-for="AuthorName" class="form-control form-control-sm" />
+            <span asp-validation-for="AuthorName" class="text-danger"></span>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label">種類</label>
+            <select asp-for="CategoryId" class="form-select form-select-sm" asp-items="ViewBag.CategoryID"></select>
+        </div>
+        <div class="mb-2">
+            <label class="form-label">ISBN</label>
+            <input asp-for="ISBN" class="form-control form-control-sm" />
+            <span asp-validation-for="ISBN" class="text-danger"></span>
+        </div>
+        <div class="mb-2">
+            <label class="form-label">出版社</label>
+            <select asp-for="PublisherId" class="form-select form-select-sm" asp-items="ViewBag.PublisherID"></select>
+        </div>
+        <input type="hidden" asp-for="Status" />
+        <div class="mb-2">
+            <label class="form-label">書況</label>
+            <input asp-for="Condition" class="form-control form-control-sm" />
+        </div>
+        <div class="mb-2"><strong>封面圖片</strong></div>
+
+        <div class="mb-3">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="ImageSource" id="editSrcCloud" value="cloud" checked>
+                <label class="form-check-label" for="editSrcCloud">雲端網址</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="ImageSource" id="editSrcLocal" value="local">
+                <label class="form-check-label" for="editSrcLocal">上傳本機</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="ImageSource" id="editSrcNone" value="none">
+                <label class="form-check-label" for="editSrcNone">不變更</label>
+            </div>
+        </div>
+
+        <!-- 雲端網址 -->
+        <div id="editCloudBox" class="mb-3 @(hasImage ? "d-none" : "")">
+            <label class="form-label">圖片網址</label>
+            <input name="CloudImageUrl" class="form-control" placeholder="https://..." value="@(hasImage? Model.ImageUrl: "")">
+        </div>
+
+        <!-- 本機檔案 -->
+        <div id="editLocalBox" class="mb-3 d-none">
+            <label class="form-label">選擇圖片</label>
+            <input name="LocalImage" type="file" accept="image/*" class="form-control" id="editLocalImageInput">
+        </div>
+
+        <!-- 預覽：用「目前圖片」當起始圖 -->
+        <img id="editPreviewImg"
+             src="@currentImg"
+             data-default="@Url.Content("~/images/noimage.jpeg")"
+             alt="預覽"
+             style="max-width:160px;max-height:200px;object-fit:contain;border:1px solid #ddd;border-radius:6px;padding:4px;">
+
+        <div class="text-end mt-2 d-flex gap-2 justify-content-end">
+			<button type="submit" class="btn btn-success">儲存</button>
+            <button type="button" class="btn btn-danger" id="btnCancel">回上頁</button>
+            
+        </div>
+    </form>
+</div>
+

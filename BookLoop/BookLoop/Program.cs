@@ -10,7 +10,6 @@ using BookLoop.Services.Points;
 using BookLoop.Services.Pricing;
 using BookLoop.Services.Reports;
 using BookLoop.Services.Rules;
-using BorrowSystem.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
@@ -51,7 +50,7 @@ namespace BookLoop
 			builder.Services.AddDbContext<BookSystemContext>(options =>
 				options.UseSqlServer(bookLoopConn ?? appDbConn));
 
-			builder.Services.AddDbContext<BorrowSystemContext>(options =>
+			builder.Services.AddDbContext<BorrowContext>(options =>
 				options.UseSqlServer(bookLoopConn ?? appDbConn));
 
 			builder.Services.AddDbContext<ReportMailDbContext>(options =>
@@ -139,10 +138,7 @@ namespace BookLoop
 
 			builder.Services.AddHttpContextAccessor();
 
-			// BorrowSystem 背景服務
-			builder.Services.AddScoped<ReservationExpiryService>();
-			builder.Services.AddHostedService<ReservationExpiryWorker>();
-			builder.Services.AddScoped<ReservationQueueService>();
+			
 
 			builder.Services.AddScoped<AuthService>();
 			builder.Services.AddScoped<PermissionService>();
