@@ -23,9 +23,14 @@ namespace BookLoop
 		{
 			var builder = WebApplication.CreateBuilder(args);
 
+			builder.Configuration.AddUserSecrets<Program>();
+
 			// ------------------------------
 			// 連線字串讀取（先 BookLoop，退回 Default）
 			// ------------------------------
+			Console.WriteLine("DefaultConnection = " + builder.Configuration.GetConnectionString("DefaultConnection"));
+
+
 			string? defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
 			string? bookLoopConn = builder.Configuration.GetConnectionString("BookLoop");
 			string? appDbConn = !string.IsNullOrWhiteSpace(bookLoopConn) ? bookLoopConn :

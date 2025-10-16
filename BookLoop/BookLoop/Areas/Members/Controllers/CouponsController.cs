@@ -105,5 +105,24 @@ namespace BookLoop.Controllers
 			return RedirectToAction(nameof(Index));
 		}
 
+		[HttpGet("/Members/Coupons/Debug/CouponCategories")]
+		public async Task<IActionResult> DebugCouponCategories()
+		{
+			var data = await _db.CouponCategories
+				.Include(x => x.Coupon)    // 帶出優惠券
+				.Include(x => x.Category)  // 帶出分類
+				.OrderByDescending(x => x.CouponCategoryID)
+				.Take(20)
+				.Select(x => new {
+					x.CouponCategoryID,
+					x.CouponID,
+					CouponName = x.Coupon!.Name,     // 依你實際欄位調整
+					x.CategoryID,
+					x.Category!.CategoryName
+				})
+				.ToListAsync();
+
+			return Json(new { count = data.Count, items = data });
+		}
 	}
 }
