@@ -164,44 +164,79 @@ namespace Account.Controllers
             return Ok(new { ok = true });
         }
 
-        // === 功能勾選 ===
-        [HttpGet]
-        public async Task<IActionResult> GetFeatures(int id)
-        {
-            var all = await _db.Features.AsNoTracking().OrderBy(f => f.FeatureGroup).ThenBy(f => f.SortOrder).ToListAsync();
-            var checkedIds = await _db.PermissionFeatures.AsNoTracking().Where(pf => pf.PermissionID == id).Select(pf => pf.FeatureID).ToListAsync();
-            return Json(new
-            {
-                features = all.Select(f => new { f.FeatureID, f.Code, f.Name, f.FeatureGroup, f.IsPageLevel }).ToList(),
-                checkedIds
-            });
-        }
+		[HttpGet]
+		public async Task<IActionResult> GetFeatures(int id)
+		{
+			try
+			{
+				var features = await _db.Set<Feature>().AsNoTracking()
+					.OrderBy(f => f.FeatureGroup ?? "")   // 可能為 null
+					.ThenBy(f => f.SortOrder)       // 若 SortOrder 可為 null
+					.ThenBy(f => f.Code ?? "")     // 可能為 null
+					.Select(f => new
+					{
+						featureID = f.FeatureID,
+						code = f.Code ?? "",
+						name = f.Name ?? "",
+						featureGroup = f.FeatureGroup ?? "",
+						isPageLevel = f.IsPageLevel
+					})
+					.ToListAsync();
 
-        [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> ToggleFeature(int id, int featureId, bool check)
-        {
-            var row = await _db.PermissionFeatures.FirstOrDefaultAsync(x => x.PermissionID == id && x.FeatureID == featureId);
-            if (check)
-            {
-                if (row == null)
-                {
-                    _db.PermissionFeatures.Add(new PermissionFeature { PermissionID = id, FeatureID = featureId });
-                    await _db.SaveChangesAsync();
-                }
-            }
-            else
-            {
-                if (row != null)
-                {
-                    _db.PermissionFeatures.Remove(row);
-                    await _db.SaveChangesAsync();
-                }
-            }
-            return Ok(new { ok = true });
-        }
+				var checkedIds = await _db.Set<PermissionFeature>().AsNoTracking()
+					.Where(x => x.PermissionID == id)
+					.Select(x => x.FeatureID)
+					.ToListAsync();
 
-        // === VM ===
-        public class IndexVM
+				return Json(new { features, checkedIds });
+			}
+			catch (Exception ex)
+			{
+				Response.StatusCode = 500;
+				return Content(ex.ToString());
+			}
+		}
+
+
+		// === 勾選 / 取消單一功能 ===
+		// 注意：參數名沿用你原本的「check」
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> ToggleFeature(int id, int featureId, bool check)
+		{
+			try
+			{
+				var set = _db.Set<PermissionFeature>();
+				var row = await set.FirstOrDefaultAsync(x => x.PermissionID == id && x.FeatureID == featureId);
+
+				if (check)
+				{
+					if (row == null)
+					{
+						await set.AddAsync(new PermissionFeature { PermissionID = id, FeatureID = featureId });
+						await _db.SaveChangesAsync();
+					}
+				}
+				else
+				{
+					if (row != null)
+					{
+						set.Remove(row);
+						await _db.SaveChangesAsync();
+					}
+				}
+				return Ok();
+			}
+			catch (Exception ex)
+			{
+				Response.StatusCode = 500;
+				return Content(ex.ToString());
+			}
+		}
+
+
+		// === VM ===
+		public class IndexVM
         {
             public string? Keyword { get; set; }
             public int Page { get; set; }

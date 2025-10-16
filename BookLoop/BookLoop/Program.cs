@@ -14,6 +14,9 @@ using BorrowSystem.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;     
+using BookLoop.Authorization;                 
+
 
 namespace BookLoop
 {
@@ -76,25 +79,24 @@ namespace BookLoop
 			builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 				.AddCookie(opt =>
 				{
-					opt.LoginPath = "/Account/Auth/Login";
-					opt.AccessDeniedPath = "/Account/Auth/Denied";
+					opt.LoginPath = "/Auth/Login";
+					opt.AccessDeniedPath = "/Auth/Denied";
 					opt.ExpireTimeSpan = TimeSpan.FromHours(8);
 					opt.SlidingExpiration = true;
 				});
 
+			// --- 授權：全站預設要登入（未標 AllowAnonymous 的頁面） ---
 			builder.Services.AddAuthorization(options =>
 			{
-				foreach (var key in new[]
-				{
-					"Accounts.View","Accounts.Edit",
-					"Permissions.Manage",
-					"Blacklists.View","Blacklists.Manage",
-					"Members.View","Members.Edit"
-				})
-				{
-					options.AddPolicy(key, p => p.RequireClaim("perm", key));
-				}
+				options.FallbackPolicy = new AuthorizationPolicyBuilder()
+					.RequireAuthenticatedUser()
+					.Build();
 			});
+
+			// --- 動態 Policy Provider + 授權處理器（用 perm claim 驗證） ---
+			builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+			builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+
 
 			// ------------------------------
 			// 服務註冊
