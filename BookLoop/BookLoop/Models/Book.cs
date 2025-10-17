@@ -79,4 +79,6 @@ public partial class Book
 	public DateTime? PublishDate { get; set; }
 
 	public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
+
+	public ICollection<BookInventory> Inventories { get; set; } = new List<BookInventory>();
 }

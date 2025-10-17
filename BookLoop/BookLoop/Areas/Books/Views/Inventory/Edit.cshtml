@@ -1,0 +1,49 @@
+﻿@{
+    ViewData["Title"] = $"編輯庫存 - {ViewBag.BookTitle}";
+    var rows = (IEnumerable<dynamic>)ViewBag.Rows;
+}
+
+<h3>@ViewData["Title"]</h3>
+
+<form asp-area="Books" asp-controller="Inventory" asp-action="Save" method="post">
+    <input type="hidden" name="bookId" value="@ViewBag.BookID" />
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th>據點</th>
+                <th style="width: 200px;">在架數 (OnHand)</th>
+                <th style="width: 200px;">已保留 (Reserved)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in rows)
+            {
+                <tr>
+                    <td>
+                        @r.BranchName
+                        <input type="hidden" name="BranchID" value="@r.BranchID" />
+                        <input type="hidden" name="RowVersionBase64" value="@r.RowVersionBase64" />
+                    </td>
+                    <td>
+                        <input class="form-control" type="number" name="OnHand" min="0" value="@r.OnHand" />
+                    </td>
+                    <td>
+                        <input class="form-control" type="number" value="@r.Reserved" disabled />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <button class="btn btn-primary">儲存</button>
+    <a asp-area="Books" asp-controller="Books" asp-action="Index" class="btn btn-secondary">返回清單</a>
+</form>
+
+@if (TempData["ok"] != null)
+{
+    <div class="alert alert-success mt-3">@TempData["ok"]</div>
+}
+@if (TempData["err"] != null)
+{
+    <div class="alert alert-warning mt-3">@TempData["err"]</div>
+}

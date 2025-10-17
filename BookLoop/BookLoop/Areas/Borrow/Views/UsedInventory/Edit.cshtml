@@ -1,0 +1,29 @@
+﻿@{
+    var listing = ViewBag.Listing as BookLoop.Models.Listing;
+    var rows = ViewBag.Rows as IEnumerable<dynamic>;
+    ViewData["Title"] = "二手書庫存維護 - " + listing?.Title;
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<form asp-action="Save" method="post">
+    <input type="hidden" name="listingId" value="@listing.ListingID" />
+    <table class="table table-striped">
+        <thead>
+            <tr><th>據點</th><th>現貨數</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var r in rows)
+            {
+                <tr>
+                    <td>@r.BranchName</td>
+                    <td>
+                        <input type="hidden" name="BranchID" value="@r.BranchID" />
+                        <input type="number" name="OnHand" value="@r.OnHand" min="0" class="form-control" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button type="submit" class="btn btn-primary">儲存變更</button>
+</form>
