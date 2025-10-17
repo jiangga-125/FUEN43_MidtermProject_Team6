@@ -4,6 +4,7 @@ using BookLoop.Services.Reports;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -42,24 +43,21 @@ namespace ReportMail.Areas.ReportMail.Controllers
 		[Route("/ReportMail/Reports")]
 		public async Task<IActionResult> Index()
 		{
-			var defs = _db.ReportDefinitions
-						  .AsNoTracking()
-						  .Where(r => r.IsActive);
+			var activeDefinitions = await _db.ReportDefinitions
+					.AsNoTracking()
+					.Where(r => r.IsActive)
+					.ToListAsync();
 
-			ViewBag.LineReports = await defs
-				.Where(r => r.Category != null && r.Category.ToLower() == "line")
-				.OrderBy(r => r.ReportName)
-				.ToListAsync();
+			static List<ReportDefinition> FilterByCategory(IEnumerable<ReportDefinition> source, string category)
+					=> source
+							.Where(r => !string.IsNullOrWhiteSpace(r.Category)
+									&& string.Equals(r.Category.Trim(), category, StringComparison.OrdinalIgnoreCase))
+							.OrderBy(r => r.ReportName)
+							.ToList();
 
-			ViewBag.BarReports = await defs
-				.Where(r => r.Category != null && r.Category.ToLower() == "bar")
-				.OrderBy(r => r.ReportName)
-				.ToListAsync();
-
-			ViewBag.PieReports = await defs
-				.Where(r => r.Category != null && r.Category.ToLower() == "pie")
-				.OrderBy(r => r.ReportName)
-				.ToListAsync();
+			ViewBag.LineReports = FilterByCategory(activeDefinitions, "line");
+			ViewBag.BarReports = FilterByCategory(activeDefinitions, "bar");
+			ViewBag.PieReports = FilterByCategory(activeDefinitions, "pie");
 
 			return View();
 		}
@@ -159,10 +157,10 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			NormalizeDateRange(from, to, out var start, out var end);
 			if (top <= 0) top = 5;
 
-			var points = await _svc.GetTopBorrowCategoryAsync(start, end, top);
+			var points = await _svc.GetTopBorrowBooksAsync(start, end, top);
 			return Ok(new
 			{
-				title = $"總借閱本數",
+				title = $"總借閱次數",
 				labels = points.Select(p => p.Label).ToArray(),
 				data = points.Select(p => p.Value).ToArray()
 			});
@@ -182,6 +180,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			start = (from ?? end.AddDays(-29)).Date;     // 近 30 天
 			if (start > end) (start, end) = (end, start); // 交換，防呆
 		}
+
 
 		#endregion
 	}
