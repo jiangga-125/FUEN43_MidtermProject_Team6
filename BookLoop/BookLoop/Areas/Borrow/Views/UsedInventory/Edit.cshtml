@@ -1,29 +1,47 @@
-﻿@{
+﻿@model IEnumerable<BorrowSystem.Controllers.UsedInventoryRowVm>
+@{
     var listing = ViewBag.Listing as BookLoop.Models.Listing;
-    var rows = ViewBag.Rows as IEnumerable<dynamic>;
-    ViewData["Title"] = "二手書庫存維護 - " + listing?.Title;
+    ViewData["Title"] = "二手書庫存維護";
 }
 
-<h2>@ViewData["Title"]</h2>
+<h2 class="mb-4">二手書庫存維護</h2>
 
-<form asp-action="Save" method="post">
-    <input type="hidden" name="listingId" value="@listing.ListingID" />
-    <table class="table table-striped">
-        <thead>
-            <tr><th>據點</th><th>現貨數</th></tr>
+<form asp-action="Edit" method="post">
+    <input type="hidden" name="listingID" value="@listing?.ListingID" />
+    <table class="table table-bordered align-middle text-center">
+        <thead class="table-light">
+            <tr>
+                <th>據點名稱</th>
+                <th>可用數量(OnHand)</th>
+                <th>已預約(Reserved)</th>
+            </tr>
         </thead>
         <tbody>
-            @foreach (var r in rows)
+            @foreach (var row in Model)
             {
                 <tr>
-                    <td>@r.BranchName</td>
                     <td>
-                        <input type="hidden" name="BranchID" value="@r.BranchID" />
-                        <input type="number" name="OnHand" value="@r.OnHand" min="0" class="form-control" />
+                        <input type="hidden" name="BranchID" value="@row.BranchID" />
+                        @row.BranchName
                     </td>
+                    <td>
+                        <input type="number" class="form-control text-center" name="OnHand" value="@row.OnHand" min="0" />
+                    </td>
+                    <td>@row.Reserved</td>
                 </tr>
             }
         </tbody>
     </table>
+
     <button type="submit" class="btn btn-primary">儲存變更</button>
+    <a asp-area="Borrow" asp-controller="Listings" asp-action="Index" class="btn btn-secondary">返回</a>
 </form>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success mt-3">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger mt-3">@TempData["Error"]</div>
+}

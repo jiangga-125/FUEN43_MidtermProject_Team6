@@ -13,34 +13,36 @@ namespace BorrowSystem.Controllers
 		// GET: /Borrow/UsedInventory/Edit/5
 		public async Task<IActionResult> Edit(int listingID)
 		{
-			var listing = await _db.Listings.FindAsync(listingID);
+			var listing = await _db.Listings
+				.AsNoTracking()
+				.FirstOrDefaultAsync(l => l.ListingID == listingID);
 			if (listing == null) return NotFound();
 
 			var rows = await _db.Branches
-				.OrderBy(b => b.BranchID)
-				.Select(b => new
+				.OrderBy(b => b.BranchName)
+				.Select(b => new UsedInventoryRowVm
 				{
-					b.BranchID,
-					b.BranchName,
+					BranchID = b.BranchID,
+					BranchName = b.BranchName,
 					OnHand = _db.UsedBookInventories
 								.Where(i => i.ListingID == listingID && i.BranchID == b.BranchID)
 								.Select(i => i.OnHand)
 								.FirstOrDefault(),
 					Reserved = _db.UsedBookInventories
-								.Where(i => i.ListingID == listingID && i.BranchID == b.BranchID)
-								.Select(i => i.Reserved)
-								.FirstOrDefault()
-				}).ToListAsync();
+								  .Where(i => i.ListingID == listingID && i.BranchID == b.BranchID)
+								  .Select(i => i.Reserved)
+								  .FirstOrDefault()
+				})
+				.ToListAsync();
 
 			ViewBag.Listing = listing;
-			ViewBag.Rows = rows;
-			return View();
+			return View(rows);
 		}
 
-		// POST: /Borrow/UsedInventory/Save
+		// POST: /Borrow/UsedInventory/Edit/5
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public async Task<IActionResult> Save(int listingID, int[] BranchID, int[] OnHand)
+		public async Task<IActionResult> Edit(int listingID, int[] BranchID, int[] OnHand)
 		{
 			for (int i = 0; i < BranchID.Length; i++)
 			{
@@ -67,9 +69,25 @@ namespace BorrowSystem.Controllers
 				}
 			}
 
-			await _db.SaveChangesAsync();
-			TempData["ok"] = "庫存已更新";
+			try
+			{
+				await _db.SaveChangesAsync();
+				TempData["Success"] = "二手書庫存已更新。";
+			}
+			catch (DbUpdateConcurrencyException)
+			{
+				TempData["Error"] = "有其他使用者同時修改，請重新整理後再試一次。";
+			}
+
 			return RedirectToAction(nameof(Edit), new { listingID });
 		}
+	}
+
+	public class UsedInventoryRowVm
+	{
+		public int BranchID { get; set; }
+		public string BranchName { get; set; } = "";
+		public int OnHand { get; set; }
+		public int Reserved { get; set; }
 	}
 }
