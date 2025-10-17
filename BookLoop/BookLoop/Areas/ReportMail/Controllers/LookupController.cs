@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using BookLoop.Models;
+using BookLoop.Data;
 
 namespace ReportMail.Areas.ReportMail.Controllers
 {
