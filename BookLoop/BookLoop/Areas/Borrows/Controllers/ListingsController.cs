@@ -27,9 +27,11 @@ namespace BookLoop.Controllers
         {
             return View();
         }
-        public IActionResult IndexFront()
+        public async Task <IActionResult> IndexFront()
         {
-            return View();
+            var bookLoopContext = _context.Listings.Include(l => l.Category).Include(l => l.Publisher);
+            return View(await bookLoopContext.ToListAsync());
+            
         }
         //
         [HttpGet]

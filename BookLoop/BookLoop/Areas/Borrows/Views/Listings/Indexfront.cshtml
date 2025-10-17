@@ -1,317 +1,83 @@
 ﻿@model IEnumerable<BookLoop.Models.Listing>
 
-@section Styles
-{
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" />
-    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.1/css/fixedHeader.dataTables.min.css" />
+@{
+    ViewData["Title"] = "Index";
 }
-<a id="createBtn" href="@Url.Action("Create", "Listings")"
-   class="btn btn-primary btn-sm d-none">
-    <i class="bi bi-plus-lg me-1"></i> 新增書籍
-</a>
 
-<table class="table table-striped table-hover" id="booktable">
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+<h1>前台</h1>
+
+<table class="table">
     <thead>
-        <tr>            
-            <th>書名</th>			            
-            <th>圖</th>
-            <th>作者</th>
-			<th>種類</th>
-            <th>出版社</th>
-            <th>ISBN</th>
-            <th>現況</th>                
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.Title)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ISBN)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Condition)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CreatedAt)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Status)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.IsAvailable)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Category)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Publisher)
+            </th>
             <th>操作欄位</th>
         </tr>
     </thead>
-   
-</table>
-
-<!-- Modal殼:_detail用,在點擊書名超連結後會出現,格式暫時用 -->
-<div class="modal fade" id="listingModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary">
-                <h5 class="modal-title" id="listingModalLabel">書籍詳細資料</h5>
-                <button class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
-            </div>
-            <div class="modal-body" id="listingModalBody"></div>           
-        </div>
-    </div>
-</div>
-
-<!-- 成功/失敗訊息用 Modal -->
-<div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="resultModalTitle">結果</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
-            </div>
-            <div class="modal-body" id="resultModalBody">處理完成</div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">OK</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-@section Scripts {
-    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/fixedheader/3.4.1/js/dataTables.fixedHeader.min.js"></script>
-
-    <script>
-        $(function () {
-          $('#booktable').DataTable({
-            dom: '<"dt-toolbar d-flex align-items-center gap-5 mb-2" l f <"ms-auto dt-actions"> >rtip',
-            ajax: {
-              url: '@Url.Action("GetBooks", "Listings")',
-              type: 'GET',
-              dataSrc: 'data'
-            },
-            columns: [
-              {
-                data: 'title', width: '15%', orderable: false,
-                render: function (data, type, row) {
-                  if (type !== 'display') return data;
-                  const url = '@Url.Action("Details", "Listings", new { id = "__id__" })'.replace('__id__', row.listingId);
-                  const text = $('<div/>').text(data ?? '').html();
-                  return `<a href="${url}" class="detail-link" data-url="${url}" data-title="${text}">${text}</a>`;
-                }
-              },
-              {
-                data: 'imageUrl',
-                render: function (data) {
-                  return `<img src="${data || '/images/noimage.jpeg'}"
-                               onerror="this.onerror=null;this.src='/images/noimage.jpeg';"
-                               style="width:160px;height:200px"/>`;
-                },
-                orderable: false
-              },
-              { data: 'authors', width: '12.5%' },
-              { data: 'category', width: '12.5%' },
-              { data: 'publisher', width: '12.5%' },
-              { data: 'isbn', width: '12.5%' },
-              {
-                data: 'status',
-                render: function (data) {
-                  switch (data) {
-                    case 0: return "可借";
-                    case 1: return "保留中";
-                    case 2: return "借出";
-                    default: return "未知";
-                  }
-                }
-              },
-              {
-                data: 'listingId', orderable: false,
-                render: function (id) {
-                  return `<a href="/Listings/Edit/${id}">Edit</a>`;
-                }
-              }
-            ],
-            pageLength: 10,
-            language: {
-              url: "//cdn.datatables.net/plug-ins/1.13.5/i18n/zh-HANT.json",
-              searchPlaceholder: "輸入書名或作者"
-            },
-            fixedHeader: {
-              header: true,
-              headerOffset: $('.navbar, .navbar-fixed-top, .sticky-top').first().outerHeight() || 0
-            },
-            columnDefs: [{ targets: -1, orderable: false, searchable: false }],
-            order: [[3, 'desc']],
-            lengthMenu: [5, 10, 15],
-            initComplete: function () {
-                $('.dt-toolbar').attr('style', 'gap: 4rem; flex-wrap: wrap;');
-              $('.dt-actions').append($('#createBtn').removeClass('d-none'));
-            }
-          });
-        });
-
-        // 開 Detail：載入 partial → 顯示 modal →  綁事件
-        $(document).on('click', 'a.detail-link', function (e) {
-          e.preventDefault();
-          const url = $(this).data('url');
-          const $body = $('#listingModalBody');
-
-          $body.html('<div class="text-center py-4"><div class="spinner-border" role="status"></div></div>');
-          $body.load(url, function () {
-            new bootstrap.Modal(document.getElementById('listingModal')).show();
-            wireUpDetailModal(); // 必須呼叫
-          });
-        });
-
-                function wireUpDetailModal() {
-          const $body = $('#listingModalBody');
-
-          // --- 先移除舊 handler，避免重複綁定 ---
-          $body.off('click.detail', '#btnEdit');
-          $body.off('click.detail', '#btnCancel');
-          $body.off('submit.detail', '#editForm');
-          $body.off('input.preview',  '#editCloudBox input[name="CloudImageUrl"]');
-          $body.off('change.preview', '#editLocalImageInput');
-          $body.off('change.preview', '#editSrcCloud');
-          $body.off('change.preview', '#editSrcLocal');
-          $body.off('change.preview', '#editSrcNone');
-
-          // --- 顯示/編輯切換 ---
-          $body.on('click.detail', '#btnEdit', function () {
-            $body.find('#viewArea').addClass('d-none');
-            $body.find('#editArea').removeClass('d-none');
-          });
-          $body.on('click.detail', '#btnCancel', function () {
-            $body.find('#editArea').addClass('d-none');
-            $body.find('#viewArea').removeClass('d-none');
-          });
-
-          // --- 送出編輯（AJAX） ---
-          $body.on('submit.detail', '#editForm', function (e) {
-            e.preventDefault();
-            const form = this;
-            const fd = new FormData(form); // 夾帶 AntiForgeryToken
-
-            $.ajax({
-              url: form.action,
-              type: 'POST',
-              data: fd,
-              processData: false,
-              contentType: false,
-              headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                  success: function () {
-          const editEl = document.getElementById('listingModal');
-          const editMd = bootstrap.Modal.getInstance(editEl);
-
-          // 等 listingModal 完全關閉後再顯示結果，避免兩個 modal 疊在一起
-          $(editEl).one('hidden.bs.modal', function () {
-            // 先刷新表格
-            if (window.reloadBooksTable) window.reloadBooksTable();
-            // 再顯示成功提示
-            showResultModal('更新成功', '資料已更新完成。');
-          });
-
-          editMd?.hide();
-        },
-                 // 失敗：兩種情況
-        // (1) 驗證錯誤/回傳部分視圖 → 直接把錯誤表單塞回 modal body（維持在編輯狀態）
-        // (2) 非預期錯誤 → 顯示失敗訊息 modal（不關編輯 modal，方便使用者修正）
-        error: function (xhr) {
-          const ct = xhr.getResponseHeader('Content-Type') || '';
-          if (ct.includes('text/html')) {
-            // 多半是 ModelState invalid，伺服器回傳了含錯誤訊息的 partial
-            $('#listingModalBody').html(xhr.responseText || '<div class="p-3 text-danger">儲存失敗</div>');
-            wireUpDetailModal(); // 內容被替換後重新綁事件
-          } else {
-            // 非 HTML（可能是純訊息/JSON/500）→ 顯示失敗 modal
-            const msg = (xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.error))
-                        || xhr.responseText || `狀態碼：${xhr.status}`;
-            showResultModal('更新失敗', `<div class="text-danger small">${msg}</div>`, { autohide: false });
-          }
-        }
-            });
-          });
-
-          // --- 圖片預覽初始化（雲端 / 本機 / 不變更） ---
-          const $img       = $body.find('#editPreviewImg');
-          const defaultSrc = $img.attr('src') || $img.data('default') || '/images/noimage.jpeg';
-
-          const $srcCloud = $body.find('#editSrcCloud');
-          const $srcLocal = $body.find('#editSrcLocal');
-          const $srcNone  = $body.find('#editSrcNone');
-
-          const $cloudBox   = $body.find('#editCloudBox');
-          const $localBox   = $body.find('#editLocalBox');
-          const $cloudInput = $cloudBox.find('input[name="CloudImageUrl"]');
-          const $localInput = $body.find('#editLocalImageInput');
-
-          let objectUrl = null;
-          function showDefault() {
-            if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
-            $img.off('error');
-            $img.attr('src', defaultSrc);
-          }
-          function previewCloud(url) {
-            url = (url || '').trim();
-            if (!url) { showDefault(); return; }
-            // https 網站禁止載入 http 圖片（混合內容）
-            if (location.protocol === 'https:' && /^http:\/\//i.test(url)) { showDefault(); return; }
-            if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
-            $img.off('error').on('error', () => { $img.off('error'); showDefault(); });
-            $img.attr('src', url);
-          }
-          function previewLocal(file) {
-            if (!file || !file.type?.startsWith('image/')) { showDefault(); return; }
-            if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
-            objectUrl = URL.createObjectURL(file);
-            $img.off('error').on('error', () => { $img.off('error'); showDefault(); });
-            $img.attr('src', objectUrl);
-          }
-                  function toggleBoxes() {
-          if ($srcCloud.is(':checked')) {
-            $cloudBox.removeClass('d-none');
-            $localBox.addClass('d-none');
-
-            const url = String($cloudInput.val() || '').trim();
-            if (url) previewCloud(url); // 有輸入才換預覽
-          } else if ($srcLocal.is(':checked')) {
-            $cloudBox.addClass('d-none');
-            $localBox.removeClass('d-none');
-
-            const f = $localInput[0]?.files?.[0];
-            if (f) previewLocal(f);     // 有選檔才換預覽
-          } else {
-            // none：不變更 → 兩個都隱藏，不動預覽
-            $cloudBox.addClass('d-none');
-            $localBox.addClass('d-none');
-          }
-        }
-
-
-          // 綁定預覽事件（委派到 modal body）
-          $body.on('input.preview',  '#editCloudBox input[name="CloudImageUrl"]', function () {
-            previewCloud(this.value);
-          });
-          $body.on('change.preview', '#editLocalImageInput', function () {
-            const f = this.files?.[0];
-            previewLocal(f);
-          });
-          $body.on('change.preview', '#editSrcCloud', toggleBoxes);
-          $body.on('change.preview', '#editSrcLocal', toggleBoxes);
-          $body.on('change.preview', '#editSrcNone',  toggleBoxes);
-
-          // 初次進入編輯區時也先套用一次顯示邏輯
-          toggleBoxes();
-
-          // --- jQuery Unobtrusive 驗證（如有使用） ---
-          if ($.validator && $.validator.unobtrusive) {
-            const $form = $body.find('#editForm');
-            $form.removeData('validator');
-            $form.removeData('unobtrusiveValidation');
-            $.validator.unobtrusive.parse($form);
-          }
-        }
-                window.reloadBooksTable = function () {
-          const dt = $('#booktable').DataTable();
-          if (dt) dt.ajax.reload(null, false);
-        };
-                // 顯示結果用的小工具
-        function showResultModal(title, bodyHtml, options = {}) {
-          const { autohide = 1500, onHidden = null } = options;
-
-          $('#resultModalTitle').text(title);
-          $('#resultModalBody').html(bodyHtml);
-
-          const modalEl = document.getElementById('resultModal');
-          const modal   = new bootstrap.Modal(modalEl);
-
-          if (onHidden) {
-            $(modalEl).one('hidden.bs.modal', onHidden);
-          }
-          modal.show();
-
-          if (autohide) {
-            setTimeout(() => modal.hide(), autohide);
-          }
-        }
-    </script>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.Title)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ISBN)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Condition)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CreatedAt)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Status)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.IsAvailable)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Category.CategoryName)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Publisher.PublisherName)
+            </td>
+            <td>
+                    @if (item.IsAvailable == true)
+                    {
+                      <a class="btn btn-primary" asp-area="Borrows" asp-controller="Reservations" 
+                      asp-action="BeforeReservation" asp-route-id="@item.ListingID">借書</a>
+                    }
+            </td>
+        </tr>
 }
+    </tbody>
+</table>

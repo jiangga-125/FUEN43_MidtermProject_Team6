@@ -1,0 +1,68 @@
+﻿@using BookLoop.ViewModels
+@model IEnumerable<BookLoop.ViewModels.ReservationsViewModel>
+
+@{
+    ViewData["Title"] = "Index";
+}
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                書籍
+            </th>            
+            <th>
+                預借人
+            </th>
+            <th>
+                書籍現況
+            </th>
+            <th>
+                預約型態
+            </th>
+            <th>
+                逾期日
+            </th>                                                     
+            <th>操作欄位</th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+           <td>
+               @Html.DisplayFor(modelItem => item.BookTitle)
+           </td>
+                <td>
+                    @Html.DisplayFor(modelItem =>item.MemberName)
+                </td>
+
+				<td>
+                    @Html.DisplayFor(modelItem => item.ReservationStatus)
+				</td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.ReservationType)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.ExpiresDay)
+                </td>
+            
+            
+                        
+            <td>
+                    @if (item.ReservationStatus == ReservationStatus.Wait && item.ReservationType == ReservationType.Normal)
+                    //如果狀態是取書預約而且是等待取書情況下,借閱不會出現
+                {
+                        <a href="@(Url.Action("Create", "BorrowRecords",
+                           new { listingId = item.ListingID, memberId = item.MemberID, reservationId = item.ReservationID }))">
+                    借閱
+                </a>
+                    }
+                
+               
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

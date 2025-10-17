@@ -4,7 +4,7 @@
 }
 @{
     var hasImage = !string.IsNullOrWhiteSpace(Model.ImageUrl);
-    var currentImg = hasImage ? Url.Content(Model.ImageUrl) : Url.Content("~/images/noimage.jpeg");
+    var currentImg = hasImage ? Url.Content(Model.ImageUrl) : Url.Content("~/images/borrow/noimage.jpeg");
 }
 
 <div id="viewArea">
@@ -40,17 +40,25 @@
 
 <div class="mb-2">
     <strong><i class="bi bi-activity me-1"></i> 現況：</strong>
-    <span class="fw-bold text-danger">@Model.Status</span>
+        <span class="fw-bold text-danger">
+            @(Model.Status switch
+            {
+                0 => "可借",
+                1 => "保留中",
+                2 => "借出",
+                _ => "未知"
+            })
+        </span>
 </div>
 
 <div class="mb-2">
     <strong><i class="bi bi-image me-1"></i> 圖：</strong>
     <img src="@(string.IsNullOrWhiteSpace(Model.ImageUrl)
-                       ? Url.Content("~/images/noimage.jpeg")
+                       ? Url.Content("~/images/borrow/noimage.jpeg")
                        : Url.Content(Model.ImageUrl))"
          alt="@Model.Title"
          width="160" height="200" style="object-fit:cover;"
-         onerror="this.onerror=null;this.src='@Url.Content("~/images/noimage.jpeg")';" />
+             onerror="this.onerror=null;this.src='@Url.Content("~/images/borrow/noimage.jpeg")';" />
 </div>
     <div class="text-end mt-2">
         <button type="button" class="btn btn-primary" id="btnEdit">編輯</button>
@@ -123,7 +131,7 @@
         <!-- 預覽：用「目前圖片」當起始圖 -->
         <img id="editPreviewImg"
              src="@currentImg"
-             data-default="@Url.Content("~/images/noimage.jpeg")"
+             data-default="@Url.Content("~/images/borrow/noimage.jpeg")"
              alt="預覽"
              style="max-width:160px;max-height:200px;object-fit:contain;border:1px solid #ddd;border-radius:6px;padding:4px;">
 

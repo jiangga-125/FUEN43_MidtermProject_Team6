@@ -25,7 +25,7 @@ public partial class Reservation
 
     public byte ReservationType { get; set; }
 
-    public DateOnly? RequestedPickupDate { get; set; }
+    public DateTime? RequestedPickupDate { get; set; }
 
     public virtual ICollection<BorrowRecord> BorrowRecords { get; set; } = new List<BorrowRecord>();
 

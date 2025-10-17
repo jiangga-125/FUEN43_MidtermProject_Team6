@@ -6,7 +6,7 @@ public class Member
 {
 	public int MemberID { get; set; }
 	public int? UserID { get; set; }
-	public string Account { get; set; } = null!;
+	//public string Account { get; set; } = null!;
 	public string Username { get; set; } = null!;
 	public string? Email { get; set; }
 	public string? Phone { get; set; }

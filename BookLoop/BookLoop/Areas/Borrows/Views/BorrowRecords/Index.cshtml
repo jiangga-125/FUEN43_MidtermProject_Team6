@@ -1,0 +1,95 @@
+﻿@model IEnumerable<BookLoop.Models.BorrowRecord>
+
+@{
+    ViewData["Title"] = "Index";
+}
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+<h1>Index</h1>
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.BorrowDate)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ReturnDate)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.DueDate)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.StatusCode)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CreatedAt)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.UpdatedAt)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ReturnCondition)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Listing)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Member)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Reservation)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.BorrowDate)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ReturnDate)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.DueDate)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.StatusCode)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CreatedAt)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.UpdatedAt)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ReturnCondition)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Listing.ISBN)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Member.Username)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Reservation.ReservationID)
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.RecordID">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.RecordID">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.RecordID">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

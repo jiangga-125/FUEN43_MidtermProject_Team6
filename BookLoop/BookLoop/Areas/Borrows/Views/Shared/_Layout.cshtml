@@ -21,12 +21,22 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">             
+                    <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark"  asp-controller="Listings" asp-action="Index">二手書管理</a>
+                            <a class="nav-link text-dark" asp-controller="Listings" asp-action="Indexfront">二手書前台模擬</a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link text-dark"  asp-controller="Listings" asp-action="Index">二手書後台</a>
+                        </li>
+                        
+                        <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="PenaltyRules" asp-action="Index">罰金規則</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="Reservations" asp-action="Index">預借</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="BorrowRecords" asp-action="Index">借閱紀錄後台</a>
                         </li>
                        
                     </ul>

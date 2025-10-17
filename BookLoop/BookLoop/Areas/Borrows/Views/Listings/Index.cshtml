@@ -74,7 +74,7 @@
                 data: 'title', width: '15%', orderable: false,
                 render: function (data, type, row) {
                   if (type !== 'display') return data;
-                  const url = '@Url.Action("Details", "Listings", new { id = "__id__" })'.replace('__id__', row.listingId);
+                  const url = '@Url.Action("Details", "Listings", new { id = "__id__" })'.replace('__id__', row.listingID);
                   const text = $('<div/>').text(data ?? '').html();
                   return `<a href="${url}" class="detail-link" data-url="${url}" data-title="${text}">${text}</a>`;
                 }
@@ -83,7 +83,7 @@
                 data: 'imageUrl',
                 render: function (data) {
                   return `<img src="${data || '/images/noimage.jpeg'}"
-                               onerror="this.onerror=null;this.src='/images/noimage.jpeg';"
+                               onerror="this.onerror=null;this.src='/images/borrow/noimage.jpeg';"
                                style="width:160px;height:200px"/>`;
                 },
                 orderable: false
@@ -103,12 +103,13 @@
                   }
                 }
               },
-              {
-                data: 'listingId', orderable: false,
+                   {
+                       data: 'listingId', orderable: false,
                 render: function (id) {
                   return `<a href="/Listings/Edit/${id}">Edit</a>`;
+                   } 
                 }
-              }
+
             ],
             pageLength: 10,
             language: {
