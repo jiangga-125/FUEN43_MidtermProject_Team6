@@ -40,6 +40,8 @@ public partial class MemberContext : DbContext
 
     public virtual DbSet<CouponCategory> CouponCategories { get; set; } = default!;
 
+    public virtual DbSet<Category> Categories { get; set; } = default!;
+
 	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 	{
 		// 留空或直接刪掉這個方法（因為 Program.cs 已經設定好）
@@ -317,7 +319,13 @@ public partial class MemberContext : DbContext
                 .HasConstraintName("FK_RuleApps_Members");
         });
 
-		modelBuilder.Entity<Category>(e => { e.ToTable("Categories", "dbo"); });
+		modelBuilder.Entity<Category>(e =>
+		{
+			e.ToTable("Categories", "dbo"); // ← 對方的 schema/表名
+											// 如果 PK 不是慣用名字，可補 e.HasKey(x => x.CategoryID);
+											// 不想讓遷移去動到對方表，可加：
+			e.ToTable(tb => tb.ExcludeFromMigrations());
+		});
 		modelBuilder.Entity<Coupon>(e => { e.ToTable("Coupons", "dbo"); });
 
 		modelBuilder.Entity<CouponCategory>(e =>
