@@ -1,4 +1,5 @@
 using BookLoop.Areas.Reviews;
+using OfficeOpenXml;
 using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services;
@@ -22,16 +23,13 @@ namespace BookLoop
 		public static async Task Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
+            //EPPlus v8 授權設定（學校/非商用）
+            ExcelPackage.License.SetNonCommercialOrganization("FUEN43 Team6");
 
-			builder.Configuration.AddUserSecrets<Program>();
-
-			// ------------------------------
-			// 連線字串讀取（先 BookLoop，退回 Default）
-			// ------------------------------
-			Console.WriteLine("DefaultConnection = " + builder.Configuration.GetConnectionString("DefaultConnection"));
-
-
-			string? defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
+            // ------------------------------
+            // 連線字串讀取（先 BookLoop，退回 Default）
+            // ------------------------------
+            string? defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
 			string? bookLoopConn = builder.Configuration.GetConnectionString("BookLoop");
 			string? appDbConn = !string.IsNullOrWhiteSpace(bookLoopConn) ? bookLoopConn :
 								  !string.IsNullOrWhiteSpace(defaultConn) ? defaultConn : null;
@@ -116,7 +114,7 @@ namespace BookLoop
 
 			builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
 			builder.Services.AddScoped<ReportQueryBuilder>();
-			builder.Services.AddSingleton<IExcelExporter, ClosedXmlExcelExporter>();
+			builder.Services.AddSingleton<IExcelExporter, EpplusExcelExporter>();
 			builder.Services.AddScoped<MailService>();
 
 			builder.Services.AddScoped<ICouponService, CouponService>();

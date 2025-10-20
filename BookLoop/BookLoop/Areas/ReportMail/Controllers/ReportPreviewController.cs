@@ -296,79 +296,79 @@ namespace ReportMail.Areas.ReportMail.Controllers
 				{
 					if (baseKind == "sales")
 					{
-						// 來源：訂單明細 × 訂單 × 書籍
-						var q = from od in _shop.OrderDetails.AsNoTracking()
-								join o in _shop.Orders.AsNoTracking() on od.OrderID equals o.OrderID
-								join b in _shop.Books.AsNoTracking() on od.BookID equals b.BookID
-								where o.OrderDate >= dateFrom && o.OrderDate <= dateTo
-								select new
-								{
-									b.BookID,
-									b.Title,
-									b.CategoryID,
-									Price = (b.SalePrice ?? b.ListPrice),
-									od.Quantity
-								};
+                        // === sales：以「書(BookID)」為單位，在日期+種類下統計銷售本數 ===
+                        {
+                            var q = from od in _shop.OrderDetails.AsNoTracking()
+                                    join o in _shop.Orders.AsNoTracking() on od.OrderID equals o.OrderID
+                                    join b in _shop.Books.AsNoTracking() on od.BookID equals b.BookID
+                                    where o.OrderDate >= dateFrom && o.OrderDate <= dateTo && o.Status != 0
+                                    select new { o.OrderDate, b.CategoryID, b.BookID, Title = b.Title, Qty = od.Quantity };
 
-						if (categoryIds.Any()) q = q.Where(x => categoryIds.Contains(x.CategoryID));
-						if (priceMin.HasValue) q = q.Where(x => x.Price >= priceMin.Value);
-						if (priceMax.HasValue) q = q.Where(x => x.Price <= priceMax.Value);
+                            if (categoryIds.Any()) q = q.Where(x => categoryIds.Contains(x.CategoryID));
+                            if (priceMin.HasValue || priceMax.HasValue)
+                            {
+                                var priced = from x in q
+                                             join b in _shop.Books.AsNoTracking() on x.BookID equals b.BookID
+                                             let Price = (b.SalePrice ?? b.ListPrice)
+                                             where (!priceMin.HasValue || Price >= priceMin.Value)
+                                                && (!priceMax.HasValue || Price <= priceMax.Value)
+                                             select new { x.BookID, x.Title, x.Qty };
+                                q = from x in priced select new { OrderDate = dateFrom, CategoryID = 0, x.BookID, x.Title, Qty = x.Qty };
+                            }
 
-						// TopN（以銷售「本數」排序）
-						var grouped = await q.GroupBy(x => new { x.BookID, x.Title })
-											 .Select(g => new { g.Key.BookID, g.Key.Title, V = g.Sum(x => (decimal)x.Quantity) })
-											 .OrderByDescending(x => x.V)
-											 .ToListAsync();
+                            var grouped = await q.GroupBy(x => new { x.BookID, x.Title })
+                                                 .Select(g => new { g.Key.BookID, Name = g.Key.Title, V = g.Sum(x => (decimal)x.Qty) })
+                                                 .OrderByDescending(x => x.V)
+                                                 .ToListAsync();
 
-						var from = Math.Max(1, rankFrom);
-						var to = Math.Max(from, rankTo);
-						var slice = grouped.Skip(from - 1).Take(to - from + 1)
-										   .Select(x => new { label = x.Title, value = x.V })
-										   .ToList();
+                            var from = Math.Max(1, rankFrom);
+                            var to = Math.Max(from, rankTo);
+                            var slice = grouped.Skip(from - 1).Take(to - from + 1)
+                                               .Select(x => new { label = x.Name, value = x.V })
+                                               .ToList();
 
-						return Json(new
-						{
-							ok = true,
-							title = $"書籍銷售本數",
-							echo = new { category = cat, baseKind, date = new { from = dateFrom, to = dateTo, gran }, categoryIds, price = new { min = priceMin, max = priceMax }, rank = new { from, to } },
-							series = slice
-						});
-					}
-					else if (baseKind == "borrow")
+                            return Json(new
+                            {
+                                ok = true,
+                                title = $"書籍銷售本數",
+                                echo = new { category = cat, baseKind, date = new { from = dateFrom, to = dateTo, gran }, categoryIds, rank = new { from, to } },
+                                series = slice
+                            });
+                        }
+                    }
+                    else if (baseKind == "borrow")
 					{
-						// 來源：借閱紀錄 × Listing（有分類/書名）；若你的資料有出版年，可再 join 書籍
-						var q = from br in _shop.BorrowRecords.AsNoTracking()
-								join l in _shop.Listings.AsNoTracking() on br.ListingID equals l.ListingID
-								where br.BorrowDate >= dateFrom && br.BorrowDate <= dateTo
-								select new { br.BorrowDate, l.CategoryID, l.Title, l.ISBN };
+                        // === borrow：以「上架(ListingID)」為單位，在日期+種類下統計借閱次數 ===
+                        {
+                            var q = from br in _shop.BorrowRecords.AsNoTracking()
+                                    join l in _shop.Listings.AsNoTracking() on br.ListingID equals l.ListingID
+                                    where br.BorrowDate >= dateFrom && br.BorrowDate <= dateTo
+                                    select new { br.BorrowDate, l.CategoryID, l.ListingID, Name = l.Title };
 
-						if (categoryIds.Any()) q = q.Where(x => categoryIds.Contains(x.CategoryID));
+                            if (categoryIds.Any()) q = q.Where(x => categoryIds.Contains(x.CategoryID));
 
-						// 預留借閱書籍出版年，可把下段註解改為實作：
-						// join b in _shop.Books on x.ISBN equals b.ISBN
-						// where (!decadeFrom.HasValue || b.PublishYear >= decadeFrom.Value)
-						//    && (!decadeTo.HasValue   || b.PublishYear <= decadeTo.Value)
+                            var grouped = await q.GroupBy(x => new { x.ListingID, x.Name })
+                                                 .Select(g => new { g.Key.ListingID, Name = g.Key.Name, V = g.Count() })
+                                                 .OrderByDescending(x => x.V)
+                                                 .ToListAsync();
 
-						var grouped = await q.GroupBy(x => x.Title)
-											 .Select(g => new { Title = g.Key, V = g.Count() })
-											 .OrderByDescending(x => x.V)
-											 .ToListAsync();
+                            var from = Math.Max(1, rankFrom);
+                            var to = Math.Max(from, rankTo);
+                            var slice = grouped.Skip(from - 1).Take(to - from + 1)
+                                               .Select(x => new { label = x.Name, value = (decimal)x.V })
+                                               .ToList();
 
-						var from = Math.Max(1, rankFrom);
-						var to = Math.Max(from, rankTo);
-						var slice = grouped.Skip(from - 1).Take(to - from + 1)
-										   .Select(x => new { label = x.Title, value = (decimal)x.V })
-										   .ToList();
+                            return Json(new
+                            {
+                                ok = true,
+                                title = $"書籍借閱本數",
+                                echo = new { category = cat, baseKind, date = new { from = dateFrom, to = dateTo, gran }, categoryIds, rank = new { from, to } },
+                                series = slice
+                            });
+                        }
 
-						return Json(new
-						{
-							ok = true,
-							title = $"書籍借閱本數",
-							echo = new { category = cat, baseKind, date = new { from = dateFrom, to = dateTo, gran }, categoryIds, decade = new { fromYear = decadeFrom, toYear = decadeTo }, rank = new { from, to } },
-							series = slice
-						});
-					}
-					else
+                    }
+                    else
 					{
 						// orders 不支援 bar/pie
 						return Json(new { ok = false, error = "orders 不支援 bar/pie", echo });

@@ -64,6 +64,14 @@ namespace BorrowSystem.Controllers
             // AJAX：只回傳部分
             if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 return PartialView("_IndexTable", list);
+
+			var usedTotals = await _context.UsedBookInventories
+	        .GroupBy(i => i.ListingID)
+	        .Select(g => new { g.Key, Total = g.Sum(x => x.OnHand - x.Reserved) })
+	        .ToDictionaryAsync(x => x.Key, x => x.Total);
+
+			ViewBag.UsedTotals = usedTotals;
+			
             return View(list);
         }
 
@@ -137,12 +145,29 @@ namespace BorrowSystem.Controllers
             await PopulateDropdownsAsync(vm);
             return View(vm);
         }
-    
 
-        // POST: Listings/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
+		// GET: /Borrow/Listings/Availability/5
+		[HttpGet]
+		public async Task<IActionResult> Availability(int id) // id = ListingID
+		{
+			var items = await _context.UsedBookInventories
+				.Where(i => i.ListingID == id)
+				.Select(i => new
+				{
+					branchName = i.Branch.BranchName,
+					available = i.OnHand - i.Reserved
+				})
+				.OrderByDescending(x => x.available)
+				.ToListAsync();
+
+			return Json(items);
+		}
+
+
+		// POST: Listings/Create
+		// To protect from overposting attacks, enable the specific properties you want to bind to.
+		// For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+		[HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ListingsCrudForCreateEdit vm)
         {

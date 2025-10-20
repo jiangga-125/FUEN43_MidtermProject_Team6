@@ -69,6 +69,25 @@ public class ReportDefinitionsController : Controller
             public bool? IsRequired { get; set; }
             public bool? IsActive { get; set; }
         }
+		private bool TryParseFilterDrafts(string? filtersJson, out List<ReportFilterDraft> drafts)
+		{
+			drafts = new List<ReportFilterDraft>();
+			if (string.IsNullOrWhiteSpace(filtersJson))
+				return true;
+
+			try
+			{
+				drafts = JsonSerializer.Deserialize<List<ReportFilterDraft>>(filtersJson) ?? new();
+				return true;
+			}
+			catch (JsonException)
+			{
+				const string message = "自訂篩選條件格式不正確，請確認輸入內容。";
+				ModelState.AddModelError("FiltersJson", message);
+				ModelState.AddModelError(string.Empty, message);
+				return false;
+			}
+		}
 
 		// POST: ReportMail/ReportDefinitions/Create
 		// 把 BaseKind 納入 Bind；時間戳後端自動補；FiltersJson 會展開為多筆 ReportFilter（只寫 ValueJson）
@@ -81,9 +100,8 @@ public class ReportDefinitionsController : Controller
 		{
 			if (!ModelState.IsValid) return View(reportDefinition);
 
-			var now = DateTime.Now;
-			reportDefinition.CreatedAt = now;
-			reportDefinition.UpdatedAt = now;
+			if (!TryParseFilterDrafts(FiltersJson, out var drafts))
+				return View(reportDefinition);
 			//保證這兩個欄位標準化（去空白 + 小寫），空值給預設
 			reportDefinition.Category = (reportDefinition.Category ?? "line").Trim().ToLowerInvariant();
 			reportDefinition.BaseKind = (reportDefinition.BaseKind ?? "sales").Trim().ToLowerInvariant();
@@ -95,54 +113,44 @@ public class ReportDefinitionsController : Controller
 			_context.Add(reportDefinition);
 			await _context.SaveChangesAsync(); // 先產生 ReportDefinitionID
 
-			if (!string.IsNullOrWhiteSpace(FiltersJson))
-			{
-				try
-				{
-					var drafts = JsonSerializer.Deserialize<List<ReportFilterDraft>>(FiltersJson) ?? new();
-					int order = 1;
-					foreach (var d in drafts)
-					{
-						// 友善的 DisplayName 後援（若前端未給）
-						var display = (d.DisplayName ?? d.FieldName) ?? "";
-						if (string.IsNullOrWhiteSpace(display))
-						{
-							display = (d.FieldName ?? "").ToLowerInvariant() switch
-							{
-								"orderdate" => "日期區間",
-								"borrowdate" => "日期區間",
-								"categoryid" => "書籍種類",
-								"saleprice" => "單本價位",
-								"metric" => "指標",
-								"orderstatus" => "訂單狀態",
-								"orderamount" => "單筆訂單金額",
-								_ => "(未命名)"
-							};
-						}
 
-						_context.ReportFilters.Add(new ReportFilter
-						{
-							ReportDefinitionID = reportDefinition.ReportDefinitionID,
-							FieldName = d.FieldName ?? "",
-							DisplayName = display,
-							DataType = d.DataType ?? "text",
-							Operator = d.Operator ?? "eq",
-							ValueJson = d.ValueJson ?? "{}",   //  只寫 ValueJson
-							Options = d.Options ?? "{}",
-							OrderIndex = d.OrderIndex ?? order++,
-							IsRequired = d.IsRequired ?? false,
-							IsActive = d.IsActive ?? true,
-							CreatedAt = now,                   //  後端自動化
-							UpdatedAt = now
-						});
-					}
-					await _context.SaveChangesAsync();
-				}
-				catch (Exception ex)
+			if (drafts.Count > 0)
+			{
+				int order = 1;
+				foreach (var d in drafts)
 				{
-					// 解析錯誤不阻斷主要流程（必要可加 ModelState 顯示）
-					Console.WriteLine(ex);
+					// 友善的 DisplayName 後援（若前端未給）
+					var display = (d.DisplayName ?? d.FieldName) ?? "";
+					if (string.IsNullOrWhiteSpace(display))
+					{
+						display = (d.FieldName ?? "").ToLowerInvariant() switch
+						{
+							"orderdate" => "日期區間",
+							"borrowdate" => "日期區間",
+							"categoryid" => "書籍種類",
+							"saleprice" => "單本價位",
+							"metric" => "指標",
+							"orderstatus" => "訂單狀態",
+							"orderamount" => "單筆訂單金額",
+							_ => "(未命名)"
+						};
+					}
+
+					_context.ReportFilters.Add(new ReportFilter
+					{
+						ReportDefinitionID = reportDefinition.ReportDefinitionID,
+						FieldName = d.FieldName ?? string.Empty,
+						DisplayName = display,
+						DataType = (d.DataType ?? "text").Trim().ToLowerInvariant(),
+						Operator = (d.Operator ?? "eq").Trim().ToLowerInvariant(),
+						ValueJson = d.ValueJson ?? "{}",   //  只寫 ValueJson
+						Options = d.Options ?? "{}",
+						OrderIndex = d.OrderIndex ?? order++,
+						IsRequired = d.IsRequired ?? false,
+						IsActive = d.IsActive ?? true
+					});
 				}
+				await _context.SaveChangesAsync();
 			}
 
 			return RedirectToAction("Index", "Reports", new { area = "ReportMail" });
@@ -169,13 +177,14 @@ public class ReportDefinitionsController : Controller
 		{
 			if (id != reportDefinition.ReportDefinitionID) return NotFound();
 			if (!ModelState.IsValid) return View(reportDefinition);
+			if (!TryParseFilterDrafts(FiltersJson, out var drafts))
+				return View(reportDefinition);
 			// 保證這兩個欄位標準化（去空白 + 小寫），空值給預設
 			reportDefinition.Category = (reportDefinition.Category ?? "line").Trim().ToLowerInvariant();
 			reportDefinition.BaseKind = (reportDefinition.BaseKind ?? "sales").Trim().ToLowerInvariant();
 
 			// 一律啟用，避免被 Index() 過濾掉
 			reportDefinition.IsActive = true;
-			reportDefinition.UpdatedAt = DateTime.Now;// 後端自動刷新
 
 			using var tx = await _context.Database.BeginTransactionAsync();
 			try
@@ -189,10 +198,8 @@ public class ReportDefinitionsController : Controller
 				await _context.SaveChangesAsync();
 
 				// 3)還原新增十的「草稿解析」:逐筆加入新的Filters
-				if (!string.IsNullOrWhiteSpace(FiltersJson))
+				if (drafts.Count > 0)
 				{
-					var drafts = System.Text.Json.JsonSerializer.Deserialize<List<ReportFilterDraft>>(FiltersJson) ?? new();
-					var now = DateTime.Now;
 					int order = 1;
 					foreach (var d in drafts)
 					{
@@ -205,11 +212,10 @@ public class ReportDefinitionsController : Controller
 							DataType = (d.DataType ?? "text").Trim().ToLowerInvariant(),
 							Operator = (d.Operator ?? "eq").Trim().ToLowerInvariant(),
 							ValueJson = d.ValueJson ?? "{}",   // 新版只用 ValueJson
-							Options = d.Options,
+							Options = d.Options ?? "{}",
 							OrderIndex = order++,
-							IsRequired = d.IsRequired ?? false,   // 或 d.IsRequired.GetValueOrDefault(false)                            IsActive = true,
-							CreatedAt = now,
-							UpdatedAt = now
+							IsRequired = d.IsRequired ?? false,   // 或 d.IsRequired.GetValueOrDefault(false)
+							IsActive = true
 						};
 						_context.ReportFilters.Add(f);
 					}
