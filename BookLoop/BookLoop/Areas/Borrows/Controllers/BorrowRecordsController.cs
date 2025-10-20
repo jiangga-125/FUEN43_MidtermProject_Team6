@@ -1,4 +1,5 @@
 ﻿using BookLoop.Models;
+using BookLoop.Services;
 using BookLoop.ViewModels;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using static BookLoop.ViewModels.BorrowRecordsViewModel;
 
 namespace BookLoop.Areas.Borrows.Controllers
 {
@@ -16,17 +18,63 @@ namespace BookLoop.Areas.Borrows.Controllers
     public class BorrowRecordsController : Controller
     {
         private readonly BorrowContext _context;
+        private readonly ReservationQueueService _queueService;
 
-        public BorrowRecordsController(BorrowContext context)
+        public BorrowRecordsController(BorrowContext context, ReservationQueueService queueService)
         {
             _context = context;
+            _queueService = queueService;
         }
 
         // GET: Borrows/BorrowRecords
         public async Task<IActionResult> Index()
         {
-            var borrowContext = _context.BorrowRecords.Include(b => b.Listing).Include(b => b.Member).Include(b => b.Reservation);
-            return View(await borrowContext.ToListAsync());
+            var items = await _context.BorrowRecords
+                .AsNoTracking()
+                .Include(b => b.Listing)
+                .Include(b => b.Member)
+                .Select(b => new BorrowRecordsViewModel
+                {
+                    ListingID = b.ListingID,
+                    RecordID = b.RecordID,
+                    BookTitle = b.Listing.Title,
+                    MemberName = b.Member.Username,
+                    BorrowDate = b.BorrowDate,
+                    ReturnDate = b.ReturnDate,
+                    ReservationID = b.ReservationID,
+                    DueDate = b.DueDate,
+                    StatusCode = b.StatusCode,
+                    CreatedAt = b.CreatedAt,
+                    ReturnCondition = (ReturnConditionEnum)b.ReturnCondition,
+                    //    // 只用 ReservationID 關聯；Complete 一律回傳 null
+                    //ReservationStatus = _context.Reservations
+                    //.Where(r => r.ReservationID == b.ReservationID
+                    //         && r.Status != (byte)ReservationStatus.Complete)   // ← 過濾掉 Complete
+                    //.Select(r => (ReservationStatus?)(byte?)r.Status)
+                    //.FirstOrDefault()
+                    //// 相關子查詢：同一支 SQL 由資料庫端完成，不拉回記憶體
+                    ReservationStatus = _context.Reservations
+                        .Where(r =>
+                            // 三種匹配情境，任何一個成立就納入候選
+                            (b.ReservationID != null && r.ReservationID == b.ReservationID) ||
+                            (r.ListingID == b.ListingID && r.MemberID == b.MemberID) ||
+                            (r.ListingID == b.ListingID)
+                        )
+                        // 排序：先依匹配優先度排序，再依“時間新舊”排序
+                        .OrderByDescending(r =>
+                            b.ReservationID != null && r.ReservationID == b.ReservationID ? 3 :
+                            (r.ListingID == b.ListingID && r.MemberID == b.MemberID) ? 2 :
+                            (r.ListingID == b.ListingID) ? 1 : 0
+                        )
+                        .ThenByDescending(r => r.ReservationID)
+                        .ThenByDescending(r => r.ReservationAt)
+                        .ThenByDescending(r => r.CreatedAt)
+                        .Select(r => (ReservationStatus?)(byte?)r.Status)
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            return View(items);
         }
 
         // GET: Borrows/BorrowRecords/Details/5
@@ -52,9 +100,7 @@ namespace BookLoop.Areas.Borrows.Controllers
 
         // GET: Borrows/BorrowRecords/Create
         public async Task <IActionResult> Create(int listingId,int memberId,int reservationId)
-        {
-            
-
+        {            
             var borrowlist =await  _context.Listings
                 .Where(l=>l.ListingID == listingId)
                 .Select(l => new {l.ListingID,l.Title})
@@ -73,11 +119,11 @@ namespace BookLoop.Areas.Borrows.Controllers
 
             var reservation =  await _context.Reservations
                 .Where(r=>r.ReservationID == reservationId)
-                .Select(r => new {r.ReservationAt } ) .FirstOrDefaultAsync();
+                .Select(r => new {r.RequestedPickupDate } ) .FirstOrDefaultAsync();
 
-            const int DefaultBorrowDays = 3;
-            var previewBorrow = reservation.ReservationAt; // 或 DateTime.Now
-            var previewDue = previewBorrow.AddDays(DefaultBorrowDays);
+            const int DefaultBorrowDays = 3;//預設借閱天數
+            var previewBorrow = DateTime.Now; 
+            var previewDue = previewBorrow.AddDays(DefaultBorrowDays);//預覽的應還日期
             var brvm = new BorrowRecordsViewModel
             {
                 ListingID = borrowlist.ListingID,
@@ -158,102 +204,101 @@ namespace BookLoop.Areas.Borrows.Controllers
             return RedirectToAction("Index","BorrowRecords");
         }
 
-        // GET: Borrows/BorrowRecords/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+
+
+        [HttpGet]
+        public async Task<IActionResult> Return(int id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            var br = await _context.BorrowRecords
+            .Include(x => x.Member)
+            .Include(x => x.Listing)
+            .FirstOrDefaultAsync(x => x.RecordID == id);
 
-            var borrowRecord = await _context.BorrowRecords.FindAsync(id);
-            if (borrowRecord == null)
+            if (br == null)
             {
-                return NotFound();
-            }
-            ViewData["ListingID"] = new SelectList(_context.Listings, "ListingID", "ISBN", borrowRecord.ListingID);
-            ViewData["MemberID"] = new SelectList(_context.Members, "MemberID", "Username", borrowRecord.MemberID);
-            ViewData["ReservationID"] = new SelectList(_context.Reservations, "ReservationID", "ReservationID", borrowRecord.ReservationID);
-            return View(borrowRecord);
-        }
-
-        // POST: Borrows/BorrowRecords/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("RecordID,ListingID,MemberID,ReservationID,BorrowDate,ReturnDate,DueDate,StatusCode,CreatedAt,UpdatedAt,ReturnCondition")] BorrowRecord borrowRecord)
-        {
-            if (id != borrowRecord.RecordID)
-            {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(borrowRecord);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!BorrowRecordExists(borrowRecord.RecordID))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
+                TempData["ErrorMessage"] = "找不到借閱紀錄。";
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["ListingID"] = new SelectList(_context.Listings, "ListingID", "ISBN", borrowRecord.ListingID);
-            ViewData["MemberID"] = new SelectList(_context.Members, "MemberID", "Username", borrowRecord.MemberID);
-            ViewData["ReservationID"] = new SelectList(_context.Reservations, "ReservationID", "ReservationID", borrowRecord.ReservationID);
-            return View(borrowRecord);
+
+            
+
+            var vm = new BorrowRecordsViewModel
+            {
+                RecordID = br.RecordID,
+                ListingID = br.ListingID,
+                MemberName = br.Member.Username,
+                MemberID = br.MemberID,
+                BorrowDate = br.BorrowDate,
+                DueDate = br.DueDate,
+                ReturnDate = DateTime.Now,
+                StatusCode = br.StatusCode,
+                BookTitle = br.Listing.Title,
+                ReturnCondition = (ReturnConditionEnum?)br.ReturnCondition
+            };
+
+            return PartialView("_ReturnConfirm", vm);
+
         }
 
-        // GET: Borrows/BorrowRecords/Delete/5
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var borrowRecord = await _context.BorrowRecords
-                .Include(b => b.Listing)
-                .Include(b => b.Member)
-                .Include(b => b.Reservation)
-                .FirstOrDefaultAsync(m => m.RecordID == id);
-            if (borrowRecord == null)
-            {
-                return NotFound();
-            }
-
-            return View(borrowRecord);
-        }
-
-        // POST: Borrows/BorrowRecords/Delete/5
-        [HttpPost, ActionName("Delete")]
+        // POST: /BorrowRecords/Return/5
+        [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> ReturnConfirmed(int id,
+            [FromForm(Name = "ReturnCondition")] ReturnConditionEnum? ReturnCondition)
         {
-            var borrowRecord = await _context.BorrowRecords.FindAsync(id);
-            if (borrowRecord != null)
+            
+            var br = await _context.BorrowRecords.AsTracking()
+                .FirstOrDefaultAsync(x => x.RecordID == id);
+            if (br == null)
             {
-                _context.BorrowRecords.Remove(borrowRecord);
+                TempData["ErrorMessage"] = "找不到借閱紀錄。";
+                return RedirectToAction(nameof(Index));
+            }            
+            try
+            {
+                var today = DateTime.Today;
+                br.ReturnDate = today;
+                br.StatusCode = (byte)BorrowCondition.Returned;
+                br.UpdatedAt = DateTime.Now;
+                var overdueDays = Math.Max((today - br.DueDate.Date).Days, 0);
+                
+                // 規則：逾期歸還 -> 狀態為 Overdue；未逾期歸還 -> 狀態為 Returned
+                //以returnat做區分,沒做歸還是null
+                br.StatusCode = (byte)(overdueDays > 0 ? BorrowCondition.Overdue
+                                               : BorrowCondition.Returned);
+
+
+                             
+                br.ReturnCondition = ReturnCondition.HasValue ? (byte?)(byte)ReturnCondition.Value : null;
+
+                // 保險起見強制標記有變更
+                _context.Entry(br).Property(x => x.ReturnCondition).IsModified = true;
+
+                //判斷罰金用
+                var promoted = await _queueService.PromoteNextReservationAsync(br.ListingID);
+
+               
+                await _context.SaveChangesAsync();
+
+
+                var msg = overdueDays > 0
+               ? $"已完成歸還（逾期 {overdueDays} 天）。"
+               : "已完成歸還。";
+                TempData["ReturnMessage"] = promoted
+                ? $"{msg} 已通知下一位預約者可取書。"
+                : $"{msg} 無人預約，書籍已開放借閱。";
+
             }
-
-            await _context.SaveChangesAsync();
+            catch (DbUpdateConcurrencyException)
+            {
+                TempData["ErrorMessage"] = "資料已被其他人更新，請重新整理後再試。";
+            }
+            catch (Exception ex)
+            {
+                // 把真正的錯誤露出來，避免「看起來成功但其實失敗」
+                TempData["ErrorMessage"] = "寫入資料庫時發生錯誤：" + ex.Message;
+            }
             return RedirectToAction(nameof(Index));
-        }
-
-        private bool BorrowRecordExists(int id)
-        {
-            return _context.BorrowRecords.Any(e => e.RecordID == id);
         }
     }
 }

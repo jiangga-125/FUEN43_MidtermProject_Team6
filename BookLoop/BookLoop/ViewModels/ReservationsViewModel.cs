@@ -41,10 +41,22 @@ namespace BookLoop.ViewModels
         public IEnumerable<SelectListItem> Members { get; set; } = Enumerable.Empty<SelectListItem>();
 
        
-        [Display(Name = "選擇取書日")]
-        public DateTime? RequestedPickupDate { get; set; }
+        
+      
         [Display(Name = "預約類型")]
         public ReservationType ReservationType { get; set; }
+
+        [Display(Name = "選擇取書日")]
+        [Required]
+        [DataType(DataType.Date)]
+        public DateTime RequestedPickupDate { get; set; }   // 只用到日期部分
+        [Display(Name = "取書時間")]               
+        [Required]
+        [DataType(DataType.Time)]
+        public TimeSpan RequestedPickupTime { get; set; }   // 時間部分
+
+
+
     }
 
     //定義列舉

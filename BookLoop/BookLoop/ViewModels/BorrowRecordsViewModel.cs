@@ -44,10 +44,20 @@ namespace BookLoop.ViewModels
         [Display(Name = "紀錄生成日")]
         public DateTime CreatedAt { get; set; }
 
-        
 
-        
-        
+
+
+        public enum ReturnConditionEnum : byte {
+            [Display(Name = "正常歸還")]
+            Normal = 0,
+            [Display(Name = "損毀")]
+            Damaged = 1,
+            [Display(Name = "遺失")]
+            Lost = 2 }
+
+        public ReturnConditionEnum? ReturnCondition { get; set; }
+
+       
 
         public const int LoanDays = 3;
 

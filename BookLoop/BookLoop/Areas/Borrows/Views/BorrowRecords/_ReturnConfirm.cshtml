@@ -1,0 +1,80 @@
+﻿@using static BookLoop.ViewModels.BorrowRecordsViewModel
+@model BookLoop.ViewModels.BorrowRecordsViewModel
+@{
+    Layout = null; <!-- 重要：Partial 不要套用版面 -->
+}
+  
+
+<form asp-area="Borrows"
+      asp-controller="BorrowRecords"
+      asp-action="ReturnConfirmed"
+      method="post"
+      asp-route-id="@Model.RecordID">
+
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="RecordID" />
+
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <span>
+                <i class="bi bi-book-half me-2"></i> 借閱紀錄詳情
+            </span>
+           
+            
+        </div>
+
+        <div class="card-body">
+            <!-- 基本資訊 -->
+            <div class="mb-2">
+                <strong><i class="bi bi-journal-text me-1"></i> 書名：</strong>
+                <span class="text-dark">@Model.BookTitle</span>
+            </div>
+            <div class="mb-2">
+                <strong><i class="bi bi-person-fill me-1"></i> 借閱人：</strong>
+                <span class="text-secondary">@Model.MemberName</span>
+            </div>
+            <div class="mb-2">
+                <strong><i class="bi bi-calendar-event me-1"></i> 借閱日：</strong>
+                <span class="text-info">@Model.BorrowDate.ToString("yyyy-MM-dd")</span>
+            </div>
+            <div class="mb-3">
+                <strong><i class="bi bi-clock-history me-1"></i> 應還日：</strong>
+                <span class="text-danger fw-bold">@Model.DueDate.ToString("yyyy-MM-dd")</span>
+            </div>
+
+          
+
+            <!-- 歸還欄位（放進同一張 card） -->
+            <div class="row g-3 align-items-center">
+                <div class="col-md-6">
+                    <label class="form-label text-nowrap">
+                        <i class="bi bi-arrow-return-left me-1"></i> 歸還日
+                    </label>
+                    <input value="@DateTime.Today.ToString("yyyy-MM-dd")"
+                           class="form-control bg-light"
+                           readonly />
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="ReturnCondition" class="form-label">還書狀態</label>
+                    <select asp-for="ReturnCondition"
+                            class="form-select"
+                            asp-items="Html.GetEnumSelectList<ReturnConditionEnum>()">
+                        <option value="">-- 請選擇 --</option>
+                    </select>
+                    <span asp-validation-for="ReturnCondition" class="text-danger"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer d-flex justify-content-end gap-2">
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle me-1"></i> 確認歸還
+            </button>
+            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
+                <i class="bi bi-x-circle me-1"></i> 取消
+            </button>
+        </div>
+    </div>
+</form>
+
