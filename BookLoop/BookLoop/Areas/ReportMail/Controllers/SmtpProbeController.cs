@@ -4,6 +4,7 @@ using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ReportMail.Areas.ReportMail.Controllers
 {
@@ -14,7 +15,10 @@ namespace ReportMail.Areas.ReportMail.Controllers
 		private readonly IConfiguration _cfg;
 		public SmtpProbeController(IConfiguration cfg) => _cfg = cfg;
 
-		[HttpGet]
+		#if !DEBUG
+		[Authorize(Policy = "ReportMail.Settings.Manage")]
+		#endif
+        [HttpGet]
 		public async Task<IActionResult> Run(int? port = null)
 		{
 			var s = _cfg.GetSection("Smtp");

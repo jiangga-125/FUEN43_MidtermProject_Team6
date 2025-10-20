@@ -1,6 +1,7 @@
 ﻿@using System.Collections.Generic
 @using System.Linq
 @using BookLoop.Models
+@using Microsoft.AspNetCore.Authorization
 @{
     ViewData["Title"] = "報表主頁";
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -21,6 +22,25 @@
     var barList = ViewBag.BarReports as IEnumerable<ReportDefinition> ?? Enumerable.Empty<ReportDefinition>();
     var pieList = ViewBag.PieReports as IEnumerable<ReportDefinition> ?? Enumerable.Empty<ReportDefinition>();
 }
+@inject Microsoft.AspNetCore.Authorization.IAuthorizationService Authz
+@inject Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Authorization.AuthorizationOptions> AuthzOptions
+@{
+    bool canQuery = false, canXlsx = false, canPdf = false;
+
+    // 報表入口
+    if (AuthzOptions.Value.GetPolicy("ReportMail.Reports.Query") != null)
+        canQuery = (await Authz.AuthorizeAsync(User, "ReportMail.Reports.Query")).Succeeded;
+
+    // 匯出 Excel
+    if (AuthzOptions.Value.GetPolicy("ReportMail.Export.Excel") != null)
+        canXlsx = (await Authz.AuthorizeAsync(User, "ReportMail.Export.Excel")).Succeeded;
+
+    // 匯出 PDF
+    if (AuthzOptions.Value.GetPolicy("ReportMail.Export.Pdf") != null)
+        canPdf = (await Authz.AuthorizeAsync(User, "ReportMail.Export.Pdf")).Succeeded;
+}
+
+
 
 <style>
     .chart-card {
@@ -86,7 +106,12 @@
                                 </div>
                                 <div class="col-12 col-md-auto ms-md-auto">
                                     <div class="row g-2 justify-content-md-end chart-actions">
-                                        <div class="col-6 col-sm-auto"><button id="btnExportPie" class="btn btn-sm btn-success">匯出</button></div>
+                                        @if (canXlsx || canPdf)
+                                        {
+                                            <div class="col-6 col-sm-auto">
+                                                <button id="btnExportPie" class="btn btn-sm btn-success">匯出</button>
+                                            </div>
+                                        }
                                         <div class="col-6 col-sm-auto"><a class="btn btn-sm btn-primary" href="@($"{urlCreateDef}?category=pie")">新增</a></div>
                                         <div class="col-6 col-sm-auto"><button id="btnEditPie" class="btn btn-sm btn-outline-secondary">編輯</button></div>
                                         <div class="col-6 col-sm-auto"><button id="btnDelPie" class="btn btn-sm btn-outline-danger">刪除</button></div>
@@ -122,7 +147,13 @@
                                         </div>
                                         <div class="col-12 col-md-auto ms-md-auto">
                                             <div class="row g-2 justify-content-md-end chart-actions">
-                                                <div class="col-6 col-sm-auto"><button id="btnExportLine" class="btn btn-sm btn-success">匯出</button></div>
+                                                @if (canXlsx || canPdf)
+                                                {
+                                                    <div class="col-6 col-sm-auto">
+                                                        <button id="btnExportLine" class="btn btn-sm btn-success">匯出</button>
+                                                    </div>
+                                                }
+
                                                 <div class="col-6 col-sm-auto"><a class="btn btn-sm btn-primary" href="@($"{urlCreateDef}?category=line")">新增</a></div>
                                                 <div class="col-6 col-sm-auto"><button id="btnEditLine" class="btn btn-sm btn-outline-secondary">編輯</button></div>
                                                 <div class="col-6 col-sm-auto"><button id="btnDelLine" class="btn btn-sm btn-outline-danger">刪除</button></div>
@@ -154,7 +185,13 @@
                                         </div>
                                         <div class="col-12 col-md-auto ms-md-auto">
                                             <div class="row g-2 justify-content-md-end chart-actions">
-                                                <div class="col-6 col-sm-auto"><button id="btnExportBar" class="btn btn-sm btn-success">匯出</button></div>
+                                                @if (canXlsx || canPdf)
+                                                {
+                                                    <div class="col-6 col-sm-auto">
+                                                        <button id="btnExportBar" class="btn btn-sm btn-success">匯出</button>
+                                                    </div>
+                                                }
+
                                                 <div class="col-6 col-sm-auto"><a class="btn btn-sm btn-primary" href="@($"{urlCreateDef}?category=bar")">新增</a></div>
                                                 <div class="col-6 col-sm-auto"><button id="btnEditBar" class="btn btn-sm btn-outline-secondary">編輯</button></div>
                                                 <div class="col-6 col-sm-auto"><button id="btnDelBar" class="btn btn-sm btn-outline-danger">刪除</button></div>

@@ -264,7 +264,8 @@ public class ReportDefinitionsController : Controller
 		// 供主頁下拉載入自訂「折線圖」報表所需參數：Category + BaseKind + Filters（只含 ValueJson）
 		[HttpGet]
 		[ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-		public async Task<IActionResult> DefinitionPayload(int id)
+        [Authorize(Policy = "ReportMail.Reports.Query")]
+        public async Task<IActionResult> DefinitionPayload(int id)
 		{
 			var def = await _context.ReportDefinitions
 				.AsNoTracking()

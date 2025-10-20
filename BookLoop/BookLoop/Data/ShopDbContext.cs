@@ -22,11 +22,24 @@ public partial class ShopDbContext : DbContext
     public virtual DbSet<Order> Orders { get; set; }
 
     public virtual DbSet<OrderDetail> OrderDetails { get; set; }
+    public virtual DbSet<Publisher> Publishers { get; set; }   
+    public virtual DbSet<Supplier> Suppliers { get; set; }     
+    public virtual DbSet<SupplierUser> SupplierUsers { get; set; } 
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<SupplierUser>(e =>
+        {
+            e.ToTable("SUPPLIER_USERS");                      // 表名
+            e.HasKey(x => new { x.SupplierID, x.UserID });    // ← 複合主鍵（關鍵）
 
-		modelBuilder.Entity<Book>(entity =>
+            e.HasOne(x => x.Supplier)
+             .WithMany(s => s.SupplierUsers)
+             .HasForeignKey(x => x.SupplierID);
+        });
+
+        modelBuilder.Entity<Book>(entity =>
         {
             entity.HasKey(e => e.BookID).HasName("PK__Books__3DE0C227772A1333");
 

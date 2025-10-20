@@ -16,7 +16,6 @@ using QuestPDF.Infrastructure;
 namespace ReportMail.Areas.ReportMail.Controllers
 {
 	[Area("ReportMail")]
-	//[Authorize(Roles = "Admin,Marketing,Publisher")]
 	[Route("ReportMail/[controller]/[action]")]
 	public class ReportExportController : Controller
 	{
@@ -30,7 +29,8 @@ namespace ReportMail.Areas.ReportMail.Controllers
 		}
 
 		[HttpPost]
-		public async Task<IActionResult> SendExcel([FromBody] ReportExportDto dto)
+        [Authorize(Policy = "ReportMail.Export.Excel")]
+        public async Task<IActionResult> SendExcel([FromBody] ReportExportDto dto)
 		{
 			// ---- 0) 基本驗證 ----
 			if (dto is null)
@@ -109,7 +109,8 @@ namespace ReportMail.Areas.ReportMail.Controllers
 		}
 
 		[HttpPost]
-		public async Task<IActionResult> SendPdf([FromBody] ReportExportDto dto)
+        [Authorize(Policy = "ReportMail.Export.Pdf")]
+        public async Task<IActionResult> SendPdf([FromBody] ReportExportDto dto)
 		{
 			if (dto is null) return BadRequest("缺少必要參數");
 			if (string.IsNullOrWhiteSpace(dto.To)) return BadRequest("請輸入收件者 Email");

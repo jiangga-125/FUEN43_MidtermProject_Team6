@@ -1,6 +1,7 @@
 ﻿// Areas/ReportMail/Controllers/ReportsController.cs
 using BookLoop.Models;
 using BookLoop.Services.Reports;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -21,8 +22,9 @@ namespace ReportMail.Areas.ReportMail.Controllers
 	/// ※ 自訂報表（ReportDefinition/ReportFilter）另做 CRUD 與對應 API，不混在這支。
 	/// </summary>
 	[Area("ReportMail")]
-	// 讓 URL 穩定為 /ReportMail/Reports/{Action}
-	[Route("ReportMail/[controller]/[action]")]
+    [Authorize(Policy = "ReportMail.Reports.Query")]
+    // 讓 URL 穩定為 /ReportMail/Reports/{Action}
+    [Route("ReportMail/[controller]/[action]")]
 	public class ReportsController : Controller
 	{
 		private readonly IReportDataService _svc;
@@ -34,11 +36,21 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			_db = db;
 		}
 
-		/// <summary>
-		/// 主頁（一次顯示三張預設圖）。
-		/// View：Areas/ReportMail/Views/Reports/Index.cshtml
-		/// </summary>
-		[HttpGet]
+        [HttpGet("/ReportMail/Reports/whoami")]
+        [Authorize] // 只要求登入，不套報表 Policy
+        public IActionResult WhoAmI()
+        {
+            var auth = User?.Identity?.IsAuthenticated ?? false;
+            var name = User?.Identity?.Name ?? "(anonymous)";
+            var claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList();
+            return Json(new { authenticated = auth, name, claims });
+        }
+
+        /// <summary>
+        /// 主頁（一次顯示三張預設圖）。
+        /// View：Areas/ReportMail/Views/Reports/Index.cshtml
+        /// </summary>
+        [HttpGet]
 		// 也讓 /ReportMail/Reports 直接進到這頁（不用寫 /Index）
 		[Route("/ReportMail/Reports")]
 		public async Task<IActionResult> Index()
@@ -70,7 +82,8 @@ namespace ReportMail.Areas.ReportMail.Controllers
 		/// </summary>
 		[HttpGet]
 		[Produces("application/json")]
-		public async Task<IActionResult> Line(
+        [Authorize(Policy = "ReportMail.Reports.Query")]
+        public async Task<IActionResult> Line(
 			DateTime? from,              // 起日（yyyy-MM-dd），未給則 = 今天往前 29 天
 			DateTime? to,                // 迄日（yyyy-MM-dd），未給則 = 今天
 			string granularity = "day",  // day / month / year
@@ -124,7 +137,8 @@ namespace ReportMail.Areas.ReportMail.Controllers
 		/// </summary>
 		[HttpGet]
 		[Produces("application/json")]
-		public async Task<IActionResult> Bar(
+        [Authorize(Policy = "ReportMail.Reports.Query")]
+        public async Task<IActionResult> Bar(
 			DateTime? from,
 			DateTime? to,
 			int top = 10,
@@ -149,7 +163,8 @@ namespace ReportMail.Areas.ReportMail.Controllers
 		/// </summary>
 		[HttpGet]
 		[Produces("application/json")]
-		public async Task<IActionResult> Pie(
+        [Authorize(Policy = "ReportMail.Reports.Query")]
+        public async Task<IActionResult> Pie(
 			DateTime? from,
 			DateTime? to,
 			int top = 5)
