@@ -112,6 +112,11 @@
                                                 <button id="btnExportPie" class="btn btn-sm btn-success">匯出</button>
                                             </div>
                                         }
+                                        @if (!(canXlsx || canPdf))
+                                        {
+                                            <div class="text-muted small">你沒有匯出的權限。</div>
+                                        }
+
                                         <div class="col-6 col-sm-auto"><a class="btn btn-sm btn-primary" href="@($"{urlCreateDef}?category=pie")">新增</a></div>
                                         <div class="col-6 col-sm-auto"><button id="btnEditPie" class="btn btn-sm btn-outline-secondary">編輯</button></div>
                                         <div class="col-6 col-sm-auto"><button id="btnDelPie" class="btn btn-sm btn-outline-danger">刪除</button></div>
@@ -153,6 +158,11 @@
                                                         <button id="btnExportLine" class="btn btn-sm btn-success">匯出</button>
                                                     </div>
                                                 }
+                                                @if (!(canXlsx || canPdf))
+                                                {
+                                                    <div class="text-muted small">你沒有匯出的權限。</div>
+                                                }
+
 
                                                 <div class="col-6 col-sm-auto"><a class="btn btn-sm btn-primary" href="@($"{urlCreateDef}?category=line")">新增</a></div>
                                                 <div class="col-6 col-sm-auto"><button id="btnEditLine" class="btn btn-sm btn-outline-secondary">編輯</button></div>
@@ -191,6 +201,11 @@
                                                         <button id="btnExportBar" class="btn btn-sm btn-success">匯出</button>
                                                     </div>
                                                 }
+                                                @if (!(canXlsx || canPdf))
+                                                {
+                                                    <div class="text-muted small">你沒有匯出的權限。</div>
+                                                }
+
 
                                                 <div class="col-6 col-sm-auto"><a class="btn btn-sm btn-primary" href="@($"{urlCreateDef}?category=bar")">新增</a></div>
                                                 <div class="col-6 col-sm-auto"><button id="btnEditBar" class="btn btn-sm btn-outline-secondary">編輯</button></div>

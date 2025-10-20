@@ -1,16 +1,23 @@
-using Microsoft.AspNetCore.Authorization;
+using BookLoop.Data;
+using BookLoop.Models;
 using BookLoop.Services;
 using BookLoop.Services.Export;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ReportMail.Models.Dto;
-using System;
-using System.Text;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using ReportMail.Models.Dto;
+using System;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+
 
 
 namespace ReportMail.Areas.ReportMail.Controllers
@@ -21,12 +28,17 @@ namespace ReportMail.Areas.ReportMail.Controllers
 	{
 		private readonly IExcelExporter _excel;
 		private readonly MailService _mail;
+        private readonly ReportMailDbContext _db;
+        private readonly ShopDbContext _shop;
 
-		public ReportExportController(IExcelExporter excel, MailService mail)
+
+        public ReportExportController(IExcelExporter excel, MailService mail, ReportMailDbContext db, ShopDbContext shop)
 		{
 			_excel = excel;
 			_mail = mail;
-		}
+            _db = db;
+            _shop = shop;
+        }
 
 		[HttpPost]
         [Authorize(Policy = "ReportMail.Export.Excel")]
@@ -77,10 +89,16 @@ namespace ReportMail.Areas.ReportMail.Controllers
 				valueHeader: valueHeader
 			);
 
-			// ---- 2) 組附件檔名（用 Title）----
-			// 要求：附件名稱 = 下拉選到的自訂報表名稱（= 前端送來的 Title）
-			// 需過濾非法字元，並確保加上 .xlsx 副檔名
-			var safeName = MakeSafeFileName(string.IsNullOrWhiteSpace(dto.Title) ? "report" : dto.Title);
+            const int MAX_BYTES = 15 * 1024 * 1024; // 15MB
+            if (bytes == null || bytes.Length == 0)
+                return BadRequest("無可匯出資料。");
+            if (bytes.Length > MAX_BYTES)
+                return BadRequest("匯出檔案過大，請縮小範圍或改為 PDF。");
+
+            // ---- 2) 組附件檔名（用 Title）----
+            // 要求：附件名稱 = 下拉選到的自訂報表名稱（= 前端送來的 Title）
+            // 需過濾非法字元，並確保加上 .xlsx 副檔名
+            var safeName = MakeSafeFileName(string.IsNullOrWhiteSpace(dto.Title) ? "report" : dto.Title);
 			if (!safeName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
 				safeName += ".xlsx";
 
@@ -105,7 +123,59 @@ namespace ReportMail.Areas.ReportMail.Controllers
 								cancellationToken: HttpContext.RequestAborted
 						);
 
-			return Ok(new { message = "已寄出", to = dto.To, file = safeName });
+            // 1) 取使用者與書商（_shop 已在你的專案中注入）
+            var uid = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var u) ? u : 0;
+            int? supplierId = null;
+            var s = User.FindFirst("supplier")?.Value;
+            if (int.TryParse(s, out var sid)) supplierId = sid;
+            if (supplierId is null)
+                supplierId = await _shop.SupplierUsers
+                    .Where(x => x.UserID == uid)
+                    .Select(x => (int?)x.SupplierID)
+                    .FirstOrDefaultAsync();
+
+            // 2) 封存這次條件（用你目前 DTO 真的有的欄位）
+            // （沒有 DefinitionId/DateRange 沒關係，先不放）
+            var filtersJson = JsonSerializer.Serialize(new
+            {
+                dto.Category,
+                dto.BaseKind,
+                dto.Granularity,
+                dto.ValueMetric,
+                dto.Title,
+                dto.SubTitle
+            });
+
+            // 3) 傳真（檔案雜湊）
+            byte[] checksum;
+            using (var sha = SHA256.Create())
+                checksum = sha.ComputeHash(bytes); // PDF 端點換 pdfBytes
+
+            // 4) B 版欄位完整落庫
+            _db.ReportExportLogs.Add(new ReportExportLog
+            {
+                UserID = uid,
+                SupplierID = supplierId,
+                DefinitionID = dto.DefinitionId,
+                Category = dto.Category ?? "unknown",
+                ReportName = dto.Title ?? dto.Category ?? "報表",
+                Format = "xlsx",            // PDF 端點改 "pdf"
+                TargetEmail = dto.To!,
+                AttachmentFileName = safeName,          // 你剛寄的檔名
+                AttachmentBytes = bytes.Length,      // PDF 端點換 pdfBytes.Length
+                AttachmentChecksum = checksum,
+                Status = 1,                 // 1=Sent
+                RequestedAt = DateTime.UtcNow,   // DbContext.Partial 不會自動幫這兩個欄位帶值
+                ProcessedAt = DateTime.UtcNow,
+                Filters = filtersJson,
+                TraceId = Guid.NewGuid(),
+                PolicyUsed = "ReportMail.Export.Excel",   // PDF 端點改 "ReportMail.Export.Pdf"
+                Ip = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = Request.Headers.UserAgent.ToString()
+            });
+            await _db.SaveChangesAsync();
+
+            return Ok(new { ok = true, message = "已寄出", to = dto.To, file = safeName });
 		}
 
 		[HttpPost]
@@ -203,20 +273,18 @@ namespace ReportMail.Areas.ReportMail.Controllers
 							col.Item().Text(chipsLine).FontSize(9).FontColor(Colors.Grey.Darken1);
 						});
 
-						// 先把 140px 換算成 PDF point（約 105pt）
 						// 以瀏覽器常見的 96dpi 對應：pt = px * 72 / 96
 						const float px = 390f;
-						const float ChartHeightPt = px * 72f / 96f;  // => 105pt
+						const float ChartHeightPt = px * 72f / 96f;  
 
 						page.Content()
 						.Background(Colors.White)       // 白色底，避免透明背景變灰
 						.Column(col =>
 						{
-							if (chartBytes != null)
 								if (chartBytes != null)
 								{
-									// 固定高度 ≈ 140px，等比縮放以「高度」為準
-									col.Item()
+                                // 固定高度 ≈ 390px（約 292.5pt），等比縮放以「高度」為準
+                                col.Item()
 									   .AlignCenter()           // 水平置中整個內容
 									   .Height(ChartHeightPt)   // 固定容器高度（約 140px）
 									   .Image(chartBytes)
@@ -277,7 +345,13 @@ namespace ReportMail.Areas.ReportMail.Controllers
 				pdfBytes = ms.ToArray();
 			}
 
-			var safeName = MakeSafeFileName(dto.Title ?? "report");
+            const int MAX_BYTES = 15 * 1024 * 1024;
+            if (pdfBytes == null || pdfBytes.Length == 0)
+                return BadRequest("無可匯出資料。");
+            if (pdfBytes.Length > MAX_BYTES)
+                return BadRequest("匯出檔案過大，請縮小範圍。");
+
+            var safeName = MakeSafeFileName(dto.Title ?? "report");
 			if (!safeName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)) safeName += ".pdf";
 
 			var subject = dto.Title ?? "報表匯出 (PDF)";
@@ -306,12 +380,74 @@ namespace ReportMail.Areas.ReportMail.Controllers
 				cancellationToken: HttpContext.RequestAborted
 			);
 
-			return Ok(new { ok = true });
-		}
+            // === PDF 落庫（B 版欄位） ===
+            var uid = GetUserId();
+            var supplierId = await GetSupplierIdAsync(uid);
 
-		// ===== helpers =====
 
-		private static string MakeSafeFileName(string name)
+            // 只封存你 DTO 目前真的有的查詢上下文
+            var filtersJson = JsonSerializer.Serialize(new
+            {
+                dto.Category,
+                dto.BaseKind,
+                dto.Granularity,
+                dto.ValueMetric,
+                dto.Title,
+                dto.SubTitle
+            });
+
+            byte[] checksumPdf;
+            using (var sha = SHA256.Create())
+                checksumPdf = sha.ComputeHash(pdfBytes);
+
+            _db.ReportExportLogs.Add(new ReportExportLog
+            {
+                UserID = uid,
+                SupplierID = supplierId,
+                DefinitionID = dto.DefinitionId,     // 你 DTO 已有這個屬性
+                Category = dto.Category ?? "unknown",
+                ReportName = dto.Title ?? dto.Category ?? "報表",
+                Format = "pdf",
+                TargetEmail = dto.To!,
+                AttachmentFileName = safeName,
+                AttachmentBytes = pdfBytes.Length,
+                AttachmentChecksum = checksumPdf,
+                Status = 1,
+                RequestedAt = DateTime.UtcNow,
+                ProcessedAt = DateTime.UtcNow,
+                Filters = filtersJson,
+                TraceId = Guid.NewGuid(),
+                PolicyUsed = "ReportMail.Export.Pdf",
+                Ip = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = Request.Headers.UserAgent.ToString()
+            });
+            await _db.SaveChangesAsync();
+
+            return Ok(new { ok = true, message = "已寄出", to = dto.To, file = safeName });
+
+        }
+
+        // ===== helpers =====
+
+        private int GetUserId()
+            => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
+
+        private async Task<int?> GetSupplierIdAsync(int userId)
+        {
+            // 先從 claim 取
+            var s = User.FindFirst("supplier")?.Value;
+            if (int.TryParse(s, out var sid)) return sid;
+
+            // 沒有則 DB fallback → 這裡要用 _shop.SupplierUsers（不是 _db）
+            return await _shop.SupplierUsers
+                .Where(x => x.UserID == userId)
+                .Select(x => (int?)x.SupplierID)
+                .FirstOrDefaultAsync();
+        }
+
+
+
+        private static string MakeSafeFileName(string name)
 		{
 			// Windows/檔名非法字元過濾
 			var safe = Regex.Replace(name, @"[\\/:*?""<>|]", "_");

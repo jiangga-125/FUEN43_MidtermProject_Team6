@@ -421,7 +421,8 @@
                     ValueMetric: extra?.valueMetric || '', // amount | count | quantity
                     Labels: labels,
                     Values: values,
-                    ChartImageBase64: imgDataUrl           // data:image/png;base64,...
+                    ChartImageBase64: imgDataUrl,           // data:image/png;base64,...
+                    DefinitionId: ddl?.value ? Number(ddl.value) : null // 若有選自訂報表就帶 ID；沒選就傳 null
                 };
             }
 

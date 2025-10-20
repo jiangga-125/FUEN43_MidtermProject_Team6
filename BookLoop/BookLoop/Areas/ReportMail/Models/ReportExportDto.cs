@@ -15,7 +15,9 @@ namespace ReportMail.Models.Dto
 		[Required]
 		public string Title { get; set; } = "報表";
 
-		public string? SubTitle { get; set; }
+        public int? DefinitionId { get; set; }
+
+        public string? SubTitle { get; set; }
 
 		// 既有：資料來源
 		public string? BaseKind { get; set; }     // sales | borrow | orders

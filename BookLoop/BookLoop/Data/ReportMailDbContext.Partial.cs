@@ -43,5 +43,37 @@ namespace BookLoop.Models
                 }
             }
         }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<ReportExportLog>(e =>
+            {
+                e.ToTable("ReportExportLog");
+                e.HasKey(x => x.ExportID);
+
+                e.Property(x => x.Category).HasMaxLength(20).IsRequired();
+                e.Property(x => x.ReportName).HasMaxLength(200);
+                e.Property(x => x.Format).HasMaxLength(10).IsRequired();
+                e.Property(x => x.TargetEmail).HasMaxLength(320).IsRequired();
+                e.Property(x => x.AttachmentFileName).HasMaxLength(260).IsRequired();
+                e.Property(x => x.ErrorMessage).HasMaxLength(1000);
+                e.Property(x => x.PolicyUsed).HasMaxLength(100);
+                e.Property(x => x.Ip).HasMaxLength(45);
+                e.Property(x => x.UserAgent).HasMaxLength(256);
+
+                e.HasIndex(x => new { x.UserID, x.RequestedAt })
+                 .HasDatabaseName("IX_ReportExportLog_User_RequestedAt");
+                e.HasIndex(x => new { x.TargetEmail, x.RequestedAt })
+                 .HasDatabaseName("IX_ReportExportLog_Email_RequestedAt");
+                e.HasIndex(x => new { x.DefinitionID, x.RequestedAt })
+                 .HasDatabaseName("IX_ReportExportLog_Def_RequestedAt");
+                e.HasIndex(x => new { x.SupplierID, x.RequestedAt })
+                 .HasDatabaseName("IX_ReportExportLog_Supplier_RequestedAt");
+
+                // 若你有做 FK，可在這裡補 HasOne(...)。
+            });
+        }
     }
 }
