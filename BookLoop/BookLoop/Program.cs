@@ -132,8 +132,14 @@ namespace BookLoop
                         ctx.User.HasClaim("perm", "ReportMail.Export.Pdf") ||
                         ctx.User.HasClaim("perm", "Reports.Export") ||
                         ctx.User.HasClaim("perm", "ADMIN")));
+				//匯出紀錄
+				options.AddPolicy("ReportMail.Logs.Index", p =>
+					p.RequireAssertion(ctx =>
+						ctx.User.HasClaim("feature", "ReportMail.Logs.Index") ||
+						ctx.User.HasClaim("perm", "ADMIN")
+					));
 
-                foreach (var key in new[]
+				foreach (var key in new[]
 				{
 					"Accounts.View","Accounts.Edit",
 					"Permissions.Manage",

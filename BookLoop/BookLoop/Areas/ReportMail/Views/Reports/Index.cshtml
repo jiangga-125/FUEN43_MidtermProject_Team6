@@ -12,6 +12,8 @@
     var apiPie = Url.Action("Pie", "Reports", new { area = "ReportMail" }) ?? "#";
     var apiDefPayload = Url.Action("DefinitionPayload", "ReportDefinitions", new { area = "ReportMail" }) ?? "#";
     var apiPreview = Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" }) ?? "#";
+    var urlLogs = Url.Action("Index", "ExportLogs", new { area = "ReportMail" }) ?? "#";
+    var canViewLogs = (await Authz.AuthorizeAsync(User, "ReportMail.Logs.Index")).Succeeded;
 
     // 新增/編輯/刪除的頁面
     var urlCreateDef = Url.Action("Create", "ReportDefinitions", new { area = "ReportMail" }) ?? "#";
@@ -81,7 +83,13 @@
 </style>
 
 <div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between">
     <h1 class="mb-0 py-3 page-title">報表主頁</h1>
+        @if (canViewLogs)
+        {
+            <a class="btn btn-sm btn-outline-dark" href="@urlLogs">匯出/寄送紀錄</a>
+        }
+    </div>
 </div>
 
 <div class="container-xxl py-3">

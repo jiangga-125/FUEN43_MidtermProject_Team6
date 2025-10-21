@@ -1,0 +1,133 @@
+﻿@model IEnumerable<BookLoop.Models.ReportExportLog>
+@using System
+
+@{
+    ViewData["Title"] = "匯出紀錄";
+
+    // 讀取查詢參數到本地變數（避免在屬性內混寫 C#）
+    string? vbEmail = ViewBag.Email as string;
+    int page = ViewBag.Page is int p ? p : 1;
+    int size = ViewBag.PageSize is int s ? s : 50;
+    int total = ViewBag.Total is int t ? t : 0;
+    int last = (int)Math.Ceiling((double)total / Math.Max(1, size));
+    if (last < 1) last = 1;
+
+    string? vbFormat = ViewBag.Format as string;
+    byte? vbStatus = ViewBag.Status as byte?;
+    string? vbFrom = ViewBag.From as string;
+    string? vbTo = ViewBag.To as string;
+    int? vbUserId = ViewBag.UserId as int?;
+    int? vbSupplierId = ViewBag.SupplierId as int?;
+    int? vbDefinitionId = ViewBag.DefinitionId as int?;
+
+    // select 的 selected 屬性值（null 時不輸出）
+    string? selFmtXlsx = string.Equals(vbFormat, "xlsx", StringComparison.OrdinalIgnoreCase) ? "selected" : null;
+    string? selFmtPdf = string.Equals(vbFormat, "pdf", StringComparison.OrdinalIgnoreCase) ? "selected" : null;
+
+    string? selSt1 = (vbStatus == (byte)1) ? "selected" : null;
+    string? selSt2 = (vbStatus == (byte)2) ? "selected" : null;
+
+    // 查詢字串工具與分頁連結
+    string q(string k, object? v) => $"{k}={Uri.EscapeDataString(v?.ToString() ?? "")}";
+    var hrefPrev = $"?{q("page", Math.Max(1, page - 1))}&{q("pageSize", size)}";
+    var hrefNext = $"?{q("page", Math.Min(last, page + 1))}&{q("pageSize", size)}";
+}
+
+<h2 class="mb-3">匯出紀錄</h2>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto"><input name="email" class="form-control form-control-sm" placeholder="Email" value="@vbEmail" /></div>
+    <div class="col-auto"><input name="userId" class="form-control form-control-sm" placeholder="UserID" value="@(vbUserId?.ToString())" /></div>
+    <div class="col-auto"><input name="supplierId" class="form-control form-control-sm" placeholder="SupplierID" value="@(vbSupplierId?.ToString())" /></div>
+    <div class="col-auto"><input name="definitionId" class="form-control form-control-sm" placeholder="DefinitionID" value="@(vbDefinitionId?.ToString())" /></div>
+
+    <div class="col-auto">
+        <select name="format" class="form-select form-select-sm">
+            <option value="">(格式)</option>
+            <option value="xlsx" selected="@selFmtXlsx">xlsx</option>
+            <option value="pdf" selected="@selFmtPdf">pdf</option>
+        </select>
+    </div>
+
+    <div class="col-auto">
+        <select name="status" class="form-select form-select-sm">
+            <option value="">(狀態)</option>
+            <option value="1" selected="@selSt1">1 Sent</option>
+            <option value="2" selected="@selSt2">2 Failed</option>
+        </select>
+    </div>
+
+    <div class="col-auto"><input type="date" name="from" class="form-control form-control-sm" value="@vbFrom" /></div>
+    <div class="col-auto"><input type="date" name="to" class="form-control form-control-sm" value="@vbTo" /></div>
+
+    <div class="col-auto">
+        <button class="btn btn-sm btn-primary">查詢</button>
+    </div>
+</form>
+
+<div class="text-muted mb-2">共 @total 筆</div>
+
+<table class="table table-sm table-striped align-middle">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>時間</th>
+            <th>使用者</th>
+            <th>書商</th>
+            <th>定義</th>
+            <th>類別</th>
+            <th>名稱</th>
+            <th>格式</th>
+            <th>Email</th>
+            <th>大小</th>
+            <th>狀態</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var r in Model)
+        {
+            <tr>
+                <td>@r.ExportID</td>
+                <td>@r.RequestedAt.ToString("yyyy/MM/dd HH:mm:ss")</td>
+                <td>@r.UserID</td>
+                <td>@(r.SupplierID?.ToString() ?? "-")</td>
+                <td>@(r.DefinitionID?.ToString() ?? "-")</td>
+                <td>@r.Category</td>
+                <td>@r.ReportName</td>
+                <td>@r.Format</td>
+                <td>@r.TargetEmail</td>
+                <td>@(r.AttachmentBytes / 1024) KB</td>
+                <td>@r.Status</td>
+                <td>
+                    <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", new { id = r.ExportID })">詳</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@{
+    // 重新計算最後一頁，避免 size 變更時出錯
+    last = (int)Math.Ceiling((double)total / Math.Max(1, size));
+    if (last < 1) last = 1;
+
+    hrefPrev = $"?{q("page", Math.Max(1, page - 1))}&{q("pageSize", size)}";
+    hrefNext = $"?{q("page", Math.Min(last, page + 1))}&{q("pageSize", size)}";
+}
+
+<nav>
+    <ul class="pagination pagination-sm">
+        <li class="page-item @(page <= 1 ? "disabled" : null)">
+            <a class="page-link" href="@hrefPrev">«</a>
+        </li>
+
+        <li class="page-item disabled">
+            <span class="page-link">@(page) / @(last)</span>
+        </li>
+
+        <li class="page-item @(page >= last ? "disabled" : null)">
+            <a class="page-link" href="@hrefNext">»</a>
+        </li>
+    </ul>
+</nav>
