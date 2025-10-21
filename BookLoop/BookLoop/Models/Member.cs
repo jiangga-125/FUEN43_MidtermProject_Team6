@@ -1,4 +1,5 @@
 ﻿using BookLoop.Models;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BookLoop;
 
@@ -7,6 +8,9 @@ public class Member
 	public int MemberID { get; set; }
 	public int? UserID { get; set; }
 	//public string Account { get; set; } = null!;
+	
+	[NotMapped]
+	public string Account { get; set; } = null!;
 	public string Username { get; set; } = null!;
 	public string? Email { get; set; }
 	public string? Phone { get; set; }

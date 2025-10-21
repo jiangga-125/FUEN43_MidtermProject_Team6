@@ -33,6 +33,12 @@ public partial class BorrowContext : DbContext
 
     public virtual DbSet<Reservation> Reservations { get; set; }
 
+	public virtual DbSet<UsedBookInventory> UsedBookInventories { get; set; } = null!;
+	public virtual DbSet<Branch> Branches { get; set; } = null!;
+
+	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        => optionsBuilder.UseSqlServer("Name=ConnectionStrings:BookLoop");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<BorrowRecord>(entity =>
@@ -253,7 +259,37 @@ public partial class BorrowContext : DbContext
                 .HasConstraintName("FK_Reservations_Members");
         });
 
-        OnModelCreatingPartial(modelBuilder);
+		modelBuilder.Entity<UsedBookInventory>(e =>
+		{
+			e.ToTable("UsedBookInventory");
+			e.HasKey(x => x.InventoryID);
+			e.HasIndex(x => new { x.ListingID, x.BranchID }).IsUnique();
+			e.Property(x => x.OnHand).HasDefaultValue(0);
+			e.Property(x => x.Reserved).HasDefaultValue(0);
+			e.Property(x => x.RowVersion).IsRowVersion();
+			e.Property(x => x.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+
+			e.HasOne(x => x.Listing)
+				.WithMany()
+				.HasForeignKey(x => x.ListingID)
+				.OnDelete(DeleteBehavior.NoAction);
+
+			e.HasOne(x => x.Branch)
+				.WithMany()
+				.HasForeignKey(x => x.BranchID)
+				.OnDelete(DeleteBehavior.NoAction);
+		});
+
+		modelBuilder.Entity<Branch>(e =>
+		{
+			e.ToTable("Branches");
+			e.HasKey(b => b.BranchID);
+			e.Property(b => b.IsActive).HasDefaultValue(true);
+			e.Property(b => b.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+			e.Property(b => b.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+		});
+
+		OnModelCreatingPartial(modelBuilder);
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
