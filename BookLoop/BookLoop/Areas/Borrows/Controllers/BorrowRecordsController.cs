@@ -38,6 +38,7 @@ namespace BookLoop.Areas.Borrows.Controllers
                     ListingID = b.ListingID,
                     RecordID = b.RecordID,
                     BookTitle = b.Listing.Title,
+                    MemberID = b.MemberID,//為了罰金補上
                     MemberName = b.Member.Username,
                     BorrowDate = b.BorrowDate,
                     ReturnDate = b.ReturnDate,

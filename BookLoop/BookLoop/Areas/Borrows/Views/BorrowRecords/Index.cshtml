@@ -84,9 +84,10 @@
                     }
                     @if ((byte?)item.ReturnCondition is 1 or 2)
                     {
-                     
-                        <a class="btn btn-danger" asp-controller="PenaltyTransactions" asp-action="Create">還書罰金</a>
-                        
+
+                        <a class="btn btn-danger" asp-area="Borrows" asp-controller="PenaltyTransactions" 
+                        asp-route-memberID="@item.MemberID" asp-route-recordID="@item.RecordID" asp-action="Create">還書罰金</a>
+                       
                     }
 
             </td>
