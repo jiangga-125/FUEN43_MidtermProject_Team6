@@ -38,12 +38,17 @@ public partial class MemberContext : DbContext
 
     public virtual DbSet<RuleApplication> RuleApplications { get; set; }
 
+    public virtual DbSet<CouponCategory> CouponCategories { get; set; } = default!;
+
+    public virtual DbSet<Category> Categories { get; set; } = default!;
 
 	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=(localdb)\\MSSQLLocalDB;Database=BookLoop;Trusted_Connection=True;TrustServerCertificate=True;");
+	{
+		// 留空或直接刪掉這個方法（因為 Program.cs 已經設定好）
+	}
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+
+	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Coupon>(entity =>
         {
@@ -313,6 +318,38 @@ public partial class MemberContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_RuleApps_Members");
         });
+
+		modelBuilder.Entity<Category>(e =>
+		{
+			e.ToTable("Categories", "dbo"); // ← 對方的 schema/表名
+											// 如果 PK 不是慣用名字，可補 e.HasKey(x => x.CategoryID);
+											// 不想讓遷移去動到對方表，可加：
+			e.ToTable(tb => tb.ExcludeFromMigrations());
+		});
+		modelBuilder.Entity<Coupon>(e => { e.ToTable("Coupons", "dbo"); });
+
+		modelBuilder.Entity<CouponCategory>(e =>
+		{
+			e.ToTable("CouponCategories", "dbo");
+			e.HasKey(x => x.CouponCategoryID);
+
+			e.HasOne(x => x.Coupon)
+			 .WithMany(c => c.CouponCategories)
+			 .HasForeignKey(x => x.CouponID)
+			 .OnDelete(DeleteBehavior.Cascade);
+
+			e.HasOne(x => x.Category)
+			 .WithMany(cat => cat.CouponCategories)
+			 .HasForeignKey(x => x.CategoryID)
+			 .OnDelete(DeleteBehavior.Cascade);
+
+			e.HasIndex(x => x.CouponID).HasDatabaseName("IX_CouponCategories_CouponID");
+			e.HasIndex(x => x.CategoryID).HasDatabaseName("IX_CouponCategories_CategoryID");
+
+			e.HasIndex(x => new { x.CouponID, x.CategoryID })
+			 .IsUnique()
+			 .HasDatabaseName("UX_CouponCategories_Coupon_Category");
+		});
 
 
 		OnModelCreatingPartial(modelBuilder);
