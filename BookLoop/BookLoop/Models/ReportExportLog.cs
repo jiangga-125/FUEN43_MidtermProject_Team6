@@ -36,8 +36,10 @@ namespace BookLoop.Models
         public string? Ip { get; set; }
         public string? UserAgent { get; set; }
 
-        // （選做）若你建立了 FK 再加導覽屬性
-        // public ReportDefinition? Definition { get; set; }
-        // public Supplier? Supplier { get; set; }
-    }
+		public string? SnapshotJson { get; set; }
+
+		// （選做）若你建立了 FK 再加導覽屬性
+		// public ReportDefinition? Definition { get; set; }
+		// public Supplier? Supplier { get; set; }
+	}
 }

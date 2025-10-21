@@ -1,12 +1,14 @@
 ﻿@model IEnumerable<ExportLogVM>
 @{
     ViewData["Title"] = "匯出/寄送紀錄";
+    Layout = "~/Views/Shared/_Layout.cshtml";
     string Badge(string fmt) => fmt == "xlsx" ? "success" : (fmt == "pdf" ? "danger" : "secondary");
     string StatusText(byte s) => s switch { 1 => "Sent", 2 => "Failed", _ => s.ToString() };
     string StatusBadge(byte s) => s switch { 1 => "success", 2 => "danger", _ => "secondary" };
     var sizeMap = ViewBag.SizeMap as IDictionary<long, string>; // 由 Controller 提供：ExportID -> "x.xx KB/MB"
 }
 
+<div class="container-xxl px-3 px-md-4 px-xxl-5 py-3">
 <h2 class="mb-3">匯出/寄送紀錄</h2>
 
 <form method="get" class="row g-2 mb-3">
@@ -77,3 +79,4 @@
         }
     </tbody>
 </table>
+<</div>
