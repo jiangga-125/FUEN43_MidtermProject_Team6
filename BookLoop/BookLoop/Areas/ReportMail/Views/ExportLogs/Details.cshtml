@@ -1,31 +1,47 @@
-﻿@model BookLoop.Models.ReportExportLog
+﻿@model ExportLogVM
 @{
-	ViewData["Title"] = "匯出紀錄詳情";
+    ViewData["Title"] = "匯出紀錄詳情";
+    string StatusText(byte s) => s switch { 1 => "Sent", 2 => "Failed", _ => s.ToString() };
+    string StatusBadge(byte s) => s switch { 1 => "success", 2 => "danger", _ => "secondary" };
+    string FullHex(byte[]? b) => b == null ? "-" : BitConverter.ToString(b).Replace("-", "").ToLowerInvariant();
+    string sizeText = ViewBag.SizeText as string ?? (Model.AttachmentBytes + " B"); // 由 Controller 提供的可讀大小
+    string filtersPretty = ViewBag.FiltersPretty as string ?? "(empty)";
 }
+
 <h3 class="mb-3">匯出紀錄 #@Model.ExportID</h3>
-<dl class="row">
-	<dt class="col-sm-2">RequestedAt</dt>
-	<dd class="col-sm-10">@Model.RequestedAt</dd>
-	<dt class="col-sm-2">ProcessedAt</dt>
-	<dd class="col-sm-10">@Model.ProcessedAt</dd>
-	<dt class="col-sm-2">UserID</dt>
-	<dd class="col-sm-10">@Model.UserID</dd>
-	<dt class="col-sm-2">SupplierID</dt>
-	<dd class="col-sm-10">@Model.SupplierID</dd>
-	<dt class="col-sm-2">DefinitionID</dt>
-	<dd class="col-sm-10">@Model.DefinitionID</dd>
-	<dt class="col-sm-2">Email</dt>
-	<dd class="col-sm-10">@Model.TargetEmail</dd>
-	<dt class="col-sm-2">File</dt>
-	<dd class="col-sm-10">@Model.AttachmentFileName (@(Model.AttachmentBytes / 1024) KB)</dd>
-	<dt class="col-sm-2">Status</dt>
-	<dd class="col-sm-10">@Model.Status @Model.ErrorMessage</dd>
-	<dt class="col-sm-2">IP</dt>
-	<dd class="col-sm-10">@Model.Ip</dd>
-	<dt class="col-sm-2">UA</dt>
-	<dd class="col-sm-10">@Model.UserAgent</dd>
 
-</dl>
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">基本</div>
+            <div class="card-body">
+                <div>時間：<span title="@Model.RequestedAt.ToString("O")">@Model.RequestedAt:yyyy/MM/dd HH:mm:ss</span></div>
+                <div>
+                    格式：
+                    <span class="badge bg-@(Model.Format == "xlsx" ? "success" : (Model.Format == "pdf" ? "danger" : "secondary"))">@Model.Format</span>
+                    狀態：<span class="badge bg-@StatusBadge(Model.Status)">@StatusText(Model.Status)</span>
+                </div>
+                <div>Email：<a href="mailto:@Model.TargetEmail">@Model.TargetEmail</a></div>
+                <div>檔案：<code>@Model.AttachmentFileName</code>（@sizeText）</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">來源</div>
+            <div class="card-body">
+                <div>使用者：@Model.UserID</div>
+                <div>書商：@(Model.SupplierID?.ToString() ?? "-")</div>
+                <div>定義：@(Model.DefinitionID?.ToString() ?? "-")</div>
+                <div>名稱：@Model.ReportName <span class="text-muted">(@Model.Category)</span></div>
+                <div class="small text-muted">Policy：@Model.PolicyUsed</div>
+                <div class="small text-muted">IP：@Model.Ip</div>
+                <div class="small text-muted">UA：@Model.UserAgent</div>
+            </div>
+        </div>
+    </div>
+</div>
 
 
-<a class="btn btn-sm btn-secondary" href="@Url.Action("Index")">回列表</a>
+
+<a class="btn btn-sm btn-secondary mt-3" href="@Url.Action("Index")">回列表</a>
