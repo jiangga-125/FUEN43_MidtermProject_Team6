@@ -5,6 +5,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BookLoop.Data;
+using BookLoop.Models;
 
 namespace ReportMail.Areas.ReportMail.Controllers
 {
