@@ -1,4 +1,6 @@
 ﻿using BookLoop.Models;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using System.ComponentModel.DataAnnotations;
 
 namespace BookLoop.ViewModels
@@ -19,14 +21,19 @@ namespace BookLoop.ViewModels
         public decimal? totalMoney { get; set; }//新增欄位 總金額
         public DateTime? PaidAt { get; set; }
 
-        public string ReasonCode { get; set; }
-        [Required(ErrorMessage = "ChargeType 為必填")]
-        public string ChargeType { get; set; }
+       
+
         [Required(ErrorMessage = "UnitAmount 為必填")]
         [Range(1, int.MaxValue, ErrorMessage = "UnitAmount 必須大於 0")]
         public int UnitAmount { get; set; }
 
-        public string MemberName { get; set; }
 
+        //這三個僅用來顯示用
+        [BindNever, ValidateNever]
+        public string MemberName { get; set; }
+        [BindNever, ValidateNever]
+        public string ReasonCode { get; set; }
+        [BindNever, ValidateNever]
+        public string ChargeType { get; set; }
     }
 }

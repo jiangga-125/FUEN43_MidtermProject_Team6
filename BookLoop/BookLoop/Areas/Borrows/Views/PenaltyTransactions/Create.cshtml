@@ -7,21 +7,30 @@
 
 <div class="row">
     <div class="col-md-4">
-        <form asp-action="Create" method="post">           
+        <form asp-action="Create" method="post">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <!-- 真正提交用的 hidden -->
             <input type="hidden" asp-for="MemberID" />
             <input type="hidden" asp-for="RecordID" />
-                <div class="form-group mb-3 d-flex gap-2 align-items-center">
-                <label asp-for="RecordID" class="form-label text-nowrap text-center">借閱紀錄ID</label>
-                <input asp-for="RecordID" class ="form-control" readonly />
-            </div>
+            <input type="hidden" asp-for="UnitAmount" />  @* 讓 JS 寫入目前單價 *@
+
             <div class="form-group mb-3 d-flex gap-2 align-items-center">
-                <label asp-for="MemberName" class="form-label text-nowrap text-center">借閱人姓名</label>
-                <input asp-for="MemberName" class="form-control" readonly />
+                <label class="form-label text-nowrap text-center">借閱紀錄ID</label>
+                <input class="form-control" value="@Model.RecordID" disabled />
             </div>
+
+            <div class="form-group mb-3 d-flex gap-2 align-items-center">
+                <label class="form-label text-nowrap text-center">借閱人姓名</label>
+                <input class="form-control" value="@Model.MemberName" disabled />
+            </div>
+
             <div class="form-group mb-3 d-flex gap-2 align-items-center">
                 <label asp-for="RuleID" class="form-label text-nowrap text-center">規則</label>
-                <select asp-for="RuleID" class ="form-control" asp-items="ViewBag.RuleID"></select>
+                <select asp-for="RuleID" class="form-control" asp-items="ViewBag.RuleID">
+                    <option value="">-- 請選擇 --</option>
+                </select>
+                <span asp-validation-for="RuleID" class="text-danger"></span>
             </div>
 
             <div class="form-group mb-3 d-flex gap-2 align-items-center">
@@ -31,15 +40,17 @@
             </div>
 
             <div class="form-group mb-3 d-flex gap-2 align-items-center">
-                <label asp-for="UnitAmount" class="form-label text-nowrap text-center">單價</label>
-                <input asp-for="UnitAmount" class="form-control" readonly />
-                <span asp-validation-for="UnitAmount" class="text-danger"></span>
+                <label class="form-label text-nowrap text-center">單價</label>
+                <!-- 顯示用，不提交 -->
+                <input class="form-control" id="UnitAmountDisplay" value="@Model.UnitAmount" disabled />
             </div>
+
             <div class="form-group mb-3 d-flex gap-2 align-items-center">
                 <label asp-for="PaidAt" class="form-label text-nowrap text-center">繳清時間</label>
                 <input asp-for="PaidAt" class="form-control" type="date" />
                 <span asp-validation-for="PaidAt" class="text-danger"></span>
             </div>
+
             <div class="form-group">
                 <input type="submit" value="設定罰金紀錄" class="btn btn-primary" />
             </div>
@@ -48,30 +59,31 @@
 </div>
 
 <div>
-    <a asp-controller="BorrowRecords" asp-action="Index">Back to List</a>
+    <a class="btn btn-danger" asp-controller="BorrowRecords" asp-action="Index">回借閱紀錄</a>
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 
     <script>
-        // 從後端拿到 { RuleID: UnitAmount } 的對照表
-        const prices = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.RulePrices));
+        // 以 Dictionary<int, decimal> 或 <int,int> 序列化成 { "1": 50, "2": 80, ... }
+        const prices = @Html.Raw(System.Text.Json.JsonSerializer.Serialize((object)ViewBag.UnitAmount));
 
-        const sel = document.getElementById('RuleID');
-        const amount = document.getElementById('UnitAmount');
+        const sel = document.getElementById('@Html.IdFor(m => m.RuleID)');
+        const unitHidden = document.getElementById('@Html.IdFor(m => m.UnitAmount)');
+        const unitDisplay = document.getElementById('UnitAmountDisplay');
 
         function updatePrice() {
-          const id = sel.value;
-          if (prices && prices.hasOwnProperty(id)) {
-            amount.value = prices[id];
-          } else {
-            amount.value = '';
-          }
+          const id = sel?.value;
+          const val = (id && prices && prices[id] != null) ? prices[id] : '';
+          // 顯示與提交都同步
+          if (unitDisplay) unitDisplay.value = val;
+          if (unitHidden) unitHidden.value = val;
         }
 
-        // 初始載入和每次變更都同步單價
         document.addEventListener('DOMContentLoaded', updatePrice);
-        sel.addEventListener('change', updatePrice);
+        sel?.addEventListener('change', updatePrice);
     </script>
 }

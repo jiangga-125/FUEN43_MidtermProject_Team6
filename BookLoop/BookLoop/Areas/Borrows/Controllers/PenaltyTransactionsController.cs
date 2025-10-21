@@ -23,36 +23,28 @@ namespace BookLoop.Controllers
         // GET: PenaltyTransactions
         public async Task<IActionResult> Index()
         {
-            var bookLoopContext = _context.PenaltyTransactions.Include(p => p.Member).Include(p => p.Record).Include(p => p.Rule);
-            return View(await bookLoopContext.ToListAsync());
-        }
-
-
-
-
-
-
-        // GET: PenaltyTransactions/Details/5
-        public async Task<IActionResult> Details(int? id)
-        {
-            if (id == null)
+            var items = await _context.PenaltyTransactions
+            .AsNoTracking()
+            .Include(x => x.Member)
+            .Include(x => x.Rule) // 假設 Rule 內含 ReasonCode/ChargeType/UnitAmount
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new PenaltyTransactionsViewModel
             {
-                return NotFound();
-            }
+                PenaltyID = x.PenaltyID,
+                MemberName = x.Member.Username,
+                ReasonCode = x.Rule.ReasonCode,
+                ChargeType = x.Rule.ChargeType,
+                UnitAmount = x.Rule.UnitAmount,
+                Quantity = x.Quantity,
+                PaidAt = x.PaidAt,
+                totalMoney=x.Quantity*x.Rule.UnitAmount//計算總價
 
-            var penaltyTransaction = await _context.PenaltyTransactions
-                .Include(p => p.Member)
-                .Include(p => p.Record)
-                .Include(p => p.Rule)
-                .FirstOrDefaultAsync(m => m.PenaltyID == id);
-            if (penaltyTransaction == null)
-            {
-                return NotFound();
-            }
+            })
+            .ToListAsync();
 
-            return View(penaltyTransaction);
+            return View(items);
         }
-
+      
         // GET: PenaltyTransactions/Create
         public async Task<IActionResult> Create(int memberID,int recordID)
         {
@@ -73,7 +65,7 @@ namespace BookLoop.Controllers
                 return RedirectToAction("Index", "BorrowRecords");
             }
             var rules = _context.PenaltyRules
-            .Select(r => new { r.RuleID, r.ReasonCode, r.UnitAmount,r.ChargeType })
+            .Select(r => new { r.RuleID, r.ReasonCode, r.UnitAmount })
             .ToList();
             // 排除的規則:逾期
             var excludedRuleIds = new[] { 4 }; 
@@ -91,9 +83,18 @@ namespace BookLoop.Controllers
                 .OrderBy(r => r.ReasonCode)
                 .ToListAsync();
 
-            ViewData["RuleID"] = new SelectList(selectRules, "RuleID", "ReasonCode");
-            ViewBag.ChargeType = rules.ToDictionary(r => r.RuleID, r => r.ChargeType);
-                        return View(vm);
+            //ViewData["RuleID"] = new SelectList(selectRules, "RuleID", "ReasonCode");
+            // 規則下拉
+            ViewBag.RuleID = new SelectList(
+                await query.OrderBy(r => r.RuleID)                          
+                          .ToListAsync(),
+                "RuleID", "ReasonCode" /* 或顯示文字欄位 */
+            );
+            
+            ViewBag.UnitAmount = await _context.PenaltyRules
+                .Select(r => new { r.RuleID, r.UnitAmount })
+                .ToDictionaryAsync(x => x.RuleID, x => x.UnitAmount);
+            return View(vm);
         }
         // POST: PenaltyTransactions/Create        
         [HttpPost]
@@ -112,6 +113,7 @@ namespace BookLoop.Controllers
             {
                 ModelState.AddModelError(nameof(vm.RuleID), "請選擇扣款原因。");
             }
+            // 驗證借閱紀錄是否存在
             var borrowRecord = await _context.BorrowRecords
             .AsNoTracking()
             .Include(b => b.Member)
@@ -124,58 +126,56 @@ namespace BookLoop.Controllers
             }
 
             // 抓選擇的罰則規則
-            var rule = await _context.PenaltyRules
-                .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.RuleID == vm.RuleID && r.IsActive);
+            var excludedRuleIds = new[] { 4 };
+            var ruleQuery = _context.PenaltyRules.AsNoTracking().Where(r => r.IsActive);
+            if (excludedRuleIds.Length > 0)
+                ruleQuery = ruleQuery.Where(r => !excludedRuleIds.Contains(r.RuleID));
 
+            var rule = await ruleQuery.FirstOrDefaultAsync(r => r.RuleID == vm.RuleID);
             if (rule == null)
             {
-                ModelState.AddModelError(nameof(vm.RuleID), "無效的罰款原因或已停用。");
+                ModelState.AddModelError(nameof(vm.RuleID), "無效的扣款原因或已停用。");
             }
 
-            
 
             if (!ModelState.IsValid)
             {
-              
-                var excludedRuleIds = new[] { 4 }; // 與 GET 一致
-                var query = _context.PenaltyRules.AsNoTracking().Where(r => r.IsActive);
-                if (excludedRuleIds?.Length > 0)
-                {
-                    query = query.Where(r => !excludedRuleIds.Contains(r.RuleID));
-                }
-                var selectRules = await query.OrderBy(r => r.ReasonCode).ToListAsync();
-                ViewData["RuleID"] = new SelectList(selectRules, "RuleID", "ReasonCode", vm.RuleID);
+                // 下拉選單資料
+                var selectRules = await ruleQuery.OrderBy(r => r.ReasonCode).ToListAsync();
+                ViewBag.RuleID = new SelectList(selectRules, "RuleID", "ReasonCode", vm.RuleID);
 
-                var rules = await _context.PenaltyRules
-                    .Select(r => new { r.RuleID, r.ReasonCode, r.UnitAmount, r.ChargeType })
-                    .ToListAsync();
-                ViewBag.ChargeType = rules.ToDictionary(r => r.RuleID, r => r.ChargeType);
+                // 給前端 JS 用的 { ruleId: unitAmount } 
+                ViewBag.UnitAmount = await _context.PenaltyRules
+                    .AsNoTracking()
+                    .Select(r => new { r.RuleID, r.UnitAmount })
+                    .ToDictionaryAsync(x => x.RuleID, x => x.UnitAmount);
 
-                // 保留從 GET 帶來的顯示資訊
-                vm.MemberName = borrowRecord.Member?.Username;
+                // 顯示用
+                vm.MemberName = borrowRecord.Member?.Username ?? vm.MemberName;
 
                 return View(vm);
             }
 
-            // 建立交易實體（請把欄位改成你專案的實際欄位）
+            var unitAmount = rule.UnitAmount;           // decimal/int 皆可
+            var quantity = vm.Quantity;
             var entity = new PenaltyTransaction
             {
-                // TransactionID 由資料庫產生則不用設定
                 MemberID = vm.MemberID,
                 RecordID = vm.RecordID,
                 RuleID = vm.RuleID,
-                Quantity = vm.Quantity,
-                //UnitAmount = rule.UnitAmount,
-                PaidAt = null, // 初始為未付款
-
-                CreatedAt = DateTime.UtcNow  // 或 DateTime.Now 依專案時區策略
+                Quantity = quantity,
+                // 若資料表有 UnitAmount / TotalAmount 欄位，建議一併存起來（保留當下計價依據）
+                // UnitAmount = unitAmount,
+                // TotalAmount = totalAmount,
+                PaidAt = vm.PaidAt,          // 若你的 UI 有輸入繳清時間，就沿用；若一律未付款可改為 null
+                CreatedAt = DateTime.UtcNow  // 時區需求若要台北時間可改用 DateTimeOffset.Now / TimeZoneInfo 轉換
             };
 
             _context.Add(entity);
+
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = "已建立扣款紀錄。";
+            TempData["SuccessMessage"] = "已建立罰款紀錄。";
 
 
             return RedirectToAction("Index", "PenaltyTransactions");

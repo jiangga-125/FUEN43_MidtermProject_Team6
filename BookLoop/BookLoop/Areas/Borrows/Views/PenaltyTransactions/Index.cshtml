@@ -1,65 +1,94 @@
-﻿@model IEnumerable<BookLoop.Models.PenaltyTransaction>
+﻿@model IEnumerable<BookLoop.ViewModels.PenaltyTransactionsViewModel>
 
 @{
     ViewData["Title"] = "Index";
 }
 
-<h1>Index</h1>
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
 <table class="table">
     <thead>
         <tr>
             <th>
-                @Html.DisplayNameFor(model => model.CreatedAt)
+               借閱人
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Quantity)
+                罰金規則
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.PaidAt)
+                罰金單位
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Member)
+                數量
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Record)
+                總價
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Rule)
+                結清時間
             </th>
-            <th></th>
+            <th>繳費顯示</th>
+            <th>操作欄位</th>
         </tr>
     </thead>
     <tbody>
 @foreach (var item in Model) {
         <tr>
             <td>
-                @Html.DisplayFor(modelItem => item.CreatedAt)
+				@Html.DisplayFor(modelItem => item.MemberName)
+            </td>
+          
+            <td>
+                @Html.DisplayFor(modelItem => item.ReasonCode)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.Quantity)
+                @Html.DisplayFor(modelItem => item.ChargeType)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.PaidAt)
+                    @Html.DisplayFor(modelItem => item.Quantity)
+                
             </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.totalMoney)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.PaidAt)
+                </td>
             <td>
-                @Html.DisplayFor(modelItem => item.Member.Username)
+                    @if (item.PaidAt == null)
+                    {
+                        <span class="text-danger fw-bold">未繳</span>
+                    }
+                    else
+                    {
+                        <span class="text-success fw-bold">已繳費</span>
+                    }
+                    
             </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Record.RecordID)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Rule.ChargeType)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.PenaltyID">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.PenaltyID">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.PenaltyID">Delete</a>
-            </td>
-        </tr>
+                <td>
+                    <form asp-action="Pay" method="post" class="d-inline">
+                        <input type="hidden" name="id" value="@item.PenaltyID" />
+                        <button type="submit" class="btn btn-danger btn-sm">繳款</button>
+                    </form>
+                </td>
+            </tr>
 }
     </tbody>
 </table>
+<div class="modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">繳費</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                確定繳費嗎
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary">確定</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                
+            </div>
+        </div>
+    </div>
+</div>
