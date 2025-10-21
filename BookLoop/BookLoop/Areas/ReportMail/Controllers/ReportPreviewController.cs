@@ -1,5 +1,4 @@
 using BookLoop.Data;
-using BookLoop.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
