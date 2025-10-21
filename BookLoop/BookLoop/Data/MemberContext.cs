@@ -75,14 +75,14 @@ public partial class MemberContext : DbContext
 
             entity.HasIndex(e => e.Username, "IX_Members_Username");
 
-            entity.HasIndex(e => e.Account, "UQ_Members_Account").IsUnique();
+            //entity.HasIndex(e => e.Account, "UQ_Members_Account").IsUnique();
 
             entity.HasIndex(e => e.UserID, "UX_Members_UserID")
                 .IsUnique()
                 .HasFilter("([UserID] IS NOT NULL)");
 
             entity.Property(e => e.MemberID).HasColumnName("MemberID");
-            entity.Property(e => e.Account).HasMaxLength(50);
+            //entity.Property(e => e.Account).HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysdatetime())");
             entity.Property(e => e.Email).HasMaxLength(254);
             entity.Property(e => e.Phone)

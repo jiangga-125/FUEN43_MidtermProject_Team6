@@ -1,0 +1,144 @@
+﻿@using BookLoop.ViewModels
+@model IEnumerable<BookLoop.ViewModels.ReservationsViewModel>
+
+@{
+    ViewData["Title"] = "Index";
+}
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                書籍
+            </th>            
+            <th>
+                預借人
+            </th>
+            <th>
+                書籍現況
+            </th>
+            <th>
+                預約型態
+            </th>
+            <th>
+                逾期日
+            </th>                                                     
+            <th>操作欄位</th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+           <td>
+               @Html.DisplayFor(modelItem => item.BookTitle)
+           </td>
+                <td>
+                    @Html.DisplayFor(modelItem =>item.MemberName)
+                </td>
+
+				<td>
+                    @Html.DisplayFor(modelItem => item.ReservationStatus)
+				</td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.ReservationType)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.ExpiresDay)
+                </td>
+            
+            
+                        
+            <td>
+                    @if (item.ReservationStatus == ReservationStatus.Wait && item.ReservationType == ReservationType.Normal)
+                    //如果狀態是取書預約而且是等待取書情況下,借閱不會出現
+                {
+                        <a class="btn btn-primary" href="@(Url.Action("Create", "BorrowRecords",
+                           new { listingId = item.ListingID, memberId = item.MemberID, reservationId = item.ReservationID }))">
+                    借閱
+                </a>
+                
+                    }
+
+                <td>
+                    @* 僅當狀態為「預約中」時才顯示取消按鈕 *@
+                    @if (item.ReservationStatus == (byte)ReservationStatus.Reserved)
+                    {
+                        @* <form asp-action="Cancel" method="post" class="d-inline">
+                            <input type="hidden" name="id" value="@item.ReservationID" />
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-danger btn-sm"
+                                    onclick="return confirm('確定要取消這筆預約嗎？');">
+                                取消
+                            </button>
+                        </form> *@
+                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#CancelReservationModal-@item.ReservationID">
+                            取消
+                        </button>
+                        <div class="modal fade" id="CancelReservationModal-@item.ReservationID" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title">系統確認</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        確定要取消這筆預約嗎？
+                                    </div>
+                                    <div class="modal-footer">
+                                        <form asp-action="Cancel" method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@item.ReservationID" />
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-success">確定</button>
+                                        </form>
+                                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">取消</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    @* 當狀態為 Wait 時 → 顯示可借出 *@
+                    @if (item.ReservationStatus == ReservationStatus.Wait &&item.ReservationType ==ReservationType.Waitlist)
+                    {
+                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#borrowConfirmModal-@item.ReservationID">
+                            待取書可借出
+                        </button>
+                        <!-- Modal -->
+                        <div class="modal fade" id="borrowConfirmModal-@item.ReservationID" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-success text-white">
+                                        <h5 class="modal-title">系統確認</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        確定要將此書借出給預約者嗎？
+                                    </div>
+                                    <div class="modal-footer">
+                                        <form asp-action="AdminBorrowFromReservation" method="post" class="d-inline">
+                                            <input type="hidden" name="reservationId" value="@item.ReservationID" />
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-success">確定</button>
+                                        </form>
+                                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">取消</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </td>
+                
+               
+            
+        </tr>
+}
+    </tbody>
+</table>
