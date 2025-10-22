@@ -35,9 +35,9 @@ public partial class OrderDetail
 
 	//public DateTime UpdatedAt { get; set; }
 
-
+	[ValidateNever]
 	public virtual Book Book { get; set; } = null!;
 
-
+	[ValidateNever]
 	public virtual Order Order { get; set; } = null!;
 }
