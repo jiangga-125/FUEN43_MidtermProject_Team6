@@ -87,13 +87,13 @@
                 </div>
 
                 <div class="col-md-2">
-                    <label for="searchStartDate" class="form-label">客戶姓名</label>
-                    <input type="text" name="searchCustomerName" class="form-control" placeholder="姓名" value="@ViewContext.HttpContext.Request.Query["searchCustomerName"]">
+                    <label for="searchMemberName" class="form-label">會員帳號</label>
+                    <input type="text" name="searchMemberName" class="form-control" placeholder="會員帳號" value="@ViewContext.HttpContext.Request.Query["searchMemberName"]">
                 </div>
 
                 <div class="col-md-2">
-                    <label for="searchStartDate" class="form-label">客戶ID</label>
-                    <input type="number" name="searchCustomerID" class="form-control" placeholder="客戶ID" value="@ViewContext.HttpContext.Request.Query["searchCustomerID"]">
+                    <label for="searchMemberID" class="form-label">會員ID</label>
+                    <input type="number" name="searchMemberID" class="form-control" placeholder="會員ID" value="@ViewContext.HttpContext.Request.Query["searchMemberID"]">
                 </div>
 
                 <div class="col-md-2">
@@ -162,7 +162,7 @@
                         @Html.DisplayNameFor(model => model.CouponDiscountAmount)
                     </th>
                     <th class="head-width">
-                        @Html.DisplayNameFor(model => model.Customer)
+                    會員名稱<!-- 改成會員 -->
                     </th>
 
                     <th class="head-width">
@@ -228,9 +228,9 @@
                         <td>
                             @Html.DisplayFor(modelItem => item.CouponDiscountAmount)
                         </td>
-                        <td>
-                            @(item.CustomerID)  <!-- 直接顯示 CustomerID，0 也會顯示 -->
-                        </td>
+                    
+                        <td>@item.Member.Username</td>
+                       
                         <td>
                             <button type="button" class="btn btn-primary" data-bs-toggle="modal"
                                     data-bs-target="#shipmentModal" data-orderid="@item.OrderID">
@@ -358,12 +358,15 @@
             });
 
             // 點行列跳轉訂單明細
-            $(document).on("click", ".order-row", function (e) {
-                if (!$(e.target).closest("a, button").length) {
-                    var orderID = $(this).data("id");
-                    window.location = '/Orders/OrderDetails/' + orderID;
-                }
-            });
+        $(document).on("click", ".order-row", function (e) {
+            // 排除點擊按鈕或 dropdown
+            if (!$(e.target).hasClass("btn") && !$(e.target).closest(".dropdown").length) {
+                // 直接用 data-url 或 Razor 幫你生成完整 URL
+                var url = '@Url.Action("OrderDetails", "Orders", new { area = "Orders", id = "__id__" })';
+                url = url.replace("__id__", $(this).data("id"));
+                window.location.href = url;
+            }
+        });
         });
     </script>
 }
