@@ -67,17 +67,12 @@ namespace BookLoop.Controllers
             var rules = _context.PenaltyRules
             .Select(r => new { r.RuleID, r.ReasonCode, r.UnitAmount })
             .ToList();
-            // 排除的規則:逾期
-            var excludedRuleIds = new[] { 4 }; 
+            
 
             var query = _context.PenaltyRules
                 .AsNoTracking()
                 .Where(r => r.IsActive);          // 第一層：只取啟用的
-
-            if (excludedRuleIds?.Length > 0)
-            {
-                query = query.Where(r => !excludedRuleIds.Contains(r.RuleID)); // 第二層：排除特定ID
-            }
+           
 
             var selectRules = await query
                 .OrderBy(r => r.ReasonCode)
@@ -126,11 +121,9 @@ namespace BookLoop.Controllers
             }
 
             // 抓選擇的罰則規則
-            var excludedRuleIds = new[] { 4 };
+            
             var ruleQuery = _context.PenaltyRules.AsNoTracking().Where(r => r.IsActive);
-            if (excludedRuleIds.Length > 0)
-                ruleQuery = ruleQuery.Where(r => !excludedRuleIds.Contains(r.RuleID));
-
+            
             var rule = await ruleQuery.FirstOrDefaultAsync(r => r.RuleID == vm.RuleID);
             if (rule == null)
             {
@@ -181,6 +174,21 @@ namespace BookLoop.Controllers
             return RedirectToAction("Index", "PenaltyTransactions");
         }
 
-       
+        // GET: PenaltyTransactions/Pay/5:繳款用
+        public async Task<IActionResult> Pay(int id)
+        {
+         var record = await _context.PenaltyTransactions
+            .FirstOrDefaultAsync(p => p.PenaltyID == id);
+            if (record == null)
+            {
+                TempData["ErrorMessage"] = "找不到罰款紀錄。";
+                return RedirectToAction("Index", "PenaltyTransactions");
+            }
+            record.PaidAt = DateTime.Now; // 設定為目前時間            
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "罰款已標記為繳清。";
+            return RedirectToAction("Index", "PenaltyTransactions");
+        }
+
     }
 }

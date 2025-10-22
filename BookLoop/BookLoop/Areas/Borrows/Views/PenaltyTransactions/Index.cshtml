@@ -3,7 +3,20 @@
 @{
     ViewData["Title"] = "Index";
 }
-
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
 <table class="table">
     <thead>
@@ -64,31 +77,36 @@
                     }
                     
             </td>
-                <td>
-                    <form asp-action="Pay" method="post" class="d-inline">
-                        <input type="hidden" name="id" value="@item.PenaltyID" />
-                        <button type="submit" class="btn btn-danger btn-sm">繳款</button>
-                    </form>
+                <td>@if (item.PaidAt == null)
+                    {
+                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#givemoneyModal-@item.PenaltyID">
+                            繳費
+                        </button>
+                    
+                    <div class="modal fade" id="givemoneyModal-@item.PenaltyID" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content ">
+                                <div class="modal-header bg-primary">
+                                        <h2 class="modal-title text-black">繳費</h2>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+										<h3>確定繳費嗎</h3>
+                                </div>
+                                <div class="modal-footer">
+                                    <form asp-action="Pay" method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@item.PenaltyID" />
+                                        <button type="submit" class="btn btn-success">繳款</button>
+                                    </form>                                    
+                                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">取消</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    }
+
                 </td>
             </tr>
 }
     </tbody>
 </table>
-<div class="modal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">繳費</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                確定繳費嗎
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary">確定</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                
-            </div>
-        </div>
-    </div>
-</div>

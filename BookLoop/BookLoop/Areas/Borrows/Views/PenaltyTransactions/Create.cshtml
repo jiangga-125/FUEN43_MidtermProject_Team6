@@ -17,17 +17,17 @@
 
             <div class="form-group mb-3 d-flex gap-2 align-items-center">
                 <label class="form-label text-nowrap text-center">借閱紀錄ID</label>
-                <input class="form-control" value="@Model.RecordID" disabled />
+                <input class="form-control w-25 text-center" value="@Model.RecordID" disabled />
             </div>
 
             <div class="form-group mb-3 d-flex gap-2 align-items-center">
                 <label class="form-label text-nowrap text-center">借閱人姓名</label>
-                <input class="form-control" value="@Model.MemberName" disabled />
+                <input class="form-control w-25 text-center" value="@Model.MemberName" disabled />
             </div>
 
             <div class="form-group mb-3 d-flex gap-2 align-items-center">
                 <label asp-for="RuleID" class="form-label text-nowrap text-center">規則</label>
-                <select asp-for="RuleID" class="form-control" asp-items="ViewBag.RuleID">
+                <select asp-for="RuleID" class="form-control w-50 text-center" asp-items="ViewBag.RuleID">
                     <option value="">-- 請選擇 --</option>
                 </select>
                 <span asp-validation-for="RuleID" class="text-danger"></span>
@@ -35,32 +35,29 @@
 
             <div class="form-group mb-3 d-flex gap-2 align-items-center">
                 <label asp-for="Quantity" class="form-label text-nowrap text-center">數量</label>
-                <input asp-for="Quantity" class="form-control" min="1" max="300" />
+                <input asp-for="Quantity" class="form-control w-50 text-center" min="1" max="300" />
                 <span asp-validation-for="Quantity" class="text-danger"></span>
             </div>
 
             <div class="form-group mb-3 d-flex gap-2 align-items-center">
-                <label class="form-label text-nowrap text-center">單價</label>
-                <!-- 顯示用，不提交 -->
-                <input class="form-control" id="UnitAmountDisplay" value="@Model.UnitAmount" disabled />
+                <label class="form-label text-nowrap text-center ">單價</label>
+                <input class="form-control w-50 text-center" id="UnitAmountDisplay" value="@Model.UnitAmount" disabled />
             </div>
 
             <div class="form-group mb-3 d-flex gap-2 align-items-center">
                 <label asp-for="PaidAt" class="form-label text-nowrap text-center">繳清時間</label>
-                <input asp-for="PaidAt" class="form-control" type="date" />
+                <input asp-for="PaidAt" class="form-control w-auto" style="min-width: 12ch;" type="date" />
                 <span asp-validation-for="PaidAt" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
+            <div class="d-flex gap-2">
                 <input type="submit" value="設定罰金紀錄" class="btn btn-primary" />
+                <a class="btn btn-danger" asp-controller="BorrowRecords" asp-action="Index">回借閱紀錄</a>
             </div>
         </form>
     </div>
 </div>
 
-<div>
-    <a class="btn btn-danger" asp-controller="BorrowRecords" asp-action="Index">回借閱紀錄</a>
-</div>
 
 @section Scripts {
     @{
