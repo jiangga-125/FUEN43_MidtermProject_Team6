@@ -14,6 +14,11 @@ using BookLoop.Services.Rules;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using BookLoop.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using System.IO;
+using Microsoft.AspNetCore.Http;
 
 
 namespace BookLoop
@@ -44,7 +49,6 @@ namespace BookLoop
 			// ------------------------------
 			// 資料庫註冊
 			// ------------------------------
-			// Identity/Razor 預設用的
 			builder.Services.AddDbContext<ApplicationDbContext>(options =>
 				options.UseSqlServer(defaultConn ?? appDbConn));
 
@@ -67,11 +71,18 @@ namespace BookLoop
 			builder.Services.AddDbContext<MemberContext>(options =>
 				options.UseSqlServer(memberConn));
 
-			// ★ 這裡修正：AppDbContext 改用 BookLoop→Default 回退，不要用不存在的 "BookLoop1" key
 			builder.Services.AddDbContext<AppDbContext>(opt =>
 				opt.UseSqlServer(appDbConn));
 
 			builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+			// ------------------------------
+			// Data Protection 金鑰持久化（避免回收/重啟導致登出）
+			// ------------------------------
+			builder.Services.AddDataProtection()
+				.PersistKeysToFileSystem(new DirectoryInfo(
+					Path.Combine(builder.Environment.ContentRootPath, "dpkeys")))
+				.SetApplicationName("BookLoop");
 
 			// ------------------------------
 			// 驗證與授權
@@ -79,25 +90,30 @@ namespace BookLoop
 			builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 				.AddCookie(opt =>
 				{
-					opt.LoginPath = "/Account/Auth/Login";
-					opt.AccessDeniedPath = "/Account/Auth/Denied";
-					opt.ExpireTimeSpan = TimeSpan.FromHours(8);
+					opt.Cookie.Name = "bookloop.auth";
+					opt.Cookie.HttpOnly = true;
+					opt.Cookie.SameSite = SameSiteMode.Lax;
+					opt.LoginPath = "/Auth/Login";
+					opt.AccessDeniedPath = "/Auth/Denied";
+
+					// 存活 + 自動延展
+					opt.ExpireTimeSpan = TimeSpan.FromHours(12);
 					opt.SlidingExpiration = true;
+
 				});
 
+			// --- 授權：全站預設要登入（未標 AllowAnonymous 的頁面） ---
 			builder.Services.AddAuthorization(options =>
 			{
-				foreach (var key in new[]
-				{
-					"Accounts.View","Accounts.Edit",
-					"Permissions.Manage",
-					"Blacklists.View","Blacklists.Manage",
-					"Members.View","Members.Edit"
-				})
-				{
-					options.AddPolicy(key, p => p.RequireClaim("perm", key));
-				}
+				options.FallbackPolicy = new AuthorizationPolicyBuilder()
+					.RequireAuthenticatedUser()
+					.Build();
 			});
+
+			// --- 動態 Policy Provider + 授權處理器（用 permkey + DB/快取展開 feature） ---
+			builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+			builder.Services.AddMemoryCache();
+			builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 			// ------------------------------
 			// 服務註冊

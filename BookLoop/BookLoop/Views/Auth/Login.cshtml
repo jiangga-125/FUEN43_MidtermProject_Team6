@@ -1,0 +1,45 @@
+﻿@{
+    Layout = "_Layout";
+    var returnUrl = ViewBag.ReturnUrl as string;
+}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h4 class="mb-3 text-center">後台登入</h4>
+
+                    <form method="post" asp-controller="Auth" asp-action="Login" autocomplete="on">
+                        @Html.AntiForgeryToken()
+                        @if (!string.IsNullOrEmpty(returnUrl))
+                        {
+                            <input type="hidden" name="returnUrl" value="@returnUrl" />
+                        }
+
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input name="email" type="email" class="form-control" required autofocus autocomplete="username" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input name="password" type="password" class="form-control" required autocomplete="current-password" />
+                        </div>
+
+                        <button class="btn btn-primary w-100">登入</button>
+                    </form>
+
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="text-danger mt-3">
+                            @foreach (var e in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                            {
+                                <div>@e.ErrorMessage</div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
