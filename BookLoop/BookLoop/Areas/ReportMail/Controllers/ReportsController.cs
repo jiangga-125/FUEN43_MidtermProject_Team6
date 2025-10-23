@@ -22,9 +22,9 @@ namespace ReportMail.Areas.ReportMail.Controllers
 	/// ※ 自訂報表（ReportDefinition/ReportFilter）另做 CRUD 與對應 API，不混在這支。
 	/// </summary>
 	[Area("ReportMail")]
-    [Authorize(Policy = "ReportMail.Reports.Query")]
-    // 讓 URL 穩定為 /ReportMail/Reports/{Action}
-    [Route("ReportMail/[controller]/[action]")]
+	[Authorize(Policy = "ReportMail.Access")]
+	// 讓 URL 穩定為 /ReportMail/Reports/{Action}
+	[Route("ReportMail/[controller]/[action]")]
 	public class ReportsController : Controller
 	{
 		private readonly IReportDataService _svc;

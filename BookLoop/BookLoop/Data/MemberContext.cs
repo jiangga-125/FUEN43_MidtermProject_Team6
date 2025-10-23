@@ -1,4 +1,7 @@
-﻿using System;
+﻿using BookLoop.Models;
+using DocumentFormat.OpenXml.InkML;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using BookLoop.Models;
 using Microsoft.EntityFrameworkCore;
@@ -7,9 +10,6 @@ namespace BookLoop.Data;
 
 public partial class MemberContext : DbContext
 {
-    public MemberContext()
-    {
-    }
 
     public MemberContext(DbContextOptions<MemberContext> options)
         : base(options)
@@ -42,23 +42,8 @@ public partial class MemberContext : DbContext
 
     public virtual DbSet<Category> Categories { get; set; } = default!;
 
-	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-	{
-		// 留空或直接刪掉這個方法（因為 Program.cs 已經設定好）
-	}
-
-
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        // 先忽略權限相關型別，避免被自動探索進這個模型
-        modelBuilder.Ignore<PermissionFeature>();
-        modelBuilder.Ignore<Feature>();
-        modelBuilder.Ignore<Permission>();
-        modelBuilder.Ignore<UserRole>();
-        modelBuilder.Ignore<UserPermission>();
-        modelBuilder.Ignore<SupplierUser>();
-        modelBuilder.Ignore<Supplier>();
-
+	{
         modelBuilder.Entity<Coupon>(entity =>
         {
             entity.HasIndex(e => new { e.StartAt, e.EndAt }, "IX_Coupons_Date");

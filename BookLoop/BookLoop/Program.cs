@@ -1,4 +1,5 @@
 using BookLoop.Areas.Reviews;
+using OfficeOpenXml;
 using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services;
@@ -16,6 +17,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using OfficeOpenXml;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using BookLoop.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using System.IO;
+using Microsoft.AspNetCore.Http;
 
 
 namespace BookLoop
@@ -28,52 +34,44 @@ namespace BookLoop
             //EPPlus v8 授權設定（學校/非商用）
             ExcelPackage.License.SetNonCommercialOrganization("FUEN43 Team6");
 
-            // ------------------------------
-            // 連線字串讀取（先 BookLoop，退回 Default）
-            // ------------------------------
-            string? defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
-			string? bookLoopConn = builder.Configuration.GetConnectionString("BookLoop");
-			string? appDbConn = !string.IsNullOrWhiteSpace(bookLoopConn) ? bookLoopConn :
-								  !string.IsNullOrWhiteSpace(defaultConn) ? defaultConn : null;
+			var bookloopStr = builder.Configuration.GetConnectionString("BookLoop")
+			  ?? throw new InvalidOperationException("ConnectionStrings:BookLoop 未設定");
 
-			if (string.IsNullOrWhiteSpace(appDbConn))
-				throw new InvalidOperationException("ConnectionStrings:BookLoop 或 DefaultConnection 未設定。");
+			// 所有 Context 共用 bookloopStr 資料庫
+			builder.Services.AddDbContext<ApplicationDbContext>(options =>                
+				options.UseSqlServer(bookloopStr));
 
-			// 若你有 Member 模組，Member 沒設定就回退用 appDbConn
-			string? memberConn = builder.Configuration.GetConnectionString("Member");
-			if (string.IsNullOrWhiteSpace(memberConn)) memberConn = appDbConn;
+			builder.Services.AddDbContext<OrdersysContext>(options =>                
+				options.UseSqlServer(bookloopStr));
 
-			// ------------------------------
-			// 資料庫註冊
-			// ------------------------------
-			// Identity/Razor 預設用的
-			builder.Services.AddDbContext<ApplicationDbContext>(options =>
-				options.UseSqlServer(defaultConn ?? appDbConn));
-
-			builder.Services.AddDbContext<OrdersysContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn));
-
-			builder.Services.AddDbContext<BookSystemContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn));
+			builder.Services.AddDbContext<BookSystemContext>(options =>                
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDbContext<BorrowContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn));
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDbContext<ReportMailDbContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn,
+				options.UseSqlServer(bookloopStr,
 					x => x.MigrationsAssembly(typeof(ReportMailDbContext).Assembly.FullName)));
 
 			builder.Services.AddDbContext<ShopDbContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? defaultConn ?? appDbConn));
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDbContext<MemberContext>(options =>
-				options.UseSqlServer(memberConn));
+				options.UseSqlServer(bookloopStr));
 
-			// ★ 這裡修正：AppDbContext 改用 BookLoop→Default 回退，不要用不存在的 "BookLoop1" key
-			builder.Services.AddDbContext<AppDbContext>(opt =>
-				opt.UseSqlServer(appDbConn));
+			builder.Services.AddDbContext<AppDbContext>(options =>
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+			// ------------------------------
+			// Data Protection 金鑰持久化（避免回收/重啟導致登出）
+			// ------------------------------
+			builder.Services.AddDataProtection()
+				.PersistKeysToFileSystem(new DirectoryInfo(
+					Path.Combine(builder.Environment.ContentRootPath, "dpkeys")))
+				.SetApplicationName("BookLoop");
 
 			// ------------------------------
 			// 驗證與授權
@@ -81,76 +79,30 @@ namespace BookLoop
 			builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 				.AddCookie(opt =>
 				{
-					opt.LoginPath = "/Account/Auth/Login";
-					opt.AccessDeniedPath = "/Account/Auth/Denied";
-					opt.ExpireTimeSpan = TimeSpan.FromHours(8);
+					opt.Cookie.Name = "bookloop.auth";
+					opt.Cookie.HttpOnly = true;
+					opt.Cookie.SameSite = SameSiteMode.Lax;
+					opt.LoginPath = "/Auth/Login";
+					opt.AccessDeniedPath = "/Auth/Denied";
+
+					// 存活 + 自動延展
+					opt.ExpireTimeSpan = TimeSpan.FromHours(12);
 					opt.SlidingExpiration = true;
+
 				});
 
+			// --- 授權：全站預設要登入（未標 AllowAnonymous 的頁面） ---
 			builder.Services.AddAuthorization(options =>
 			{
-                // === 報表入口：頁面 / 預覽 API ===
-                // 新碼：ReportMail.Reports.Query
-                // 舊碼視為等價：Reports.View / Reports.Manage / ADMIN
-                options.AddPolicy("ReportMail.Reports.Query", policy =>
-                    policy.RequireAssertion(ctx =>
-                        ctx.User.HasClaim("perm", "ReportMail.Reports.Query") ||
-                        ctx.User.HasClaim("perm", "Reports.View") ||
-                        ctx.User.HasClaim("perm", "Reports.Manage") ||
-                        ctx.User.HasClaim("perm", "ADMIN")
-                    ));
-
-                // === 資料範圍：All（行銷/管理） ===
-                // 新碼：ReportMail.Reports.Data.All
-                // 舊碼視為等價：ADMIN / SALES
-                options.AddPolicy("ReportMail.Reports.Data.All", policy =>
-                    policy.RequireAssertion(ctx =>
-                        ctx.User.HasClaim("perm", "ReportMail.Reports.Data.All") ||
-                        ctx.User.HasClaim("perm", "ADMIN") ||
-                        ctx.User.HasClaim("perm", "SALES")
-                    ));
-
-                // === 資料範圍：ByPublisher（書商） ===
-                // 新碼：ReportMail.Reports.Data.ByPublisher
-                // 舊碼視為等價：VENDOR
-                options.AddPolicy("ReportMail.Reports.Data.ByPublisher", policy =>
-                    policy.RequireAssertion(ctx =>
-                        ctx.User.HasClaim("perm", "ReportMail.Reports.Data.ByPublisher") ||
-                        ctx.User.HasClaim("perm", "VENDOR")
-                    ));
-
-                // 匯出 Excel
-                options.AddPolicy("ReportMail.Export.Excel", policy =>
-                    policy.RequireAssertion(ctx =>
-                        ctx.User.HasClaim("perm", "ReportMail.Export.Excel") ||   // 新制
-                        ctx.User.HasClaim("perm", "Reports.Export") ||             // 舊制
-                        ctx.User.HasClaim("perm", "ADMIN")));                      // 超級權限
-
-                // 匯出 PDF
-                options.AddPolicy("ReportMail.Export.Pdf", policy =>
-                    policy.RequireAssertion(ctx =>
-                        ctx.User.HasClaim("perm", "ReportMail.Export.Pdf") ||
-                        ctx.User.HasClaim("perm", "Reports.Export") ||
-                        ctx.User.HasClaim("perm", "ADMIN")));
-				//匯出紀錄
-				options.AddPolicy("ReportMail.Logs.Index", p =>
-					p.RequireAssertion(ctx =>
-						ctx.User.HasClaim("feature", "ReportMail.Logs.Index") ||
-						ctx.User.HasClaim("perm", "ADMIN")
-					));
-
-				foreach (var key in new[]
-				{
-					"Accounts.View","Accounts.Edit",
-					"Permissions.Manage",
-					"Blacklists.View","Blacklists.Manage",
-					"Members.View","Members.Edit",
-
-                })
-				{
-					options.AddPolicy(key, p => p.RequireClaim("perm", key));
-				}
+				options.FallbackPolicy = new AuthorizationPolicyBuilder()
+					.RequireAuthenticatedUser()
+					.Build();
 			});
+
+			// --- 動態 Policy Provider + 授權處理器（用 permkey + DB/快取展開 feature） ---
+			builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+			builder.Services.AddMemoryCache();
+			builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 			// ------------------------------
 			// 服務註冊
@@ -265,54 +217,7 @@ namespace BookLoop
 
 			app.MapRazorPages();
 
-            // 強化版：列出使用者 claims、三個 ReportMail Policy 是否已註冊、是否通過
-            app.MapGet("/authz-debug", async (
-                IAuthorizationService authz,
-                IOptions<AuthorizationOptions> opt,
-                HttpContext ctx) =>
-            {
-                var user = ctx.User;
-                var authed = user?.Identity?.IsAuthenticated ?? false;
-
-                // 使用者現有的 perm / supplier
-                var perms = user?.Claims.Where(c => c.Type == "perm").Select(c => c.Value).OrderBy(x => x).ToArray() ?? Array.Empty<string>();
-                var suppliers = user?.Claims.Where(c => c.Type == "supplier").Select(c => c.Value).ToArray() ?? Array.Empty<string>();
-
-                // 我們要關心的政策名稱（逐一檢查是否「已註冊」）
-                string[] targets =
-                {
-        "ReportMail.Reports.Query",
-        "ReportMail.Reports.Data.All",
-        "ReportMail.Reports.Data.ByPublisher"
-    };
-
-                // 有沒有註冊（存在於 AuthorizationOptions）
-                var policiesRegistered = targets
-                    .Where(name => opt.Value.GetPolicy(name) != null)
-                    .OrderBy(x => x)
-                    .ToArray();
-
-                // 逐一評估三個 ReportMail Policy 是否通過
-                var policyResults = new Dictionary<string, bool>();
-                foreach (var name in targets)
-                {
-                    var ok = (await authz.AuthorizeAsync(user!, null, name)).Succeeded;
-                    policyResults[name] = ok;
-                }
-
-                return Results.Json(new
-                {
-                    authenticated = authed,
-                    perms,
-                    suppliers,
-                    policiesRegistered,
-                    policyResults
-                });
-            });
-
-
-
-            app.Run();
+			app.Run();
 		}
 	}
 }

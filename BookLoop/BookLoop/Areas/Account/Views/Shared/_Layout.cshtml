@@ -1,4 +1,6 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService Authz
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -9,77 +11,112 @@
     <link rel="stylesheet" href="~/Account.styles.css" asp-append-version="true" />
     <style>
         .table thead a {
-            color: #000 !important; /* 黑色 */
-            text-decoration: none !important; /* 移除底線 */
+            color: #000 !important;
+            text-decoration: none !important;
         }
 
             .table thead a:hover {
-                color: #000 !important; /* 滑過時也保持黑色 */
-                text-decoration: underline; /* 如果你要 hover 時顯示底線，可留這行 */
+                color: #000 !important;
+                text-decoration: underline;
             }
-
     </style>
 </head>
 <body>
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-controller="Home" asp-action="Index">Account</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <!-- 直接指向 Users/Index（/Account 也會導到這裡） -->
+                <a class="navbar-brand" asp-area="Account" asp-controller="Users" asp-action="Index">Account</a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
+                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
+
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
 
-                        @* 依權限顯示後台選單 *@
-                        @if (User?.Identity?.IsAuthenticated ?? false)
+                        @{
+                            var isAuthed = User?.Identity?.IsAuthenticated ?? false;
+
+                            // 依你資料表常見的代碼來判斷顯示
+                            // 帳號（Users）
+                            var canUsers =
+                            isAuthed &&
+                            (
+                            (await Authz.AuthorizeAsync(User, "Users.Index")).Succeeded
+                            // 若你有另外做 Users.View 也一併支援
+                            || (await Authz.AuthorizeAsync(User, "Users.View")).Succeeded
+                            );
+
+                            // 權限（Permissions.* 任一）
+                            var canPerms =
+                            isAuthed &&
+                            (
+                            (await Authz.AuthorizeAsync(User, "Permissions.Index")).Succeeded
+                            || (await Authz.AuthorizeAsync(User, "Permissions.Assign")).Succeeded
+                            || (await Authz.AuthorizeAsync(User, "Permissions.Features")).Succeeded
+                            || (await Authz.AuthorizeAsync(User, "Permissions.Manage")).Succeeded
+                            );
+
+                            // 黑名單（Blacklists.*）
+                            var canBlack =
+                            isAuthed &&
+                            (
+                            (await Authz.AuthorizeAsync(User, "Blacklists.Index")).Succeeded
+                            || (await Authz.AuthorizeAsync(User, "Blacklists.View")).Succeeded
+                            || (await Authz.AuthorizeAsync(User, "Blacklists.Manage")).Succeeded
+                            );
+
+                            // 會員（Members）
+                            var canMembers =
+                            isAuthed &&
+                            (
+                            (await Authz.AuthorizeAsync(User, "Members.Index")).Succeeded
+                            || (await Authz.AuthorizeAsync(User, "Members.View")).Succeeded
+                            );
+                        }
+
+                        @if (canUsers)
                         {
-                            if (User.HasClaim("perm", "Accounts.View"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-controller="Users" asp-action="Index">帳號</a>
-                                </li>
-                            }
-                            if (User.HasClaim("perm", "Permissions.Manage"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-controller="Permissions" asp-action="Index">權限</a>
-                                </li>
-                            }
-                            if (User.HasClaim("perm", "Blacklists.View"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-controller="Blacklists" asp-action="Index">黑名單</a>
-                                </li>
-                            }
-                            if (User.HasClaim("perm", "Members.View"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-controller="Members" asp-action="Index">會員清單</a>
-                                </li>
-                            }
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="Account" asp-controller="Users" asp-action="Index">帳號</a>
+                            </li>
+                        }
+                        @if (canPerms)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="Account" asp-controller="Permissions" asp-action="Index">權限</a>
+                            </li>
+                        }
+                        @if (canBlack)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="Account" asp-controller="Blacklists" asp-action="Index">黑名單</a>
+                            </li>
+                        }
+                        @if (canMembers)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="Account" asp-controller="Members" asp-action="Index">會員清單</a>
+                            </li>
                         }
                     </ul>
 
                     <div class="d-flex align-items-center gap-2">
                         @if (User?.Identity?.IsAuthenticated ?? false)
                         {
-                            <a class="btn btn-sm btn-outline-secondary" asp-controller="Account" asp-action="ChangePassword">修改密碼</a>
-
-                            <form method="post" asp-controller="Auth" asp-action="Logout" class="d-inline ms-2">
+                            <a class="btn btn-sm btn-outline-secondary" asp-area="" asp-controller="Account" asp-action="ChangePassword">修改密碼</a>
+                            <form method="post" asp-area="" asp-controller="Auth" asp-action="Logout" class="d-inline ms-2">
                                 <button class="btn btn-sm btn-outline-danger">登出</button>
                             </form>
                         }
                         else
                         {
-                            <a class="btn btn-sm btn-primary" asp-controller="Auth" asp-action="Login">登入</a>
+                            <a class="btn btn-sm btn-primary" asp-area="" asp-controller="Auth" asp-action="Login">登入</a>
                         }
                     </div>
                 </div>
