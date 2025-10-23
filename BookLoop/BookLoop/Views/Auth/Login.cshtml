@@ -1,7 +1,12 @@
 ﻿@{
     Layout = "_Layout";
     var returnUrl = ViewBag.ReturnUrl as string;
+
+    // 一鍵登入用帳密
+    var demoEmail = "admin@bookstore.local";
+    var demoPassword = "Admin@12345!";
 }
+
 <div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-12 col-md-6 col-lg-4">
@@ -9,7 +14,8 @@
                 <div class="card-body">
                     <h4 class="mb-3 text-center">後台登入</h4>
 
-                    <form method="post" asp-controller="Auth" asp-action="Login" autocomplete="on">
+                    <!-- 一般登入 -->
+                    <form method="post" asp-controller="Auth" asp-action="Login" autocomplete="on" class="mb-3">
                         @Html.AntiForgeryToken()
                         @if (!string.IsNullOrEmpty(returnUrl))
                         {
@@ -27,6 +33,28 @@
                         </div>
 
                         <button class="btn btn-primary w-100">登入</button>
+                    </form>
+
+                    <!-- 分隔線 -->
+                    <div class="d-flex align-items-center my-3">
+                        <hr class="flex-grow-1" />
+                        <span class="px-2 text-muted" style="font-size: .9rem;">或</span>
+                        <hr class="flex-grow-1" />
+                    </div>
+
+                    <!-- 一鍵登入（Admin） -->
+                    <form method="post" asp-controller="Auth" asp-action="Login" class="d-grid gap-2">
+                        @Html.AntiForgeryToken()
+                        @* 將帳密直接放 hidden；參數名稱需對應 AuthController.Login 接收的名稱 *@
+                        <input type="hidden" name="email" value="@demoEmail" />
+                        <input type="hidden" name="password" value="@demoPassword" />
+                        @if (!string.IsNullOrEmpty(returnUrl))
+                        {
+                            <input type="hidden" name="returnUrl" value="@returnUrl" />
+                        }
+                        <button type="submit" class="btn btn-outline-dark w-100" title="僅供報告/測試環境快速登入">
+                            一鍵登入（Admin）
+                        </button>
                     </form>
 
                     @if (!ViewData.ModelState.IsValid)
