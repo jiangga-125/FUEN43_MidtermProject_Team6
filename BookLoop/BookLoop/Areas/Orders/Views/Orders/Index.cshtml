@@ -63,13 +63,58 @@
     {
         <div class="alert alert-success">@TempData["Success"]</div>
     }
+    <div class="mb-3 text-start">
+        <button class="btn btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#advancedSearch" aria-expanded="false" aria-controls="advancedSearch">
+            進階搜尋
+        </button>
+    </div>
 
-    <div class="d-flex justify-content-between mb-3">
-        <form asp-action="Index" method="get" class="d-flex">
-            <input type="number" name="searchOrderID" class="form-control me-2"
-                   placeholder="搜尋 OrderID" value="@ViewContext.HttpContext.Request.Query["searchOrderID"]">
-            <button type="submit" class="btn btn-primary" style="width:100px;">搜尋</button>
-        </form>
+    <div class="collapse @(
+          !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchOrderID"]) ||
+          !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchCustomerName"]) ||
+          !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchCustomerID"]) ||
+          !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchStartDate"]) ||
+          !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchEndDate"]) ||
+          !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchBookName"])
+          ? "show" : "")"
+          id="advancedSearch">
+        <div class="card card-body mb-3">
+            <form asp-action="Index" method="get" class="row g-2">
+
+                <div class="col-md-2">
+                    <label for="searchStartDate" class="form-label">訂單編號</label>
+                    <input type="number" name="searchOrderID" class="form-control" placeholder="OrderID" value="@ViewContext.HttpContext.Request.Query["searchOrderID"]">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="searchStartDate" class="form-label">客戶姓名</label>
+                    <input type="text" name="searchCustomerName" class="form-control" placeholder="姓名" value="@ViewContext.HttpContext.Request.Query["searchCustomerName"]">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="searchStartDate" class="form-label">客戶ID</label>
+                    <input type="number" name="searchCustomerID" class="form-control" placeholder="客戶ID" value="@ViewContext.HttpContext.Request.Query["searchCustomerID"]">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="searchStartDate" class="form-label">訂單日期(開始日期)</label>
+                    <input type="date" id="searchStartDate" name="searchStartDate" class="form-control" value="@ViewContext.HttpContext.Request.Query["searchStartDate"]">
+                </div>
+
+                <div class="col-md-2">
+                    <label for="searchEndDate" class="form-label">訂單日期(結束日期)</label>
+                    <input type="date" id="searchEndDate" name="searchEndDate" class="form-control" value="@ViewContext.HttpContext.Request.Query["searchEndDate"]">
+                </div>
+                <div class="col-md-2">
+                    <label for="searchStartDate" class="form-label">書籍</label>
+                    <input type="text" name="searchBookName" class="form-control" placeholder="書籍名稱" value="@ViewContext.HttpContext.Request.Query["searchBookName"]">
+                </div>
+
+                <div class="col-12 mt-2">
+                    <button type="submit" class="btn btn-primary w-100">搜尋</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <p>
@@ -123,9 +168,9 @@
                     <th class="head-width">
                         物流資訊
                     </th>
-                    <th class="head-width">
+                    @* <th class="head-width">
                         租借書籍資訊
-                    </th>
+                    </th> *@
 
                     <th></th>
                 </tr>
@@ -159,7 +204,7 @@
                             @statusText
                         </td>
                         <td>
-                            @(item.Customer?.MemberID?.ToString() ?? "無會員")
+                            @(item.MemberID)
                         </td>
                         @* <td>
                 @Html.DisplayFor(modelItem => item.DiscountAmount)
@@ -184,7 +229,7 @@
                             @Html.DisplayFor(modelItem => item.CouponDiscountAmount)
                         </td>
                         <td>
-                            @Html.DisplayFor(modelItem => item.Customer.CustomerID)
+                            @(item.CustomerID)  <!-- 直接顯示 CustomerID，0 也會顯示 -->
                         </td>
                         <td>
                             <button type="button" class="btn btn-primary" data-bs-toggle="modal"
@@ -192,11 +237,11 @@
                                 查看物流
                             </button>
                         </td>
-                        <td>
+                        @* <td>
                             <a asp-controller="Rentals" asp-action="ByID" asp-route-orderID="@item.OrderID" class="btn btn-secondary">
                                 查看租借書籍
                             </a>
-                        </td>
+                        </td> *@
 
                         <td class="text-center">
                             <div class="dropdown">
@@ -221,11 +266,18 @@
 
 @* 分頁 *@
 <div class="d-flex justify-content-between align-items-center mt-3">
-    <div>
-        顯示第 @(((ViewBag.CurrentPage - 1) * ViewBag.PageSize) + 1)
-        到 @(Math.Min(ViewBag.CurrentPage * ViewBag.PageSize, ViewBag.TotalCount)) 筆，
-        共 @ViewBag.TotalCount 筆
-    </div>
+    @if (ViewBag.TotalCount > 0)
+    {
+        <div>
+            顯示第 @(((ViewBag.CurrentPage - 1) * ViewBag.PageSize) + 1)
+            到 @(Math.Min(ViewBag.CurrentPage * ViewBag.PageSize, ViewBag.TotalCount)) 筆，
+            共 @ViewBag.TotalCount 筆
+        </div>
+    }
+    else
+    {
+        <div>沒有資料</div>
+    }
 
     <nav>
         <ul class="pagination mb-0">
@@ -233,7 +285,12 @@
                 <a class="page-link"
                    asp-action="Index"
                    asp-route-page="@(ViewBag.CurrentPage - 1)"
-                   asp-route-searchOrderID="@ViewContext.HttpContext.Request.Query["searchOrderID"]">上一頁</a>
+                   asp-route-searchOrderID="@ViewContext.HttpContext.Request.Query["searchOrderID"]"
+                   asp-route-searchCustomerName="@ViewContext.HttpContext.Request.Query["searchCustomerName"]"
+                   asp-route-searchCustomerID="@ViewContext.HttpContext.Request.Query["searchCustomerID"]"
+                   asp-route-searchStartDate="@ViewContext.HttpContext.Request.Query["searchStartDate"]"
+                   asp-route-searchEndDate="@ViewContext.HttpContext.Request.Query["searchEndDate"]"
+                   asp-route-searchBookName="@ViewContext.HttpContext.Request.Query["searchBookName"]">上一頁</a>
             </li>
 
             @{
@@ -247,7 +304,12 @@
                     <a class="page-link"
                        asp-action="Index"
                        asp-route-page="@i"
-                       asp-route-searchOrderID="@ViewContext.HttpContext.Request.Query["searchOrderID"]">@i</a>
+                       asp-route-searchOrderID="@ViewContext.HttpContext.Request.Query["searchOrderID"]"
+                       asp-route-searchCustomerName="@ViewContext.HttpContext.Request.Query["searchCustomerName"]"
+                       asp-route-searchCustomerID="@ViewContext.HttpContext.Request.Query["searchCustomerID"]"
+                       asp-route-searchStartDate="@ViewContext.HttpContext.Request.Query["searchStartDate"]"
+                       asp-route-searchEndDate="@ViewContext.HttpContext.Request.Query["searchEndDate"]"
+                       asp-route-searchBookName="@ViewContext.HttpContext.Request.Query["searchBookName"]">@i</a>
                 </li>
             }
 
@@ -255,7 +317,12 @@
                 <a class="page-link"
                    asp-action="Index"
                    asp-route-page="@(ViewBag.CurrentPage + 1)"
-                   asp-route-searchOrderID="@ViewContext.HttpContext.Request.Query["searchOrderID"]">下一頁</a>
+                   asp-route-searchOrderID="@ViewContext.HttpContext.Request.Query["searchOrderID"]"
+                   asp-route-searchCustomerName="@ViewContext.HttpContext.Request.Query["searchCustomerName"]"
+                   asp-route-searchCustomerID="@ViewContext.HttpContext.Request.Query["searchCustomerID"]"
+                   asp-route-searchStartDate="@ViewContext.HttpContext.Request.Query["searchStartDate"]"
+                   asp-route-searchEndDate="@ViewContext.HttpContext.Request.Query["searchEndDate"]"
+                   asp-route-searchBookName="@ViewContext.HttpContext.Request.Query["searchBookName"]">下一頁</a>
             </li>
         </ul>
     </nav>

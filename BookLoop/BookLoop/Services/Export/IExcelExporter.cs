@@ -23,5 +23,16 @@ namespace BookLoop.Services.Export
 			string labelHeader = "項目",
 			string valueHeader = "數值"
 		);
-	}
+
+        // 新增簽章：明確指定圖表型態（Column/Line/Pie）
+        Task<(byte[] bytes, string fileName, string contentType)> ExportSeriesAsync(
+            string title,
+            string subTitle,
+            List<(string label, decimal value)> series,
+            string sheetName,
+            ChartKind chartKind,
+            string labelHeader = "項目",
+            string valueHeader = "數值");
+
+    }
 }

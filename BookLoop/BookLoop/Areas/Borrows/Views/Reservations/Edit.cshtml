@@ -1,0 +1,74 @@
+﻿@model BookLoop.Models.Reservation
+
+@{
+    ViewData["Title"] = "Edit";
+}
+
+<h1>Edit</h1>
+
+<h4>Reservation</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="ReservationID" />
+            <div class="form-group">
+                <label asp-for="ListingID" class="control-label"></label>
+                <select asp-for="ListingID" class="form-control" asp-items="ViewBag.ListingID"></select>
+                <span asp-validation-for="ListingID" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="MemberID" class="control-label"></label>
+                <select asp-for="MemberID" class="form-control" asp-items="ViewBag.MemberID"></select>
+                <span asp-validation-for="MemberID" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ReservationAt" class="control-label"></label>
+                <input asp-for="ReservationAt" class="form-control" />
+                <span asp-validation-for="ReservationAt" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ExpiresAt" class="control-label"></label>
+                <input asp-for="ExpiresAt" class="form-control" />
+                <span asp-validation-for="ExpiresAt" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ReadyAt" class="control-label"></label>
+                <input asp-for="ReadyAt" class="form-control" />
+                <span asp-validation-for="ReadyAt" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Status" class="control-label"></label>
+                <input asp-for="Status" class="form-control" />
+                <span asp-validation-for="Status" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CreatedAt" class="control-label"></label>
+                <input asp-for="CreatedAt" class="form-control" />
+                <span asp-validation-for="CreatedAt" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ReservationType" class="control-label"></label>
+                <input asp-for="ReservationType" class="form-control" />
+                <span asp-validation-for="ReservationType" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="RequestedPickupDate" class="control-label"></label>
+                <input asp-for="RequestedPickupDate" class="form-control" />
+                <span asp-validation-for="RequestedPickupDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Save" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

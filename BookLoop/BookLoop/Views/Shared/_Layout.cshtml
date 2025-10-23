@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" />
+    <script src="~/lib/jquery/dist/jquery.js" asp-append-version="true"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js" asp-append-version="true"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js" asp-append-version="true"></script>
     @RenderSection("Styles", required: false)   <!-- ✅ 允許每頁加專屬 CSS -->
 </head>
 <body>
@@ -22,10 +25,11 @@
                         <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">🏠 首頁</a></li>
                         <li class="nav-item"><a class="nav-link" asp-area="Books" asp-controller="Books" asp-action="Index">📘 書籍</a></li>
                         <li class="nav-item"><a class="nav-link" asp-area="Orders" asp-controller="Orders" asp-action="Index">訂單</a></li>
-                        <li class="nav-item"><a class="nav-link" asp-area="Borrow" asp-controller="Listings" asp-action="Index">📚 二手書籍</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-area="Borrows" asp-controller="Listings" asp-action="Index">📚 二手書籍</a></li>
                         <li class="nav-item"><a class="nav-link" asp-area="ReportMail" asp-controller="Reports" asp-action="Index">報表</a></li>
                         <li class="nav-item"><a class="nav-link" asp-area="Account" asp-controller="Users" asp-action="Index">帳號</a></li>
                         <li class="nav-item"><a class="nav-link" asp-area="Members" asp-controller="Checkout" asp-action="Index">優惠券</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="ShoppingCarts" asp-action="Index">購物車</a></li>
                     </ul>
                     @* 右上角帳號區 *@
                     <ul class="navbar-nav ms-auto mb-2 mb-lg-0">

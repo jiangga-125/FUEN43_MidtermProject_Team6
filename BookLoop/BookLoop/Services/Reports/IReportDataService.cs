@@ -25,7 +25,7 @@ namespace BookLoop.Services.Reports
 			int[]? publisherIds = null); // ★ 新增：可選出版社過濾
 
 		/// <summary>
-		/// 長條圖：近一段期間「銷售書籍排行」（以數量排序）
+		/// 長條圖：近一段期間「銷售書籍排行」（以銷售數量排序）
 		/// publisherIds = null 代表不限制；傳陣列則只統計該出版社(們)的書籍
 		/// </summary>
 		Task<IReadOnlyList<ChartPoint>> GetTopSoldBooksAsync(
@@ -33,16 +33,16 @@ namespace BookLoop.Services.Reports
 			DateTime endInclusive,
 			int topN = 10,
 			int[]? excludeStatuses = null,
-			int[]? publisherIds = null); // ★ 新增
+			int[]? publisherIds = null);
 
 		/// <summary>
-		/// 圓餅圖：近一段期間「借閱書籍種類」排行（以借閱筆數計）
+		/// 圓餅圖：近一段期間「借閱書籍」排行（以借閱次數計）
 		/// publisherIds = null 代表不限制；傳陣列則只統計該出版社(們)
 		/// </summary>
-		Task<IReadOnlyList<ChartPoint>> GetTopBorrowCategoryAsync(
+		Task<IReadOnlyList<ChartPoint>> GetTopBorrowBooksAsync(
 			DateTime start,
 			DateTime endInclusive,
-			int topN = 5,
-			int[]? publisherIds = null); // ★ 新增
+			int topN = 10,
+			int[]? publisherIds = null);
 	}
 }
