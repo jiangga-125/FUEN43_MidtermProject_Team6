@@ -1,4 +1,5 @@
 using BookLoop.Areas.Reviews;
+using OfficeOpenXml;
 using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services;
@@ -10,10 +11,15 @@ using BookLoop.Services.Points;
 using BookLoop.Services.Pricing;
 using BookLoop.Services.Reports;
 using BookLoop.Services.Rules;
-using BorrowSystem.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using BookLoop.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using System.IO;
+using Microsoft.AspNetCore.Http;
+
 
 namespace BookLoop
 {
@@ -22,53 +28,47 @@ namespace BookLoop
 		public static async Task Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
+            //EPPlus v8 授權設定（學校/非商用）
+            ExcelPackage.License.SetNonCommercialOrganization("FUEN43 Team6");
 
-			// ------------------------------
-			// 連線字串讀取（先 BookLoop，退回 Default）
-			// ------------------------------
-			string? defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
-			string? bookLoopConn = builder.Configuration.GetConnectionString("BookLoop");
-			string? appDbConn = !string.IsNullOrWhiteSpace(bookLoopConn) ? bookLoopConn :
-								  !string.IsNullOrWhiteSpace(defaultConn) ? defaultConn : null;
+			var bookloopStr = builder.Configuration.GetConnectionString("BookLoop")
+			  ?? throw new InvalidOperationException("ConnectionStrings:BookLoop 未設定");
 
-			if (string.IsNullOrWhiteSpace(appDbConn))
-				throw new InvalidOperationException("ConnectionStrings:BookLoop 或 DefaultConnection 未設定。");
+			// 所有 Context 共用 bookloopStr 資料庫
+			builder.Services.AddDbContext<ApplicationDbContext>(options =>                
+				options.UseSqlServer(bookloopStr));
 
-			// 若你有 Member 模組，Member 沒設定就回退用 appDbConn
-			string? memberConn = builder.Configuration.GetConnectionString("Member");
-			if (string.IsNullOrWhiteSpace(memberConn)) memberConn = appDbConn;
+			builder.Services.AddDbContext<OrdersysContext>(options =>                
+				options.UseSqlServer(bookloopStr));
 
-			// ------------------------------
-			// 資料庫註冊
-			// ------------------------------
-			// Identity/Razor 預設用的
-			builder.Services.AddDbContext<ApplicationDbContext>(options =>
-				options.UseSqlServer(defaultConn ?? appDbConn));
+			builder.Services.AddDbContext<BookSystemContext>(options =>                
+				options.UseSqlServer(bookloopStr));
 
-			builder.Services.AddDbContext<OrdersysContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn));
-
-			builder.Services.AddDbContext<BookSystemContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn));
-
-			builder.Services.AddDbContext<BorrowSystemContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn));
+			builder.Services.AddDbContext<BorrowContext>(options =>
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDbContext<ReportMailDbContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn,
+				options.UseSqlServer(bookloopStr,
 					x => x.MigrationsAssembly(typeof(ReportMailDbContext).Assembly.FullName)));
 
 			builder.Services.AddDbContext<ShopDbContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? defaultConn ?? appDbConn));
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDbContext<MemberContext>(options =>
-				options.UseSqlServer(memberConn));
+				options.UseSqlServer(bookloopStr));
 
-			// ★ 這裡修正：AppDbContext 改用 BookLoop→Default 回退，不要用不存在的 "BookLoop1" key
-			builder.Services.AddDbContext<AppDbContext>(opt =>
-				opt.UseSqlServer(appDbConn));
+			builder.Services.AddDbContext<AppDbContext>(options =>
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+			// ------------------------------
+			// Data Protection 金鑰持久化（避免回收/重啟導致登出）
+			// ------------------------------
+			builder.Services.AddDataProtection()
+				.PersistKeysToFileSystem(new DirectoryInfo(
+					Path.Combine(builder.Environment.ContentRootPath, "dpkeys")))
+				.SetApplicationName("BookLoop");
 
 			// ------------------------------
 			// 驗證與授權
@@ -76,25 +76,30 @@ namespace BookLoop
 			builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 				.AddCookie(opt =>
 				{
-					opt.LoginPath = "/Account/Auth/Login";
-					opt.AccessDeniedPath = "/Account/Auth/Denied";
-					opt.ExpireTimeSpan = TimeSpan.FromHours(8);
+					opt.Cookie.Name = "bookloop.auth";
+					opt.Cookie.HttpOnly = true;
+					opt.Cookie.SameSite = SameSiteMode.Lax;
+					opt.LoginPath = "/Auth/Login";
+					opt.AccessDeniedPath = "/Auth/Denied";
+
+					// 存活 + 自動延展
+					opt.ExpireTimeSpan = TimeSpan.FromHours(12);
 					opt.SlidingExpiration = true;
+
 				});
 
+			// --- 授權：全站預設要登入（未標 AllowAnonymous 的頁面） ---
 			builder.Services.AddAuthorization(options =>
 			{
-				foreach (var key in new[]
-				{
-					"Accounts.View","Accounts.Edit",
-					"Permissions.Manage",
-					"Blacklists.View","Blacklists.Manage",
-					"Members.View","Members.Edit"
-				})
-				{
-					options.AddPolicy(key, p => p.RequireClaim("perm", key));
-				}
+				options.FallbackPolicy = new AuthorizationPolicyBuilder()
+					.RequireAuthenticatedUser()
+					.Build();
 			});
+
+			// --- 動態 Policy Provider + 授權處理器（用 permkey + DB/快取展開 feature） ---
+			builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+			builder.Services.AddMemoryCache();
+			builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 			// ------------------------------
 			// 服務註冊
@@ -111,7 +116,7 @@ namespace BookLoop
 
 			builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
 			builder.Services.AddScoped<ReportQueryBuilder>();
-			builder.Services.AddSingleton<IExcelExporter, ClosedXmlExcelExporter>();
+			builder.Services.AddSingleton<IExcelExporter, EpplusExcelExporter>();
 			builder.Services.AddScoped<MailService>();
 
 			builder.Services.AddScoped<ICouponService, CouponService>();
@@ -139,10 +144,7 @@ namespace BookLoop
 
 			builder.Services.AddHttpContextAccessor();
 
-			// BorrowSystem 背景服務
-			builder.Services.AddScoped<ReservationExpiryService>();
-			builder.Services.AddHostedService<ReservationExpiryWorker>();
-			builder.Services.AddScoped<ReservationQueueService>();
+			
 
 			builder.Services.AddScoped<AuthService>();
 			builder.Services.AddScoped<PermissionService>();
@@ -152,10 +154,18 @@ namespace BookLoop
 			builder.Services.AddControllersWithViews();
 			builder.Services.AddRazorPages();
 
-			// ------------------------------
-			// 應用程式管線
-			// ------------------------------
-			var app = builder.Build();
+			//借閱service
+            builder.Services.AddScoped<ReservationExpiryService>();
+            builder.Services.AddHostedService<ReservationExpiryWorker>();
+            builder.Services.AddScoped<ReservationQueueService>();
+
+
+
+
+            // ------------------------------
+            // 應用程式管線
+            // ------------------------------
+            var app = builder.Build();
 
 			// 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
 			using (var scope = app.Services.CreateScope())

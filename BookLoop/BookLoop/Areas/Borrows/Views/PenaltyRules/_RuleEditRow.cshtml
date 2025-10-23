@@ -1,0 +1,37 @@
+﻿@model BookLoop.Models.PenaltyRule
+
+
+<form id="ruleForm" asp-action="SaveRow" asp-controller="PenaltyRules" method="post">
+  @Html.AntiForgeryToken()
+  @Html.HiddenFor(m =>m.RuleID)
+
+  <div class="mb-3">
+    <label class="form-label">罰款原因</label>
+    @Html.TextBoxFor(m => m.ReasonCode, new { @class="form-control", required="required" })
+  </div>
+    <div class="mb-3">
+        <label class="form-label">收費類型</label>
+        @Html.TextBoxFor(m => m.ChargeType, new { @class = "form-control", maxlength = "20", required = "required" })
+        @* 限制長度就調整 maxlength *@
+    </div>
+  <div class="mb-3">
+    <label class="form-label">單價</label>
+    @Html.TextBoxFor(m => m.UnitAmount, new { type="number", step="10", min="0", @class="form-control", required="required" })
+  </div>
+
+    <div class="mb-3">
+        <label class="form-label">狀態</label>
+        @Html.DropDownListFor(m => m.IsActive,
+        new List<SelectListItem> {
+                new SelectListItem { Text = "啟用中", Value = "true",  Selected = Model.IsActive },
+                new SelectListItem { Text = "已停用", Value = "false", Selected = !Model.IsActive }
+                },
+                new { @class = "form-select", id = "isActiveSelect" })
+    </div>
+
+  <div class="text-end">
+    <button type="submit" class="btn btn-success">儲存</button>
+        <button type="button" class="btn btn-secondary" id="btn-back">返回清單</button>
+  </div>
+</form>
+
