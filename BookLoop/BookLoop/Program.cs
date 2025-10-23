@@ -31,48 +31,34 @@ namespace BookLoop
             //EPPlus v8 授權設定（學校/非商用）
             ExcelPackage.License.SetNonCommercialOrganization("FUEN43 Team6");
 
-            // ------------------------------
-            // 連線字串讀取（先 BookLoop，退回 Default）
-            // ------------------------------
-            string? defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
-			string? bookLoopConn = builder.Configuration.GetConnectionString("BookLoop");
-			string? appDbConn = !string.IsNullOrWhiteSpace(bookLoopConn) ? bookLoopConn :
-								  !string.IsNullOrWhiteSpace(defaultConn) ? defaultConn : null;
+			var bookloopStr = builder.Configuration.GetConnectionString("BookLoop")
+			  ?? throw new InvalidOperationException("ConnectionStrings:BookLoop 未設定");
 
-			if (string.IsNullOrWhiteSpace(appDbConn))
-				throw new InvalidOperationException("ConnectionStrings:BookLoop 或 DefaultConnection 未設定。");
+			// 所有 Context 共用 bookloopStr 資料庫
+			builder.Services.AddDbContext<ApplicationDbContext>(options =>                
+				options.UseSqlServer(bookloopStr));
 
-			// 若你有 Member 模組，Member 沒設定就回退用 appDbConn
-			string? memberConn = builder.Configuration.GetConnectionString("Member");
-			if (string.IsNullOrWhiteSpace(memberConn)) memberConn = appDbConn;
+			builder.Services.AddDbContext<OrdersysContext>(options =>                
+				options.UseSqlServer(bookloopStr));
 
-			// ------------------------------
-			// 資料庫註冊
-			// ------------------------------
-			builder.Services.AddDbContext<ApplicationDbContext>(options =>
-				options.UseSqlServer(defaultConn ?? appDbConn));
+			builder.Services.AddDbContext<BookSystemContext>(options =>                
+				options.UseSqlServer(bookloopStr));
 
-			builder.Services.AddDbContext<OrdersysContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn));
-
-			builder.Services.AddDbContext<BookSystemContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn));
-
-			builder.Services.AddDbContext<BorrowContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn));
+			builder.Services.AddDbContext<BorrowSystemContext>(options =>
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDbContext<ReportMailDbContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn,
+				options.UseSqlServer(bookloopStr,
 					x => x.MigrationsAssembly(typeof(ReportMailDbContext).Assembly.FullName)));
 
 			builder.Services.AddDbContext<ShopDbContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? defaultConn ?? appDbConn));
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDbContext<MemberContext>(options =>
-				options.UseSqlServer(memberConn));
+				options.UseSqlServer(bookloopStr));
 
-			builder.Services.AddDbContext<AppDbContext>(opt =>
-				opt.UseSqlServer(appDbConn));
+			builder.Services.AddDbContext<AppDbContext>(options =>
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 

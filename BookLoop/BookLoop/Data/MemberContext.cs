@@ -8,9 +8,6 @@ namespace BookLoop.Data;
 
 public partial class MemberContext : DbContext
 {
-    public MemberContext()
-    {
-    }
 
     public MemberContext(DbContextOptions<MemberContext> options)
         : base(options)
@@ -39,20 +36,12 @@ public partial class MemberContext : DbContext
 
     public virtual DbSet<RuleApplication> RuleApplications { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server = 127.0.0.1, 1444; Database=BookLoop;User Id = bookloop; Password=FUEN43;Encrypt=True;TrustServerCertificate=True;Connect Timeout = 30;");
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+
     public virtual DbSet<CouponCategory> CouponCategories { get; set; } = default!;
 
     public virtual DbSet<Category> Categories { get; set; } = default!;
 
-	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-	{
-		// 留空或直接刪掉這個方法（因為 Program.cs 已經設定好）
-	}
-
-
-	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Coupon>(entity =>
         {
