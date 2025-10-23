@@ -1,6 +1,7 @@
 ﻿// Areas/ReportMail/Controllers/ReportsController.cs
 using BookLoop.Models;
 using BookLoop.Services.Reports;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -20,6 +21,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
 	/// ※ 自訂報表（ReportDefinition/ReportFilter）另做 CRUD 與對應 API，不混在這支。
 	/// </summary>
 	[Area("ReportMail")]
+	[Authorize(Policy = "ReportMail.Access")]
 	// 讓 URL 穩定為 /ReportMail/Reports/{Action}
 	[Route("ReportMail/[controller]/[action]")]
 	public class ReportsController : Controller

@@ -1,4 +1,6 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService Authz
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="utf-8" />
@@ -8,58 +10,47 @@
     <link rel="stylesheet" href="~/css/site.css" />
     @RenderSection("Styles", required: false)
     <style>
-
         body {
-            background-color: #f8f9fa; /* 淺灰背景 */
+            background-color: #f8f9fa;
         }
 
         main {
-            min-height: 70vh; /* 保持頁面高度 */
+            min-height: 70vh;
         }
 
         footer {
             margin-top: 50px;
             padding: 20px 0;
-            background-color: #212529; /* 深灰底 */
+            background-color: #212529;
             color: #f8f9fa;
             text-align: center;
         }
 
-        /* 讓 nav-link 在 hover/active 更清楚 */
         .navbar-nav .nav-link {
             color: #f8f9fa;
-            transition: color 0.2s, background-color 0.2s;
+            transition: color .2s, background-color .2s;
             border-radius: 6px;
             padding: 6px 12px;
             margin-right: 5px;
         }
 
-        .navbar-nav .nav-link:hover {
-            background-color: #495057;
-            color: #ffc107; /* 黃色文字 */
-        }
+            .navbar-nav .nav-link:hover {
+                background-color: #495057;
+                color: #ffc107;
+            }
 
-        .navbar-nav .nav-link.active {
-            background-color: #ffc107;
-            color: #212529;
-            font-weight: bold;
-        }
-
-        .footer-full {
-            width: 100%; /* 滿版 */
-            margin: 0; /* 移除左右空隙 */
-            padding: 20px 0;
-            background-color: #212529; /* 深灰底 */
-            color: #f8f9fa; /* 白字 */
-            text-align: center;
-        }
+            .navbar-nav .nav-link.active {
+                background-color: #ffc107;
+                color: #212529;
+                font-weight: bold;
+            }
 
         .footer-overlay {
-            position: absolute; /* 讓 footer 浮起來 */
-            bottom: 0; /* 貼齊畫面底部 */
+            position: absolute;
+            bottom: 0;
             left: 0;
-            width: 100%; /* 吃滿整個寬度 */
-            background-color: rgba(15, 15, 15, 0.8); /* 半透明深灰 */
+            width: 100%;
+            background: rgba(15,15,15,.8);
             color: #f8f9fa;
             text-align: center;
             padding: 20px 0;
@@ -67,56 +58,47 @@
     </style>
 </head>
 <body>
-    <!-- 導覽列 -->
     <header>
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
             <div class="container-fluid">
-                <!-- 左邊 Logo -->
                 <a class="navbar-brand fw-bold" asp-area="" asp-controller="Home" asp-action="Index">📚 BookLoop</a>
 
-                <!-- 漢堡選單 -->
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
-                <!-- 導覽列內容 -->
                 <div class="collapse navbar-collapse" id="navbarNav">
-                    <!-- 左邊選單 -->
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Books" ? "active" : "")"
-                               asp-area="Books" asp-controller="Books" asp-action="Index">📚 書籍清單</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Publishers" ? "active" : "")"
-                               asp-area="Books" asp-controller="Publishers" asp-action="Index">🏢 出版社管理</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Categories" ? "active" : "")"
-                               asp-area="Books" asp-controller="Categories" asp-action="Index">📂 分類管理</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Import" ? "active" : "")"
-                               asp-area="Books" asp-controller="Import" asp-action="Index">⬆ 匯入書籍</a>
-                        </li>
+                        @if (User?.Identity?.IsAuthenticated == true &&
+                                                (await Authz.AuthorizeAsync(User, "Books.Access")).Succeeded)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Books" ? "active" : "")"
+                                   asp-area="Books" asp-controller="Books" asp-action="Index">📚 書籍清單</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Publishers" ? "active" : "")"
+                                   asp-area="Books" asp-controller="Publishers" asp-action="Index">🏢 出版社管理</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Categories" ? "active" : "")"
+                                   asp-area="Books" asp-controller="Categories" asp-action="Index">📂 分類管理</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Import" ? "active" : "")"
+                                   asp-area="Books" asp-controller="Import" asp-action="Index">⬆ 匯入書籍</a>
+                            </li>
+                        }
                     </ul>
-
-                    @* <!-- 右邊登入/註冊 -->
-                    <div class="d-flex">
-                        <a class="btn btn-outline-light me-2" asp-area="Account" asp-controller="Account" asp-action="Login">登入</a>
-                        <a class="btn btn-warning" asp-area="Account" asp-controller="Account" asp-action="Register">註冊</a>
-                    </div> *@
                 </div>
             </div>
         </nav>
     </header>
 
-    <!-- 主內容 -->
     <main class="mt-0 p-0">
         @RenderBody()
     </main>
 
-    <!-- 頁尾 -->
     <footer class="footer-overlay">
         <p class="mb-0">© 2025 BookLoop 專案 | FUEN43 Team 6</p>
     </footer>
