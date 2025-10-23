@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BookLoop.Models;
 
@@ -44,4 +45,19 @@ public partial class Coupon
     public virtual ICollection<MemberCoupon> MemberCoupons { get; set; } = new List<MemberCoupon>();
 
     public virtual ICollection<OrderCouponSnapshot> OrderCouponSnapshots { get; set; } = new List<OrderCouponSnapshot>();
+
+    public virtual ICollection<CouponCategory> CouponCategories { get; set; } = new List<CouponCategory>();
+
+	[NotMapped]//告訴EF這個屬性不要寫進資料庫
+    public bool IsAvailable { 
+        get {
+            if(!IsActive) return false; //若手動停用 ->直接false
+			var now = DateTime.Now; //現在時間
+            
+            if(StartAt != null && now < StartAt) return false; //還沒開始
+            if(EndAt != null && now > EndAt) return false;  //已結束
+
+            return true;
+		}
+	}
 }

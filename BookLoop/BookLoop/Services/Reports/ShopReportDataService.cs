@@ -185,36 +185,32 @@ namespace BookLoop.Services.Reports
 		}
 
 		/// <summary>
-		/// 圓餅圖：一段期間內「借閱書籍種類」排行（以借閱筆數計）。
-		/// BorrowRecords → Listings → Categories
+		/// 一段期間內「借閱書籍排行」（以借閱次數排序）。
+		/// BorrowRecords → Listings（書名）
 		/// </summary>
-		public async Task<IReadOnlyList<ChartPoint>> GetTopBorrowCategoryAsync(
+		public async Task<IReadOnlyList<ChartPoint>> GetTopBorrowBooksAsync(
 			DateTime start,
 			DateTime endInclusive,
-			int topN = 5,
+			int topN = 10,
 			int[]? publisherIds = null)
 		{
 			var endExclusive = endInclusive.Date.AddDays(1);
+			topN = topN <= 0 ? 10 : Math.Min(topN, 50);
 
 			var q =
 				from br in _db.BorrowRecords.AsNoTracking()
 				join l in _db.Listings.AsNoTracking() on br.ListingID equals l.ListingID
-				join c in _db.Categories.AsNoTracking() on l.CategoryID equals c.CategoryID
 				where br.BorrowDate >= start && br.BorrowDate < endExclusive
-				select new
-				{
-					c.CategoryName,
-					l.PublisherID
-				};
+				select new { l.Title, l.PublisherID };
 
 			if (publisherIds is { Length: > 0 })
-				q = q.Where(x => publisherIds.Contains(x.PublisherID)); // ★ 用 Listing.PublisherID 過濾
+				q = q.Where(x => publisherIds.Contains(x.PublisherID)); // 與銷售邏輯一致：依出版社過濾
 
 			var rows = await q
-				.GroupBy(x => x.CategoryName)
+				.GroupBy(x => x.Title)
 				.Select(g => new { Label = g.Key, Value = g.Count() })
 				.OrderByDescending(x => x.Value)
-				.Take(topN <= 0 ? 5 : topN)
+				.Take(topN)
 				.ToListAsync();
 
 			return rows.Select(x => new ChartPoint { Label = x.Label, Value = (decimal)x.Value }).ToList();
