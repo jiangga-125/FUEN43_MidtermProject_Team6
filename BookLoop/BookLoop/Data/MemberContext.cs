@@ -1,7 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using BookLoop.Models;
+﻿using BookLoop.Models;
+using DocumentFormat.OpenXml.InkML;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
 
 namespace BookLoop.Data;
 
@@ -38,6 +39,9 @@ public partial class MemberContext : DbContext
 
     public virtual DbSet<RuleApplication> RuleApplications { get; set; }
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Server = 127.0.0.1, 1444; Database=BookLoop;User Id = bookloop; Password=FUEN43;Encrypt=True;TrustServerCertificate=True;Connect Timeout = 30;");
     public virtual DbSet<CouponCategory> CouponCategories { get; set; } = default!;
 
     public virtual DbSet<Category> Categories { get; set; } = default!;
