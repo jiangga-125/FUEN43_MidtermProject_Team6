@@ -36,13 +36,14 @@ public partial class MemberContext : DbContext
 
     public virtual DbSet<RuleApplication> RuleApplications { get; set; }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    
 
     public virtual DbSet<CouponCategory> CouponCategories { get; set; } = default!;
 
     public virtual DbSet<Category> Categories { get; set; } = default!;
 
-    {
+	protected override void OnModelCreating(ModelBuilder modelBuilder)
+	{
         modelBuilder.Entity<Coupon>(entity =>
         {
             entity.HasIndex(e => new { e.StartAt, e.EndAt }, "IX_Coupons_Date");
