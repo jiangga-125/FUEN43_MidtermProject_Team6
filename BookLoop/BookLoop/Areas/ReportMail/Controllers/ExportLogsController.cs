@@ -9,6 +9,7 @@ using System.Text.Json;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using BookLoop.Data;
 
 namespace BookLoop.Areas.ReportMail.Controllers
 {
