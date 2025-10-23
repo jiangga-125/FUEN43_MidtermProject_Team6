@@ -50,6 +50,15 @@ public partial class MemberContext : DbContext
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // 先忽略權限相關型別，避免被自動探索進這個模型
+        modelBuilder.Ignore<PermissionFeature>();
+        modelBuilder.Ignore<Feature>();
+        modelBuilder.Ignore<Permission>();
+        modelBuilder.Ignore<UserRole>();
+        modelBuilder.Ignore<UserPermission>();
+        modelBuilder.Ignore<SupplierUser>();
+        modelBuilder.Ignore<Supplier>();
+
         modelBuilder.Entity<Coupon>(entity =>
         {
             entity.HasIndex(e => new { e.StartAt, e.EndAt }, "IX_Coupons_Date");

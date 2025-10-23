@@ -1,5 +1,4 @@
 using BookLoop.Areas.Reviews;
-using OfficeOpenXml;
 using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services;
@@ -12,7 +11,10 @@ using BookLoop.Services.Pricing;
 using BookLoop.Services.Reports;
 using BookLoop.Services.Rules;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using OfficeOpenXml;
 using System.Threading.Tasks;
 
 
@@ -87,13 +89,64 @@ namespace BookLoop
 
 			builder.Services.AddAuthorization(options =>
 			{
+                // === 報表入口：頁面 / 預覽 API ===
+                // 新碼：ReportMail.Reports.Query
+                // 舊碼視為等價：Reports.View / Reports.Manage / ADMIN
+                options.AddPolicy("ReportMail.Reports.Query", policy =>
+                    policy.RequireAssertion(ctx =>
+                        ctx.User.HasClaim("perm", "ReportMail.Reports.Query") ||
+                        ctx.User.HasClaim("perm", "Reports.View") ||
+                        ctx.User.HasClaim("perm", "Reports.Manage") ||
+                        ctx.User.HasClaim("perm", "ADMIN")
+                    ));
+
+                // === 資料範圍：All（行銷/管理） ===
+                // 新碼：ReportMail.Reports.Data.All
+                // 舊碼視為等價：ADMIN / SALES
+                options.AddPolicy("ReportMail.Reports.Data.All", policy =>
+                    policy.RequireAssertion(ctx =>
+                        ctx.User.HasClaim("perm", "ReportMail.Reports.Data.All") ||
+                        ctx.User.HasClaim("perm", "ADMIN") ||
+                        ctx.User.HasClaim("perm", "SALES")
+                    ));
+
+                // === 資料範圍：ByPublisher（書商） ===
+                // 新碼：ReportMail.Reports.Data.ByPublisher
+                // 舊碼視為等價：VENDOR
+                options.AddPolicy("ReportMail.Reports.Data.ByPublisher", policy =>
+                    policy.RequireAssertion(ctx =>
+                        ctx.User.HasClaim("perm", "ReportMail.Reports.Data.ByPublisher") ||
+                        ctx.User.HasClaim("perm", "VENDOR")
+                    ));
+
+                // 匯出 Excel
+                options.AddPolicy("ReportMail.Export.Excel", policy =>
+                    policy.RequireAssertion(ctx =>
+                        ctx.User.HasClaim("perm", "ReportMail.Export.Excel") ||   // 新制
+                        ctx.User.HasClaim("perm", "Reports.Export") ||             // 舊制
+                        ctx.User.HasClaim("perm", "ADMIN")));                      // 超級權限
+
+                // 匯出 PDF
+                options.AddPolicy("ReportMail.Export.Pdf", policy =>
+                    policy.RequireAssertion(ctx =>
+                        ctx.User.HasClaim("perm", "ReportMail.Export.Pdf") ||
+                        ctx.User.HasClaim("perm", "Reports.Export") ||
+                        ctx.User.HasClaim("perm", "ADMIN")));
+				//匯出紀錄
+				options.AddPolicy("ReportMail.Logs.Index", p =>
+					p.RequireAssertion(ctx =>
+						ctx.User.HasClaim("feature", "ReportMail.Logs.Index") ||
+						ctx.User.HasClaim("perm", "ADMIN")
+					));
+
 				foreach (var key in new[]
 				{
 					"Accounts.View","Accounts.Edit",
 					"Permissions.Manage",
 					"Blacklists.View","Blacklists.Manage",
-					"Members.View","Members.Edit"
-				})
+					"Members.View","Members.Edit",
+
+                })
 				{
 					options.AddPolicy(key, p => p.RequireClaim("perm", key));
 				}
@@ -212,7 +265,54 @@ namespace BookLoop
 
 			app.MapRazorPages();
 
-			app.Run();
+            // 強化版：列出使用者 claims、三個 ReportMail Policy 是否已註冊、是否通過
+            app.MapGet("/authz-debug", async (
+                IAuthorizationService authz,
+                IOptions<AuthorizationOptions> opt,
+                HttpContext ctx) =>
+            {
+                var user = ctx.User;
+                var authed = user?.Identity?.IsAuthenticated ?? false;
+
+                // 使用者現有的 perm / supplier
+                var perms = user?.Claims.Where(c => c.Type == "perm").Select(c => c.Value).OrderBy(x => x).ToArray() ?? Array.Empty<string>();
+                var suppliers = user?.Claims.Where(c => c.Type == "supplier").Select(c => c.Value).ToArray() ?? Array.Empty<string>();
+
+                // 我們要關心的政策名稱（逐一檢查是否「已註冊」）
+                string[] targets =
+                {
+        "ReportMail.Reports.Query",
+        "ReportMail.Reports.Data.All",
+        "ReportMail.Reports.Data.ByPublisher"
+    };
+
+                // 有沒有註冊（存在於 AuthorizationOptions）
+                var policiesRegistered = targets
+                    .Where(name => opt.Value.GetPolicy(name) != null)
+                    .OrderBy(x => x)
+                    .ToArray();
+
+                // 逐一評估三個 ReportMail Policy 是否通過
+                var policyResults = new Dictionary<string, bool>();
+                foreach (var name in targets)
+                {
+                    var ok = (await authz.AuthorizeAsync(user!, null, name)).Succeeded;
+                    policyResults[name] = ok;
+                }
+
+                return Results.Json(new
+                {
+                    authenticated = authed,
+                    perms,
+                    suppliers,
+                    policiesRegistered,
+                    policyResults
+                });
+            });
+
+
+
+            app.Run();
 		}
 	}
 }

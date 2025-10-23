@@ -1,11 +1,15 @@
-﻿using System;
+﻿using BookLoop.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BookLoop.Data;
 using BookLoop.Models;
+using System.Threading.Tasks;
 
 namespace ReportMail.Areas.ReportMail.Controllers
 {
@@ -17,6 +21,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
         public LookupController(ShopDbContext shop) => _shop = shop;
 
         [HttpGet]
+        [Authorize(Policy = "ReportMail.Reports.Query")]
         public async Task<IActionResult> Categories(
             [FromQuery] string? kind,
             [FromQuery(Name = "baseKind")] string? baseKind,
@@ -99,6 +104,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
         // 依「所選日期區間」+「已選書籍種類」回傳排行上限：
         //   sales → distinct BookID；borrow → distinct ListingID（用 Listings.CategoryID 篩）
         [HttpPost]
+        [Authorize(Policy = "ReportMail.Reports.Query")]
         public async Task<IActionResult> MaxRank([FromBody] MaxRankRequest req)
         {
             var kind = (req?.BaseKind ?? "sales").Trim().ToLowerInvariant();

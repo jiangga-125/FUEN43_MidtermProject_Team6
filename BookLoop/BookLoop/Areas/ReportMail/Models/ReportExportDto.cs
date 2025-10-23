@@ -15,7 +15,9 @@ namespace ReportMail.Models.Dto
 		[Required]
 		public string Title { get; set; } = "報表";
 
-		public string? SubTitle { get; set; }
+        public int? DefinitionId { get; set; }
+
+        public string? SubTitle { get; set; }
 
 		// 既有：資料來源
 		public string? BaseKind { get; set; }     // sales | borrow | orders
@@ -61,4 +63,23 @@ namespace ReportMail.Models.Dto
 		public string? MetricText { get; set; }      // 筆數/金額/數量/總額...
 		public List<string>? Chips { get; set; }     // 若要逐個 chip 顯示可用（例如每個前面加小圓角底色）
 	}
+
+	// 
+	internal sealed class ExportSnapshot
+	{
+		public string? Category { get; set; }
+		public string? BaseKind { get; set; }
+		public string? Granularity { get; set; }
+		public string? ValueMetric { get; set; }
+		public string? Title { get; set; }
+		public string? SubTitle { get; set; }
+		public int? DefinitionId { get; set; }
+
+		public List<string>? Labels { get; set; }
+		public List<decimal>? Values { get; set; }
+
+		// 若 PDF 要嵌圖，可存 chart 的 dataURL；沒用到也可不存
+		public string? ChartImageBase64 { get; set; }
+	}
+
 }
