@@ -1,4 +1,5 @@
 using BookLoop.Areas.Reviews;
+using OfficeOpenXml;
 using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services;
@@ -10,7 +11,6 @@ using BookLoop.Services.Points;
 using BookLoop.Services.Pricing;
 using BookLoop.Services.Reports;
 using BookLoop.Services.Rules;
-using BorrowSystem.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.DataProtection;
 using System.IO;
 using Microsoft.AspNetCore.Http;
 
+
 namespace BookLoop
 {
 	public class Program
@@ -27,11 +28,13 @@ namespace BookLoop
 		public static async Task Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
+            //EPPlus v8 授權設定（學校/非商用）
+            ExcelPackage.License.SetNonCommercialOrganization("FUEN43 Team6");
 
-			// ------------------------------
-			// 連線字串讀取（先 BookLoop，退回 Default）
-			// ------------------------------
-			string? defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
+            // ------------------------------
+            // 連線字串讀取（先 BookLoop，退回 Default）
+            // ------------------------------
+            string? defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
 			string? bookLoopConn = builder.Configuration.GetConnectionString("BookLoop");
 			string? appDbConn = !string.IsNullOrWhiteSpace(bookLoopConn) ? bookLoopConn :
 								  !string.IsNullOrWhiteSpace(defaultConn) ? defaultConn : null;
@@ -55,7 +58,7 @@ namespace BookLoop
 			builder.Services.AddDbContext<BookSystemContext>(options =>
 				options.UseSqlServer(bookLoopConn ?? appDbConn));
 
-			builder.Services.AddDbContext<BorrowSystemContext>(options =>
+			builder.Services.AddDbContext<BorrowContext>(options =>
 				options.UseSqlServer(bookLoopConn ?? appDbConn));
 
 			builder.Services.AddDbContext<ReportMailDbContext>(options =>
@@ -127,7 +130,7 @@ namespace BookLoop
 
 			builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
 			builder.Services.AddScoped<ReportQueryBuilder>();
-			builder.Services.AddSingleton<IExcelExporter, ClosedXmlExcelExporter>();
+			builder.Services.AddSingleton<IExcelExporter, EpplusExcelExporter>();
 			builder.Services.AddScoped<MailService>();
 
 			builder.Services.AddScoped<ICouponService, CouponService>();
@@ -155,10 +158,7 @@ namespace BookLoop
 
 			builder.Services.AddHttpContextAccessor();
 
-			// BorrowSystem 背景服務
-			builder.Services.AddScoped<ReservationExpiryService>();
-			builder.Services.AddHostedService<ReservationExpiryWorker>();
-			builder.Services.AddScoped<ReservationQueueService>();
+			
 
 			builder.Services.AddScoped<AuthService>();
 			builder.Services.AddScoped<PermissionService>();
@@ -168,10 +168,18 @@ namespace BookLoop
 			builder.Services.AddControllersWithViews();
 			builder.Services.AddRazorPages();
 
-			// ------------------------------
-			// 應用程式管線
-			// ------------------------------
-			var app = builder.Build();
+			//借閱service
+            builder.Services.AddScoped<ReservationExpiryService>();
+            builder.Services.AddHostedService<ReservationExpiryWorker>();
+            builder.Services.AddScoped<ReservationQueueService>();
+
+
+
+
+            // ------------------------------
+            // 應用程式管線
+            // ------------------------------
+            var app = builder.Build();
 
 			// 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
 			using (var scope = app.Services.CreateScope())

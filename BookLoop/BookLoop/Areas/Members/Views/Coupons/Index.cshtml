@@ -31,16 +31,24 @@
                 <td>@item.Code</td>
                 <td>@(item.DiscountType == 0 ? "金額折抵" : "百分比折扣")</td>
                 <td>@item.DiscountValue</td>
-                <td>@item.StartAt</td>
-                <td>@item.EndAt</td>
+                <td>@item.StartAt?.ToString("yyyy/MM/dd HH:mm")</td>
+                <td>@item.EndAt?.ToString("yyyy/MM/dd HH:mm")</td>
                 <td>
-                    @if (item.IsActive)
+                    @if (!item.IsActive)
                     {
-                        <span class="badge bg-success">可用</span>
+                        <span class="badge bg-seondary">停用</span>
+                    }
+                    else if (item.StartAt != null && DateTime.Now < item.StartAt)
+                    {
+                        <span class="badge bg-warning text-dark">尚未開始</span>
+                    }
+                    else if (item.EndAt != null && DateTime.Now > item.EndAt)
+                    {
+                        <span class="badge bg-danger">已過期</span>
                     }
                     else
                     {
-                        <span class="badge bg-secondary">不可用</span>
+                        <span class="badge bg-success">啟用中</span>
                     }
                 </td>
                 <td>
