@@ -1,0 +1,275 @@
+﻿@using BookLoop.Models
+@model ReportDefinition
+@{
+    ViewData["Title"] = "新增報表";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var previewUrl = Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" }) ?? "#";
+    var catsUrl = Url.Action("Categories", "Lookup", new { area = "ReportMail" }) ?? "#";
+}
+<style>
+    .action-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        margin-bottom: 1rem;
+    }
+
+        .action-bar h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+    .action-buttons {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+    @@media (max-width:576px) {
+        .action-bar
+
+    {
+        flex-wrap: wrap;
+    }
+
+    .action-buttons {
+        width: 100%;
+    }
+
+        .action-buttons .btn {
+            flex: 1;
+        }
+
+    }</style>
+
+<div class="d-flex align-items-center mb-3 mt-4">
+    <h1 class="h3 mb-0">新增報表</h1>
+    <a href="@Url.Action("Index", "Reports", new { area = "ReportMail" })"
+       class="btn btn-outline-secondary btn-sm px-3 py-1 rounded-1 ms-2">返回</a>
+</div>
+
+
+
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <!-- 基本欄位 -->
+                    <div class="mb-3">
+                        <label asp-for="ReportName" class="form-label">報表名稱</label>
+
+                        <!-- 輸入框 + 儲存按鈕並排 -->
+                        <div class="input-group">
+                            <input asp-for="ReportName" class="form-control" />
+                            <button type="submit" id="btnSubmit"
+                                    class="btn btn-primary btn-sm px-3 py-2 rounded-1">
+                                儲存
+                            </button>
+                        </div>
+
+                        <span asp-validation-for="ReportName" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Category" class="form-label">圖表種類</label>
+                        <select asp-for="Category" id="Category" class="form-select">
+                            <option value="line">折線圖</option>
+                            <option value="bar">長條圖</option>
+                            <option value="pie">圓餅圖</option>
+                        </select>
+                        <span asp-validation-for="Category" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="BaseKind" class="form-label">基礎報表</label>
+                        <select asp-for="BaseKind" id="baseKind" class="form-select">
+                            <option value="sales">書籍銷售量（本）</option>
+                            <option value="borrow">書籍借閱量（本）</option>
+                            <option value="orders">訂單（僅折線圖）</option>
+                        </select>
+                        <span asp-validation-for="BaseKind" class="text-danger"></span>
+                        <div class="form-text">提示：長條圖 / 圓餅圖僅適用「銷售量 / 借閱量」。</div>
+                    </div>
+
+                    <hr />
+
+                    <!-- 日期與粒度（共用；bar/pie 也可保留粒度供後端聚合使用） -->
+                    <div id="dateLabel" class="mb-2 fw-bold">日期區間與粒度</div>
+                    <div class="row g-2 align-items-end mb-3">
+                        <div class="col">
+                            <label class="form-label">起</label>
+                            <input type="date" id="dateFrom" class="form-control" />
+                        </div>
+                        <div class="col">
+                            <label class="form-label">迄</label>
+                            <input type="date" id="dateTo" class="form-control" />
+                        </div>
+                        <div id="granGroup" class="col-auto">
+                            <div class="form-check"><input class="form-check-input" type="radio" name="gran" id="gDay" value="day" checked><label class="form-check-label" for="gDay">日</label></div>
+                            <div class="form-check"><input class="form-check-input" type="radio" name="gran" id="gMonth" value="month"><label class="form-check-label" for="gMonth">月</label></div>
+                            <div class="form-check"><input class="form-check-input" type="radio" name="gran" id="gYear" value="year"><label class="form-check-label" for="gYear">年</label></div>
+                        </div>
+                    </div>
+
+                    <!-- sales：for line/bar/pie -->
+                    <div id="section-sales" class="border rounded p-3 mb-3" style="display:none">
+                        <div class="mb-2 fw-bold">銷售篩選</div>
+
+                        <div class="mb-3">
+                            <label class="form-label">書籍種類</label>
+                            <select id="salesCategories" class="form-select" multiple></select>
+                            @* <div class="form-text">選「（全部）」或不選＝全部</div> *@
+                        </div>
+
+                        <!-- 排行區間（bar/pie 用） -->
+                        <div class="row g-2 align-items-end mb-3" id="rank-sales" style="display:none">
+                            <div class="col-6">
+                                <label class="form-label">銷售排行：起</label>
+                                <select id="rankFrom" class="form-select"></select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">銷售排行：迄</label>
+                                <select id="rankTo" class="form-select"></select>
+                            </div>
+                            <div class="form-text">預設 1~10 名。</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">單本價位</label>
+                            <select id="priceRange" class="form-select"></select>
+                            <div class="form-text">每 100 元一區間（1~1000）</div>
+                        </div>
+                    </div>
+
+                    <!-- borrow：for line/bar/pie -->
+                    <div id="section-borrow" class="border rounded p-3 mb-3" style="display:none">
+                        <div class="mb-2 fw-bold">借閱篩選</div>
+
+                        <div class="mb-3">
+                            <label class="form-label">書籍種類</label>
+                            <select id="borrowCategories" class="form-select" multiple></select>
+                            @* <div class="form-text">選「（全部）」或不選＝全部</div> *@
+                        </div>
+
+                        <!-- 排行區間（bar/pie 用） -->
+                        <div class="row g-2 align-items-end mb-3" id="rank-borrow" style="display:none">
+                            <div class="col-6">
+                                <label class="form-label">借閱排行：起</label>
+                                <select id="rankFromBorrow" class="form-select"></select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">借閱排行：迄</label>
+                                <select id="rankToBorrow" class="form-select"></select>
+                            </div>
+                            <div class="form-text">預設 1~10 名。</div>
+                        </div>
+                        <!-- 出版年份（十年區間）：預設隱藏 -->
+                        <div id="publishDecadeRow" class="mb-3" style="display:none">
+                            <label class="form-label">出版年份（十年區間）</label>
+                            <select id="publishDecade" class="form-select"></select>
+                            <div class="form-text">每 10 年一區，1901 年起至現在。</div>
+                        </div>
+                    </div>
+
+                    <!-- orders：僅折線圖可見 -->
+                    <div id="section-orders" class="border rounded p-3 mb-3" style="display:none">
+                        <div class="mb-2 fw-bold">訂單篩選（僅折線圖）</div>
+                        <div class="mb-3">
+                            <label class="form-label d-block">指標</label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="metric" id="mAmount" value="amount" checked>
+                                <label class="form-check-label" for="mAmount">總銷售金額</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="metric" id="mCount" value="count">
+                                <label class="form-check-label" for="mCount">總訂單筆數</label>
+                            </div>
+                        </div>
+                        <!-- 訂單狀態（包含式篩選；全選＝不送條件；全不勾＝空集合） -->
+                        <div class="mb-3">
+                            <label class="form-label">訂單狀態</label>
+                            <div id="orderStatusGroup" class="d-flex flex-wrap gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="os_all">
+                                    <label class="form-check-label" for="os_all">全選</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input os" type="checkbox" id="os_0" data-val="0">
+                                    <label class="form-check-label" for="os_0">待處理</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input os" type="checkbox" id="os_1" data-val="1">
+                                    <label class="form-check-label" for="os_1">已付款</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input os" type="checkbox" id="os_2" data-val="2">
+                                    <label class="form-check-label" for="os_2">已出貨</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input os" type="checkbox" id="os_3" data-val="3">
+                                    <label class="form-check-label" for="os_3">已完成</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input os" type="checkbox" id="os_4" data-val="4">
+                                    <label class="form-check-label" for="os_4">已取消</label>
+                                </div>
+                            </div>
+                            @* <div class="form-text">預設只勾「已完成」。全選＝不加狀態條件；全不勾＝送空集合（回空結果）。</div> *@
+                        </div>
+                        <div class="row g-2">
+                            <div class="col"><label class="form-label">單筆金額（Min）</label><input type="number" id="ordAmtMin" class="form-control" placeholder="0" /></div>
+                            <div class="col"><label class="form-label">單筆金額（Max）</label><input type="number" id="ordAmtMax" class="form-control" placeholder="999999" /></div>
+                        </div>
+                    </div>
+
+                    <!-- 後端接收 -->
+                    <input type="hidden" asp-for="IsActive" value="true" />
+                    <input type="hidden" id="FiltersJson" name="FiltersJson" />
+                    <span class="text-danger" data-valmsg-for="FiltersJson" data-valmsg-replace="true"></span>
+
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 預覽 -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">預覽</h5>
+                <canvas id="previewChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- 1) jQuery（不改 _Layout，就在頁面自己載） -->
+    <script src="~/lib/jquery/jquery.min.js"></script>
+
+    <!-- 2) 這頁會用到的第三方（若站上已全域載入，可保留/刪除都行） -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="~/lib/tom-select/tom-select.complete.min.js"></script>
+
+    <!-- 3) 先把 API 位址塞給 JS（在 report-def-form.js 之前） -->
+    <script>
+        window.__API_PREVIEW__ = "@previewUrl";
+        window.__API_CATS__    = "@catsUrl";
+        window.__API_MAXRANK__ = "@Url.Action("MaxRank", "Lookup", new { area = "ReportMail" })";
+    </script>
+
+    <!-- 4) 主腳本 -->
+    <script src="~/js/report-def-form.js" asp-append-version="true"></script>
+
+    <!-- 5) 最後再載驗證（它依賴 jQuery） -->
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
+

@@ -1,0 +1,26 @@
+﻿@model BookLoop.Models.Category
+
+@{
+    ViewData["Title"] = "編輯分類";
+}
+
+<h1>編輯分類</h1>
+
+<!-- 表單送到 POST: Edit -->
+<form asp-action="Edit" method="post">
+    <!-- 隱藏欄位：CategoryID -->
+    <input type="hidden" asp-for="CategoryID" />
+
+    <div class="form-group">
+        <!-- 分類名稱輸入框 -->
+        <label asp-for="CategoryName" class="control-label"></label>
+        <input asp-for="CategoryName" class="form-control" />
+        <span asp-validation-for="CategoryName" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mt-3">
+        <!-- 送出 / 返回按鈕 -->
+        <input type="submit" value="儲存變更" class="btn btn-primary" />
+        <a asp-action="Index" class="btn btn-secondary">返回清單</a>
+    </div>
+</form>

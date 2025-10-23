@@ -1,0 +1,44 @@
+﻿@model BookLoop.UserFormVm
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "編輯帳號";
+}
+<h3>編輯帳號</h3>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="UserID" />
+
+    <div class="mb-3">
+        <label class="form-label">Email（不可修改）</label>
+        <input class="form-control" value="@Model.Email" disabled />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">UserType</label>
+        <select asp-for="UserType" class="form-select">
+            <option value="2" selected="@(Model.UserType == 2)">員工</option>
+            <option value="3" selected="@(Model.UserType == 3)">書商</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Phone</label>
+        <input asp-for="Phone" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Status</label>
+        <select asp-for="Status" class="form-select">
+            <option value="0">未啟用</option>
+            <option value="1">啟用</option>
+            <option value="2">停用</option>
+        </select>
+    </div>
+
+    <button class="btn btn-primary">儲存</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

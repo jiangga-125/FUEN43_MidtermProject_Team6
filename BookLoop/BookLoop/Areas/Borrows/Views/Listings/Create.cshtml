@@ -1,0 +1,168 @@
+﻿@model BookLoop.ViewModels.ListingsViewModel
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create" method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="Title" class="control-label">書名</label>
+                <input asp-for="Title" class="form-control" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AuthorName" class="control-label">作者</label>
+                <input asp-for="AuthorName" class="form-control" />
+                <span asp-validation-for="AuthorName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CategoryId" class="control-label">種類</label>
+                <select asp-for="CategoryId" class ="form-control" asp-items="ViewBag.CategoryID"></select>
+            </div>
+            <div class="form-group">
+                <label asp-for="PublisherId" class="control-label">出版社</label>
+                <select asp-for="PublisherId" class="form-control" asp-items="ViewBag.PublisherID"></select>
+            </div>
+           
+            <div class="form-group">
+                <label asp-for="ISBN" class="control-label">ISBN</label>
+                <input asp-for="ISBN" class="form-control" />
+                <span asp-validation-for="ISBN" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Condition" class="control-label">書況</label>
+                <input asp-for="Condition" class="form-control" />
+            </div>
+           
+
+            <div class="mb-2"><strong>書籍圖片（擇一）或不填圖</strong></div>
+
+            <div class="mb-3">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" asp-for="ImageSource" id="srcCloud" value="cloud" checked>
+                    <label class="form-check-label" for="srcCloud">雲端網址</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" asp-for="ImageSource" id="srcLocal" value="local">
+                    <label class="form-check-label" for="srcLocal">上傳本機</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <!-- 提供「不使用圖片」選項 -->
+                    <input class="form-check-input" type="radio" asp-for="ImageSource" id="srcNone" value="none">
+                    <label class="form-check-label" for="srcNone">不使用圖片</label>
+                </div>
+            </div>
+
+            <!-- 格 1：雲端網址 -->
+            <div id="cloudBox" class="mb-3">
+                <label asp-for="CloudImageUrl" class="form-label">圖片網址</label>
+                <input asp-for="CloudImageUrl" class="form-control" placeholder="https://...">
+                <span asp-validation-for="CloudImageUrl" class="text-danger"></span>
+                <div class="form-text">貼上外部圖檔 URL。</div>
+            </div>
+
+            <!-- 格 2：本機檔案 -->
+            <div id="localBox" class="mb-3" style="display:none;">
+                <label asp-for="LocalImage" class="form-label">選擇圖片</label>
+                <input asp-for="LocalImage" type="file" accept="image/*" class="form-control" id="localImageInput">
+                <span asp-validation-for="LocalImage" class="text-danger"></span>
+                <div class="form-text">支援 .jpg/.jpeg/.png/.gif/.webp，單張 ≤ 5MB。</div>
+            </div>
+
+            <!-- 預覽 -->
+            <div class="mt-2">
+                <img id="previewImg"
+                     src="@Url.Content("~/images/borrow/noimage.jpeg")"
+                     alt="預覽"
+                     style="max-width:220px;max-height:220px;object-fit:contain;border:1px solid #ddd;border-radius:6px;padding:4px;">
+            </div>
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">建立</button>
+                <a asp-action="Index" class="btn btn-secondary">返回列表</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+          const srcCloud = document.getElementById('srcCloud');
+          const srcLocal = document.getElementById('srcLocal');
+          const srcNone  = document.getElementById('srcNone');
+          const cloudBox = document.getElementById('cloudBox');
+          const localBox = document.getElementById('localBox');
+          const preview  = document.getElementById('previewImg'); // ← 可能為 null
+          const cloudInput = cloudBox?.querySelector('input[name="CloudImageUrl"]');
+          const localInput = document.getElementById('localImageInput');
+          const defaultSrc = '@Url.Content("~/images/borrow/noimage.jpeg")'; // 依你的實際路徑
+
+          // 任何一個關鍵元素抓不到，就不要繼續（避免在別頁報錯）
+          if (!srcCloud || !srcLocal || !srcNone || !cloudBox || !localBox || !preview) {
+            return;
+          }
+
+          let objectUrl = null;
+
+          function showDefault() {
+            if (!preview) return;
+            if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+            preview.onerror = null;
+            preview.src = defaultSrc;
+          }
+
+          function previewCloud(url) {
+            if (!preview) return;
+            if (!url) { showDefault(); return; }
+            if (location.protocol === 'https:' && /^http:\/\//i.test(url)) { showDefault(); return; }
+            if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+            preview.onerror = () => { preview.onerror = null; showDefault(); };
+            preview.src = url;
+          }
+
+          function previewLocal(file) {
+            if (!preview) return;
+            if (!file || !file.type?.startsWith('image/')) { showDefault(); return; }
+            if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+            objectUrl = URL.createObjectURL(file);
+            preview.onerror = () => { preview.onerror = null; showDefault(); };
+            preview.src = objectUrl;
+          }
+
+          function toggleBox() {
+            // 先切換 UI 區塊
+            if (srcCloud.checked) {
+              cloudBox.style.display = '';
+              localBox.style.display = 'none';
+              const hasCloud = cloudInput && cloudInput.value.trim().length > 0;
+              if (!hasCloud) showDefault();
+            } else if (srcLocal.checked) {
+              cloudBox.style.display = 'none';
+              localBox.style.display = '';
+              const hasLocal = localInput && localInput.files && localInput.files.length > 0;
+              if (!hasLocal) showDefault();
+            } else {
+              cloudBox.style.display = 'none';
+              localBox.style.display = 'none';
+              showDefault();
+            }
+          }
+
+          // 綁事件（先綁 input/change，再綁切換）
+          cloudInput?.addEventListener('input', () => previewCloud(cloudInput.value.trim()));
+          localInput?.addEventListener('change', () => previewLocal(localInput.files?.[0]));
+
+          srcCloud.addEventListener('change', toggleBox);
+          srcLocal.addEventListener('change', toggleBox);
+          srcNone .addEventListener('change', toggleBox);
+
+          // 初始化（此時 DOM 已就緒）
+          toggleBox();
+        });
+    </script>
+}

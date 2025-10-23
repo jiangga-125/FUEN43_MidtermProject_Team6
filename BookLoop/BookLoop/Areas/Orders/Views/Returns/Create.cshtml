@@ -1,0 +1,73 @@
+﻿@model BookLoop.Models.Return
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+@{
+    var statusList = new List<SelectListItem>
+    {
+        new SelectListItem { Value = "0", Text = "申請中" },
+        new SelectListItem { Value = "1", Text = "審核中" },
+        new SelectListItem { Value = "2", Text = "已出貨" },
+        new SelectListItem { Value = "3", Text = "退貨中" },
+        new SelectListItem { Value = "4", Text = "已完成" }
+    };
+}
+@{
+    var TypeList = new List<SelectListItem>
+    {
+        new SelectListItem { Value = "0", Text = "整單" },
+        new SelectListItem { Value = "1", Text = "單筆" }
+    };
+}
+
+<h1>新增退貨</h1>
+
+
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-area="Orders" asp-controller="Returns" asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="OrderID" class="control-label"></label>
+                <select asp-for="OrderID" class ="form-control" asp-items="ViewBag.OrderID"></select>
+            </div>
+            <div class="form-group">
+                <label asp-for="ReturnReason" class="control-label"></label>
+                <input asp-for="ReturnReason" class="form-control" />
+                <span asp-validation-for="ReturnReason" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ReturnType" class="control-label"></label>
+                <select asp-for="ReturnType" class="form-select" asp-items="TypeList">
+                </select>
+                <span asp-validation-for="ReturnType" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Status" class="control-label"></label>
+                <select asp-for="Status" class="form-select" asp-items="statusList">
+                </select>
+                <span asp-validation-for="Status" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ReturnedDate" class="control-label"></label>
+                <input asp-for="ReturnedDate" class="form-control" />
+                <span asp-validation-for="ReturnedDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="新增" class="btn btn-primary mt-3" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-controller="Returns" asp-action="Index" class="btn btn-secondary mt-3">返回退貨列表</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

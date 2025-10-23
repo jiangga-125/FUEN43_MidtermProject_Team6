@@ -1,0 +1,109 @@
+﻿@using Microsoft.AspNetCore.Authorization
+@inject IAuthorizationService Authz
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"] - BookLoop</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    @RenderSection("Styles", required: false)
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        main {
+            min-height: 70vh;
+        }
+
+        footer {
+            margin-top: 50px;
+            padding: 20px 0;
+            background-color: #212529;
+            color: #f8f9fa;
+            text-align: center;
+        }
+
+        .navbar-nav .nav-link {
+            color: #f8f9fa;
+            transition: color .2s, background-color .2s;
+            border-radius: 6px;
+            padding: 6px 12px;
+            margin-right: 5px;
+        }
+
+            .navbar-nav .nav-link:hover {
+                background-color: #495057;
+                color: #ffc107;
+            }
+
+            .navbar-nav .nav-link.active {
+                background-color: #ffc107;
+                color: #212529;
+                font-weight: bold;
+            }
+
+        .footer-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(15,15,15,.8);
+            color: #f8f9fa;
+            text-align: center;
+            padding: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+            <div class="container-fluid">
+                <a class="navbar-brand fw-bold" asp-area="" asp-controller="Home" asp-action="Index">📚 BookLoop</a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        @if (User?.Identity?.IsAuthenticated == true &&
+                                                (await Authz.AuthorizeAsync(User, "Books.Access")).Succeeded)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Books" ? "active" : "")"
+                                   asp-area="Books" asp-controller="Books" asp-action="Index">📚 書籍清單</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Publishers" ? "active" : "")"
+                                   asp-area="Books" asp-controller="Publishers" asp-action="Index">🏢 出版社管理</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Categories" ? "active" : "")"
+                                   asp-area="Books" asp-controller="Categories" asp-action="Index">📂 分類管理</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Import" ? "active" : "")"
+                                   asp-area="Books" asp-controller="Import" asp-action="Index">⬆ 匯入書籍</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="mt-0 p-0">
+        @RenderBody()
+    </main>
+
+    <footer class="footer-overlay">
+        <p class="mb-0">© 2025 BookLoop 專案 | FUEN43 Team 6</p>
+    </footer>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,25 @@
+﻿@{
+    ViewData["Title"] = "書籍管理模組首頁";
+}
+
+<div class="home-hero d-flex flex-column justify-content-center align-items-center text-white">
+    <h1 class="display-4 fw-bold">歡迎來到書籍管理模組首頁</h1>
+    <p class="lead">這裡可以管理書籍、出版社、分類與匯入資料</p>
+    <a asp-area="Books" asp-controller="Books" asp-action="Index" class="btn btn-warning btn-lg mt-3">
+        立即管理書籍
+    </a>
+</div>
+
+<style>
+    .home-hero {
+        min-height: 85vh;
+        width: 100%;
+        background: url('/images/books/Background.png') no-repeat center center;
+        background-size: cover;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-shadow: 2px 2px 6px rgba(0,0,0,0.7);
+    }
+</style>

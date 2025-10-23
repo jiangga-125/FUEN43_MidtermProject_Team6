@@ -1,0 +1,255 @@
+﻿@using System.Collections.Generic
+@using System.Linq
+@using BookLoop.Models
+@{
+    ViewData["Title"] = "報表主頁";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    // === 後端 API ===
+    var apiLine = Url.Action("Line", "Reports", new { area = "ReportMail" }) ?? "#";
+    var apiBar = Url.Action("Bar", "Reports", new { area = "ReportMail" }) ?? "#";
+    var apiPie = Url.Action("Pie", "Reports", new { area = "ReportMail" }) ?? "#";
+    var apiDefPayload = Url.Action("DefinitionPayload", "ReportDefinitions", new { area = "ReportMail" }) ?? "#";
+    var apiPreview = Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" }) ?? "#";
+
+    // 新增/編輯/刪除的頁面
+    var urlCreateDef = Url.Action("Create", "ReportDefinitions", new { area = "ReportMail" }) ?? "#";
+    var urlEditDefBase = Url.Action("Edit", "ReportDefinitions", new { area = "ReportMail" }) ?? "#"; // 之後 + /{id}
+
+    // === 自訂報表清單 ===
+    var lineList = ViewBag.LineReports as IEnumerable<ReportDefinition> ?? Enumerable.Empty<ReportDefinition>();
+    var barList = ViewBag.BarReports as IEnumerable<ReportDefinition> ?? Enumerable.Empty<ReportDefinition>();
+    var pieList = ViewBag.PieReports as IEnumerable<ReportDefinition> ?? Enumerable.Empty<ReportDefinition>();
+}
+
+<style>
+    .chart-card {
+        overflow: hidden;
+    }
+
+    .chart-title {
+        font-weight: 600;
+        font-size: 1rem;
+        line-height: 1.2;
+        margin-bottom: .25rem;
+    }
+
+    .chart-select {
+        min-width: 220px;
+    }
+
+    @@media (max-width: 576px) {
+        .chart-select {
+            min-width: 160px;
+        }
+    }
+
+    .chart-actions .btn {
+        white-space: nowrap;
+    }
+
+    @@media (max-width: 576px) {
+        .chart-actions .btn {
+            width: 100%;
+        }
+    }
+
+    .page-title {
+        padding-left: clamp(16px, 3vw, 40px);
+        padding-right: clamp(16px, 3vw, 40px);
+    }
+</style>
+
+<div class="container-fluid">
+    <h1 class="mb-0 py-3 page-title">報表主頁</h1>
+</div>
+
+<div class="container-xxl py-3">
+    <div class="row justify-content-center gx-5">
+        <div class="col-12 col-lg-11 col-xxl-12">
+            <div class="row g-4 align-items-stretch">
+
+                <!-- 左：圓餅圖 -->
+                <div class="col-12 col-md-6">
+                    <div class="card chart-card h-100">
+                        <div class="card-header py-2">
+                            <div class="chart-title">圓餅圖</div>
+                            <div class="row g-2 align-items-center">
+                                <div class="col-12 col-md">
+                                    <select id="ddlPie" class="form-select form-select-sm chart-select">
+                                        <option value="">（預設報表）近30日書籍借閱種類Top5</option>
+                                        @foreach (var d in pieList)
+                                        {
+                                            <option value="@d.ReportDefinitionID">@d.ReportName</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-auto ms-md-auto">
+                                    <div class="row g-2 justify-content-md-end chart-actions">
+                                        <div class="col-6 col-sm-auto"><button id="btnExportPie" class="btn btn-sm btn-success">匯出</button></div>
+                                        <div class="col-6 col-sm-auto"><a class="btn btn-sm btn-primary" href="@($"{urlCreateDef}?category=pie")">新增</a></div>
+                                        <div class="col-6 col-sm-auto"><button id="btnEditPie" class="btn btn-sm btn-outline-secondary">編輯</button></div>
+                                        <div class="col-6 col-sm-auto"><button id="btnDelPie" class="btn btn-sm btn-outline-danger">刪除</button></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="chartPie" height="140"></canvas>
+                            <div class="text-muted small mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右：上（折線）＋下（長條） -->
+                <div class="col-12 col-md-6">
+                    <div class="row g-4">
+
+                        <!-- 右上：折線圖 -->
+                        <div class="col-12">
+                            <div class="card chart-card h-100">
+                                <div class="card-header py-2">
+                                    <div class="chart-title">折線圖</div>
+                                    <div class="row g-2 align-items-center">
+                                        <div class="col-12 col-md">
+                                            <select id="ddlLine" class="form-select form-select-sm chart-select">
+                                                <option value="">（預設報表）近30日每日銷售金額</option>
+                                                @foreach (var d in lineList)
+                                                {
+                                                    <option value="@d.ReportDefinitionID">@d.ReportName</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-auto ms-md-auto">
+                                            <div class="row g-2 justify-content-md-end chart-actions">
+                                                <div class="col-6 col-sm-auto"><button id="btnExportLine" class="btn btn-sm btn-success">匯出</button></div>
+                                                <div class="col-6 col-sm-auto"><a class="btn btn-sm btn-primary" href="@($"{urlCreateDef}?category=line")">新增</a></div>
+                                                <div class="col-6 col-sm-auto"><button id="btnEditLine" class="btn btn-sm btn-outline-secondary">編輯</button></div>
+                                                <div class="col-6 col-sm-auto"><button id="btnDelLine" class="btn btn-sm btn-outline-danger">刪除</button></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="chartLine" height="140"></canvas>
+                                    <div class="text-muted small mt-2"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 右下：長條圖 -->
+                        <div class="col-12">
+                            <div class="card chart-card h-100">
+                                <div class="card-header py-2">
+                                    <div class="chart-title">長條圖</div>
+                                    <div class="row g-2 align-items-center">
+                                        <div class="col-12 col-md">
+                                            <select id="ddlBar" class="form-select form-select-sm chart-select">
+                                                <option value="">（預設報表）近30日書籍銷售Top10</option>
+                                                @foreach (var d in barList)
+                                                {
+                                                    <option value="@d.ReportDefinitionID">@d.ReportName</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="col-12 col-md-auto ms-md-auto">
+                                            <div class="row g-2 justify-content-md-end chart-actions">
+                                                <div class="col-6 col-sm-auto"><button id="btnExportBar" class="btn btn-sm btn-success">匯出</button></div>
+                                                <div class="col-6 col-sm-auto"><a class="btn btn-sm btn-primary" href="@($"{urlCreateDef}?category=bar")">新增</a></div>
+                                                <div class="col-6 col-sm-auto"><button id="btnEditBar" class="btn btn-sm btn-outline-secondary">編輯</button></div>
+                                                <div class="col-6 col-sm-auto"><button id="btnDelBar" class="btn btn-sm btn-outline-danger">刪除</button></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="chartBar" height="140"></canvas>
+                                    <div class="text-muted small mt-2"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div> <!-- /row -->
+        </div>
+    </div>
+</div>
+
+<!-- 匯出選項 Modal（放在頁面底部即可） -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="exportForm" novalidate>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">匯出報表</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <span class="form-label d-block">匯出格式</span>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="format" id="fmtXlsx" value="xlsx" checked>
+                            <label class="form-check-label" for="fmtXlsx">Excel (.xlsx)</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="format" id="fmtPdf" value="pdf">
+                            <label class="form-check-label" for="fmtPdf">PDF (.pdf)</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="exportEmail" class="form-label">寄送 Email（必填）</label>
+                        <input type="email" class="form-control" id="exportEmail" placeholder="name@example.com" required>
+                        <div class="invalid-feedback">請輸入正確的 Email。</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">開始匯出</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<form id="defDeleteForm"
+      method="post"
+      action="@Url.Action("Delete", "ReportDefinitions", new { area = "ReportMail" })"
+      style="display:none">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" id="defDeleteId" />
+</form>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 若你的 _Layout.cshtml 沒載 bootstrap.bundle，請保留下面這行；有載就可移除 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- 小段設定：把 Razor 產生的 URL/標題傳給外部 JS（避免 Razor 誤判 ES6 模板字串） -->
+    <script>
+        window.ReportPageConfig = {
+            api: {
+                line: '@apiLine',
+                bar: '@apiBar',
+                pie: '@apiPie',
+                defPayload: '@apiDefPayload',
+                preview: '@apiPreview',
+                sendExcel: '@Url.Action("SendExcel", "ReportExport", new { area = "ReportMail" })',
+                sendPdf:   '@Url.Action("SendPdf", "ReportExport", new { area = "ReportMail" })'
+            },
+            urls: {
+                editBase: '@urlEditDefBase',
+                delete:   '@Url.Action("Delete", "ReportDefinitions", new { area = "ReportMail" })'
+            },
+            titles: {
+                line: '（預設報表）近30日每日銷售金額',
+                bar:  '（預設報表）近30日書籍銷售Top10',
+                pie:  '（預設報表）近30日書籍借閱種類Top5'
+            }
+        };
+    </script>
+
+    <!-- 外部腳本：整段行為（載圖/刪除/編輯/匯出 Modal）都在這裡 -->
+    <script src="~/js/report-index.js" asp-append-version="true"></script>
+}

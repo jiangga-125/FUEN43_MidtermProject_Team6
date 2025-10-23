@@ -1,0 +1,19 @@
+﻿@* 共用：狀態下拉（支援「全部狀態」選項） *@
+@{
+    int? selected = ViewData["selected"] as int?;
+    string name = (ViewData["name"] as string) ?? "status";
+    bool includeAll = (ViewData["includeAll"] as bool?) ?? false;
+    string allText = (ViewData["allText"] as string) ?? "全部狀態";
+    string css = (ViewData["class"] as string) ?? "form-select js-auto-submit";
+}
+
+<select name="@name" class="@css">
+    @if (includeAll)
+    {
+        <option value="" selected="@(selected == null)">@allText</option>
+    }
+    <option value="0" selected="@(selected == 0)">未啟用</option>
+    <option value="1" selected="@(selected == 1)">啟用</option>
+    <option value="2" selected="@(selected == 2)">停權</option>
+    <option value="3" selected="@(selected == 3)">關閉</option>
+</select>

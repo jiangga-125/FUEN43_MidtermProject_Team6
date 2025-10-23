@@ -1,0 +1,117 @@
+﻿@model IEnumerable<BookLoop.Models.Book>
+@{
+    var map = ViewBag.PrimaryImages as IDictionary<int, string>;
+    var totals = ViewBag.InventoryTotals as IDictionary<int, int> ?? new Dictionary<int, int>();
+}
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ISBN</th>
+            <th>書名</th>
+            <th>出版社</th>
+            <th>分類</th>
+            <th>發行日</th>
+            <th>實際售價</th>
+            <th>建議售價</th>
+            <th>庫存</th>
+            <th>封面</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var b in Model)
+        {
+            <tr>
+                <td>@b.ISBN</td>
+                <td>
+                    <a asp-area="Books" asp-controller="Books" asp-action="Details" asp-route-id="@b.BookID">
+                        @b.Title
+                    </a>
+                </td>
+                <td>@b.Publisher?.PublisherName</td>
+                <td>@b.Category?.CategoryName</td>
+                <td>@(b.PublishDate?.ToString("yyyy-MM-dd"))</td>
+                <td>@($"{b.ListPrice} 元")</td>
+                <td>@($"{b.SalePrice} 元")</td>
+                <td>
+                    @{
+                        var total = totals.ContainsKey(b.BookID) ? totals[b.BookID] : 0;
+                    }
+                    @if (total > 0)
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-success"
+                                onclick="showAvailability(@b.BookID, '@b.Title.Replace("'", "\\'")')">
+                            有庫存 (@total)
+                        </button>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">缺貨</span>
+                    }
+                </td>
+                <td>
+                    @{
+                        string file = null;
+                        map?.TryGetValue(b.BookID, out file);
+                    }
+                    @if (!string.IsNullOrWhiteSpace(file))
+                    {
+                        var imgPath = file.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                        ? file
+                        : Url.Content("~/images/books/" + file);
+                        <img src="@imgPath" alt="封面" style="max-height:80px;" class="img-thumbnail" />
+                    }
+                    else
+                    {
+                        <span>
+                            <img src="@Url.Content("~/images/books/no-cover.png")"
+                                 alt="無封面"
+                                 style="max-height:80px;"
+                                 class="img-thumbnail" />
+                        </span>
+                    }
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@b.BookID" class="btn btn-sm btn-warning">編輯</a>
+                    <a asp-action="Delete" asp-route-id="@b.BookID" class="btn btn-sm btn-danger">刪除</a>
+                    <a asp-area="Books"
+                       asp-controller="Inventory"
+                       asp-action="Edit"
+                       asp-route-bookId="@b.BookID"
+                       class="btn btn-sm btn-outline-primary">
+                        庫存
+                    </a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div class="modal fade" id="availModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">各據點現貨</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body"><div id="availList">載入中...</div></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function showAvailability(bookId, title) {
+      const resp = await fetch(`/Books/Books/Availability/${bookId}`);
+      const data = await resp.json(); // [{branchName, available}, ...]
+      const html = data.filter(x => x.available > 0)
+                       .map(x => `<div class="d-flex justify-content-between py-1">
+                                    <span>${x.branchName}</span><strong>${x.available}</strong>
+                                  </div>`).join('')
+                  || '<div class="text-muted">暫無庫存</div>';
+      document.querySelector('#availModal .modal-title').textContent = `各據點現貨 - ${title}`;
+      document.getElementById('availList').innerHTML = html;
+      new bootstrap.Modal(document.getElementById('availModal')).show();
+    }
+</script>

@@ -1,0 +1,77 @@
+﻿@model BookLoop.Models.Book
+
+@{
+    ViewData["Title"] = "書籍詳細資訊";
+}
+
+<h2>書籍詳細資訊</h2>
+
+<div>
+    <dl class="row">
+        <dt class="col-sm-2">BookID</dt>
+        <dd class="col-sm-10">@Model.BookID</dd>
+
+        <dt class="col-sm-2">ISBN</dt>
+        <dd class="col-sm-10">@Model.ISBN</dd>
+
+        <dt class="col-sm-2">書名</dt>
+        <dd class="col-sm-10">@Model.Title</dd>
+
+        <dt class="col-sm-2">出版社</dt>
+        <dd class="col-sm-10">@Model.Publisher?.PublisherName</dd>
+
+        <dt class="col-sm-2">分類</dt>
+        <dd class="col-sm-10">@Model.Category?.CategoryName</dd>
+
+        <dt class="col-sm-2">發行日</dt>
+        <dd class="col-sm-10">
+            @(
+                        Model.PublishDate.HasValue
+                        ? Model.PublishDate.Value.ToString("yyyy-MM-dd")
+                        : "未填寫"
+                        )
+        </dd>
+
+        <dt class="col-sm-2">內容簡介</dt>
+        <dd class="col-sm-10">@Model.Description</dd>
+    </dl>
+</div>
+
+@{
+    var total = (int)(ViewBag.TotalAvailable ?? 0);
+}
+
+@if (total > 0)
+
+{
+    <div class="mt-4">
+        <h5 class="mb-2">各據點現貨（共 @total 本）</h5>
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>據點</th>
+                    <th class="text-end">可售數量</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in (IEnumerable<dynamic>)ViewBag.BranchStocks)
+                {
+                    <tr>
+                        <td>@row.BranchName</td>
+                        <td class="text-end">@row.Available</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="alert alert-secondary mt-4">暫無庫存</div>
+}
+
+
+<div>
+    <a asp-area="Books" asp-controller="Books" asp-action="Edit" asp-route-id="@Model.BookID" class="btn btn-warning">編輯</a>
+    <a asp-area="Books" asp-controller="Books" asp-action="Index" class="btn btn-secondary">返回清單</a>
+</div>

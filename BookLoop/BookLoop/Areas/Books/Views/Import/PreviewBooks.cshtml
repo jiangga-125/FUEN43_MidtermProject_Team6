@@ -1,0 +1,73 @@
+﻿@model IEnumerable<BookLoop.Models.Dto.ImportBookDto>
+
+@{
+    ViewData["Title"] = "匯入書籍 - 預覽";
+}
+
+<h1>匯入書籍 (預覽)</h1>
+
+<p>以下為前 10 筆資料，請確認後按下「確認匯入」：</p>
+
+<form asp-area="Books"
+      asp-controller="Import"
+      asp-action="CommitBooks"
+      method="post">
+    @Html.AntiForgeryToken()
+
+    <table class="table table-bordered">
+        <thead class="table-light">
+            <tr>
+                <th>ISBN</th>
+                <th>書名</th>
+                <th>作者</th>
+                <th>出版社</th>
+                <th>出版日期</th>
+                <th>分類</th>
+                <th>封面</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < Model.Count(); i++)
+            {
+                <tr>
+                    <td>
+                        <input type="hidden" name="books[@i].ISBN" value="@Model.ElementAt(i).ISBN" />
+                        @Model.ElementAt(i).ISBN
+                    </td>
+                    <td>
+                        <input type="hidden" name="books[@i].Title" value="@Model.ElementAt(i).Title" />
+                        @Model.ElementAt(i).Title
+                    </td>
+                    <td>
+                        <input type="hidden" name="books[@i].Author" value="@Model.ElementAt(i).Author" />
+                        @Model.ElementAt(i).Author
+                    </td>
+                    <td>
+                        <input type="hidden" name="books[@i].Publisher" value="@Model.ElementAt(i).Publisher" />
+                        @Model.ElementAt(i).Publisher
+                    </td>
+                    <td>
+                        <input type="hidden" name="books[@i].PublishDate" value="@Model.ElementAt(i).PublishDate" />
+                        @Model.ElementAt(i).PublishDate
+                    </td>
+                    <td>
+                        <input type="hidden" name="books[@i].Category" value="@Model.ElementAt(i).Category" />
+                        @Model.ElementAt(i).Category
+                    </td>
+                    <td>
+                        <input type="hidden" name="books[@i].ImagePath" value="@Model.ElementAt(i).ImagePath" />
+                        @if (!string.IsNullOrWhiteSpace(Model.ElementAt(i).ImagePath))
+                        {
+                            <img src="@Model.ElementAt(i).ImagePath" alt="封面" style="max-height:80px;" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="mt-3">
+        <input type="submit" value="確認匯入" class="btn btn-success" />
+        <a asp-area="Books" asp-controller="Import" asp-action="Index" class="btn btn-secondary">取消</a>
+    </div>
+</form>

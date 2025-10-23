@@ -1,0 +1,119 @@
+﻿@model Account.Controllers.BlacklistsController.BlacklistIndexVM
+@{
+    string sort = (ViewBag.Sort as string) ?? "id";
+    string dir = (ViewBag.Dir as string) ?? "desc";
+    string Next(string key) => (sort == key && dir == "asc") ? "desc" : "asc";
+    string Arrow(string key) => sort == key ? (dir == "asc" ? "↑" : "↓") : "";
+}
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover table-sm align-middle">
+        <thead>
+            <tr>
+                <th>
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List" asp-route-sort="id" asp-route-dir="@Next("id")"
+                       asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize"># @Arrow("id")</a>
+                </th>
+                <th>
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List" asp-route-sort="member" asp-route-dir="@Next("member")"
+                       asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize">會員 @Arrow("member")</a>
+                </th>
+                <th>Email</th>
+                <th>電話</th>
+                <th>原因</th>
+                <th>
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List" asp-route-sort="start" asp-route-dir="@Next("start")"
+                       asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize">開始 @Arrow("start")</a>
+                </th>
+                <th>
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List" asp-route-sort="end" asp-route-dir="@Next("end")"
+                       asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize">結束 @Arrow("end")</a>
+                </th>
+                <th>
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List" asp-route-sort="active" asp-route-dir="@Next("active")"
+                       asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize">狀態 @Arrow("active")</a>
+                </th>
+                <th style="width:180px;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var x in Model.Items)
+            {
+                <tr>
+                    <td>@x.BlacklistID</td>
+                    <td>
+                        <a asp-controller="Members" asp-action="Details" asp-route-id="@x.MemberID">@x.MemberName</a>
+                    </td>
+                    <td>@x.Email</td>
+                    <td>@x.Phone</td>
+                    <td>@x.Reason</td>
+                    <td>@x.StartAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
+                    <td>@(x.EndAt?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "-")</td>
+                    <td>
+                        @if (x.IsActive)
+                        {
+                            <span class="badge bg-danger">生效中</span>
+                        }
+                        else
+                        {
+
+                            <span class="badge bg-secondary">非生效</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-route-id="@x.BlacklistID">檢視</a>
+                        @if (User.HasClaim("perm", "Blacklists.Manage"))
+                        {
+                            <a class="btn btn-sm btn-outline-primary ms-1" asp-action="Edit" asp-route-id="@x.BlacklistID">編輯</a>
+                            <a class="btn btn-sm btn-outline-danger ms-1" asp-action="Delete" asp-route-id="@x.BlacklistID">刪除</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@{
+    int totalPages = (int)Math.Ceiling((double)Model.Total / Model.PageSize);
+    if (totalPages < 1) totalPages = 1;
+    int window = 2;
+    int start = Math.Max(1, Model.Page - window);
+    int end = Math.Min(totalPages, Model.Page + window);
+}
+
+<nav aria-label="pager">
+    <ul class="pagination">
+        <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+            <a class="page-link ajax-link"
+               asp-action="List" asp-route-page="@(Model.Page - 1)"
+               asp-route-pageSize="@Model.PageSize" asp-route-keyword="@Model.Keyword"
+               asp-route-status="@Model.Status" asp-route-sort="@sort" asp-route-dir="@dir">上一頁</a>
+        </li>
+        @for (int i = start; i <= end; i++)
+        {
+            <li class="page-item @(i == Model.Page ? "active" : "")">
+                <a class="page-link ajax-link"
+                   asp-action="List" asp-route-page="@i"
+                   asp-route-pageSize="@Model.PageSize" asp-route-keyword="@Model.Keyword"
+                   asp-route-status="@Model.Status" asp-route-sort="@sort" asp-route-dir="@dir">@i</a>
+            </li>
+        }
+        <li class="page-item @(Model.Page >= totalPages ? "disabled" : "")">
+            <a class="page-link ajax-link"
+               asp-action="List" asp-route-page="@(Model.Page + 1)"
+               asp-route-pageSize="@Model.PageSize" asp-route-keyword="@Model.Keyword"
+               asp-route-status="@Model.Status" asp-route-sort="@sort" asp-route-dir="@dir">下一頁</a>
+        </li>
+    </ul>
+</nav>

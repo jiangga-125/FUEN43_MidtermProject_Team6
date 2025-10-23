@@ -1,0 +1,210 @@
+﻿@model IEnumerable<BookLoop.Models.Return>
+
+@{
+    ViewData["Title"] = "Index";
+}
+@section Styles {
+    <style>
+        th.head-width, td.head-width {
+            width: 180px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* 訂單滑鼠移上去變色*/
+        .table tbody tr:hover {
+            background-color: #f0f8ff; /* 淡藍色，可換顏色 */
+            cursor: pointer; /* 滑鼠變成手型 */
+            transition: background-color 0.3s ease; /* 平滑過渡 */
+        }
+
+        /* 新增按鈕CSS*/
+        .btn-new {
+            width: 200px; /* 寬度 */
+            border: 2px solid #28a745; /* 跟 btn-success 顏色一致 */
+            background-color: #eaf9ee; /* 框內淺綠色 */
+            color: #28a745; /* 文字顏色 */
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+            .btn-new:hover {
+                background-color: #28a745; /* 滑鼠移上去變深綠 */
+                color: white;
+            }
+    </style>
+}
+
+<div class="text-center">
+    <h1 class="border-2">退貨</h1>
+
+@if (TempData["Success"] != null)
+{
+        <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+    <div class="d-flex justify-content-between mb-3">
+        <form asp-action="Index" method="get" class="d-flex">
+            <input type="number" name="searchReturnID" class="form-control me-2"
+                   placeholder="搜尋 ReturnID" value="@ViewBag.SearchReturnID" />
+            <button type="submit" class="btn btn-primary" style="width:100px;">搜尋</button>
+        </form>
+    </div>
+
+    <p>
+        <a asp-action="Create" class="btn btn-new">新增</a>
+    </p>
+    <div class="d-flex justify-content-center">
+        <table class="table" style="table-layout: fixed; width:auto;">
+    <thead>
+        <tr>
+                    <th class="head-width">
+                        @Html.DisplayNameFor(model => model.ReturnID)
+                    </th>
+                    <th class="head-width">
+                        @Html.DisplayNameFor(model => model.OrderID)
+                    </th>
+             <th class="head-width">
+                @Html.DisplayNameFor(model => model.ReturnReason)
+            </th>
+             <th class="head-width">
+                @Html.DisplayNameFor(model => model.ReturnType)
+            </th>
+             <th class="head-width">
+                @Html.DisplayNameFor(model => model.Status)
+            </th>
+             <th class="head-width">
+                @Html.DisplayNameFor(model => model.ReturnedDate)
+            </th>
+            @* <th class="head-width">
+                @Html.DisplayNameFor(model => model.Order)
+            </th> *@
+           
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+      <tr class="return-row" data-id="@item.ReturnID">
+            <td>
+                    @Html.DisplayFor(modelItem => item.ReturnID)
+            </td>
+                       
+            <td>
+                @Html.DisplayFor(modelItem => item.OrderID)
+           </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ReturnReason)
+            </td>
+            <td>
+                            @{
+                                string TypeText = item.ReturnType switch
+                                {
+                                    0 => "整單",
+                                    1 => "單筆"
+
+                                };
+                            }
+                            @TypeText
+            </td>
+            <td>
+                            @{
+                                string statusText = item.Status switch
+                                {
+                                    0 => "申請中",
+                                    1 => "審核中",
+                                    2 => "已出貨",
+                                    3 => "退貨中",
+                                    4 => "已完成",
+                                   
+                                };
+                            }
+                            @statusText
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ReturnedDate)
+            </td>
+            @* <td>
+                @Html.DisplayFor(modelItem => item.Order.OrderID)
+            </td> *@
+                        <td class="text-center" style="width:120px;">
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    ⚙️ 操作
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" asp-action="Edit" asp-route-id="@item.ReturnID">✏️ 修改</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-action="Details" asp-route-id="@item.ReturnID">ℹ️ 詳細資訊</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-action="ReturnsDetails" asp-route-id="@item.ReturnID">📑 訂單明細</a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" asp-action="Delete" asp-route-id="@item.ReturnID">🗑️ 刪除</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </td>
+                       
+        </tr>
+}
+    </tbody>
+    </table>
+    </div>
+
+</div>
+
+<!-- 分頁按鈕 -->
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div>
+        顯示第 @(((ViewBag.CurrentPage - 1) * ViewBag.PageSize) + 1)
+        到 @(Math.Min(ViewBag.CurrentPage * ViewBag.PageSize, ViewBag.TotalCount)) 筆，
+        共 @ViewBag.TotalCount 筆
+    </div>
+
+    <nav>
+        <ul class="pagination mb-0">
+            <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-page="@(ViewBag.CurrentPage - 1)"
+                   asp-route-searchOrderID="@ViewContext.HttpContext.Request.Query["searchOrderID"]">上一頁</a>
+            </li>
+
+            @{
+                int startPage = Math.Max(1, ViewBag.CurrentPage - 2);
+                int endPage = Math.Min(ViewBag.TotalPages, ViewBag.CurrentPage + 2);
+            }
+
+            @for (int i = startPage; i <= endPage; i++)
+            {
+                <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                    <a class="page-link"
+                       asp-action="Index"
+                       asp-route-page="@i"
+                       asp-route-searchOrderID="@ViewContext.HttpContext.Request.Query["searchOrderID"]">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-page="@(ViewBag.CurrentPage + 1)"
+                   asp-route-searchOrderID="@ViewContext.HttpContext.Request.Query["searchOrderID"]">下一頁</a>
+            </li>
+        </ul>
+    </nav>
+</div>
+
+@section Scripts{
+    <script>
+        $(document).on("click", ".return-row", function (e) {
+            if (!$(e.target).closest("a, button").length) {
+                var returnID = $(this).data("id");
+                window.location = '/Returns/ReturnsDetails/' + returnID;
+            }
+        });
+    </script>
+}
