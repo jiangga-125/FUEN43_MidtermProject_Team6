@@ -44,7 +44,7 @@ namespace BookLoop
 			builder.Services.AddDbContext<BookSystemContext>(options =>                
 				options.UseSqlServer(bookloopStr));
 
-			builder.Services.AddDbContext<BorrowSystemContext>(options =>
+			builder.Services.AddDbContext<BorrowContext>(options =>
 				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDbContext<ReportMailDbContext>(options =>
