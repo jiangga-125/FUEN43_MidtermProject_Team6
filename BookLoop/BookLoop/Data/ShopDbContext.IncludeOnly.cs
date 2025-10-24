@@ -17,10 +17,10 @@ public partial class ShopDbContext
 		typeof(Listing),
 		typeof(Order),
 		typeof(OrderDetail),
-            typeof(Publisher), 
-		typeof(Supplier), 
+		typeof(Publisher),
+		typeof(Supplier),
 		typeof(SupplierUser),
-        };
+		};
 
 	// Scaffold 產生的主檔最後會呼叫這個 partial；我們在這裡進行「總過濾」
 	partial void OnModelCreatingPartial(ModelBuilder modelBuilder)

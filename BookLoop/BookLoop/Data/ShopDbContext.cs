@@ -36,10 +36,10 @@ public partial class ShopDbContext : DbContext
         
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
-		modelBuilder.Entity<SupplierUser>(e =>
+        modelBuilder.Entity<SupplierUser>(e =>
 		{
 			e.ToTable("SUPPLIER_USERS");                      // 表名
-			e.HasKey(x => new { x.SupplierID, x.UserID });    // ← 複合主鍵（關鍵）
+			e.HasKey(x => new { x.SupplierID, x.UserID });    // 複合主鍵（關鍵）
 
 			e.HasOne(x => x.Supplier)
 			 .WithMany(s => s.SupplierUsers)
