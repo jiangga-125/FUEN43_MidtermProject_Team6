@@ -10,11 +10,12 @@ public partial class Order
 	[Display(Name = "訂單編號")]
 	public int OrderID { get; set; }
 
-	[ValidateNever]
-	public int? MemberID { get; set; }
+
+	[Display(Name = "會員ID")]
+	public int MemberID { get; set; }
 
 	[Display(Name = "顧客編號ID")]
-	public int CustomerID { get; set; }
+	public int? CustomerID { get; set; }
 
 	[Display(Name = "訂單日期")]
 	public DateTime OrderDate { get; set; }
@@ -55,11 +56,14 @@ public partial class Order
 
 	
 	[ValidateNever]
-	public virtual Customer Customer { get; set; } = null!;
+	public virtual Customer? Customer { get; set; }
 
 	public virtual MemberCoupon? MemberCoupon { get; set; }
-
-	public virtual Member? Member { get; set; } = null!;
+	
+	
+	[ValidateNever]
+	[Display(Name = "會員帳號")]
+	public virtual Member? Member { get; set; }
 
 	public virtual ICollection<OrderAddress> OrderAddresses { get; set; } = new List<OrderAddress>();
 

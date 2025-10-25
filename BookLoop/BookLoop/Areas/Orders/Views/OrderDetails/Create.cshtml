@@ -1,59 +1,50 @@
 ﻿@model BookLoop.Models.OrderDetail
 
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "新增訂單明細";
 }
 
-<h1>新增</h1>
+<h1>新增訂單明細</h1>
 
-<h4>OrderDetail</h4>
-<hr />
 <div class="row">
     <div class="col-md-4">
-        <form asp-action="Create">
+        <form asp-action="Create" asp-controller="OrderDetails" asp-area="Orders" method="post">
+            @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
             <div class="form-group">
                 <label asp-for="OrderID" class="control-label"></label>
-                <select asp-for="OrderID" class ="form-control" asp-items="ViewBag.OrderID"></select>
+                <select asp-for="OrderID" class="form-control" asp-items="ViewBag.OrderID"></select>
             </div>
+
             <div class="form-group">
                 <label asp-for="BookID" class="control-label"></label>
-                <input asp-for="BookID" class="form-control" />
-                <span asp-validation-for="BookID" class="text-danger"></span>
+                <select asp-for="BookID" class="form-control" asp-items="ViewBag.BookID" id="bookSelect"></select>
             </div>
+
             <div class="form-group">
                 <label asp-for="ProductName" class="control-label"></label>
-                <input asp-for="ProductName" class="form-control" />
-                <span asp-validation-for="ProductName" class="text-danger"></span>
+                <input asp-for="ProductName" class="form-control" readonly id="productName" />
             </div>
+
+            <div class="form-group">
+                <label asp-for="UnitPrice" class="control-label"></label>
+                <input asp-for="UnitPrice" class="form-control" readonly id="unitPrice" />
+            </div>
+
             <div class="form-group">
                 <label asp-for="Quantity" class="control-label"></label>
                 <input asp-for="Quantity" class="form-control" />
                 <span asp-validation-for="Quantity" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="UnitPrice" class="control-label"></label>
-                <input asp-for="UnitPrice" class="form-control" />
-                <span asp-validation-for="UnitPrice" class="text-danger"></span>
-            </div>
+
             <div class="form-group">
                 <label asp-for="ProductDiscountAmount" class="control-label"></label>
                 <input asp-for="ProductDiscountAmount" class="form-control" />
                 <span asp-validation-for="ProductDiscountAmount" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="CreatedAt" class="control-label"></label>
-                <input asp-for="CreatedAt" class="form-control" />
-                <span asp-validation-for="CreatedAt" class="text-danger"></span>
-            </div>
-            @* <div class="form-group">
-                <label asp-for="UpdatedAt" class="control-label"></label>
-                <input asp-for="UpdatedAt" class="form-control" />
-                <span asp-validation-for="UpdatedAt" class="text-danger"></span>
-            </div> *@
-            <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
-            </div>
+
+            <input type="submit" value="新增" class="btn btn-primary mt-3" />
         </form>
     </div>
 </div>
@@ -63,5 +54,29 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        const books = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.BooksData));
+        const bookSelect = document.getElementById("bookSelect");
+        const productNameInput = document.getElementById("productName");
+        const unitPriceInput = document.getElementById("unitPrice");
+
+        bookSelect.addEventListener("change", function () {
+            const selectedId = parseInt(this.value);
+            const selectedBook = books.find(b => b.BookID === selectedId);
+            if (selectedBook) {
+                productNameInput.value = selectedBook.Title;
+                unitPriceInput.value = selectedBook.SalePrice ?? 0;
+            } else {
+                productNameInput.value = "";
+                unitPriceInput.value = 0;
+            }
+        });
+
+        // 頁面載入時，觸發一次選擇事件
+        bookSelect.dispatchEvent(new Event('change'));
+    </script>
 }
