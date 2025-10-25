@@ -71,8 +71,7 @@
 
     <div class="collapse @(
           !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchOrderID"]) ||
-          !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchCustomerName"]) ||
-          !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchCustomerID"]) ||
+       
           !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchStartDate"]) ||
           !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchEndDate"]) ||
           !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchBookName"])
@@ -87,8 +86,8 @@
                 </div>
 
                 <div class="col-md-2">
-                    <label for="searchMemberName" class="form-label">會員帳號</label>
-                    <input type="text" name="searchMemberName" class="form-control" placeholder="會員帳號" value="@ViewContext.HttpContext.Request.Query["searchMemberName"]">
+                    <label for="searchMemberName" class="form-label">會員名稱</label>
+                    <input type="text" name="searchMemberName" class="form-control" placeholder="會員名稱" value="@ViewContext.HttpContext.Request.Query["searchMemberName"]">
                 </div>
 
                 <div class="col-md-2">

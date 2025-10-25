@@ -87,7 +87,6 @@ namespace Ordersys.Controllers
 
 
 
-
 		// GET: Returns/Details/5
 		public async Task<IActionResult> Details(int? id)
 		{
@@ -95,7 +94,7 @@ namespace Ordersys.Controllers
 
 			var ret = await _context.Returns
 				.Include(r => r.Order)
-				  .ThenInclude(o => o.Customer)// 包含 Customer 資料
+				  .ThenInclude(o => o.Member) // ✅ 改這裡，Include Member 而不是 Customer
 				.FirstOrDefaultAsync(r => r.ReturnID == id);
 
 			if (ret == null) return NotFound();
