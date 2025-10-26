@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
-using ReportMail.Models.Dto;                 // ★ 統一使用 Dto 版 ExportSnapshot
+using ReportMail.Models.Dto;                 // 統一使用 Dto 版 ExportSnapshot
 using System;
 using System.Linq;
 using System.Security.Claims;

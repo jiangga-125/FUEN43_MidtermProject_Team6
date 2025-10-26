@@ -1,5 +1,5 @@
-﻿// Areas/ReportMail/Controllers/ReportsController.cs
-using BookLoop.Models;
+﻿using BookLoop.Models;
+using BookLoop.Data;
 using BookLoop.Services.Reports;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -29,12 +29,16 @@ namespace ReportMail.Areas.ReportMail.Controllers
 	{
 		private readonly IReportDataService _svc;
 		private readonly ReportMailDbContext _db;
+        private readonly ShopDbContext _shop;
 
-		public ReportsController(IReportDataService svc, ReportMailDbContext db)
-		{
-			_svc = svc;
-			_db = db;
-		}
+
+        public ReportsController(IReportDataService svc, ReportMailDbContext db, ShopDbContext shop)
+        {
+            _svc = svc;
+            _db = db;
+            _shop = shop;
+        }
+
 
         [HttpGet("/ReportMail/Reports/whoami")]
         [Authorize] // 只要求登入，不套報表 Policy
@@ -95,10 +99,11 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			if (granularity is not ("day" or "month" or "year"))
 				return BadRequest("granularity 僅允許 day / month / year");
 
-			var points = await _svc.GetSalesAmountSeriesAsync(start, end, granularity, excludeStatuses);
+            var publisherIds = await ResolvePublisherScopeAsync();
+            var points = await _svc.GetSalesAmountSeriesAsync(start, end, granularity, excludeStatuses, publisherIds);
 
-			// 預設（day）→ 補零：確保 30 天每日都有一個點
-			if (granularity == "day")
+            // 預設（day）→ 補零：確保 30 天每日都有一個點
+            if (granularity == "day")
 			{
 				// 將服務回來的序列轉成 map：label -> value
 				// （服務層 day 的 label 預期為 "yyyy-MM-dd"）
@@ -147,8 +152,9 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			NormalizeDateRange(from, to, out var start, out var end);
 			if (top <= 0) top = 10;
 
-			var points = await _svc.GetTopSoldBooksAsync(start, end, top, excludeStatuses);
-			return Ok(new
+            var publisherIds = await ResolvePublisherScopeAsync();
+            var points = await _svc.GetTopSoldBooksAsync(start, end, top, excludeStatuses, publisherIds);
+            return Ok(new
 			{
 				title = $"總銷售本數",
 				labels = points.Select(p => p.Label).ToArray(),
@@ -172,8 +178,9 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			NormalizeDateRange(from, to, out var start, out var end);
 			if (top <= 0) top = 5;
 
-			var points = await _svc.GetTopBorrowBooksAsync(start, end, top);
-			return Ok(new
+            var publisherIds = await ResolvePublisherScopeAsync();
+            var points = await _svc.GetTopBorrowBooksAsync(start, end, top, publisherIds);
+            return Ok(new
 			{
 				title = $"總借閱次數",
 				labels = points.Select(p => p.Label).ToArray(),
@@ -181,7 +188,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			});
 		}
 
-		#region helpers
+		//helpers
 
 		/// <summary>
 		/// 正常化日期區間：
@@ -196,7 +203,24 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			if (start > end) (start, end) = (end, start); // 交換，防呆
 		}
 
+        //取 publisherIds
+        private async Task<int[]?> ResolvePublisherScopeAsync()
+        {
+            // 有 Data.All => 回傳 null 代表「不加限制」
+            var auth = HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
+            var canAll = (await auth.AuthorizeAsync(User, "ReportMail.Reports.Data.All")).Succeeded;
+            if (canAll) return null;
 
-		#endregion
-	}
+            // 沒有 Data.All => 依使用者 supplier claim 取旗下所有 PublisherIDs
+            var supplierIdClaim = User.FindFirst("supplier")?.Value;
+            if (!int.TryParse(supplierIdClaim, out var mySupplierId)) return Array.Empty<int>(); // 無 claim → 視為無資料
+
+            return await _shop.Publishers
+                .AsNoTracking()
+                .Where(p => p.SupplierID == mySupplierId)
+                .Select(p => p.PublisherID)
+                .ToArrayAsync();
+        }
+
+    }
 }

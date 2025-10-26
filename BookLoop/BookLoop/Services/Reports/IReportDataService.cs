@@ -11,35 +11,35 @@ namespace BookLoop.Services.Reports
 	/// </summary>
 	public interface IReportDataService
 	{
-		/// <summary>
-		/// 折線圖：總銷售金額（依顆粒度彙總）
-		/// granularity = day/month/year
-		/// excludeStatuses 預設排除「已取消」(0)（依你現有實作）
-		/// publisherIds = null 代表不限制；傳陣列則只統計該出版社(們)的書籍
-		/// </summary>
-		Task<IReadOnlyList<ChartPoint>> GetSalesAmountSeriesAsync(
+        /// <summary>
+        /// 折線圖：總銷售金額（依顆粒度彙總）
+        /// granularity = day/month/year
+        /// excludeStatuses 預設排除「已取消」(0)（依你現有實作）
+        /// publisherIds = null 代表不限制；傳陣列則只統計該出版社(們)的書籍；publisherIds 是空陣列時，代表限制為空集合（回傳 0 筆）。
+        /// </summary>
+        Task<IReadOnlyList<ChartPoint>> GetSalesAmountSeriesAsync(
 			DateTime start,
 			DateTime end,
 			string granularity = "day",
 			int[]? excludeStatuses = null,
-			int[]? publisherIds = null); // ★ 新增：可選出版社過濾
+			int[]? publisherIds = null); // 可選出版社過濾
 
-		/// <summary>
-		/// 長條圖：近一段期間「銷售書籍排行」（以銷售數量排序）
-		/// publisherIds = null 代表不限制；傳陣列則只統計該出版社(們)的書籍
-		/// </summary>
-		Task<IReadOnlyList<ChartPoint>> GetTopSoldBooksAsync(
+        /// <summary>
+        /// 長條圖：近一段期間「銷售書籍排行」（以銷售數量排序）
+        /// publisherIds = null 代表不限制；傳陣列則只統計該出版社(們)的書籍；publisherIds 是空陣列時，代表限制為空集合（回傳 0 筆）。
+        /// </summary>
+        Task<IReadOnlyList<ChartPoint>> GetTopSoldBooksAsync(
 			DateTime start,
 			DateTime endInclusive,
 			int topN = 10,
 			int[]? excludeStatuses = null,
 			int[]? publisherIds = null);
 
-		/// <summary>
-		/// 圓餅圖：近一段期間「借閱書籍」排行（以借閱次數計）
-		/// publisherIds = null 代表不限制；傳陣列則只統計該出版社(們)
-		/// </summary>
-		Task<IReadOnlyList<ChartPoint>> GetTopBorrowBooksAsync(
+        /// <summary>
+        /// 圓餅圖：近一段期間「借閱書籍」排行（以借閱次數計）
+        /// publisherIds = null 代表不限制；傳陣列則只統計該出版社(們)；publisherIds 是空陣列時，代表限制為空集合（回傳 0 筆）。
+        /// </summary>
+        Task<IReadOnlyList<ChartPoint>> GetTopBorrowBooksAsync(
 			DateTime start,
 			DateTime endInclusive,
 			int topN = 10,

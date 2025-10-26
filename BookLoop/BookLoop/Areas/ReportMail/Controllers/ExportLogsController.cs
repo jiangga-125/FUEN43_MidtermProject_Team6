@@ -1,22 +1,21 @@
 ﻿using BookLoop.Areas.ReportMail.ViewModels;
+using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services.Export;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using ReportMail.Models.Dto;                 // 方案A：統一使用 Dto 版 ExportSnapshot
-using System.Text.Json;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
-using BookLoop.Data;
+using ReportMail.Areas.ReportMail.Controllers;
+using ReportMail.Models.Dto;                 // 統一使用 Dto 版 ExportSnapshot
+using System.Text.Json;
 
 namespace BookLoop.Areas.ReportMail.Controllers
 {
-	[Area("ReportMail")]
-	[Authorize(Policy = "ReportMail.Logs.Index")]
-	public class ExportLogsController : Controller
-	{
+	public class ExportLogsController : ReportMailAreaController
+    {
 		private readonly ReportMailDbContext _db;
 		private readonly ShopDbContext _shop;
 		private readonly IExcelExporter _excel;
@@ -24,8 +23,8 @@ namespace BookLoop.Areas.ReportMail.Controllers
 		public ExportLogsController(ReportMailDbContext db, ShopDbContext shop, IExcelExporter excel)
 		{ _db = db; _shop = shop; _excel = excel; }
 
-		// ====== 列表 ======
-		public async Task<IActionResult> Index(
+        [Authorize(Policy = "ReportMail.Logs.Index")]
+        public async Task<IActionResult> Index(
 			string? email, int? userId, int? supplierId, int? definitionId,
 			string? format, byte? status,
 			DateTime? from, DateTime? to,
@@ -34,8 +33,18 @@ namespace BookLoop.Areas.ReportMail.Controllers
 			var q = _db.ReportExportLogs.AsNoTracking()
 				.OrderByDescending(x => x.RequestedAt)
 				.AsQueryable();
+            // 資料範圍：Admin/Marketing => 全部；否則 Supplier 限縮
+            var auth = HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
+            var canAll = (await auth.AuthorizeAsync(User, "ReportMail.Reports.Data.All")).Succeeded;
 
-			if (!string.IsNullOrWhiteSpace(email)) q = q.Where(x => x.TargetEmail.Contains(email));
+            if (!canAll)
+            {
+                var supplierIdClaim = User.FindFirst("supplier")?.Value;
+                if (!int.TryParse(supplierIdClaim, out var mySupplierId)) return Forbid();
+                q = q.Where(x => x.SupplierID == mySupplierId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(email)) q = q.Where(x => x.TargetEmail.Contains(email));
 			if (userId != null) q = q.Where(x => x.UserID == userId);
 			if (supplierId != null) q = q.Where(x => x.SupplierID == supplierId);
 			if (definitionId != null) q = q.Where(x => x.DefinitionID == definitionId);
@@ -88,13 +97,23 @@ namespace BookLoop.Areas.ReportMail.Controllers
 			return View(vms);
 		}
 
-		// ====== 明細 ======
-		public async Task<IActionResult> Details(long id)
+        [Authorize(Policy = "ReportMail.Logs.Index")]
+        public async Task<IActionResult> Details(long id)
 		{
 			var r = await _db.ReportExportLogs.AsNoTracking().FirstOrDefaultAsync(x => x.ExportID == id);
 			if (r == null) return NotFound();
 
-			string? supplierName = null, defName = null;
+            // 再驗證擁有權（和 Download 一致）
+            var auth = HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
+            var canAll = (await auth.AuthorizeAsync(User, "ReportMail.Reports.Data.All")).Succeeded;
+            if (!canAll)
+            {
+                var supplierIdClaim = User.FindFirst("supplier")?.Value;
+                if (!int.TryParse(supplierIdClaim, out var mySupplierId)) return Forbid();
+                if (r.SupplierID != mySupplierId) return Forbid();
+            }
+
+            string? supplierName = null, defName = null;
 			if (r.SupplierID != null)
 				supplierName = await _shop.Suppliers
 					.Where(s => s.SupplierID == r.SupplierID)
@@ -140,12 +159,23 @@ namespace BookLoop.Areas.ReportMail.Controllers
 
 		// ====== 下載（從快照重建，不落地）======
 		[HttpGet]
-		public async Task<IActionResult> DownloadExcel(long id)
+        [Authorize(Policy = "ReportMail.Logs.Index")]
+        public async Task<IActionResult> DownloadExcel(long id)
 		{
 			var log = await _db.ReportExportLogs.AsNoTracking()
 						.FirstOrDefaultAsync(x => x.ExportID == id);
 			if (log == null) return NotFound();
-			if (string.IsNullOrWhiteSpace(log.SnapshotJson))
+            // 再驗證擁有權
+            var auth = HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
+            var canAll = (await auth.AuthorizeAsync(User, "ReportMail.Reports.Data.All")).Succeeded;
+            if (!canAll)
+            {
+                var supplierIdClaim = User.FindFirst("supplier")?.Value;
+                if (!int.TryParse(supplierIdClaim, out var mySupplierId)) return Forbid();
+                if (log.SupplierID != mySupplierId) return Forbid();
+            }
+
+            if (string.IsNullOrWhiteSpace(log.SnapshotJson))
 				return NotFound("此筆紀錄沒有可用快照。");
 
 			var snap = JsonSerializer.Deserialize<ExportSnapshot>(log.SnapshotJson!)!;
@@ -187,12 +217,23 @@ namespace BookLoop.Areas.ReportMail.Controllers
 		}
 
 		[HttpGet]
-		public async Task<IActionResult> DownloadPdf(long id)
+        [Authorize(Policy = "ReportMail.Logs.Index")]
+        public async Task<IActionResult> DownloadPdf(long id)
 		{
 			var log = await _db.ReportExportLogs.AsNoTracking()
 						.FirstOrDefaultAsync(x => x.ExportID == id);
 			if (log == null) return NotFound();
-			if (string.IsNullOrWhiteSpace(log.SnapshotJson))
+            // 再驗證擁有權
+            var auth = HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
+            var canAll = (await auth.AuthorizeAsync(User, "ReportMail.Reports.Data.All")).Succeeded;
+            if (!canAll)
+            {
+                var supplierIdClaim = User.FindFirst("supplier")?.Value;
+                if (!int.TryParse(supplierIdClaim, out var mySupplierId)) return Forbid();
+                if (log.SupplierID != mySupplierId) return Forbid();
+            }
+
+            if (string.IsNullOrWhiteSpace(log.SnapshotJson))
 				return NotFound("此筆紀錄沒有可用快照。");
 
 			var snap = JsonSerializer.Deserialize<ExportSnapshot>(log.SnapshotJson!)!;
