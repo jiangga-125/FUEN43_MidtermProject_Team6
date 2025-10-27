@@ -23,7 +23,7 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Listings" asp-action="Indexfront">二手書前台模擬</a>
+                            <a class="nav-link text-dark" asp-controller="Listings" asp-action="ListingFrontVue">前台首頁</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-dark"  asp-controller="Listings" asp-action="Index">二手書後台</a>
@@ -41,7 +41,8 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="PenaltyTransactions" asp-action="Index">罰款紀錄後台</a>
                         </li>
-                        <li class="nav-item">
+                       
+                    @*     <li class="nav-item">
                             <a class="btn btn-outline-secondary"
                                asp-area="Books"
                                asp-controller="Branches"
@@ -49,8 +50,8 @@
                                asp-route-returnUrl="@Url.Action("Index", "Listings", new { area = "Borrow" })">
                                 據點管理
                             </a>
-                        </li>
-                    </ul>
+                        </li>*@
+                    </ul> 
                     @* <partial name="_LoginPartial" /> *@
                 </div>
             </div>

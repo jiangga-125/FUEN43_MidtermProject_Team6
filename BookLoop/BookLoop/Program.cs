@@ -158,7 +158,7 @@ namespace BookLoop
             builder.Services.AddScoped<ReservationQueueService>();
 
 
-
+            
 
             // ------------------------------
             // 應用程式管線
@@ -210,7 +210,9 @@ namespace BookLoop
 				name: "default",
 				pattern: "{controller=Home}/{action=Index}/{id?}");
 
-			app.MapRazorPages();
+            app.MapControllers();//api
+
+            app.MapRazorPages();
 
 			app.Run();
 		}
