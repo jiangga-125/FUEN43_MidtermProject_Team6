@@ -41,6 +41,47 @@ public partial class BorrowContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // ===== 1) 白名單：只保留本 DbContext 宣告的 DbSet<> =====
+        // (需要 using System.Reflection;)
+        var allowedTypes = this.GetType()
+            .GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            .Where(p => p.PropertyType.IsGenericType &&
+                        p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>))
+            .Select(p => p.PropertyType.GetGenericArguments()[0])
+            .ToHashSet();
+
+        var toIgnore = modelBuilder.Model.GetEntityTypes()
+            .Where(et => et.ClrType != null && !allowedTypes.Contains(et.ClrType))
+            .ToList();
+
+        foreach (var et in toIgnore)
+            modelBuilder.Ignore(et.ClrType!);
+
+        // ===== 2) Fluent 設定 (DbContext 原本的設定) =====
+        modelBuilder.Entity<Member>(entity =>
+        {
+            entity.ToTable(tb => tb.HasTrigger("trg_Members_Update"));
+
+            entity.HasIndex(e => e.Username, "IX_Members_Username");
+
+            //entity.HasIndex(e => e.Account, "UQ_Members_Account").IsUnique();
+
+            entity.HasIndex(e => e.UserID, "UX_Members_UserID")
+                .IsUnique()
+                .HasFilter("([UserID] IS NOT NULL)");
+
+            entity.Property(e => e.MemberID).HasColumnName("MemberID");
+            //entity.Property(e => e.Account).HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysdatetime())");
+            entity.Property(e => e.Email).HasMaxLength(254);
+            entity.Property(e => e.Phone)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysdatetime())");
+            entity.Property(e => e.UserID).HasColumnName("UserID");
+            entity.Property(e => e.Username).HasMaxLength(50);
+        });
+
         modelBuilder.Entity<BorrowRecord>(entity =>
         {
             entity.HasKey(e => e.RecordID).HasName("PK__BorrowRe__FBDF78C906A02751");

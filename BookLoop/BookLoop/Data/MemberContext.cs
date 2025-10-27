@@ -3,8 +3,7 @@ using DocumentFormat.OpenXml.InkML;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using BookLoop.Models;
-using Microsoft.EntityFrameworkCore;
+using System.Reflection;
 
 namespace BookLoop.Data;
 
@@ -44,30 +43,23 @@ public partial class MemberContext : DbContext
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
-        modelBuilder.Entity<Coupon>(entity =>
-        {
-            entity.HasIndex(e => new { e.StartAt, e.EndAt }, "IX_Coupons_Date");
+        // ===== 1) 白名單：只保留本 DbContext 宣告的 DbSet<> =====
+        // (需要 using System.Reflection;)
+        var allowedTypes = this.GetType()
+            .GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            .Where(p => p.PropertyType.IsGenericType &&
+                        p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>))
+            .Select(p => p.PropertyType.GetGenericArguments()[0])
+            .ToHashSet();
 
-            entity.HasIndex(e => e.IsActive, "IX_Coupons_IsActive");
+        var toIgnore = modelBuilder.Model.GetEntityTypes()
+            .Where(et => et.ClrType != null && !allowedTypes.Contains(et.ClrType))
+            .ToList();
 
-            entity.HasIndex(e => e.Code, "UX_Coupons_Code").IsUnique();
+        foreach (var et in toIgnore)
+            modelBuilder.Ignore(et.ClrType!);
 
-            entity.Property(e => e.CouponId).HasColumnName("CouponID");
-            entity.Property(e => e.Code).HasMaxLength(32);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
-            entity.Property(e => e.Description).HasMaxLength(400);
-            entity.Property(e => e.DiscountValue).HasColumnType("decimal(10, 2)");
-            entity.Property(e => e.IsActive).HasDefaultValue(true);
-            entity.Property(e => e.MaxDiscountAmount).HasColumnType("decimal(10, 2)");
-            entity.Property(e => e.MinOrderAmount).HasColumnType("decimal(10, 2)");
-            entity.Property(e => e.Name).HasMaxLength(100);
-            entity.Property(e => e.RequireLogin).HasDefaultValue(true);
-            entity.Property(e => e.RowVer)
-                .IsRowVersion()
-                .IsConcurrencyToken();
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
-        });
-
+        // ===== 2) Fluent 設定 (DbContext 原本的設定) =====
         modelBuilder.Entity<Member>(entity =>
         {
             entity.ToTable(tb => tb.HasTrigger("trg_Members_Update"));
