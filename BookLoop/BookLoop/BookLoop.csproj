@@ -36,7 +36,6 @@
 
 <ItemGroup>
   <Folder Include="Areas\Mail\Data\" />
-  <Folder Include="Areas\Mail\Views\Shared\" />
   <Folder Include="Data\Shop\Entities\" />
 </ItemGroup>
 

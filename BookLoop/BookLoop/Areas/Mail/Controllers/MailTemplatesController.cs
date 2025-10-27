@@ -1,11 +1,15 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using BookLoop.Data;       // 引用 AppDbContext
+﻿using BookLoop.Data;       // 引用 AppDbContext
 using BookLoop.Models;    // 引用 MailTemplate
 using Microsoft.AspNetCore.Authorization; // 引用 Authorize
+using Microsoft.AspNetCore.Hosting; //取得 wwwroot 路徑
+using Microsoft.AspNetCore.Http; // 使用 IFormFile
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc.Rendering; // SelectListItem
+using System;
+using System.IO; // 檔案操作
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace BookLoop.Areas.Mail.Controllers
 {
@@ -14,10 +18,12 @@ namespace BookLoop.Areas.Mail.Controllers
     public class MailTemplatesController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly IWebHostEnvironment _hostEnvironment;
 
-        public MailTemplatesController(AppDbContext context)
+        public MailTemplatesController(AppDbContext context, IWebHostEnvironment hostEnvironment)
         {
             _context = context;
+            _hostEnvironment = hostEnvironment;
         }
 
         // GET: Mail/MailTemplates
@@ -40,7 +46,7 @@ namespace BookLoop.Areas.Mail.Controllers
         // GET: Mail/MailTemplates/Create
         public IActionResult Create()
         {
-            // 返回空的 View 以供使用者輸入
+            PopulateTemplateKeysDropdown();
             return View(new MailTemplate { IsActive = true }); // 預設啟用
         }
 
@@ -68,9 +74,10 @@ namespace BookLoop.Areas.Mail.Controllers
                 // mailTemplate.UpdatedAt = DateTime.UtcNow; // 不需要 (或由 Trigger 處理)
                 _context.Add(mailTemplate);
                 await _context.SaveChangesAsync();
-                TempData["ok"] = "郵件範本已建立。"; // (可選) 成功訊息
+                TempData["ok"] = "郵件範本已建立。"; //成功訊息
                 return RedirectToAction(nameof(Index));
             }
+            PopulateTemplateKeysDropdown(mailTemplate.TemplateKey);
             return View(mailTemplate); // 若驗證失敗，返回 View 顯示錯誤
         }
 
@@ -80,6 +87,7 @@ namespace BookLoop.Areas.Mail.Controllers
             if (id == null) return NotFound();
             var mailTemplate = await _context.MailTemplates.FindAsync(id);
             if (mailTemplate == null) return NotFound();
+            PopulateTemplateKeysDropdown(mailTemplate.TemplateKey);
             return View(mailTemplate);
         }
 
@@ -127,6 +135,7 @@ namespace BookLoop.Areas.Mail.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+            PopulateTemplateKeysDropdown(mailTemplate.TemplateKey);
             return View(mailTemplate); // 若驗證失敗，返回 View 顯示錯誤
         }
 
@@ -154,10 +163,91 @@ namespace BookLoop.Areas.Mail.Controllers
             }
             return RedirectToAction(nameof(Index));
         }
+        // 圖片上傳 Action
+        [HttpPost]
+        [ValidateAntiForgeryToken] // 建議加上 CSRF 保護
+        // [Authorize(Policy = "Mail.Templates.Manage")] 
+        public async Task<IActionResult> UploadImage(IFormFile upload)
+        {
+            if (upload == null || upload.Length == 0)
+            {
+                return BadRequest(new { error = new { message = "未選擇檔案或檔案為空。" } });
+            }
+
+            // 檔案驗證
+            var permittedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+            var ext = Path.GetExtension(upload.FileName).ToLowerInvariant();
+            if (string.IsNullOrEmpty(ext) || !permittedExtensions.Contains(ext))
+            {
+                return BadRequest(new { error = new { message = "不支援的檔案類型。" } });
+            }
+            if (upload.Length > 5 * 1024 * 1024) // 限制大小 (例如 5MB)
+            {
+                return BadRequest(new { error = new { message = "檔案大小超過限制 (5MB)。" } });
+            }
+            // --- 驗證結束 ---
+
+
+            // --- 儲存檔案 ---
+            // 決定儲存路徑 (例如：wwwroot/uploads/mailtemplateimages/)
+            var uploadsFolderPath = Path.Combine(_hostEnvironment.WebRootPath, "uploads", "mailtemplateimages");
+            // 確保資料夾存在
+            if (!Directory.Exists(uploadsFolderPath))
+            {
+                Directory.CreateDirectory(uploadsFolderPath);
+            }
+
+            // 產生唯一檔名 (避免覆蓋)
+            var uniqueFileName = Guid.NewGuid().ToString("N") + ext;
+            var filePath = Path.Combine(uploadsFolderPath, uniqueFileName);
+
+            try
+            {
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await upload.CopyToAsync(stream);
+                }
+            }
+            catch (Exception ex)
+            {
+                // 處理檔案儲存錯誤
+                return StatusCode(500, new { error = new { message = $"檔案儲存失敗: {ex.Message}" } });
+            }
+
+            // 返回 CKEditor 需要的 JSON 格式
+            // 計算公開可訪問的 URL
+            var imageUrl = $"{Request.Scheme}://{Request.Host}/uploads/mailtemplateimages/{uniqueFileName}";
+
+            return Ok(new { url = imageUrl }); //CKEditor SimpleUploadAdapter 需要 "url" 屬性
+        }
 
         private bool MailTemplateExists(int id)
         {
             return _context.MailTemplates.Any(e => e.TemplateID == id);
+        }
+
+        // --- 輔助方法：建立 TemplateKey 下拉選單 ---
+        private void PopulateTemplateKeysDropdown(string? selectedKey = null)
+        {
+            // 定義系統預期使用的固定 Key 列表
+            var predefinedKeys = new List<string> {
+            "NewMemberWelcome",
+            "OrderConfirmation",
+            "OrderShipped",
+            "OrderDelivered", // 假設有
+            "ReservationAvailable",
+            "BorrowOverdueNotice",
+            "ReportExportNotification",
+            "PasswordResetRequest" // 假設有
+            // --- 您可以根據實際需要增減 ---
+        };
+
+            ViewBag.TemplateKeyList = predefinedKeys.Select(key => new SelectListItem
+            {
+                Text = key, // 可以考慮給中文名稱，但 Value 必須是 Key
+                Value = key,
+                Selected = key == selectedKey
+            }).ToList();
         }
     }
 }

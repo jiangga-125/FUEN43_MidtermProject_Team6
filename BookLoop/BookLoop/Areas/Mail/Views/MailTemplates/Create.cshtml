@@ -1,53 +1,145 @@
 ﻿@model BookLoop.Models.MailTemplate
 
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "建立郵件範本";
+    // Layout = "_Layout"; // 確保 Layout 正確
 }
+@section Styles {
+<style>
+    .ck-editor__editable_inline {
+        min-height: 400px; /* 設定最小高度，例如 400px */
+        max-height: 600px; /* (可選) 設定最大高度，例如 600px */
+        overflow-y: auto; /* 當內容超出高度時顯示垂直滾動條 */
+    }
+</style>
+}
+<div class="container mt-4">
+<h1>建立郵件範本</h1>
 
-<h1>Create</h1>
-
-<h4>MailTemplate</h4>
 <hr />
 <div class="row">
-    <div class="col-md-4">
+    <div class="col-md-8">
         <form asp-action="Create">
+            @Html.AntiForgeryToken()
+
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
+
+            <div class="form-group mb-3">
                 <label asp-for="TemplateKey" class="control-label"></label>
-                <input asp-for="TemplateKey" class="form-control" />
+@*                 <input asp-for="TemplateKey" class="form-control" /> *@
+                    <select asp-for="TemplateKey" class="form-select" asp-items="ViewBag.TemplateKeyList">
+                        @* 明確使用 ViewBag.TemplateKeyList *@
+                        <option value="">-- 請選擇範本 Key --</option>
+                    </select>
                 <span asp-validation-for="TemplateKey" class="text-danger"></span>
+                    <small class="form-text text-muted">請選擇此範本對應的系統事件 Key (供程式使用)。</small>
             </div>
-            <div class="form-group">
+            <div class="form-group mb-3">
                 <label asp-for="Subject" class="control-label"></label>
                 <input asp-for="Subject" class="form-control" />
                 <span asp-validation-for="Subject" class="text-danger"></span>
             </div>
-            <div class="form-group">
+
+            <div class="form-group mb-3">
                 <label asp-for="BodyHtml" class="control-label"></label>
-                <input asp-for="BodyHtml" class="form-control" />
+                <textarea id="editor" asp-for="BodyHtml"></textarea>
                 <span asp-validation-for="BodyHtml" class="text-danger"></span>
             </div>
-            <div class="form-group">
+            <div class="form-group mb-3">
                 <label asp-for="Description" class="control-label"></label>
-                <input asp-for="Description" class="form-control" />
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
                 <span asp-validation-for="Description" class="text-danger"></span>
             </div>
-            <div class="form-group form-check">
+            <div class="form-group form-check mb-3">
                 <label class="form-check-label">
                     <input class="form-check-input" asp-for="IsActive" /> @Html.DisplayNameFor(model => model.IsActive)
                 </label>
             </div>
+
             <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
+                <input type="submit" value="建立" class="btn btn-primary" />
+                | <a asp-action="Index">返回列表</a>
             </div>
         </form>
     </div>
 </div>
-
-<div>
-    <a asp-action="Index">Back to List</a>
 </div>
 
+
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
+    @* 版本號可以換成最新的，請參考 CKEditor 官網 *@
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            ClassicEditor
+                .create( document.querySelector( '#editor' ), {
+                    // 2. 配置 Simple Upload Adapter
+                    simpleUpload: {
+                        // 後端接收圖片的 URL
+                        uploadUrl: '@Url.Action("UploadImage", "MailTemplates", new { area = "Mail" })',
+                        // ★★★ 請確保 Url.Action 能正確生成 /Mail/MailTemplates/UploadImage 路徑
+
+                        // UploadImage Action 做 AntiForgeryToken
+                         headers: {
+                             // 從表單獲取 Token
+                             'RequestVerificationToken': document.querySelector('form input[name="__RequestVerificationToken"]').value
+                         }
+                    },
+                    // 配置工具欄或其他選項
+                    toolbar: [
+                        'heading', '|',
+                        'bold', 'italic', 'link', '|',
+                        'bulletedList', 'numberedList', 'blockQuote', '|',
+                        'insertTable', '|',
+                        'imageUpload', '|', // 啟用圖片上傳按鈕
+                        'undo', 'redo'
+                     ],
+                    language: 'zh' // (如果 CDN 版本包含中文)
+                } )
+                .then( editor => {
+                    console.log( 'CKEditor was initialized', editor );
+
+                    // (重要) 在表單提交前，確保 CKEditor 的內容同步回 textarea
+                    const form = document.querySelector('form');
+                    if(form){
+                        form.addEventListener('submit', function() {
+                            const editorData = editor.getData();
+                            document.querySelector('#editor').value = editorData;
+                        });
+                    }
+
+                    //處理上傳進度或錯誤
+                    const fileRepository = editor.plugins.get( 'FileRepository' );
+                    fileRepository.on( 'change:uploadTotal', ( evt, name, uploadTotal ) => {
+                         // 可以用來顯示進度條
+                    } );
+                    fileRepository.on( 'change:uploaded', ( evt, name, uploaded, uploadTotal ) => {
+                         // 可以更新進度條
+                         if ( uploaded === uploadTotal ) {
+                             console.log( `Image ${name} uploaded.` );
+                         }
+                    } );
+                    // 處理上傳失敗 (簡單 alert 示例)
+                    // 注意：需要結合 Adapter 的錯誤處理機制，請參考 CKEditor 文件
+                    // 這個示例可能不完全準確，SimpleUploadAdapter 可能直接 reject promise
+                    // 較好的做法是在後端 UploadImage 返回錯誤 JSON 時，前端 alert
+                    // editor.plugins.get( 'ImageUploadEditing' ).on( 'uploadComplete', ( evt, { data } ) => {
+                    //     if ( !data.url ) { // 假設後端失敗時不返回 url
+                    //          alert( `圖片上傳失敗: ${data?.error?.message || '未知錯誤'}` );
+                    //     }
+                    // });
+
+
+                } )
+                .catch( error => {
+                    console.error( 'Error initializing CKEditor:', error );
+                    alert('CKEditor 初始化失敗，請檢查網路連線或瀏覽器主控台錯誤。');
+                } );
+        });
+    </script>
 }
