@@ -88,14 +88,37 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			// ---- 3) 發信 ----
 			var subject = dto.Title ?? "報表匯出";
 			var body = $@"
-<div style=""font-family:Segoe UI,Arial,sans-serif;font-size:14px"">
-  <h3 style=""margin:0 0 8px 0;"">{HtmlEncode(dto.Title ?? "報表匯出")}</h3>
-  {(string.IsNullOrWhiteSpace(dto.SubTitle) ? "" : $"<div style=\"color:#555\">{HtmlEncode(dto.SubTitle!)}</div>")}
-  <p style=""margin-top:12px"">請查收附件。</p>
-</div>";
-			await _mail.SendReportAsync(
-				to: dto.To,
-				subject: subject,
+			<div style=""font-family:Segoe UI,Arial,sans-serif;font-size:14px"">
+			  <h3 style=""margin:0 0 8px 0;"">{HtmlEncode(dto.Title ?? "報表匯出")}</h3>
+			  {(string.IsNullOrWhiteSpace(dto.SubTitle) ? "" : $"<div style=\"color:#555\">{HtmlEncode(dto.SubTitle!)}</div>")}
+			  <p style=""margin-top:12px"">請查收附件。</p>
+			</div>";
+
+            // 自動帶入 Email 的邏輯
+            string? currentUserEmail = User.FindFirstValue(ClaimTypes.Email); // 嘗試獲取登入者的 Email Claim
+            string targetEmail = dto.To ?? ""; // 從請求 DTO 取得 Email，若為 null 則給空字串
+
+            // 如果前端沒有提供 Email (dto.To 是 null 或空)，或者提供的 Email 和使用者 Claim 的 Email 相同，
+            // 且使用者的 Email Claim 存在且不為空，則優先使用使用者的 Email。
+            if (!string.IsNullOrWhiteSpace(currentUserEmail) &&
+                (string.IsNullOrWhiteSpace(targetEmail) ||
+                 string.Equals(targetEmail, currentUserEmail, StringComparison.OrdinalIgnoreCase)))
+            {
+                targetEmail = currentUserEmail; // 使用登入者的 Email
+            }
+            // 否則，維持使用 dto.To (可能是前端輸入的，也可能是空字串)
+
+            // 如果最終 targetEmail 還是空的 (使用者 Claim 沒有 Email 且前端也沒輸入)，則報錯
+            if (string.IsNullOrWhiteSpace(targetEmail))
+            {
+                // 在這裡處理錯誤，例如記錄 Log 並返回 BadRequest
+                // 為了與您現有 Log 寫入流程一致，我們先拋出例外，讓後續 catch 處理
+                throw new InvalidOperationException("無法確定收件者 Email 地址。");
+            }
+
+            await _mail.SendReportAsync(
+                to: targetEmail,
+                subject: subject,
 				body: body,
 				attachmentName: safeName,
 				attachmentBytes: bytes,
@@ -322,8 +345,30 @@ namespace ReportMail.Areas.ReportMail.Controllers
 			sb.AppendLine("</div>");
 			var body = sb.ToString();
 
-			await _mail.SendReportAsync(
-				to: dto.To,
+            //自動帶入 Email 的邏輯
+            string? currentUserEmail = User.FindFirstValue(ClaimTypes.Email); // 嘗試獲取登入者的 Email Claim
+            string targetEmail = dto.To ?? ""; // 從請求 DTO 取得 Email，若為 null 則給空字串
+
+            // 如果前端沒有提供 Email (dto.To 是 null 或空)，或者提供的 Email 和使用者 Claim 的 Email 相同，
+            // 且使用者的 Email Claim 存在且不為空，則優先使用使用者的 Email。
+            if (!string.IsNullOrWhiteSpace(currentUserEmail) &&
+                (string.IsNullOrWhiteSpace(targetEmail) ||
+                 string.Equals(targetEmail, currentUserEmail, StringComparison.OrdinalIgnoreCase)))
+            {
+                targetEmail = currentUserEmail; // 使用登入者的 Email
+            }
+            // 否則，維持使用 dto.To (可能是前端輸入的，也可能是空字串)
+
+            // 如果最終 targetEmail 還是空的 (使用者 Claim 沒有 Email 且前端也沒輸入)，則報錯
+            if (string.IsNullOrWhiteSpace(targetEmail))
+            {
+                // 在這裡處理錯誤，例如記錄 Log 並返回 BadRequest
+                // 為了與您現有 Log 寫入流程一致，我們先拋出例外，讓後續 catch 處理
+                throw new InvalidOperationException("無法確定收件者 Email 地址。");
+            }
+
+            await _mail.SendReportAsync(
+                to: targetEmail,
 				subject: subject,
 				body: body,
 				attachmentName: safeName,

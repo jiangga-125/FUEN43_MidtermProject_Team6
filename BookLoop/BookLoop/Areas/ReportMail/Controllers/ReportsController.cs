@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Security.Claims; // 引用 ClaimTypes
-using Microsoft.AspNetCore.Authorization;
 
 
 namespace ReportMail.Areas.ReportMail.Controllers
@@ -109,6 +108,11 @@ namespace ReportMail.Areas.ReportMail.Controllers
             ViewBag.LineReports = FilterByCategory(accessibleDefinitions, "line");
             ViewBag.BarReports = FilterByCategory(accessibleDefinitions, "bar");
             ViewBag.PieReports = FilterByCategory(accessibleDefinitions, "pie");
+
+            // 將使用者 Email 和管理員狀態傳遞給 View 
+            string? userEmail = User.FindFirstValue(ClaimTypes.Email); // 獲取 Email Claim
+            ViewBag.UserEmail = userEmail ?? ""; // 如果找不到 Email Claim，傳遞空字串
+            ViewBag.IsAdmin = canViewAny;       // canViewAny 變數代表是否為管理員 (能看所有報表定義)
 
             return View();
         }
