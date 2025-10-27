@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Security.Claims; // 引用 ClaimTypes
+using Microsoft.AspNetCore.Authorization;
 
 
 namespace ReportMail.Areas.ReportMail.Controllers
@@ -31,13 +32,15 @@ namespace ReportMail.Areas.ReportMail.Controllers
         private readonly IReportDataService _svc;
         private readonly ReportMailDbContext _db;
         private readonly ShopDbContext _shop;
+        private readonly IAuthorizationService _authService;
 
 
-        public ReportsController(IReportDataService svc, ReportMailDbContext db, ShopDbContext shop)
+        public ReportsController(IReportDataService svc, ReportMailDbContext db, ShopDbContext shop, IAuthorizationService authService)
         {
             _svc = svc;
             _db = db;
             _shop = shop;
+            _authService = authService;
         }
 
 
@@ -56,16 +59,46 @@ namespace ReportMail.Areas.ReportMail.Controllers
         /// View：Areas/ReportMail/Views/Reports/Index.cshtml
         /// </summary>
         [HttpGet]
-        // 也讓 /ReportMail/Reports 直接進到這頁（不用寫 /Index）
         [Route("/ReportMail/Reports")]
         public async Task<IActionResult> Index()
         {
-            // ★ 報表定義的存取權限 (ViewAny / ViewOwn) 邏輯已在 ReportDefinitionsController.cs 中處理
-            var activeDefinitions = await _db.ReportDefinitions
+            List<ReportDefinition> accessibleDefinitions;
+            var canViewAny = (await _authService.AuthorizeAsync(User, "ReportMail.Reports.Def.ViewAny")).Succeeded;
+
+            if (canViewAny)
+            {
+                // 報表定義的存取權限 (ViewAny / ViewOwn) 邏輯已在 ReportDefinitionsController.cs 中處理
+                accessibleDefinitions = await _db.ReportDefinitions
                     .AsNoTracking()
                     .Where(r => r.IsActive)
                     .ToListAsync();
-
+            }
+            else
+            {
+                var canViewOwn = (await _authService.AuthorizeAsync(User, "ReportMail.Reports.Def.ViewOwn")).Succeeded;
+                if (canViewOwn)
+                {
+                    var myId = CurrentUserIdOrNull(); // 使用輔助方法
+                    if (myId is null)
+                    {
+                        accessibleDefinitions = new List<ReportDefinition>(); // 無法識別使用者，不顯示自訂報表
+                    }
+                    else
+                    {
+                        // 一般使用者/書商：只看到自己建立且 IsActive 的報表
+                        accessibleDefinitions = await _db.ReportDefinitions
+                            .AsNoTracking()
+                            .Where(r => r.IsActive && r.OwnerUserID == myId)
+                            .OrderBy(r => r.ReportName)
+                            .ToListAsync();
+                    }
+                }
+                else
+                {
+                    // 無 ViewAny 且無 ViewOwn 權限
+                    accessibleDefinitions = new List<ReportDefinition>();
+                }
+            }
             static List<ReportDefinition> FilterByCategory(IEnumerable<ReportDefinition> source, string category)
                     => source
                             .Where(r => !string.IsNullOrWhiteSpace(r.Category)
@@ -73,9 +106,9 @@ namespace ReportMail.Areas.ReportMail.Controllers
                             .OrderBy(r => r.ReportName)
                             .ToList();
 
-            ViewBag.LineReports = FilterByCategory(activeDefinitions, "line");
-            ViewBag.BarReports = FilterByCategory(activeDefinitions, "bar");
-            ViewBag.PieReports = FilterByCategory(activeDefinitions, "pie");
+            ViewBag.LineReports = FilterByCategory(accessibleDefinitions, "line");
+            ViewBag.BarReports = FilterByCategory(accessibleDefinitions, "bar");
+            ViewBag.PieReports = FilterByCategory(accessibleDefinitions, "pie");
 
             return View();
         }
@@ -266,6 +299,13 @@ namespace ReportMail.Areas.ReportMail.Controllers
 
 
         //helpers
+
+        private int? CurrentUserIdOrNull()
+        {
+            var s = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(s)) return null;
+            return int.TryParse(s, out var id) ? id : (int?)null;
+        }
 
         /// <summary>
         /// 正常化日期區間：
