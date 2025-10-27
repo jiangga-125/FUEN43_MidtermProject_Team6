@@ -198,94 +198,177 @@ namespace ReportMail.Areas.ReportMail.Controllers
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
-            var def = await _context.ReportDefinitions.FindAsync(id);
+            var def = await _context.ReportDefinitions
+                                    .Include(d => d.ReportFilters.OrderBy(f => f.OrderIndex))
+                                    .FirstOrDefaultAsync(x => x.ReportDefinitionID == id);
             if (def == null) return NotFound();
 
             var auth = HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
             var canAny = (await auth.AuthorizeAsync(User, "ReportMail.Reports.Def.EditAny")).Succeeded;
             var canOwn = (await auth.AuthorizeAsync(User, "ReportMail.Reports.Def.EditOwn")).Succeeded;
             var myId = CurrentUserIdOrNull();
-            if (myId is null) return Forbid();
+            if (myId is null) return Forbid();// 非 Admin 且無法識別 UserID -> Forbid
 
             if (!(canAny || (canOwn && def.OwnerUserID == myId))) return Forbid();
+            // 將 Filters 序列化傳給 View
+            ViewBag.FiltersJson = JsonSerializer.Serialize(def.ReportFilters.Select(f => new ReportFilterDraft
+            {
+                FieldName = f.FieldName,
+                DisplayName = f.DisplayName,
+                DataType = f.DataType,
+                Operator = f.Operator,
+                ValueJson = f.ValueJson, // 只傳 ValueJson
+                Options = f.Options,
+                OrderIndex = f.OrderIndex,
+                IsRequired = f.IsRequired,
+                IsActive = f.IsActive
+            }));
             return View(def);
         }
 
         // POST: ReportMail/ReportDefinitions/Edit/5
-        // 把 BaseKind 納入 Bind，並在儲存前刷新 UpdatedAt
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id,
+            //  Bind 屬性接收表單傳來的值
             [Bind("ReportDefinitionID,ReportName,Category,BaseKind,Description,IsActive,CreatedAt,UpdatedAt")]
-            ReportDefinition reportDefinition,
-            [FromForm] string? FiltersJson // 接收前端組好的 Filter 草稿(JSON)
-        )
+            ReportDefinition inputDefinition, 
+            [FromForm] string? FiltersJson)
         {
-            if (id != reportDefinition.ReportDefinitionID) return NotFound();
-            if (!ModelState.IsValid) return View(reportDefinition);
-            if (!TryParseFilterDrafts(FiltersJson, out var drafts))
-                return View(reportDefinition);
-            // 保證這兩個欄位標準化（去空白 + 小寫），空值給預設
-            reportDefinition.Category = (reportDefinition.Category ?? "line").Trim().ToLowerInvariant();
-            reportDefinition.BaseKind = (reportDefinition.BaseKind ?? "sales").Trim().ToLowerInvariant();
+            if (id != inputDefinition.ReportDefinitionID) return NotFound();
 
-            // 一律啟用，避免被 Index() 過濾掉
-            reportDefinition.IsActive = true;
+            // 先解析 FiltersJson，如果格式錯誤，提前返回
+            if (!TryParseFilterDrafts(FiltersJson, out var drafts))
+            {
+                // 需要重新載入原始資料和 FiltersJson 以便 View 能正確顯示
+                var originalDef = await _context.ReportDefinitions
+                                      .Include(d => d.ReportFilters.OrderBy(f => f.OrderIndex))
+                                      .AsNoTracking() // 只需要讀取
+                                      .FirstOrDefaultAsync(x => x.ReportDefinitionID == id);
+                if (originalDef == null) return NotFound(); // 理論上不會發生
+                ViewBag.FiltersJson = FiltersJson; // 保留使用者輸入的錯誤 Json 或原 Json
+                ModelState.AddModelError("FiltersJson", "篩選條件格式不正確。"); // 加入明確錯誤訊息
+                return View(originalDef); // 返回 View 顯示錯誤
+            }
+
 
             // 授權：EditAny / EditOwn（以資料庫現值 owner 為準）
-            var current = await _context.ReportDefinitions.AsNoTracking()
+            // 查詢用於 *更新* 的實體 (entity)，這次 *不要* 用 AsNoTracking() 
+            var entity = await _context.ReportDefinitions
+                            .Include(x => x.ReportFilters) // 同時載入舊的 Filters 以便刪除
                             .FirstOrDefaultAsync(x => x.ReportDefinitionID == id);
-            if (current == null) return NotFound();
+            if (entity == null) return NotFound();
 
             var auth = HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
             var canAny = (await auth.AuthorizeAsync(User, "ReportMail.Reports.Def.EditAny")).Succeeded;
             var canOwn = (await auth.AuthorizeAsync(User, "ReportMail.Reports.Def.EditOwn")).Succeeded;
             var myId = CurrentUserIdOrNull();
-            if (myId is null) return Forbid();
-            if (!(canAny || (canOwn && current.OwnerUserID == myId))) return Forbid();
+            if (myId is null && !canAny) return Forbid();
+            if (!(canAny || (canOwn && entity.OwnerUserID == myId))) return Forbid(); // ★ 使用 entity 判斷擁有者
+
+            // 檢查 ModelState (在查詢 entity 之後，以便錯誤時能返回 View)
+            if (!ModelState.IsValid)
+            {
+                ViewBag.FiltersJson = FiltersJson; // 保留使用者輸入的 FiltersJson
+                return View(entity); // 返回 View 顯示 entity 的當前狀態和錯誤
+            }
 
             using var tx = await _context.Database.BeginTransactionAsync();
             try
-            {   // 1) 先更新 Definition 本體
-                _context.Update(reportDefinition);
-                await _context.SaveChangesAsync();
+            {
+                //更新從資料庫讀取的 entity 
+                entity.ReportName = inputDefinition.ReportName;
+                entity.Category = (inputDefinition.Category ?? "line").Trim().ToLowerInvariant();
+                entity.BaseKind = (inputDefinition.BaseKind ?? "sales").Trim().ToLowerInvariant();
+                entity.Description = inputDefinition.Description;
+                entity.IsActive = inputDefinition.IsActive; //從表單接收 IsActive 的值
+                entity.UpdatedAt = DateTime.UtcNow; // 更新時間戳
+                //  OwnerUserID 不更新，保持 entity 從資料庫讀取到的原始值 
 
-                // 2)砍掉舊的Filters(最簡潔、避免比對順序異動)
-                var olds = _context.ReportFilters.Where(f => f.ReportDefinitionID == reportDefinition.ReportDefinitionID);
-                _context.ReportFilters.RemoveRange(olds);
-                await _context.SaveChangesAsync();
 
-                // 3)還原新增十的「草稿解析」:逐筆加入新的Filters
+                // 2) 砍掉舊的Filters (使用 entity.ReportFilters)
+                if (entity.ReportFilters?.Any() == true)
+                {
+                    _context.ReportFilters.RemoveRange(entity.ReportFilters);
+
+                }
+
+                // 3) 還原新增時的「草稿解析」:逐筆加入新的Filters
                 if (drafts.Count > 0)
                 {
                     int order = 1;
                     foreach (var d in drafts)
                     {
+                        // 友善名稱邏輯 (與 Create 保持一致)
+                        var display = (d.DisplayName ?? d.FieldName) ?? "";
+                        if (string.IsNullOrWhiteSpace(display))
+                        {
+                            display = (d.FieldName ?? "").ToLowerInvariant() switch
+                            {
+                                "orderdate" => "日期區間",
+                                "borrowdate" => "日期區間",
+                                "categoryid" => "書籍種類",
+                                "saleprice" => "單本價位",
+                                "metric" => "指標",
+                                "orderstatus" => "訂單狀態",
+                                "orderamount" => "單筆訂單金額",
+                                "supplierid" => "書商/供應商",
+                                "publisherid" => "出版商",
+                                _ => "(未命名)"
+                            };
+                        }
+
                         if (string.IsNullOrWhiteSpace(d.FieldName)) continue;
                         var f = new ReportFilter
                         {
-                            ReportDefinitionID = reportDefinition.ReportDefinitionID,
+                            ReportDefinitionID = entity.ReportDefinitionID, // 使用 entity 的 ID
                             FieldName = d.FieldName!.Trim(),
-                            DisplayName = string.IsNullOrWhiteSpace(d.DisplayName) ? d.FieldName!.Trim() : d.DisplayName!.Trim(),
+                            DisplayName = display, 
                             DataType = (d.DataType ?? "text").Trim().ToLowerInvariant(),
                             Operator = (d.Operator ?? "eq").Trim().ToLowerInvariant(),
-                            ValueJson = d.ValueJson ?? "{}",   // 新版只用 ValueJson
+                            ValueJson = d.ValueJson ?? "{}",
                             Options = d.Options ?? "{}",
-                            OrderIndex = order++,
-                            IsRequired = d.IsRequired ?? false,   // 或 d.IsRequired.GetValueOrDefault(false)
-                            IsActive = true
+                            OrderIndex = d.OrderIndex ?? order++, // 如果前端沒給 OrderIndex，才自動遞增
+                            IsRequired = d.IsRequired ?? false,
+                            IsActive = d.IsActive ?? true // Filter 預設 Active
                         };
                         _context.ReportFilters.Add(f);
                     }
-                    await _context.SaveChangesAsync();
                 }
+
+                // 一次性儲存所有變更
+                await _context.SaveChangesAsync();
                 await tx.CommitAsync();
                 return RedirectToAction("Index", "Reports", new { area = "ReportMail" });
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException) // 並發衝突
             {
                 await tx.RollbackAsync();
-                throw;
+                ModelState.AddModelError(string.Empty, "此筆資料已被其他人修改，請重新載入後再試。");
+                ViewBag.FiltersJson = FiltersJson; // 保留 FiltersJson
+                return View(entity); // 返回 View 顯示 entity 的當前狀態
+            }
+            catch (DbUpdateException ex) // 其他資料庫更新錯誤 (例如唯一約束)
+            {
+                await tx.RollbackAsync();
+                if (ex.InnerException?.Message.Contains("UNIQUE constraint", StringComparison.OrdinalIgnoreCase) == true ||
+                    ex.InnerException?.Message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    ModelState.AddModelError(string.Empty, "儲存失敗，報表名稱或其他唯一欄位已存在。");
+                }
+                else
+                {
+                    ModelState.AddModelError(string.Empty, "儲存失敗，請檢查資料格式或聯繫管理員。");
+                }
+                ViewBag.FiltersJson = FiltersJson; // 保留 FiltersJson
+                return View(entity); // 返回 View 顯示 entity 的當前狀態
+            }
+            catch // 其他未預期錯誤
+            {
+                await tx.RollbackAsync();
+                ModelState.AddModelError(string.Empty, "發生未預期的錯誤，請稍後再試。");
+                ViewBag.FiltersJson = FiltersJson; // 保留 FiltersJson
+                return View(entity); // 返回 View 顯示 entity 的當前狀態
             }
         }
 
