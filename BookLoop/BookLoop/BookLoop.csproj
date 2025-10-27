@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -35,6 +35,8 @@
 </ItemGroup>
 
 <ItemGroup>
+  <Folder Include="Areas\Mail\Data\" />
+  <Folder Include="Areas\Mail\Views\Shared\" />
   <Folder Include="Data\Shop\Entities\" />
 </ItemGroup>
 
