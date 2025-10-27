@@ -20,126 +20,84 @@ namespace BookLoop.Services.Reports
 
         /// <summary>
         /// 折線圖：依顆粒度彙總「總銷售金額」。
-        /// 注意：
-        ///   - 不限制出版社時，沿用 Orders.TotalAmount 彙總（避免既有數字變動）
-        ///   - 有傳 publisherIds 時，改用「OrderDetails × Books」過濾 b.PublisherID 後加總
         /// </summary>
         public async Task<IReadOnlyList<ChartPoint>> GetSalesAmountSeriesAsync(
             DateTime start,
             DateTime end,
             string granularity = "day",
             int[]? excludeStatuses = null,
-            int[]? publisherIds = null)
+            int? supplierId = null) // ★ 接收 int? supplierId
         {
             // 半開區間：[start, end)
             var endExclusive = end.Date.AddDays(1);
-
-            // 例如 0=已取消；若你的系統是別的碼請調整
             excludeStatuses ??= new[] { 0 };
 
-            // ========== A. 無出版社限制：只有 null 才走 A（不限制）；空陣列則走 B，最後會得到 0 ==========
-            if (publisherIds is null)
+            // ========== 銷售報表基礎查詢：Orders/Details JOIN Books/Publishers ==========
+            var q = from od in _db.OrderDetails.AsNoTracking()
+                    join o in _db.Orders.AsNoTracking() on od.OrderID equals o.OrderID
+                    join b in _db.Books.AsNoTracking() on od.BookID equals b.BookID
+                    join p in _db.Publishers.AsNoTracking() on b.PublisherID equals p.PublisherID // ★ 引入 Publishers
+                    where o.OrderDate >= start && o.OrderDate < endExclusive
+                          && !excludeStatuses.Contains((int)o.Status)
+                    select new
+                    {
+                        o.OrderDate,
+                        p.SupplierID, // ★ 帶出 SupplierID
+                        Amount = (b.SalePrice ?? b.ListPrice) * od.Quantity
+                    };
+
+            // ★ Data Scope 過濾：如果 supplierId 有值 (非 null)，則強制過濾
+            if (supplierId.HasValue)
             {
-                var baseQ = _db.Orders.AsNoTracking()
-                    .Where(o => o.OrderDate >= start && o.OrderDate < endExclusive)
-                    .Where(o => !excludeStatuses.Contains((int)o.Status));
-
-                if (string.Equals(granularity, "year", StringComparison.OrdinalIgnoreCase))
+                // 如果 supplierId=0，則直接過濾掉所有數據
+                if (supplierId.Value == 0)
                 {
-                    var rows = await baseQ
-                        .GroupBy(o => o.OrderDate.Year)
-                        .Select(g => new { Year = g.Key, Amount = g.Sum(x => x.TotalAmount) })
-                        .OrderBy(x => x.Year)
-                        .ToListAsync();
-
-                    return rows.Select(x => new ChartPoint { Label = x.Year.ToString(), Value = x.Amount }).ToList();
+                    return Array.Empty<ChartPoint>();
                 }
+                q = q.Where(x => x.SupplierID == supplierId.Value);
+            }
+            // 如果 supplierId 是 null，則不加過濾條件 (ALL)
 
-                if (string.Equals(granularity, "month", StringComparison.OrdinalIgnoreCase))
-                {
-                    var rows = await baseQ
-                        .GroupBy(o => new { o.OrderDate.Year, o.OrderDate.Month })
-                        .Select(g => new { g.Key.Year, g.Key.Month, Amount = g.Sum(x => x.TotalAmount) })
-                        .OrderBy(x => x.Year).ThenBy(x => x.Month)
-                        .ToListAsync();
+            // ========== 分組與彙總 ==========
+            if (string.Equals(granularity, "year", StringComparison.OrdinalIgnoreCase))
+            {
+                var rows = await q
+                    .GroupBy(x => x.OrderDate.Year)
+                    .Select(g => new { Year = g.Key, Amount = g.Sum(x => x.Amount) })
+                    .OrderBy(x => x.Year)
+                    .ToListAsync();
 
-                    return rows.Select(x => new ChartPoint
-                    {
-                        Label = $"{x.Year:D4}-{x.Month:D2}",
-                        Value = x.Amount
-                    }).ToList();
-                }
-
-                // day（預設）
-                {
-                    var rows = await baseQ
-                        .GroupBy(o => o.OrderDate.Date)
-                        .Select(g => new { Date = g.Key, Amount = g.Sum(x => x.TotalAmount) })
-                        .OrderBy(x => x.Date)
-                        .ToListAsync();
-
-                    return rows.Select(x => new ChartPoint
-                    {
-                        Label = x.Date.ToString("yyyy-MM-dd"),
-                        Value = x.Amount
-                    }).ToList();
-                }
+                return rows.Select(x => new ChartPoint { Label = x.Year.ToString(), Value = x.Amount }).ToList();
             }
 
-            // ========== B. 有出版社限制：用明細 × 書籍過濾 PublisherID 後加總 ==========
+            if (string.Equals(granularity, "month", StringComparison.OrdinalIgnoreCase))
             {
-                var q = from od in _db.OrderDetails.AsNoTracking()
-                        join o in _db.Orders.AsNoTracking() on od.OrderID equals o.OrderID
-                        join b in _db.Books.AsNoTracking() on od.BookID equals b.BookID
-                        where o.OrderDate >= start && o.OrderDate < endExclusive
-                              && !excludeStatuses.Contains((int)o.Status)
-                              && publisherIds!.Contains(b.PublisherID)
-                        select new
-                        {
-                            o.OrderDate,
-                            Amount = (b.SalePrice ?? b.ListPrice) * od.Quantity
-                        };
+                var rows = await q
+                    .GroupBy(x => new { x.OrderDate.Year, x.OrderDate.Month })
+                    .Select(g => new { g.Key.Year, g.Key.Month, Amount = g.Sum(x => x.Amount) })
+                    .OrderBy(x => x.Year).ThenBy(x => x.Month)
+                    .ToListAsync();
 
-                if (string.Equals(granularity, "year", StringComparison.OrdinalIgnoreCase))
+                return rows.Select(x => new ChartPoint
                 {
-                    var rows = await q
-                        .GroupBy(x => x.OrderDate.Year)
-                        .Select(g => new { Year = g.Key, Amount = g.Sum(x => x.Amount) })
-                        .OrderBy(x => x.Year)
-                        .ToListAsync();
+                    Label = $"{x.Year:D4}-{x.Month:D2}",
+                    Value = x.Amount
+                }).ToList();
+            }
 
-                    return rows.Select(x => new ChartPoint { Label = x.Year.ToString(), Value = x.Amount }).ToList();
-                }
+            // day（預設）
+            {
+                var rows = await q
+                    .GroupBy(x => x.OrderDate.Date)
+                    .Select(g => new { Date = g.Key, Amount = g.Sum(x => x.Amount) })
+                    .OrderBy(x => x.Date)
+                    .ToListAsync();
 
-                if (string.Equals(granularity, "month", StringComparison.OrdinalIgnoreCase))
+                return rows.Select(x => new ChartPoint
                 {
-                    var rows = await q
-                        .GroupBy(x => new { x.OrderDate.Year, x.OrderDate.Month })
-                        .Select(g => new { g.Key.Year, g.Key.Month, Amount = g.Sum(x => x.Amount) })
-                        .OrderBy(x => x.Year).ThenBy(x => x.Month)
-                        .ToListAsync();
-
-                    return rows.Select(x => new ChartPoint
-                    {
-                        Label = $"{x.Year:D4}-{x.Month:D2}",
-                        Value = x.Amount
-                    }).ToList();
-                }
-
-                // day（預設）
-                {
-                    var rows = await q
-                        .GroupBy(x => x.OrderDate.Date)
-                        .Select(g => new { Date = g.Key, Amount = g.Sum(x => x.Amount) })
-                        .OrderBy(x => x.Date)
-                        .ToListAsync();
-
-                    return rows.Select(x => new ChartPoint
-                    {
-                        Label = x.Date.ToString("yyyy-MM-dd"),
-                        Value = x.Amount
-                    }).ToList();
-                }
+                    Label = x.Date.ToString("yyyy-MM-dd"),
+                    Value = x.Amount
+                }).ToList();
             }
         }
 
@@ -151,34 +109,40 @@ namespace BookLoop.Services.Reports
             DateTime endInclusive,
             int topN = 10,
             int[]? excludeStatuses = null,
-            int[]? publisherIds = null)
+            int? supplierId = null) // ★ 接收 int? supplierId
         {
             var endExclusive = endInclusive.Date.AddDays(1);
             excludeStatuses ??= new[] { 0 };
 
-            // Orders + OrderDetails + Books，先在 DB 端完成彙總與排序
+            // Orders + OrderDetails + Books + Publishers
             var q =
                 from od in _db.OrderDetails.AsNoTracking()
                 join o in _db.Orders.AsNoTracking() on od.OrderID equals o.OrderID
                 join b in _db.Books.AsNoTracking() on od.BookID equals b.BookID
+                join p in _db.Publishers.AsNoTracking() on b.PublisherID equals p.PublisherID
                 where o.OrderDate >= start
                       && o.OrderDate < endExclusive
                       && !excludeStatuses.Contains((int)o.Status)
                 select new
                 {
-                    o.OrderDate,
-                    BookID = b.BookID,   // 穩定鍵之一
-                    Title = b.Title,     // 顯示用
-                    Qty = od.Quantity,   // 彙總用
-                    PublisherID = b.PublisherID
+                    BookID = b.BookID,
+                    Title = b.Title,
+                    Qty = od.Quantity,
+                    p.SupplierID // ★ 帶出 SupplierID
                 };
 
-            // null：不限制；空陣列：限制為空集合 → 回傳 0
-            if (publisherIds != null)
-                q = q.Where(x => publisherIds.Contains(x.PublisherID));
+            // ★ Data Scope 過濾
+            if (supplierId.HasValue)
+            {
+                if (supplierId.Value == 0)
+                {
+                    return Array.Empty<ChartPoint>();
+                }
+                q = q.Where(x => x.SupplierID == supplierId.Value);
+            }
 
             var rows = await q
-                .GroupBy(x => new { x.BookID, x.Title })  // 穩定鍵：避免同名書被合併
+                .GroupBy(x => new { x.BookID, x.Title })
                 .Select(g => new
                 {
                     Label = g.Key.Title,
@@ -193,18 +157,18 @@ namespace BookLoop.Services.Reports
 
         /// <summary>
         /// 一段期間內「借閱書籍排行」（以借閱次數排序）。
-        /// BorrowRecords → Listings → Books/Publishers
+        /// BorrowRecords → Listings → Publishers
         /// </summary>
         public async Task<IReadOnlyList<ChartPoint>> GetTopBorrowBooksAsync(
-     DateTime start,
-     DateTime endInclusive,
-     int topN = 10,
-     int[]? publisherIds = null)
+            DateTime start,
+            DateTime endInclusive,
+            int topN = 10,
+            int? supplierId = null) // ★ 接收 int? supplierId
         {
             var endExclusive = endInclusive.Date.AddDays(1);
             topN = topN <= 0 ? 10 : Math.Min(topN, 50);
 
-            // ★ 借閱：BorrowRecords → Listings → Publishers（不要混用 Books）
+            // BorrowRecords → Listings → Publishers
             var q =
                 from br in _db.BorrowRecords.AsNoTracking()
                 join l in _db.Listings.AsNoTracking() on br.ListingID equals l.ListingID
@@ -212,17 +176,23 @@ namespace BookLoop.Services.Reports
                 where br.BorrowDate >= start && br.BorrowDate < endExclusive
                 select new
                 {
-                    l.ListingID,          // 穩定鍵之一
-                    l.Title,              // 顯示用（若你的欄位叫 Name，請改成 l.Name）
-                    l.PublisherID         // 篩選用
+                    l.ListingID,
+                    l.Title,
+                    p.SupplierID // ★ 帶出 SupplierID
                 };
 
-            // null：不限制；空陣列：限制為空集合 → 回傳 0
-            if (publisherIds != null)
-                q = q.Where(x => publisherIds.Contains(x.PublisherID));
+            // ★ Data Scope 過濾
+            if (supplierId.HasValue)
+            {
+                if (supplierId.Value == 0)
+                {
+                    return Array.Empty<ChartPoint>();
+                }
+                q = q.Where(x => x.SupplierID == supplierId.Value);
+            }
 
             var rows = await q
-                .GroupBy(x => new { x.ListingID, x.Title })  // 以 Listing 為主，不跟 Books 混
+                .GroupBy(x => new { x.ListingID, x.Title })
                 .Select(g => new
                 {
                     Label = g.Key.Title,
@@ -234,6 +204,5 @@ namespace BookLoop.Services.Reports
 
             return rows.Select(x => new ChartPoint { Label = x.Label, Value = x.Value }).ToList();
         }
-
     }
 }

@@ -1,6 +1,5 @@
 ﻿using BookLoop.Data;
 using BookLoop.Models;
-using DocumentFormat.OpenXml.Bibliography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -123,6 +122,25 @@ namespace ReportMail.Areas.ReportMail.Controllers
                 catch { }
             }
 
+            // ★ 新增：解析已選的 SupplierIDs（書商篩選）
+            var supplierIds = new List<int>();
+            var supFilter = req?.Filters?.FirstOrDefault(f =>
+                string.Equals(f.FieldName, "SupplierID", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(f.FieldName, "PublisherID", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(supFilter?.ValueJson))
+            {
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(supFilter!.ValueJson!);
+                    if (doc.RootElement.TryGetProperty("values", out var arr))
+                        foreach (var x in arr.EnumerateArray())
+                            if (x.TryGetInt32(out var id) && id > 0) supplierIds.Add(id);
+                }
+                catch { }
+            }
+            // ★ 結束：解析已選的 SupplierIDs
+
+
             int count;
 
             if (source == "borrow")
@@ -135,6 +153,11 @@ namespace ReportMail.Areas.ReportMail.Controllers
                 if (startDate.HasValue) q = q.Where(x => x.BorrowDate >= startDate.Value);
                 if (endExclusive.HasValue) q = q.Where(x => x.BorrowDate < endExclusive.Value);
                 if (categoryIds.Count > 0) q = q.Where(x => categoryIds.Contains(x.CategoryID));
+
+                // ★ 應用自訂書商篩選
+                if (supplierIds.Count > 0) q = q.Where(x => supplierIds.Contains(x.SupplierID));
+
+                // ★ Data Scope 限制（最後套用）
                 if (!canAll) q = q.Where(x => x.SupplierID == mySupplierId);
 
                 count = await q.Select(x => x.ListingID).Distinct().CountAsync();
@@ -151,6 +174,11 @@ namespace ReportMail.Areas.ReportMail.Controllers
                 if (startDate.HasValue) q = q.Where(x => x.OrderDate >= startDate.Value);
                 if (endExclusive.HasValue) q = q.Where(x => x.OrderDate < endExclusive.Value);
                 if (categoryIds.Count > 0) q = q.Where(x => categoryIds.Contains(x.CategoryID));
+
+                // ★ 應用自訂書商篩選
+                if (supplierIds.Count > 0) q = q.Where(x => supplierIds.Contains(x.SupplierID));
+
+                // ★ Data Scope 限制（最後套用）
                 if (!canAll) q = q.Where(x => x.SupplierID == mySupplierId);
 
                 count = await q.Select(x => x.BookID).Distinct().CountAsync();
