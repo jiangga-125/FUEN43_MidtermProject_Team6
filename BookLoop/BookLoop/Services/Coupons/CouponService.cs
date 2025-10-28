@@ -14,8 +14,7 @@ namespace BookLoop.Services.Coupons
 
 		public CouponService(MemberContext db) => _db = db;  // 依賴注入 DbContext
 
-		public async Task<Result<(decimal Discount, string RuleText)>> PreviewDiscountAsync(
-	string? couponCode, int memberId, decimal subtotal)
+		public async Task<Result<(decimal Discount, string RuleText)>> PreviewDiscountAsync(string? couponCode, int memberId, decimal subtotal)
 		{
 			if (string.IsNullOrWhiteSpace(couponCode))
 				return Result<(decimal, string)>.Success((0m, "未輸入優惠券"));
