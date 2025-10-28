@@ -16,6 +16,8 @@ namespace BookLoop.Models.ViewModels
 		// 會員暱稱（TargetType = 2 時必填）
 		public string? TargetMemberNickname { get; set; }
 
+		public int? TargetBookID { get; set; }
+
 		[Required(ErrorMessage = "評分必填")]
 		[Range(1, 5, ErrorMessage = "評分必須介於 1 到 5 之間")]
 		public byte Rating { get; set; }

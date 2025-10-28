@@ -1,13 +1,15 @@
-﻿using BookLoop.Models;
-using DocumentFormat.OpenXml.InkML;
-using Microsoft.EntityFrameworkCore;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using BookLoop.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookLoop.Data;
 
 public partial class MemberContext : DbContext
 {
+    public MemberContext()
+    {
+    }
 
     public MemberContext(DbContextOptions<MemberContext> options)
         : base(options)
@@ -36,14 +38,22 @@ public partial class MemberContext : DbContext
 
     public virtual DbSet<RuleApplication> RuleApplications { get; set; }
 
-    
-
     public virtual DbSet<CouponCategory> CouponCategories { get; set; } = default!;
 
     public virtual DbSet<Category> Categories { get; set; } = default!;
 
-	protected override void OnModelCreating(ModelBuilder modelBuilder)
+	public virtual DbSet<ReviewForbiddenKeyword> ReviewForbiddenKeyword { get; set; }
+
+    public virtual DbSet<Advertisement> Advertisements { get; set; }
+
+	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 	{
+		// 留空或直接刪掉這個方法（因為 Program.cs 已經設定好）
+	}
+
+
+	protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
         modelBuilder.Entity<Coupon>(entity =>
         {
             entity.HasIndex(e => new { e.StartAt, e.EndAt }, "IX_Coupons_Date");
@@ -74,14 +84,14 @@ public partial class MemberContext : DbContext
 
             entity.HasIndex(e => e.Username, "IX_Members_Username");
 
-            //entity.HasIndex(e => e.Account, "UQ_Members_Account").IsUnique();
+            entity.HasIndex(e => e.Account, "UQ_Members_Account").IsUnique();
 
             entity.HasIndex(e => e.UserID, "UX_Members_UserID")
                 .IsUnique()
                 .HasFilter("([UserID] IS NOT NULL)");
 
             entity.Property(e => e.MemberID).HasColumnName("MemberID");
-            //entity.Property(e => e.Account).HasMaxLength(50);
+            entity.Property(e => e.Account).HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysdatetime())");
             entity.Property(e => e.Email).HasMaxLength(254);
             entity.Property(e => e.Phone)
@@ -344,6 +354,18 @@ public partial class MemberContext : DbContext
 			 .IsUnique()
 			 .HasDatabaseName("UX_CouponCategories_Coupon_Category");
 		});
+
+		modelBuilder.Entity<ReviewForbiddenKeyword>(entity =>
+		{
+			entity.ToTable("ReviewForbiddenKeyword"); // 👈 明確對應資料表名稱
+			entity.HasKey(e => e.Id);
+			entity.Property(e => e.Keyword).HasMaxLength(50).IsRequired();
+			entity.Property(e => e.Description).HasMaxLength(200);
+			entity.Property(e => e.Severity).HasDefaultValue((byte)1);
+			entity.Property(e => e.IsActive).HasDefaultValue(true);
+			entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+		});
+
 
 
 		OnModelCreatingPartial(modelBuilder);
