@@ -13,26 +13,21 @@
     <!-- Bootstrap / Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
-    @* <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.css" asp-append-version="true" /> *@
 
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
 
-    @* 可選的 Styles 區塊（view 可用 @section Styles { ... } 注入） *@
     @RenderSection("Styles", required: false)
 
     <style>
-        /* [NEW] 讓自製 submenu 有顯示/隱藏的行為（配合你 sidebar 的 data-toggle 用） */
         .submenu {
             display: none;
         }
 
-            .submenu.show {
-                display: block;
-            }
+        .submenu.show {
+            display: block;
+        }
     </style>
 
-    @* 額外的 head 注入點（例如 meta 或 head-level scripts），視需要開放給 view 使用。若不需要可刪掉此行。 *@
     @RenderSection("Head", required: false)
 </head>
 <body>
@@ -50,16 +45,25 @@
         </main>
     </div>
 
+    <!-- DataTables CSS (head 或 Styles 區塊) -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+    <!-- JS：先載入 jQuery（integrity 與 crossorigin 必要） -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"
+            integrity="sha256-oP6HI9z1XaZNBrJURtCoUT5SUnxFr8s3BzRl+cbzUq8="
+            crossorigin="anonymous"></script>
+    <!-- DataTables core 與 Bootstrap 5 整合 -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <!-- Bootstrap bundle (bootstrap 5 不依賴 jQuery，但放在這裡沒問題) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // [NEW] 防止 href="#" 造成跳到頁面頂部
+        // [防止href="#"造成跳到頁面頂部
         document.querySelectorAll('a[href="#"]').forEach(function (a) {
             a.addEventListener('click', function (e) { e.preventDefault(); });
         });
 
-        // [KEEP][精簡] 讓你的 data-toggle="submenu" 能展開/收合指定的 .submenu
+        // 展開/收合 submenu
         document.addEventListener("click", function (e) {
             var trigger = e.target.closest("[data-toggle='submenu']");
             if (!trigger) return;
@@ -69,7 +73,6 @@
             if (pane) pane.classList.toggle("show");
         });
 
-        // [NEW] 若頁面上也有 Bootstrap 的 dropdown/collapse（使用 data-bs-*），保守初始化一下
         document.querySelectorAll("[data-bs-toggle='dropdown']").forEach(function (el) {
             try { new bootstrap.Dropdown(el); } catch (err) { }
         });
