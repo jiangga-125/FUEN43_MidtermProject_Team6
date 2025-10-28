@@ -1,129 +1,119 @@
-﻿@{
-    ViewData["Title"] = "首頁";
+﻿@* /Views/Home/Index.cshtml *@
+@{
+    ViewBag.Title = "BookLoop 簿錄書城管理頁面";
 }
 
-<div class="hero-section d-flex align-items-center justify-content-center text-center">
-    <div class="container">
-        <h1 class="display-4 fw-bold text-white mb-3">📚 歡迎來到 BookLoop</h1>
-        <p class="lead text-light mb-4">
-            管理書籍、訂單、二手書共享、報表分析、會員帳號與優惠券
-            一站式後台系統
-        </p>
+<div class="row g-3 hero-cards">
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card p-3">
+            <div class="muted">今日訂單數</div>
+            <div class="d-flex align-items-end justify-content-between">
+                <div class="kpi">@ViewBag.TodayOrders</div>
+                <span class="chip">+12% WoW</span>
+            </div>
+        </div>
     </div>
-</div>
-
-<div class="container my-5">
-    <div class="row g-4">
-        <!-- 書籍管理 -->
-        <div class="col-md-4 col-sm-6">
-            <div class="card shadow-lg h-100 text-center border-0 feature-card">
-                <div class="card-body">
-                    <div class="icon mb-3">📘</div>
-                    <h4 class="fw-bold">書籍管理</h4>
-                    <p class="text-muted">管理新書資訊、分類與出版社。</p>
-                    <a asp-area="Books" asp-controller="Books" asp-action="Index" class="btn btn-dark">進入</a>
-                </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card p-3">
+            <div class="muted">今日營收</div>
+            <div class="d-flex align-items-end justify-content-between">
+                <div class="kpi">NT$ @(ViewBag.TodayRevenue)</div>
+                <span class="chip">+7% WoW</span>
             </div>
         </div>
-
-        <!-- 訂單管理 -->
-        <div class="col-md-4 col-sm-6">
-            <div class="card shadow-lg h-100 text-center border-0 feature-card">
-                <div class="card-body">
-                    <div class="icon mb-3">🛒</div>
-                    <h4 class="fw-bold">訂單管理</h4>
-                    <p class="text-muted">檢視與管理用戶的訂單資料。</p>
-                    <a asp-area="Orders" asp-controller="Orders" asp-action="Index" class="btn btn-dark">進入</a>
-                </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card p-3">
+            <div class="muted">未出貨</div>
+            <div class="d-flex align-items-end justify-content-between">
+                <div class="kpi">@ViewBag.Unshipped</div>
+                <span class="chip">SLA 2.1 天</span>
             </div>
         </div>
-
-        <!-- 二手書籍 -->
-        <div class="col-md-4 col-sm-6">
-            <div class="card shadow-lg h-100 text-center border-0 feature-card">
-                <div class="card-body">
-                    <div class="icon mb-3">📚</div>
-                    <h4 class="fw-bold">二手書籍</h4>
-                    <p class="text-muted">共享、借閱與二手書交易。</p>
-                    <a asp-area="Borrow" asp-controller="Listings" asp-action="Index" class="btn btn-dark">進入</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- 報表分析 -->
-        <div class="col-md-4 col-sm-6">
-            <div class="card shadow-lg h-100 text-center border-0 feature-card">
-                <div class="card-body">
-                    <div class="icon mb-3">📊</div>
-                    <h4 class="fw-bold">報表分析</h4>
-                    <p class="text-muted">產生與匯出營運統計報表。</p>
-                    <a asp-area="ReportMail" asp-controller="Reports" asp-action="Index" class="btn btn-dark">進入</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- 帳號管理 -->
-        <div class="col-md-4 col-sm-6">
-            <div class="card shadow-lg h-100 text-center border-0 feature-card">
-                <div class="card-body">
-                    <div class="icon mb-3">👤</div>
-                    <h4 class="fw-bold">帳號管理</h4>
-                    <p class="text-muted">會員帳號與權限控管。</p>
-                    <a asp-area="Account" asp-controller="Home" asp-action="Index" class="btn btn-dark">進入</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- 優惠券 -->
-        <div class="col-md-4 col-sm-6">
-            <div class="card shadow-lg h-100 text-center border-0 feature-card">
-                <div class="card-body">
-                    <div class="icon mb-3">🎟️</div>
-                    <h4 class="fw-bold">優惠券</h4>
-                    <p class="text-muted">建立與管理優惠活動。</p>
-                    <a asp-area="Members" asp-controller="Checkout" asp-action="Index" class="btn btn-dark">進入</a>
-                </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card p-3">
+            <div class="muted">庫存告警</div>
+            <div class="d-flex align-items-end justify-content-between">
+                <div class="kpi">@ViewBag.LowStocks</div>
+                <span class="chip">補貨中</span>
             </div>
         </div>
     </div>
 </div>
 
-@section Styles {
-    <style>
-        /* Hero 區塊 */
-        .hero-section {
-            background: url('/images/Background.png') no-repeat center center;
-            background-size: cover;
-            min-height: 60vh;
-            position: relative;
-            color: #fff;
+<div class="row g-3 mt-1">
+    <div class="col-12 col-xl-7">
+        <div class="card p-3 h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <h5 class="mb-0">近 14 天銷售走勢</h5>
+                <div>
+                    <select class="form-select form-select-sm">
+                        <option>營收</option>
+                        <option>訂單數</option>
+                    </select>
+                </div>
+            </div>
+            <canvas id="salesChart" height="120" class="mt-3"></canvas>
+        </div>
+    </div>
+    <div class="col-12 col-xl-5">
+        <div class="card p-3 h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <h5 class="mb-0">最新訂單</h5>
+                <a asp-area="Orders" asp-controller="Orders" asp-action="Index" class="btn btn-sm btn-outline-secondary">查看全部</a>
+            </div>
+            <div class="table-responsive mt-2">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>訂單編號</th>
+                            <th>會員</th>
+                            <th>金額</th>
+                            <th>狀態</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @* 迴圈呈現你的訂單清單 *@
+                        <tr>
+                            <td><a href="#" class="text-decoration-none">ORD250905101303168</a></td>
+                            <td>lee***@@gmail.com</td>
+                            <td>NT$ 19,881</td>
+                            <td class="status ship">已出貨</td>
+                        </tr>
+                        <tr>
+                            <td><a href="#" class="text-decoration-none">ORD250905093012441</a></td>
+                            <td>ann***@@yahoo.com</td>
+                            <td>NT$ 2,180</td>
+                            <td class="status pack">理貨中</td>
+                        </tr>
+                        <tr>
+                            <td><a href="#" class="text-decoration-none">ORD250904221144903</a></td>
+                            <td>wei***@@hotmail.com</td>
+                            <td>NT$ 820</td>
+                            <td class="status pay">待付款</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-muted small">提示：點擊訂單可進入訂單詳情頁。</div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const ctx = document.getElementById("salesChart");
+        if(ctx){
+            new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: Array.from({ length: 14 }, (_, i) => `D${i + 1}`),
+                    datasets: [{ label:"營收", data:[12,9,11,14,10,16,13,18,21,20,22,19,24,28].map(x=>x*1000), tension:.35, fill:false }]
+                },
+                options: { responsive:true, plugins:{ legend:{ display:false } },
+                    scales:{ y:{ ticks:{ callback:v=>"NT$ "+v.toLocaleString() }}}}
+            });
         }
-
-            .hero-section::before {
-                content: "";
-                position: absolute;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.55);
-            }
-
-            .hero-section .container {
-                position: relative;
-                z-index: 2;
-            }
-
-        /* 功能卡片 */
-        .feature-card .icon {
-            font-size: 3rem;
-        }
-
-        .feature-card {
-            transition: transform 0.2s, box-shadow 0.2s;
-            border-radius: 12px;
-        }
-
-            .feature-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-            }
-    </style>
+    </script>
 }
