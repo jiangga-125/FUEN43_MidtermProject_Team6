@@ -167,6 +167,9 @@
                     <th class="head-width">
                         物流資訊
                     </th>
+                    <th class="head-width">
+                        付款資訊
+                    </th>
                     @* <th class="head-width">
                         租借書籍資訊
                     </th> *@
@@ -193,14 +196,24 @@
                                 string statusText = item.Status switch
                                 {
                                     0 => "待付款",
-                                    1 => "已下訂",
+                                    1 => "已付款",
                                     2 => "已出貨",
                                     3 => "完成訂單",
                                     4 => "已取消",
                                     _ => "未知狀態"
                                 };
+
+                                string badgeClass = item.Status switch
+                                {
+                                    0 => "badge bg-warning text-dark",
+                                    1 => "badge bg-success",
+                                    2 => "badge bg-info text-dark",
+                                    3 => "badge bg-primary",
+                                    4 => "badge bg-secondary",
+                                    _ => "badge bg-dark"
+                                };
                             }
-                            @statusText
+                            <span class="@badgeClass">@statusText</span>
                         </td>
                         <td>
                             @(item.MemberID)
@@ -236,6 +249,22 @@
                                 查看物流
                             </button>
                         </td>
+
+                        <td>
+    @if (item.Status == 0)  
+    {
+        <form asp-action="GoToPayment" asp-controller="Orders" method="post" target="_blank">
+            <input type="hidden" name="orderId" value="@item.OrderID" />
+            <button type="submit" class="btn btn-success btn-action">
+                前往付款
+            </button>
+        </form>
+    }
+    else
+    {
+        <span class="text-muted">已付款</span>
+    }
+</td>
                         @* <td>
                             <a asp-controller="Rentals" asp-action="ByID" asp-route-orderID="@item.OrderID" class="btn btn-secondary">
                                 查看租借書籍
