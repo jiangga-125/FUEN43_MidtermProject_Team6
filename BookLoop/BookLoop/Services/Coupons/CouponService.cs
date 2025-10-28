@@ -24,11 +24,14 @@ namespace BookLoop.Services.Coupons
 			if (coupon == null) return Result<(decimal, string)>.Fail("優惠券不存在");
 			if (!coupon.IsActive) return Result<(decimal, string)>.Fail("優惠券未啟用");
 
-			var now = DateTime.UtcNow;
-			if (coupon.StartAt.HasValue && now < coupon.StartAt.Value)
-				return Result<(decimal, string)>.Fail("尚未到可用時間");
-			if (coupon.EndAt.HasValue && now > coupon.EndAt.Value)
-				return Result<(decimal, string)>.Fail("優惠券已過期");
+			//var now = DateTime.UtcNow;
+			//if (coupon.StartAt.HasValue && now < coupon.StartAt.Value)
+			//	return Result<(decimal, string)>.Fail("尚未到可用時間");
+			//if (coupon.EndAt.HasValue && now > coupon.EndAt.Value)
+			//	return Result<(decimal, string)>.Fail("優惠券已過期");
+
+			if (!coupon.IsAvailable)
+				return Result<(decimal, string)>.Fail("優惠券尚未生效或已過期");
 
 			if (coupon.MinOrderAmount.HasValue && subtotal < coupon.MinOrderAmount.Value)
 				return Result<(decimal, string)>.Fail($"未達最低消費（需滿 {coupon.MinOrderAmount.Value:#,0} 元）");

@@ -1,9 +1,10 @@
 ﻿using BookLoop.Areas.Reviews;
+using BookLoop.Data;
 using BookLoop.Models;
+using BookLoop.Models.ViewModels;
+using BookLoop.Services.Rules;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using BookLoop.Models.ViewModels;
-using BookLoop.Data;
 
 namespace BookLoop.Controllers
 {
@@ -38,29 +39,54 @@ namespace BookLoop.Controllers
 		{
 			if (!ModelState.IsValid)
 			{
-				return View(vm); // 驗證失敗 → 回到表單顯示錯誤訊息
+				return View(vm);
 			}
 
+			// Step 1️⃣ 先建立 Review 並儲存（還沒審核）
 			var review = new Review
 			{
 				MemberId = vm.MemberID,
 				TargetType = vm.TargetType,
-				TargetId = 0, // 如果不想用數字 ID，可以固定給 0
+				TargetId = 0,
 				Rating = vm.Rating,
 				Content = vm.Content,
-				Status = 0,
-				ImageUrls = vm.TargetType == 1 ? vm.TargetBookName : vm.TargetMemberNickname, // 改用途存名稱
+				Status = 0, // 0 = 待審
+				ImageUrls = vm.TargetType == 1 ? vm.TargetBookName : vm.TargetMemberNickname,
 				CreatedAt = DateTime.UtcNow,
 				UpdatedAt = DateTime.UtcNow
 			};
 
-
 			_db.Reviews.Add(review);
 			await _db.SaveChangesAsync();
 
-			TempData["Msg"] = "評論送出成功，等待審核";
+			// Step 2️⃣ 呼叫自動審核服務（這裡會跑 ForbiddenKeywordsRule 等所有規則）
+			var (ok, message, decision) = await _mod.AutoModerateAndPersistAsync(review.ReviewId);
+
+			// Step 3️⃣ 根據審核結果決定顯示內容
+			if (!ok)
+			{
+				ModelState.AddModelError("", message ?? "審核失敗");
+				return View(vm);
+			}
+
+			switch (decision)
+			{
+				case AutoDecision.Rejected:
+					ModelState.AddModelError("", "評論未通過審核（含有不當內容）");
+					return View(vm);
+
+				case AutoDecision.NeedsManual:
+					TempData["Msg"] = "評論送出成功，等待人工審核";
+					break;
+
+				case AutoDecision.AutoPass:
+					TempData["Msg"] = "評論送出成功！已自動通過審核";
+					break;
+			}
+
 			return RedirectToAction(nameof(Create));
 		}
+
 
 
 		[HttpPost]

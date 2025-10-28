@@ -1,0 +1,131 @@
+﻿@model IEnumerable<BookLoop.ViewModels.BorrowRecordsViewModel>
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Index";
+}
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Debug"] != null)
+{
+    <div class="alert alert-secondary">
+        @TempData["Debug"]
+    </div>
+}
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                書籍
+            </th>
+            <th>
+                借閱人
+            </th>
+            <th>
+                借閱日
+            </th>
+            <th>
+                歸還日
+            </th>
+            <th>
+                逾期日
+            </th>
+            <th>
+                借閱情況
+            </th>
+                      
+            <th>
+                歸還狀況
+            </th>
+            
+            <th>操作欄位</th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                    @Html.DisplayFor(modelItem => item.BookTitle)
+            </td>
+            <td>
+                    @Html.DisplayFor(modelItem => item.MemberName)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.BorrowDate)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ReturnDate)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.DueDate)
+            </td>
+                <td class="fw-bold fs-6 @(item.ConditionName == "借出" ? "text-primary"
+                                                        : item.ConditionName == "逾期" ? "text-danger"
+                                                        : item.ConditionName == "歸還" ? "text-success"
+                                                        : "")">
+                @Html.DisplayFor(modelItem => item.ConditionName)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ReturnCondition)
+            </td>
+            
+            <td>
+                @if (item.ConditionName == "借出") // 假設書已借出才可以歸還
+                    {
+                        <button type="button" class="btn btn-success"
+                                onclick="openReturnModal(@item.RecordID)">
+                            還書
+                        </button>
+                    }
+                    @if ((byte?)item.ReturnCondition is 1 or 2)
+                    {
+
+                        <a class="btn btn-danger" asp-area="Borrows" asp-controller="PenaltyTransactions" 
+                        asp-route-memberID="@item.MemberID" asp-route-recordID="@item.RecordID" asp-action="Create">還書罰金</a>
+                       
+                    }
+
+            </td>
+        </tr>
+}
+    </tbody>
+</table>
+<!--  Modal 殼，還書確認 -->
+<div class="modal fade" id="returnModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">歸還確認</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="returnModalBody">
+                <!-- AJAX 載入 _ReturnConfirm.cshtml -->
+            </div>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script>
+        function openReturnModal(recordId) {
+          const url = '/Borrows/BorrowRecords/Return/' + recordId;
+          $('#returnModalBody').load(url, function () {
+            const modal = new bootstrap.Modal(document.getElementById('returnModal'));
+            modal.show();
+          });
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+          var msg = @Html.Raw(JsonSerializer.Serialize(TempData["ReturnMessage"] ?? ""));
+          if (msg && msg.length > 0) {
+            document.getElementById("returnResultMessage").innerText = msg;
+            var myModal = new bootstrap.Modal(document.getElementById('returnResultModal'));
+            myModal.show();
+          }
+        });
+    </script>
+}

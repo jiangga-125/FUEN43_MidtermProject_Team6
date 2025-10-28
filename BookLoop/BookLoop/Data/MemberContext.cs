@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using BookLoop.Models;
+﻿using BookLoop.Models;
+using DocumentFormat.OpenXml.InkML;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
 
 namespace BookLoop.Data;
 
 public partial class MemberContext : DbContext
 {
-    public MemberContext()
-    {
-    }
 
     public MemberContext(DbContextOptions<MemberContext> options)
         : base(options)
@@ -38,13 +36,14 @@ public partial class MemberContext : DbContext
 
     public virtual DbSet<RuleApplication> RuleApplications { get; set; }
 
+    
 
-	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer( "Server=127.0.0.1,1444;Database=BookLoop;User Id=bookloop;Password=FUEN43;Encrypt=True;TrustServerCertificate=True;Connect Timeout=30;");
+    public virtual DbSet<CouponCategory> CouponCategories { get; set; } = default!;
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
+    public virtual DbSet<Category> Categories { get; set; } = default!;
+
+	protected override void OnModelCreating(ModelBuilder modelBuilder)
+	{
         modelBuilder.Entity<Coupon>(entity =>
         {
             entity.HasIndex(e => new { e.StartAt, e.EndAt }, "IX_Coupons_Date");
@@ -75,14 +74,14 @@ public partial class MemberContext : DbContext
 
             entity.HasIndex(e => e.Username, "IX_Members_Username");
 
-            entity.HasIndex(e => e.Account, "UQ_Members_Account").IsUnique();
+            //entity.HasIndex(e => e.Account, "UQ_Members_Account").IsUnique();
 
             entity.HasIndex(e => e.UserID, "UX_Members_UserID")
                 .IsUnique()
                 .HasFilter("([UserID] IS NOT NULL)");
 
             entity.Property(e => e.MemberID).HasColumnName("MemberID");
-            entity.Property(e => e.Account).HasMaxLength(50);
+            //entity.Property(e => e.Account).HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysdatetime())");
             entity.Property(e => e.Email).HasMaxLength(254);
             entity.Property(e => e.Phone)
@@ -313,6 +312,38 @@ public partial class MemberContext : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_RuleApps_Members");
         });
+
+		modelBuilder.Entity<Category>(e =>
+		{
+			e.ToTable("Categories", "dbo"); // ← 對方的 schema/表名
+											// 如果 PK 不是慣用名字，可補 e.HasKey(x => x.CategoryID);
+											// 不想讓遷移去動到對方表，可加：
+			e.ToTable(tb => tb.ExcludeFromMigrations());
+		});
+		modelBuilder.Entity<Coupon>(e => { e.ToTable("Coupons", "dbo"); });
+
+		modelBuilder.Entity<CouponCategory>(e =>
+		{
+			e.ToTable("CouponCategories", "dbo");
+			e.HasKey(x => x.CouponCategoryID);
+
+			e.HasOne(x => x.Coupon)
+			 .WithMany(c => c.CouponCategories)
+			 .HasForeignKey(x => x.CouponID)
+			 .OnDelete(DeleteBehavior.Cascade);
+
+			e.HasOne(x => x.Category)
+			 .WithMany(cat => cat.CouponCategories)
+			 .HasForeignKey(x => x.CategoryID)
+			 .OnDelete(DeleteBehavior.Cascade);
+
+			e.HasIndex(x => x.CouponID).HasDatabaseName("IX_CouponCategories_CouponID");
+			e.HasIndex(x => x.CategoryID).HasDatabaseName("IX_CouponCategories_CategoryID");
+
+			e.HasIndex(x => new { x.CouponID, x.CategoryID })
+			 .IsUnique()
+			 .HasDatabaseName("UX_CouponCategories_Coupon_Category");
+		});
 
 
 		OnModelCreatingPartial(modelBuilder);
