@@ -190,5 +190,32 @@ namespace BookLoop.Controllers
             return RedirectToAction("Index", "PenaltyTransactions");
         }
 
+
+        //前台顯示用
+        public async Task<IActionResult> PeIndexPartial()
+        {
+            const int fixedMemberId = 17;
+            var items = await _context.PenaltyTransactions
+            .AsNoTracking()
+            .Include(x => x.Member)
+            .Include(x => x.Rule) // 假設 Rule 內含 ReasonCode/ChargeType/UnitAmount
+            .OrderByDescending(x => x.CreatedAt)
+            .Where(b => b.MemberID == fixedMemberId)
+            .Select(x => new PenaltyTransactionsViewModel
+            {
+                PenaltyID = x.PenaltyID,
+                MemberName = x.Member.Username,
+                ReasonCode = x.Rule.ReasonCode,
+                ChargeType = x.Rule.ChargeType,
+                UnitAmount = x.Rule.UnitAmount,
+                Quantity = x.Quantity,
+                PaidAt = x.PaidAt,
+                totalMoney = x.Quantity * x.Rule.UnitAmount//計算總價
+
+            })
+            .ToListAsync();
+
+            return PartialView("_peIndex", items);
+        }
     }
 }

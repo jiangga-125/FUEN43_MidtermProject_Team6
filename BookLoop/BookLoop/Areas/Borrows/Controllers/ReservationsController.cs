@@ -362,6 +362,25 @@ namespace BookLoop.Areas.Borrows.Controllers
                 throw;
             }
         }
-     
+
+        public async Task<IActionResult> ReIndexPartial()
+        {
+            const int fixedMemberId = 17;
+            var rows = await _context.Reservations.AsNoTracking().
+                Where(b => b.MemberID == fixedMemberId).Select(r => new ReservationsViewModel
+            {
+                ReservationID = r.ReservationID,
+                ListingID = r.ListingID,
+                BookTitle = r.Listing.Title,
+                MemberID = r.MemberID,
+                MemberName = r.Member.Username,
+                ExpiresDay = r.ExpiresAt,
+                ReservationStatus = (ReservationStatus)r.Status,
+                ReservationType = (ReservationType)r.ReservationType,
+
+            }).ToListAsync();
+            return PartialView("_reIndex", rows);
+        }
+
     }
 }
