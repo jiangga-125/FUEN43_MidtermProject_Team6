@@ -1,0 +1,119 @@
+﻿@model IEnumerable<BookLoop.Models.Advertisement>
+
+@{
+    ViewData["Title"] = "廣告管理";
+}
+
+<h2 class="mb-3">📢 廣告管理</h2>
+
+<!-- 提示訊息 -->
+@if (TempData["Msg"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Msg"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">
+        ➕ 新增廣告
+    </a>
+</p>
+
+<table class="table table-striped table-hover align-middle">
+    <thead class="table-dark">
+        <tr>
+            <th>ID</th>
+            <th>圖片</th>
+            <th>標題</th>
+            <th>位置</th>
+            <th>排序</th>
+            <th>啟用狀態</th>
+            <th>建立時間</th>
+            <th style="width: 200px;">操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var ad in Model)
+        {
+            <tr>
+                <td>@ad.AdvertisementID</td>
+                <td>
+                    <img src="@ad.ImageUrl" style="width:120px; border-radius:6px; border:1px solid #ddd;" />
+                </td>
+                <td>@ad.Title</td>
+                <td>@ad.Position</td>
+                <td>@ad.DisplayOrder</td>
+                <td>
+                    @if (ad.IsActive)
+                    {
+                        <span class="badge bg-success">啟用中</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">停用</span>
+                    }
+                </td>
+                <td>@ad.CreatedAt.ToString("yyyy/MM/dd HH:mm")</td>
+                <td>
+                    <!-- ✏️ 編輯 -->
+                    <a asp-action="Edit" asp-route-id="@ad.AdvertisementID" class="btn btn-sm btn-warning me-1">✏️ 編輯</a>
+
+                    <!-- 🔛 狀態切換 -->
+                    <form asp-action="ToggleActive" asp-route-id="@ad.AdvertisementID" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-sm @(ad.IsActive ? "btn-secondary" : "btn-success")">
+                            @(ad.IsActive ? "停用" : "啟用")
+                        </button>
+                    </form>
+
+                    <!-- 🗑 刪除 -->
+                    <button type="button"
+                            class="btn btn-sm btn-danger ms-1"
+                            data-bs-toggle="modal"
+                            data-bs-target="#deleteModal"
+                            data-id="@ad.AdvertisementID"
+                            data-title="@ad.Title">
+                        🗑 刪除
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- 🔒 刪除確認視窗 -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">確認刪除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                你確定要刪除這個廣告嗎？<br />
+                <strong id="deleteTitle"></strong>
+            </div>
+            <div class="modal-footer">
+                <form id="deleteForm" method="post">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger">確定刪除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const modal = document.getElementById('deleteModal');
+        modal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const id = button.getAttribute('data-id');
+            const title = button.getAttribute('data-title');
+
+            document.getElementById('deleteTitle').textContent = `標題：${title}`;
+            document.getElementById('deleteForm').action = `/Admin/Ads/Delete/${id}`;
+        });
+    </script>
+}

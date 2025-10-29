@@ -1,0 +1,91 @@
+﻿@model BookLoop.Models.Advertisement
+
+@{
+    ViewData["Title"] = "編輯廣告";
+}
+
+<h2>編輯廣告</h2>
+
+<!-- 顯示 TempData 訊息（成功 / 錯誤） -->
+@if (TempData["Msg"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Msg"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<form asp-action="Edit" enctype="multipart/form-data">
+    <input type="hidden" asp-for="AdvertisementID" />
+
+    <div class="mb-3">
+        <label asp-for="Title" class="form-label">標題</label>
+        <input asp-for="Title" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">目前圖片</label><br />
+        <img id="previewImage" src="@Model.ImageUrl" style="max-width:300px; border-radius:8px; border:1px solid #ddd;" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">上傳新圖片（可選）</label>
+        <input type="file" id="imageFile" name="imageFile" class="form-control" accept="image/*" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="LinkUrl" class="form-label">連結網址</label>
+        <input asp-for="LinkUrl" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Position" class="form-label">顯示位置</label>
+        <select asp-for="Position" class="form-select">
+            <option>HomeBanner</option>
+            <option>EventPage</option>
+            <option>Sidebar</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="DisplayOrder" class="form-label">排序</label>
+        <input asp-for="DisplayOrder" type="number" class="form-control" />
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+        <label asp-for="IsActive" class="form-check-label">啟用</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">儲存變更</button>
+    <a asp-action="Index" class="btn btn-secondary">返回清單</a>
+</form>
+
+@section Scripts {
+    <script>
+        // 圖片預覽功能
+        document.getElementById("imageFile").addEventListener("change", function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                // 防呆：檢查檔案大小（例如不超過 5MB）
+                if (file.size > 5 * 1024 * 1024) {
+                    alert("圖片大小不能超過 5MB！");
+                    event.target.value = ""; // 清空選擇
+                    return;
+                }
+                // 防呆：檢查檔案類型
+                if (!file.type.startsWith("image/")) {
+                    alert("只能上傳圖片檔案！");
+                    event.target.value = "";
+                    return;
+                }
+                // 顯示預覽圖
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById("previewImage").src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+}
