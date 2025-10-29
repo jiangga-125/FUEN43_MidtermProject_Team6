@@ -136,7 +136,7 @@ namespace BookLoop
 					var nowUtc = DateTime.UtcNow;
 					var text = comment.Trim();
 					return db.Reviews.Any(r =>
-						r.MemberId == authorMemberId &&
+						r.MemberID == authorMemberId &&
 						r.Content == text &&
 						r.CreatedAt >= nowUtc.AddHours(-24));
 				});

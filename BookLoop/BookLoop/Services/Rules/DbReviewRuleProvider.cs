@@ -73,7 +73,7 @@ public class DbReviewRuleProvider : IReviewRuleProvider
 			yield return new RepeatedContentRule(
 			check: (authorId, content) =>
 				_db.Reviews.Any(r =>
-					r.MemberId == authorId &&
+					r.MemberID == authorId &&
 					r.Content == content.Trim() &&
 					r.CreatedAt >= DateTime.UtcNow.AddHours(-s.DuplicateWindowHours)),
 			severity: s.DuplicatePolicy == 2 ? RuleSeverity.Block : RuleSeverity.Warn

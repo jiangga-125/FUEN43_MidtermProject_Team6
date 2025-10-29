@@ -1,13 +1,15 @@
-﻿using System;
+﻿using DocumentFormat.OpenXml.Spreadsheet;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BookLoop.Models;
 
 public partial class ReviewModeration
 {
-    public long ModerationId { get; set; }
+    public long ModerationID { get; set; }
 
-    public int ReviewId { get; set; }
+    public int ReviewID { get; set; }
 
     public byte Decision { get; set; }
 
@@ -18,4 +20,7 @@ public partial class ReviewModeration
     public DateTime ReviewedAt { get; set; }
 
     public string? RuleSnapshot { get; set; }
+
+	[ForeignKey(nameof(ReviewID))]
+	public Review Review { get; set; }
 }

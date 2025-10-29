@@ -46,6 +46,8 @@ public partial class MemberContext : DbContext
 
     public virtual DbSet<Advertisement> Advertisements { get; set; }
 
+    public virtual DbSet<ReviewReport> ReviewReports { get; set; }
+
 	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 	{
 		// 留空或直接刪掉這個方法（因為 Program.cs 已經設定好）
@@ -249,32 +251,32 @@ public partial class MemberContext : DbContext
 
         modelBuilder.Entity<Review>(entity =>
         {
-            entity.HasKey(e => e.ReviewId).HasName("PK__Reviews__74BC79AE20CAC39C");
+            entity.HasKey(e => e.ReviewID).HasName("PK__Reviews__74BC79AE20CAC39C");
 
-            entity.HasIndex(e => new { e.MemberId, e.CreatedAt }, "IX_Reviews_Member_CreatedAt").IsDescending(false, true);
+            entity.HasIndex(e => new { e.MemberID, e.CreatedAt }, "IX_Reviews_Member_CreatedAt").IsDescending(false, true);
 
             entity.HasIndex(e => new { e.Status, e.CreatedAt }, "IX_Reviews_Status_CreatedAt").IsDescending(false, true);
 
-            entity.HasIndex(e => new { e.TargetType, e.TargetId, e.CreatedAt }, "IX_Reviews_Target").IsDescending(false, false, true);
+            entity.HasIndex(e => new { e.TargetType, e.TargetID, e.CreatedAt }, "IX_Reviews_Target").IsDescending(false, false, true);
 
-            entity.Property(e => e.ReviewId).HasColumnName("ReviewID");
+            entity.Property(e => e.ReviewID).HasColumnName("ReviewID");
             entity.Property(e => e.Content).HasMaxLength(2000);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysdatetime())");
             entity.Property(e => e.ImageUrls).HasMaxLength(2000);
-            entity.Property(e => e.MemberId).HasColumnName("MemberID");
-            entity.Property(e => e.TargetId).HasColumnName("TargetID");
+            entity.Property(e => e.MemberID).HasColumnName("MemberID");
+            entity.Property(e => e.TargetID).HasColumnName("TargetID");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysdatetime())");
         });
 
         modelBuilder.Entity<ReviewModeration>(entity =>
         {
-            entity.HasKey(e => e.ModerationId).HasName("PK__ReviewMo__7817E6DFCF3BB95F");
+            entity.HasKey(e => e.ModerationID).HasName("PK__ReviewMo__7817E6DFCF3BB95F");
 
-            entity.HasIndex(e => e.ReviewId, "IX_ReviewModerations_ReviewID");
+            entity.HasIndex(e => e.ReviewID, "IX_ReviewModerations_ReviewID");
 
-            entity.Property(e => e.ModerationId).HasColumnName("ModerationID");
+            entity.Property(e => e.ModerationID).HasColumnName("ModerationID");
             entity.Property(e => e.Reasons).HasMaxLength(2000);
-            entity.Property(e => e.ReviewId).HasColumnName("ReviewID");
+            entity.Property(e => e.ReviewID).HasColumnName("ReviewID");
             entity.Property(e => e.ReviewedAt).HasDefaultValueSql("(sysdatetime())");
         });
 
