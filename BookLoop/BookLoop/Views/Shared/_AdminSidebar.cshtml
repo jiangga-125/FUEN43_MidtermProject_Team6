@@ -50,8 +50,45 @@
             <i class="bi bi-megaphone"></i><span class="ms-2 text">行銷管理</span><i class="bi bi-caret-down ms-auto"></i>
         </a>
         <div id="m-mkt" class="submenu ps-4">
+            <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-coupon" href="javascript:void(0)">
+                <i class="bi bi-ticket-perforated"></i><span class="ms-2">優惠券管理</span><i class="bi bi-caret-down ms-auto"></i>
+            </a>
+            <div id="m-coupon" class="submenu ps-4">
+                <a class="nav-link" asp-area="Members" asp-controller="Coupons" asp-action="Index">
+                    <i class="bi bi-list-ul"></i><span class="ms-2">優惠券清單</span>
+                </a>
+                <a class="nav-link" asp-area="Members" asp-controller="Coupons" asp-action="Create">
+                    <i class="bi bi-plus-circle"></i><span class="ms-2">新增優惠券</span>
+                </a>
+            </div>
+            <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-ads" href="javascript:void(0)">
+                <i class="bi bi-image"></i><span class="ms-2">廣告管理</span><i class="bi bi-caret-down ms-auto"></i>
+            </a>
+            <div id="m-ads" class="submenu ps-4">
+                <a class="nav-link" asp-area="Members" asp-controller="Ads" asp-action="Index">
+                    <i class="bi bi-list-ul"></i><span class="ms-2">廣告清單</span>
+                </a>
+                <a class="nav-link" asp-area="Members" asp-controller="Ads" asp-action="Create">
+                    <i class="bi bi-plus-circle"></i><span class="ms-2">新增廣告</span>
+                </a>
+            </div>
+        </div>
+        <div id="m-mkt" class="submenu ps-4">
             @* <a class="nav-link" asp-area="XXX" asp-controller="XXX" asp-action="Index">XXX</a> 要加什麼自己加*@
         </div>
+
+        <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-reviews" href="javascript:void(0)">
+            <i class="bi bi-chat-dots"></i><span class="ms-2 text">評論管理</span><i class="bi bi-caret-down ms-auto"></i>
+        </a>
+        <div id="m-reviews" class="submenu ps-4">
+            <a class="nav-link" asp-area="Members" asp-controller="Reviews" asp-action="PendingList">
+                <i class="bi bi-hourglass-split"></i><span class="ms-2">待審清單</span>
+            </a>
+            <a class="nav-link" asp-area="Members" asp-controller="ForbiddenKeywords" asp-action="Index">
+                <i class="bi bi-sliders"></i><span class="ms-2">禁用詞規則</span>
+            </a>
+        </div>
+
 
         <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-noti" href="javascript:void(0)">
             <i class="bi bi-bell"></i><span class="ms-2 text">通知管理</span><i class="bi bi-caret-down ms-auto"></i>
