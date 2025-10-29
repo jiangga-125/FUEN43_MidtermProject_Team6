@@ -42,15 +42,22 @@ namespace BookLoop.Authorization
 			// 快取 Key：依使用者與版本戳
 			var cacheKey = $"perm:u:{userId}:v:{version}:features";
 
-			// 展開後的 features（快取 10 分鐘）
+			// ✅ 統一型別：HashSet<string>
 			var features = await _cache.GetOrCreateAsync(cacheKey, async entry =>
 			{
 				entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
-				return await _permService.ExpandFeaturesAsync(userId, permKeys);
+
+				var raw = await _permService.ExpandFeaturesAsync(userId, permKeys)
+						  ?? Enumerable.Empty<string>();
+
+				// 一律轉成 HashSet<string>（忽略大小寫）
+				return new HashSet<string>(raw, StringComparer.OrdinalIgnoreCase);
 			});
 
-			if (features.Contains(feature, StringComparer.OrdinalIgnoreCase))
+			if (features.Contains(feature))
+			{
 				context.Succeed(requirement);
+			}
 		}
 	}
 }

@@ -1,49 +1,89 @@
 ﻿@model BookLoop.UserFormVm
+@using Microsoft.AspNetCore.Mvc.Rendering
 @{
-    // Layout = "_Layout";
-    ViewData["Title"] = "新增帳號";
+    ViewData["Title"] = "新增後台帳號";
+
+    var basis = ((Model?.Name ?? "").Trim().Length > 0)
+        ? (Model!.Name!.Trim())
+        : ((Model?.Email ?? "").Trim());
+    var initials = string.IsNullOrEmpty(basis) ? "N" : basis.Substring(0, 1).ToUpperInvariant();
 }
-<h3>新增帳號</h3>
 
-<form method="post">
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a asp-area="Account" asp-controller="Users" asp-action="Index">後台帳號列表</a></li>
+        <li class="breadcrumb-item active" aria-current="page">新增帳號</li>
+    </ol>
+</nav>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body d-flex align-items-center">
+        <div class="me-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center"
+                 style="width:64px;height:64px;background:#eef2ff;color:#3b82f6;font-weight:700;font-size:24px;">
+                @initials
+            </div>
+        </div>
+        <div class="flex-grow-1">
+            <h4 class="mb-0">新增後台帳號</h4>
+            <div class="text-muted small">建立後可於「編輯」調整更多資訊</div>
+        </div>
+        <div class="ms-2">
+            <a class="btn btn-outline-secondary" asp-area="Account" asp-controller="Users" asp-action="Index">返回列表</a>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("_Alerts")
+
+<form asp-area="Account" asp-controller="Users" asp-action="Create" method="post" class="card shadow-sm">
     @Html.AntiForgeryToken()
-    <div class="mb-3">
-        <label class="form-label">Email</label>
-        <input asp-for="Email" class="form-control" required />
-        <span asp-validation-for="Email" class="text-danger"></span>
+    <div class="card-body">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="Name" class="form-label">名稱</label>
+                <input asp-for="Name" class="form-control" />
+                <span class="text-danger" asp-validation-for="Name"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Email" class="form-label">Email</label>
+                <input asp-for="Email" class="form-control" />
+                <span class="text-danger" asp-validation-for="Email"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Phone" class="form-label">電話</label>
+                <input asp-for="Phone" class="form-control" />
+                <span class="text-danger" asp-validation-for="Phone"></span>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Status" class="form-label">狀態</label>
+                <select asp-for="Status" class="form-select" asp-items="(IEnumerable<SelectListItem>)ViewBag.StatusList"></select>
+                <span class="text-danger" asp-validation-for="Status"></span>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="UserType" class="form-label">類型</label>
+                <select asp-for="UserType" class="form-select" asp-items="(IEnumerable<SelectListItem>)ViewBag.UserTypeList"></select>
+                <span class="text-danger" asp-validation-for="UserType"></span>
+            </div>
+        </div>
+
+        <div class="alert alert-info small mt-3 mb-0">
+            建立時系統將指定初始密碼並要求首次登入變更。
+        </div>
     </div>
 
-    <div class="mb-3">
-        <label class="form-label">UserType</label>
-        <select asp-for="UserType" class="form-select">
-            <option value="2">員工</option>
-            <option value="3">書商</option>
-        </select>
+    <div class="card-footer d-flex justify-content-between">
+        <a asp-area="Account" asp-controller="Users" asp-action="Index" class="btn btn-outline-secondary">取消</a>
+        <authorize policy="Users.Create">
+            <button class="btn btn-primary">建立</button>
+        </authorize>
     </div>
-
-    <div class="mb-3">
-        <label class="form-label">Phone</label>
-        <input asp-for="Phone" class="form-control" />
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Status</label>
-        <select asp-for="Status" class="form-select">
-            <option value="0">未啟用</option>
-            <option value="1">啟用</option>
-            <option value="2">停用</option>
-        </select>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">（可選）設定初始密碼</label>
-        <input asp-for="NewPassword" class="form-control" type="password" />
-        <div class="form-text">若不填，帳號建立後需由管理者「重設密碼」才能登入</div>
-    </div>
-
-    <button class="btn btn-primary">儲存</button>
 </form>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

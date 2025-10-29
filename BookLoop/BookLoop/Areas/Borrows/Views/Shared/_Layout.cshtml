@@ -48,7 +48,47 @@
                             </a>
                         </li>
                     </ul>
-                    @* <partial name="_LoginPartial" /> *@
+                    @* 右上角帳號區 *@
+                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                        @if (User?.Identity?.IsAuthenticated ?? false)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="accountMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    @User.Identity.Name
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="accountMenu">
+                                    <li>
+                                        <a class="dropdown-item"
+                                           asp-controller="Account" asp-action="ChangePassword">
+                                            修改密碼
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li>
+                                        <form class="px-3" method="post" asp-controller="Auth" asp-action="Logout">
+                                            @Html.AntiForgeryToken()
+                                            <button class="btn btn-link p-0">登出</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item me-2">
+                                <a class="btn btn-outline-light"
+                                   asp-controller="Auth" asp-action="Login">
+                                    登入
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="btn btn-warning"
+                                   asp-area="Account" asp-controller="Account" asp-action="Register">
+                                    註冊
+                                </a>
+                            </li>
+                        }
+                    </ul>
                 </div>
             </div>
         </nav>

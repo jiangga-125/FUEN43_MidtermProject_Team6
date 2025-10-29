@@ -1,0 +1,66 @@
+﻿@* 傳入 ViewData 參數：
+   ["keywordName"]     (string)   預設 "keyword"
+   ["keywordValue"]    (string?)  初始值
+   ["statusPartial"]   (IHtmlContent?)  例如：_StatusSelect 的 render 結果
+   ["pageSizePartial"] (IHtmlContent?)  例如：_PageSizeSelect 的 render 結果
+
+   // 新增按鈕（可選）
+   ["newButton"]    (bool)        是否顯示新增按鈕
+   ["newText"]      (string)      按鈕文字，預設 "新增"
+   ["newPolicy"]    (string?)     需要的 policy（如 "Users.Create"）
+   ["newAction"]    (string)      asp-action，預設 "Create"
+   ["newController"](string?)     asp-controller，預設為目前控制器
+   ["newArea"]      (string?)     asp-area，預設 "Account"
+*@
+@using Microsoft.AspNetCore.Html
+@{
+    var keywordName = (ViewData["keywordName"] as string) ?? "keyword";
+    var keywordValue = (ViewData["keywordValue"] as string) ?? "";
+    var statusPartial = ViewData["statusPartial"] as IHtmlContent;
+    var pageSizePart = ViewData["pageSizePartial"] as IHtmlContent;
+
+    var showNew = (ViewData["newButton"] as bool?) ?? false;
+    var newText = (ViewData["newText"] as string) ?? "新增";
+    var newPolicy = ViewData["newPolicy"] as string;
+    var newAction = (ViewData["newAction"] as string) ?? "Create";
+    var newCtrl = (ViewData["newController"] as string) ?? (ViewContext.RouteData.Values["controller"]?.ToString() ?? "");
+    var newArea = (ViewData["newArea"] as string) ?? "Account";
+}
+<form id="filter-form" method="get" class="row g-2 mb-3 align-items-center list-toolbar" autocomplete="off">
+    @Html.AntiForgeryToken()
+
+    <div class="col-auto">
+        <input id="@keywordName" name="@keywordName" class="form-control"
+               placeholder="關鍵字" value="@keywordValue" style="width:320px;" />
+    </div>
+
+    @if (statusPartial is not null)
+    {
+        <div class="col-auto">
+            @statusPartial
+        </div>
+    }
+
+    @if (pageSizePart is not null)
+    {
+        <div class="col-auto">
+            @pageSizePart
+        </div>
+    }
+
+    <div class="col-auto ms-auto">
+        @if (showNew)
+        {
+            if (!string.IsNullOrWhiteSpace(newPolicy))
+            {
+                <authorize policy="@newPolicy">
+                    <a class="btn btn-primary" asp-area="@newArea" asp-controller="@newCtrl" asp-action="@newAction">@newText</a>
+                </authorize>
+            }
+            else
+            {
+                <a class="btn btn-primary" asp-area="@newArea" asp-controller="@newCtrl" asp-action="@newAction">@newText</a>
+            }
+        }
+    </div>
+</form>
