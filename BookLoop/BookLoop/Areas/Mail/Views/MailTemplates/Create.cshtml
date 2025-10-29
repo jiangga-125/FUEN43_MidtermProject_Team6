@@ -11,6 +11,16 @@
             max-height: 600px;
             overflow-y: auto;
         }
+        /* 內容若很寬（例如大表格/長連結），避免把整個頁面撐壞：出現水平捲軸 */
+        .ck-editor__editable_inline .ck-content {
+            overflow-x: auto;
+            overflow-wrap: anywhere; /* 長字/長連結可換行，避免排版爆開 */
+            word-break: break-word;
+        }
+        /* （可選）保險：就算外掛沒移除，縮放角點也不顯示 */
+        .ck .ck-widget__resizer {
+            display: none !important;
+        }
     </style>
 }
 
@@ -19,6 +29,7 @@
 
     <hr />
     <div class="row">
+        <!-- 左：你原本的建立表單（保留，不動 CKEditor） -->
         <div class="col-md-8">
             <form asp-action="Create">
                 @Html.AntiForgeryToken()
@@ -64,6 +75,34 @@
                 </div>
             </form>
         </div>
+
+        <!-- 右：即時預覽（新增；不動 CKEditor） -->
+        <div class="col-md-4">
+            <div class="d-flex align-items-center justify-content-between">
+                <h5 class="mb-0">即時預覽</h5>
+                <small class="text-muted">可用變數：<code>{{Recipient}}</code>、<code>{{Name}}</code>；或輸入 JSON</small>
+            </div>
+
+            <div class="border rounded p-2 my-2">
+                <div class="mb-2">
+                    <input class="form-control form-control-sm" id="pv-recipient" placeholder="recipient@example.com" />
+                </div>
+                <div class="mb-2">
+                    <input class="form-control form-control-sm" id="pv-name" placeholder="Name（可選）" />
+                </div>
+                <div class="mb-2">
+                    <div class="input-group input-group-sm">
+                        <textarea class="form-control" id="pv-token" rows="2"
+                                  placeholder='可選：{"OrderNo":"AB123","Amount":"1200","Link":"https://..."}'></textarea>
+                        <button type="button" class="btn btn-outline-secondary" id="btn-copy-json">複製JSON</button>
+                    </div>
+                    <div class="mt-1 small text-muted">「複製JSON」只會把內容複製到剪貼簿，<b>不會</b>動你的編輯器。</div>
+                </div>
+            </div>
+
+            <div class="mb-2"><strong>Subject：</strong> <span id="pv-subject"></span></div>
+            <iframe id="pv-frame" class="w-100 border rounded" style="height:520px;background:#fff"></iframe>
+        </div>
     </div>
 </div>
 
@@ -81,7 +120,7 @@
     <!-- 2) 載入你打包好的 UMD；使用 defer 讓它在 DOM 解析後執行 -->
     <script src="@Url.Content("~/lib/ckeditor5-oss/ckeditor.js")" asp-append-version="true" defer></script>
 
-    <!-- 3) 初始化（等待腳本與 DOM 就緒，且只初始化一次） -->
+    <!-- 3) 初始化（移除縮放與置左/中/右） -->
     <script>
         (function () {
             function resolveEditorCtor() {
@@ -103,19 +142,26 @@
                 Editor.create(el, {
                     licenseKey: 'GPL',
                     language: 'zh-cn',
+
+                    /* 關閉：影像縮放（ImageResize）、影像對齊（ImageStyle）、段落對齊（Alignment） */
+                    removePlugins: ['ImageResize', 'ImageStyle', 'Alignment'],
+
+                    /* 主工具列：移除對齊/縮放相關按鈕，只保留基本功能 */
                     toolbar: [
                         'heading','|','bold','italic','link','|',
                         'bulletedList','numberedList','blockQuote','|',
                         'insertTable','|','imageUpload','|','undo','redo'
                     ],
-                    table: { contentToolbar: ['tableColumn','tableRow','mergeTableCells'] },
+
+                    /* 影像工具列：只留標題/替代文字，不顯示縮放與置左中右 */
                     image: {
-                        toolbar: [
-                            'toggleImageCaption','imageTextAlternative','|',
-                            'imageStyle:inline','imageStyle:block','imageStyle:side'
-                        ],
-                        styles: ['inline','block','side']
+                        toolbar: ['toggleImageCaption','imageTextAlternative']
+                        // 不設定 styles/resizeOptions → 不提供對齊/縮放
                     },
+
+                    table: { contentToolbar: ['tableColumn','tableRow','mergeTableCells'] },
+
+                    /* 保留你的圖片上傳設定 */
                     simpleUpload: {
                         uploadUrl: '@Url.Action("UploadImage", "MailTemplates", new { area = "Mail" })',
                         headers: {
@@ -128,7 +174,7 @@
                     const form = el.closest('form');
                     if (form) form.addEventListener('submit', () => el.value = editor.getData());
                     window.editorInstance = editor;
-                    console.log('CKEditor 初始化完成');
+                    console.log('CKEditor 初始化完成（已關閉縮放 & 對齊功能）');
                 })
                 .catch(e => {
                     console.error('CKEditor 初始化失敗：', e);
@@ -140,5 +186,21 @@
             document.addEventListener('DOMContentLoaded', initCKE);
             window.addEventListener('load', initCKE);
         })();
+    </script>
+
+    <!-- 4) 即時預覽（載入外部檔） -->
+    <script src="~/js/mail-preview.js" asp-append-version="true"></script>
+    <script>
+        // 初始化（對應你頁面上的元素 Id）
+        MailPreview.init({
+          editorId: 'editor',
+          subjectSelector: '[name="Subject"]',
+          recipientId: 'pv-recipient',
+          nameId: 'pv-name',
+          jsonId: 'pv-token',
+          subjectOutId: 'pv-subject',
+          frameId: 'pv-frame',
+          copyBtnId: 'btn-copy-json'
+        });
     </script>
 }

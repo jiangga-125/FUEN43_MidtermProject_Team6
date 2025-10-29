@@ -74,6 +74,30 @@
             </form>
         </div>
     </div>
+    <div class="card mt-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>即時預覽</strong>
+            <small class="text-muted">可用變數：<code>{{Recipient}}</code>、<code>{{Name}}</code>，或在下方輸入 JSON 變數</small>
+        </div>
+        <div class="card-body">
+            <div class="row g-2 mb-2">
+                <div class="col-md-6">
+                    <input class="form-control form-control-sm" id="pv-recipient" placeholder="recipient@example.com">
+                </div>
+                <div class="col-md-6">
+                    <input class="form-control form-control-sm" id="pv-name" placeholder="Name（可選）">
+                </div>
+                <div class="col-12">
+                    <textarea class="form-control form-control-sm" id="pv-token" rows="2"
+                              placeholder='可選：JSON 變數，例如 {"OrderNo":"AB123","Link":"https://..."}'></textarea>
+                </div>
+            </div>
+
+            <div class="mb-2"><strong>Subject：</strong> <span id="pv-subject"></span></div>
+            <iframe id="pv-frame" class="w-100 border rounded" style="height:520px;background:#fff"></iframe>
+        </div>
+    </div>
+
 </div>
 
 @section Scripts {
@@ -150,4 +174,83 @@
             window.addEventListener('load', initCKE);
         })();
     </script>
+
+    <script>
+    (function () {
+      // 讀 Anti-forgery token
+      function getCsrf() {
+        const f = document.querySelector('input[name="__RequestVerificationToken"]');
+        return f ? f.value : '';
+      }
+
+      // 讀欄位
+      function getSubject() {
+        const el = document.querySelector('[name="Subject"]');
+        return el ? el.value : '';
+      }
+      function getBodyHtml() {
+        // ✅ 用你現成的 CKEditor 實例，不改它的設定
+        if (window.editorInstance && typeof window.editorInstance.getData === 'function') {
+          return window.editorInstance.getData();
+        }
+        // 後備（萬一 editor 尚未準備好）
+        const ta = document.getElementById('BodyHtml');
+        return ta ? ta.value : '';
+      }
+
+      const $rec = document.getElementById('pv-recipient');
+      const $name = document.getElementById('pv-name');
+      const $token = document.getElementById('pv-token');
+      const $subject = document.getElementById('pv-subject');
+      const $frame = document.getElementById('pv-frame');
+
+      let timer = null;
+      function schedule() { clearTimeout(timer); timer = setTimeout(render, 400); }
+
+      async function render() {
+        const payload = {
+          subject: getSubject(),
+          bodyHtml: getBodyHtml(),
+          tokenJson: $token.value,
+          recipient: $rec.value,
+          name: $name.value
+        };
+        try {
+          const res = await fetch('@Url.Action("RenderPreview","MailTemplates", new { area="Mail" })', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'RequestVerificationToken': getCsrf()
+            },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          $subject.textContent = data.subject || '';
+          $frame.srcdoc = data.html || '';
+        } catch (err) {
+          console.error('preview failed:', err);
+        }
+      }
+
+      // 綁定：Subject 欄位、右側三個輸入框
+      document.addEventListener('input', function (e) {
+        const n = e.target.name || e.target.id || '';
+        if (n === 'Subject' || n === 'pv-recipient' || n === 'pv-name' || n === 'pv-token') schedule();
+      });
+
+      // 當 CKEditor 準備好時，由你原來的初始化程式把 editor 放到 window.editorInstance
+      // 我們只監聽它的變更，不改你的設定（包含圖片上傳）
+      const waitEditor = setInterval(() => {
+        if (window.editorInstance && window.editorInstance.model) {
+          window.editorInstance.model.document.on('change:data', schedule);
+          clearInterval(waitEditor);
+          schedule();
+        }
+      }, 200);
+
+      // 首次渲染（避免頁面進來就空白）
+      schedule();
+    })();
+  </script>
 }

@@ -119,6 +119,7 @@ namespace BookLoop
 			builder.Services.AddScoped<ReportQueryBuilder>();
 			builder.Services.AddSingleton<IExcelExporter, EpplusExcelExporter>();
 			builder.Services.AddScoped<IMailService, MailService>();
+			builder.Services.AddSingleton<ITemplateRenderer, SimpleTemplateRenderer>();
 
 			builder.Services.AddScoped<ICouponService, CouponService>();
 			builder.Services.AddScoped<IPointsService, PointsService>();

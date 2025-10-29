@@ -10,6 +10,8 @@ using System;
 using System.IO; // 檔案操作
 using System.Linq;
 using System.Threading.Tasks;
+using BookLoop.Services.Mail;    
+using System.Text.Json;          
 
 namespace BookLoop.Areas.Mail.Controllers
 {
@@ -19,12 +21,16 @@ namespace BookLoop.Areas.Mail.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _hostEnvironment;
+		private readonly IMailService _mail;
+		private readonly ITemplateRenderer _renderer;
 
-        public MailTemplatesController(AppDbContext context, IWebHostEnvironment hostEnvironment)
+		public MailTemplatesController(AppDbContext context, IWebHostEnvironment hostEnvironment, IMailService mail, ITemplateRenderer renderer)
         {
             _context = context;
             _hostEnvironment = hostEnvironment;
-        }
+			_mail = mail;           
+			_renderer = renderer;
+		}
 
         // GET: Mail/MailTemplates
         public async Task<IActionResult> Index()
@@ -163,8 +169,71 @@ namespace BookLoop.Areas.Mail.Controllers
             }
             return RedirectToAction(nameof(Index));
         }
-        // 圖片上傳 Action
-        [HttpPost]
+
+		// === 預覽 ===
+		// GET: Mail/MailTemplates/Preview/5?recipient=...&Name=...（Query 會當作模板變數）
+		[HttpGet]
+		public async Task<IActionResult> Preview(int? id)
+		{
+			if (id == null) return NotFound();
+
+			var tpl = await _context.MailTemplates.FirstOrDefaultAsync(x => x.TemplateID == id);
+			if (tpl == null) return NotFound();
+
+			// 將 QueryString 轉為模板變數字典
+			var model = HttpContext.Request.Query.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
+
+			// 渲染主旨與內容（※ 你的欄位名是 Subject / BodyHtml）
+			var subject = _renderer.Render(tpl.Subject ?? "", model);
+			var html = _renderer.Render(tpl.BodyHtml ?? "", model);
+
+			ViewBag.TemplateId = tpl.TemplateID;
+			ViewBag.Subject = subject;
+			ViewBag.RawHtml = html;
+			return View(); // 走 Views/MailTemplates/Preview.cshtml
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public IActionResult RenderPreview([FromBody] PreviewInput input)
+		{
+			// 將前端傳來的 tokenJson 轉為字典
+			var model = ParseJson(input.TokenJson);
+			if (!string.IsNullOrWhiteSpace(input.Recipient))
+				model["Recipient"] = input.Recipient;
+			if (!string.IsNullOrWhiteSpace(input.Name))
+				model["Name"] = input.Name;
+
+			var subject = _renderer.Render(input.Subject ?? string.Empty, model);
+			var html = _renderer.Render(input.BodyHtml ?? string.Empty, model);
+
+			return Json(new { subject, html });
+		}
+
+		// === 試寄 ===
+		// POST: Mail/MailTemplates/TestSend
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> TestSend([FromForm] int id, [FromForm] string to,
+			[FromForm] string? name = null, [FromForm] string? tokenJson = null, CancellationToken ct = default)
+		{
+			var tpl = await _context.MailTemplates.FirstOrDefaultAsync(x => x.TemplateID == id, ct);
+			if (tpl == null) return NotFound("Template not found");
+
+			var model = ParseJson(tokenJson);
+			if (!string.IsNullOrWhiteSpace(name)) model["Name"] = name;
+			if (!model.ContainsKey("Recipient")) model["Recipient"] = to;
+
+			var subject = _renderer.Render(tpl.Subject ?? "", model);
+			var html = _renderer.Render(tpl.BodyHtml ?? "", model);
+
+			await _mail.SendAsync(to, subject, html, ct);
+			TempData["ok"] = "測試郵件已送出";
+			return RedirectToAction(nameof(Preview), new { id, recipient = to, Name = name });
+		}
+
+		// 圖片上傳 Action
+		[HttpPost]
         [ValidateAntiForgeryToken] // 建議加上 CSRF 保護
         // [Authorize(Policy = "Mail.Templates.Manage")] 
         public async Task<IActionResult> UploadImage(IFormFile upload)
@@ -249,5 +318,23 @@ namespace BookLoop.Areas.Mail.Controllers
                 Selected = key == selectedKey
             }).ToList();
         }
-    }
+
+		// 供 RenderPreview / TestSend 共用的小工具，解析 JSON 變數
+		private static Dictionary<string, string> ParseJson(string? json)
+		{
+			if (string.IsNullOrWhiteSpace(json)) return new();
+			try { return JsonSerializer.Deserialize<Dictionary<string, string>>(json!) ?? new(); }
+			catch { return new(); }
+		}
+
+		// 放在 controller 內任意位置（class scope）
+		public sealed class PreviewInput
+		{
+			public string? Subject { get; set; }
+			public string? BodyHtml { get; set; }
+			public string? TokenJson { get; set; }
+			public string? Recipient { get; set; }
+			public string? Name { get; set; }
+		}
+	}
 }
