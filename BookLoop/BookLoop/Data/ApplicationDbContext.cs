@@ -9,5 +9,6 @@ namespace BookLoop.Data
             : base(options)
         {
         }
+
     }
 }

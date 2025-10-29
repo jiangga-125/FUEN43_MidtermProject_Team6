@@ -2,7 +2,7 @@
 @model ReportDefinition
 @{
     ViewData["Title"] = "新增報表";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    // Layout = "~/Views/Shared/_Layout.Admin.cshtml";
 
     var previewUrl = Url.Action("PreviewDraft", "ReportPreview", new { area = "ReportMail" }) ?? "#";
     var catsUrl = Url.Action("Categories", "Lookup", new { area = "ReportMail" }) ?? "#";
