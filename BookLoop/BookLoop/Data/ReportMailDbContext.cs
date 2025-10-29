@@ -22,5 +22,4 @@ public partial class ReportMailDbContext : DbContext
 
     public virtual DbSet<ReportFilter> ReportFilters { get; set; }
 
-
 }

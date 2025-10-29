@@ -12,9 +12,10 @@ using BookLoop.Services.Pricing;
 using BookLoop.Services.Reports;
 using BookLoop.Services.Rules;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using System.Threading.Tasks;
 using BookLoop.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using System.IO;
@@ -23,8 +24,10 @@ using Microsoft.AspNetCore.Http;
 
 namespace BookLoop
 {
+
 	public class Program
 	{
+
 		public static async Task Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
@@ -167,6 +170,8 @@ namespace BookLoop
             // ------------------------------
             var app = builder.Build();
 
+
+
 			// 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
 			using (var scope = app.Services.CreateScope())
 			{
@@ -194,6 +199,7 @@ namespace BookLoop
 				app.UseExceptionHandler("/Home/Error");
 				app.UseHsts();
 			}
+
 
 			app.UseHttpsRedirection();
 			app.UseStaticFiles();

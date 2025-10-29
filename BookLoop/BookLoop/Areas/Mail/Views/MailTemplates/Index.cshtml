@@ -1,5 +1,4 @@
-@using BookLoop.Models
-@model IEnumerable<ReportDefinition>
+﻿@model IEnumerable<BookLoop.Models.MailTemplate>
 
 @{
     ViewData["Title"] = "Index";
@@ -14,10 +13,13 @@
     <thead>
         <tr>
             <th>
-                @Html.DisplayNameFor(model => model.ReportName)
+                @Html.DisplayNameFor(model => model.TemplateKey)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Category)
+                @Html.DisplayNameFor(model => model.Subject)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.BodyHtml)
             </th>
             <th>
                 @Html.DisplayNameFor(model => model.Description)
@@ -38,10 +40,13 @@
 @foreach (var item in Model) {
         <tr>
             <td>
-                @Html.DisplayFor(modelItem => item.ReportName)
+                @Html.DisplayFor(modelItem => item.TemplateKey)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.Category)
+                @Html.DisplayFor(modelItem => item.Subject)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.BodyHtml)
             </td>
             <td>
                 @Html.DisplayFor(modelItem => item.Description)
@@ -56,9 +61,9 @@
                 @Html.DisplayFor(modelItem => item.UpdatedAt)
             </td>
             <td>
-                <a asp-action="Edit" asp-route-id="@item.ReportDefinitionID">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.ReportDefinitionID">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.ReportDefinitionID">Delete</a>
+                <a asp-action="Edit" asp-route-id="@item.TemplateID">Edit</a> |
+@*                 <a asp-action="Details" asp-route-id="@item.TemplateID">Details</a> |*@                
+                <a asp-action="Delete" asp-route-id="@item.TemplateID">Delete</a>
             </td>
         </tr>
 }

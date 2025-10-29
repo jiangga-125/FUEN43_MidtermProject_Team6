@@ -21,8 +21,9 @@ namespace BookLoop.Data
 		public DbSet<PermissionFeature> PermissionFeatures => Set<PermissionFeature>();
 		public DbSet<Blacklist> Blacklists => Set<Blacklist>();
 		public DbSet<Member> Members => Set<Member>();
+        public DbSet<MailTemplate> MailTemplates { get; set; }
 
-		protected override void OnModelCreating(ModelBuilder b)
+        protected override void OnModelCreating(ModelBuilder b)
 		{
 			base.OnModelCreating(b);
 

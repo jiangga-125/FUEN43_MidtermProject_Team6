@@ -87,7 +87,6 @@ namespace Ordersys.Controllers
 
 
 
-
 		// GET: Returns/Details/5
 		public async Task<IActionResult> Details(int? id)
 		{
@@ -95,7 +94,7 @@ namespace Ordersys.Controllers
 
 			var ret = await _context.Returns
 				.Include(r => r.Order)
-				  .ThenInclude(o => o.Customer)// 包含 Customer 資料
+				  .ThenInclude(o => o.Member) // ✅ 改這裡，Include Member 而不是 Customer
 				.FirstOrDefaultAsync(r => r.ReturnID == id);
 
 			if (ret == null) return NotFound();
@@ -106,7 +105,7 @@ namespace Ordersys.Controllers
 		// GET: Returns/Create
 		public IActionResult Create()
 		{
-			ViewData["OrderID"] = new SelectList(_context.Orders, "OrderID", "OrderID");
+			ViewData["OrderID"] = GetOrderSelectList();
 			return View();
 		}
 
@@ -121,7 +120,8 @@ namespace Ordersys.Controllers
 				await _context.SaveChangesAsync();
 				return RedirectToAction(nameof(Index));
 			}
-			ViewData["OrderID"] = new SelectList(_context.Orders, "OrderID", "OrderID", ret.OrderID);
+
+			ViewData["OrderID"] = GetOrderSelectList(ret.OrderID);
 			return View(ret);
 		}
 
@@ -130,11 +130,11 @@ namespace Ordersys.Controllers
 		{
 			if (id == null) return NotFound();
 
-			var ret = await _context.Returns.FindAsync(id);
-			if (ret == null) return NotFound();
+			var returnEntity = await _context.Returns.FindAsync(id);
+			if (returnEntity == null) return NotFound();
 
-			ViewData["OrderID"] = new SelectList(_context.Orders, "OrderID", "OrderID", ret.OrderID);
-			return View(ret);
+			ViewData["OrderID"] = GetOrderSelectList(returnEntity.OrderID);
+			return View(returnEntity);
 		}
 
 		// POST: Returns/Edit/5
@@ -159,8 +159,23 @@ namespace Ordersys.Controllers
 				return RedirectToAction(nameof(Index));
 			}
 
-			ViewData["OrderID"] = new SelectList(_context.Orders, "OrderID", "OrderID", ret.OrderID);
+			ViewData["OrderID"] = GetOrderSelectList(ret.OrderID);
 			return View(ret);
+		}
+
+		// 私有方法：產生安全 SelectList
+		private SelectList GetOrderSelectList(int? selectedId = null)
+		{
+			var orders = _context.Orders
+				.Include(o => o.Member)
+				.Select(o => new
+				{
+					o.OrderID,
+					DisplayName = "訂單編號：" + o.OrderID + " - " + (o.Member != null ? o.Member.Username : "（無會員）")
+				})
+				.ToList();
+
+			return new SelectList(orders, "OrderID", "DisplayName", selectedId);
 		}
 
 		// GET: Returns/Delete/5
