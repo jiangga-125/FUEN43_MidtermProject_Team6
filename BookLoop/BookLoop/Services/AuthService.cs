@@ -45,8 +45,16 @@ public class AuthService
 			new Claim("permver", permVersion)
 		};
 
-		// 精瘦：只放集合鍵
-		claims.AddRange(permKeys.Select(k => new Claim("permkey", k)));
+        // 修復 supplier Claim 缺失 ★★★★★
+        var supplierIds = await GetSupplierIdsAsync(user.UserID);
+        if (supplierIds.Any())
+        {
+            // 報表 DataScope 只需要知道 SupplierID，故只取第一個
+            claims.Add(new Claim("supplier", supplierIds.First().ToString()));
+        }
+
+        // 精瘦：只放集合鍵
+        claims.AddRange(permKeys.Select(k => new Claim("permkey", k)));
 
 		var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 		var principal = new ClaimsPrincipal(identity);

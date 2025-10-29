@@ -23,15 +23,28 @@ public partial class ShopDbContext : DbContext
 
 	public virtual DbSet<Order> Orders { get; set; }
 
-	public virtual DbSet<OrderDetail> OrderDetails { get; set; }
+    public virtual DbSet<OrderDetail> OrderDetails { get; set; }
+    public virtual DbSet<Publisher> Publishers { get; set; }   
+    public virtual DbSet<Supplier> Suppliers { get; set; }     
+    public virtual DbSet<SupplierUser> SupplierUsers { get; set; } 
 	public DbSet<Member> Members { get; set; } = null!;
 
 
 	//public DbSet<ShoppingCart> ShoppingCarts { get; set; }   // <--- 
 	//public DbSet<ShoppingCartItems> ShoppingCartItems { get; set; } // <--- 
 
+        
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
+        modelBuilder.Entity<SupplierUser>(e =>
+		{
+			e.ToTable("SUPPLIER_USERS");                      // 表名
+			e.HasKey(x => new { x.SupplierID, x.UserID });    // 複合主鍵（關鍵）
+
+			e.HasOne(x => x.Supplier)
+			 .WithMany(s => s.SupplierUsers)
+			 .HasForeignKey(x => x.SupplierID);
+		});
 
 		modelBuilder.Entity<Book>(entity =>
 		{

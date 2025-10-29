@@ -26,7 +26,11 @@ public partial class Publisher
 
     public DateTime UpdatedAt { get; set; }
 
-	[InverseProperty("Publisher")]
+    public int SupplierID { get; set; }
+
+    public Supplier Supplier { get; set; } = null!;
+
+    [InverseProperty("Publisher")]
 	public virtual ICollection<Book> Books { get; set; } = new List<Book>();
 
 	public virtual ICollection<Listing> Listings { get; set; } = new List<Listing>();
