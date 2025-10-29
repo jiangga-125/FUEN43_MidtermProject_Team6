@@ -3,6 +3,7 @@ using OfficeOpenXml;
 using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services;
+using BookLoop.Services.Mail;
 using BookLoop.Services.Coupons;
 using BookLoop.Services.Export;
 using BookLoop.Services.Import;
@@ -20,7 +21,6 @@ using BookLoop.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using System.IO;
 using Microsoft.AspNetCore.Http;
-
 
 namespace BookLoop
 {
@@ -118,7 +118,7 @@ namespace BookLoop
 			builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
 			builder.Services.AddScoped<ReportQueryBuilder>();
 			builder.Services.AddSingleton<IExcelExporter, EpplusExcelExporter>();
-			builder.Services.AddScoped<MailService>();
+			builder.Services.AddScoped<IMailService, MailService>();
 
 			builder.Services.AddScoped<ICouponService, CouponService>();
 			builder.Services.AddScoped<IPointsService, PointsService>();
