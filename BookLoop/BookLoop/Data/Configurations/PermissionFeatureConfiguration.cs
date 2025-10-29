@@ -6,7 +6,7 @@ public class PermissionFeatureConfiguration : IEntityTypeConfiguration<Permissio
 {
 	public void Configure(EntityTypeBuilder<PermissionFeature> builder)
 	{
-		builder.ToTable("PERMISSION_FEATURES"); // 若 table 名不同請改
+		builder.ToTable("PERMISSION_FEATURES"); // 若
 		builder.HasKey(pf => new { pf.PermissionID, pf.FeatureID });
 
 		builder.HasOne(pf => pf.Permission)

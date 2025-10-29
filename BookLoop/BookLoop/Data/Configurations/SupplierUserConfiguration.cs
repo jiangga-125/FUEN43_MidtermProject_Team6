@@ -6,7 +6,7 @@ public class SupplierUserConfiguration : IEntityTypeConfiguration<SupplierUser>
 {
 	public void Configure(EntityTypeBuilder<SupplierUser> builder)
 	{
-		builder.ToTable("SupplierUser");
+		builder.ToTable("SUPPLIER_USERS");
 		builder.HasKey(su => new { su.SupplierID, su.UserID });
 
 		builder.HasOne(su => su.Supplier)
