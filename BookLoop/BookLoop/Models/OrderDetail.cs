@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -15,7 +16,9 @@ public partial class OrderDetail
     [Display(Name = "書籍編號")]
 	public int BookID { get; set; }
 
-    [Display(Name = "商品名稱")]
+
+	[ValidateNever]
+	[Display(Name = "商品名稱")]
 	public string ProductName { get; set; } = null!;
 
     [Display(Name = "數量")]
@@ -32,7 +35,9 @@ public partial class OrderDetail
 
 	//public DateTime UpdatedAt { get; set; }
 
+	[ValidateNever]
 	public virtual Book Book { get; set; } = null!;
 
+	[ValidateNever]
 	public virtual Order Order { get; set; } = null!;
 }

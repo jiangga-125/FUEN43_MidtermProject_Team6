@@ -29,7 +29,11 @@ public partial class OrdersysContext : DbContext
 
     public virtual DbSet<Shipment> Shipments { get; set; }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+	public virtual DbSet<Member> Members { get; set; }  // ← 新增
+
+	public DbSet<Book> Books { get; set; } = null!;// ← 新增
+
+	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Customer>(entity =>
         {
@@ -185,7 +189,15 @@ public partial class OrdersysContext : DbContext
                 .HasConstraintName("FK_Shipments_Orders");
         });
 
-        OnModelCreatingPartial(modelBuilder);
+		modelBuilder.Entity<Member>(entity =>
+		{
+			entity.HasKey(e => e.MemberID);
+			entity.Property(e => e.MemberID).HasColumnName("MemberID");
+			entity.Property(e => e.Username).HasMaxLength(100);
+			// 其他欄位設定
+		});
+
+		OnModelCreatingPartial(modelBuilder);
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
