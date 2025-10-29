@@ -126,7 +126,7 @@ namespace BookLoop
 
 			builder.Services.AddScoped<IReviewRulePipeline, ReviewRulePipeline>();
 			builder.Services.AddScoped<IReviewModerationService, ReviewModerationService>();
-			builder.Services.AddScoped<IReviewRule, ForbiddenKeywordsRule>();
+			//builder.Services.AddScoped<IReviewRule, ForbiddenKeywordsRule>();
 			builder.Services.AddScoped<IReviewRuleProvider, DbReviewRuleProvider>();
 			builder.Services.AddScoped<IReviewRule>(sp =>
 			{
