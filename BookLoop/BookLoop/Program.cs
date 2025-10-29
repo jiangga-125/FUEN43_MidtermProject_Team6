@@ -19,6 +19,7 @@ using BookLoop.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using System.IO;
 using Microsoft.AspNetCore.Http;
+using System;
 
 namespace BookLoop
 {
@@ -29,22 +30,22 @@ namespace BookLoop
 			var builder = WebApplication.CreateBuilder(args);
 
 			// ------------------------------
-			// 連線字串讀取（先 BookLoop，退回 Default）
+			// 連線字串：BookLoop > DefaultConnection
 			// ------------------------------
 			string? defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
 			string? bookLoopConn = builder.Configuration.GetConnectionString("BookLoop");
 			string? appDbConn = !string.IsNullOrWhiteSpace(bookLoopConn) ? bookLoopConn :
-								  !string.IsNullOrWhiteSpace(defaultConn) ? defaultConn : null;
+								 !string.IsNullOrWhiteSpace(defaultConn) ? defaultConn : null;
 
 			if (string.IsNullOrWhiteSpace(appDbConn))
 				throw new InvalidOperationException("ConnectionStrings:BookLoop 或 DefaultConnection 未設定。");
 
-			// 若你有 Member 模組，Member 沒設定就回退用 appDbConn
+			// Member 模組連線：若未設定則退回 appDbConn
 			string? memberConn = builder.Configuration.GetConnectionString("Member");
 			if (string.IsNullOrWhiteSpace(memberConn)) memberConn = appDbConn;
 
 			// ------------------------------
-			// 資料庫註冊
+			// DbContexts
 			// ------------------------------
 			builder.Services.AddDbContext<ApplicationDbContext>(options =>
 				options.UseSqlServer(defaultConn ?? appDbConn));
@@ -74,7 +75,7 @@ namespace BookLoop
 			builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 			// ------------------------------
-			// Data Protection 金鑰持久化（避免回收/重啟導致登出）
+			// Data Protection（避免回收/重啟導致登出）
 			// ------------------------------
 			builder.Services.AddDataProtection()
 				.PersistKeysToFileSystem(new DirectoryInfo(
@@ -82,7 +83,7 @@ namespace BookLoop
 				.SetApplicationName("BookLoop");
 
 			// ------------------------------
-			// 驗證與授權
+			// 驗證與授權（動態 Policy）
 			// ------------------------------
 			builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 				.AddCookie(opt =>
@@ -92,14 +93,11 @@ namespace BookLoop
 					opt.Cookie.SameSite = SameSiteMode.Lax;
 					opt.LoginPath = "/Auth/Login";
 					opt.AccessDeniedPath = "/Auth/Denied";
-
-					// 存活 + 自動延展
 					opt.ExpireTimeSpan = TimeSpan.FromHours(12);
 					opt.SlidingExpiration = true;
-
 				});
 
-			// --- 授權：全站預設要登入（未標 AllowAnonymous 的頁面） ---
+			// 只要求「需登入」，其餘 Policy 全交由 PermissionPolicyProvider 動態生成
 			builder.Services.AddAuthorization(options =>
 			{
 				options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -107,7 +105,7 @@ namespace BookLoop
 					.Build();
 			});
 
-			// --- 動態 Policy Provider + 授權處理器（用 permkey + DB/快取展開 feature） ---
+			// 動態 Policy Provider + 處理器（關鍵）
 			builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 			builder.Services.AddMemoryCache();
 			builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
@@ -173,7 +171,7 @@ namespace BookLoop
 			// ------------------------------
 			var app = builder.Build();
 
-			// 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
+			// 啟動時印出實際連到的 DB，並做初始化
 			using (var scope = app.Services.CreateScope())
 			{
 				var appdb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -184,7 +182,7 @@ namespace BookLoop
 				var csb2 = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(memdb.Database.GetConnectionString());
 				Console.WriteLine($"[MemberContext] Server={csb2.DataSource}, Database={csb2.InitialCatalog}");
 
-				// 啟動時資料初始化
+				// 啟動初始化：管理者密碼 + 權限/功能種子
 				var init = scope.ServiceProvider.GetRequiredService<DbInitializer>();
 				await init.EnsureAdminPasswordAsync("admin@bookstore.local", "Admin@12345!");
 				await init.EnsurePermissionAndFeatureSeedAsync("admin@bookstore.local");
