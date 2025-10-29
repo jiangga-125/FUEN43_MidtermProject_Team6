@@ -35,7 +35,7 @@
     const lower = s => (s ?? '').toString().trim().toLowerCase();
     const cssEscape = (window.CSS && CSS.escape) ? CSS.escape : (s) => String(s).replace(/["\\]/g, '\\$&');
 
-    // === 狀態（沿用你頁面上的變數語意） ===
+    // === 狀態（沿用頁面上的變數語意） ===
     const charts = { line: null, bar: null, pie: null };
     const state = {
         line: { baseKind: 'sales', granularity: 'day', valueMetric: 'amount' },
@@ -368,6 +368,41 @@
         if (btnBar) btnBar.addEventListener('click', (e) => { e.preventDefault(); currentSource = 'bar'; modal.show(); });
         if (btnPie) btnPie.addEventListener('click', (e) => { e.preventDefault(); currentSource = 'pie'; modal.show(); });
 
+        //監聽 Modal 顯示前的事件
+        modalEl.addEventListener('show.bs.modal', function () {
+            // 從 Index.cshtml 設定的全域 JS 變數獲取 Email 和管理員狀態
+            // (假設 Index.cshtml 中已定義 const currentUserEmail = ...; 和 const isCurrentUserAdmin = ...;)
+            const emailInput = document.getElementById('exportEmail'); // 使用 exportEmail ID
+            if (!emailInput) return; // 防禦性檢查
+
+            // console.log("Modal show event: ", { currentUserEmail, isCurrentUserAdmin }); // 除錯用
+
+            if (typeof currentUserEmail !== 'undefined' && currentUserEmail) {
+                emailInput.value = currentUserEmail; // 預填 Email
+            } else {
+                emailInput.value = ''; // 如果找不到 Email，清空輸入框
+            }
+
+            // 根據是否為管理員設定 readonly 狀態
+            if (typeof isCurrentUserAdmin !== 'undefined' && !isCurrentUserAdmin) {
+                emailInput.readOnly = true; // 非管理員設為唯讀
+                emailInput.classList.add('form-control-plaintext'); // (可選) 樣式調整，使其看起來像純文字
+                emailInput.classList.remove('form-control');
+            } else {
+                emailInput.readOnly = false; // 管理員保持可編輯
+                emailInput.classList.remove('form-control-plaintext');
+                emailInput.classList.add('form-control');
+            }
+
+            // 清除上次可能留下的錯誤訊息 (假設有錯誤訊息顯示區塊)
+            const errorEl = document.getElementById('exportError'); // 假設錯誤訊息區塊 ID
+            if (errorEl) errorEl.textContent = '';
+
+            // 重置匯出按鈕狀態 (如果需要)
+            const submitBtn = document.querySelector('#exportForm button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = false;
+        });
+
         const form = document.getElementById('exportForm');
         form?.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -421,7 +456,8 @@
                     ValueMetric: extra?.valueMetric || '', // amount | count | quantity
                     Labels: labels,
                     Values: values,
-                    ChartImageBase64: imgDataUrl           // data:image/png;base64,...
+                    ChartImageBase64: imgDataUrl,           // data:image/png;base64,...
+                    DefinitionId: ddl?.value ? Number(ddl.value) : null // 若有選自訂報表就帶 ID；沒選就傳 null
                 };
             }
 

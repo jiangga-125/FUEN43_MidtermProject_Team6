@@ -1,8 +1,11 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace BookLoop
 {
     public class Feature
     {
-        public int FeatureID { get; set; }
+		[Key]
+		public int FeatureID { get; set; }
         public string Code { get; set; } = "";
         public string Name { get; set; } = "";
         public string FeatureGroup { get; set; } = "";

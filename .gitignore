@@ -178,3 +178,5 @@ _NCrunch*
 /.gitignore
 /.vs/VSWorkspaceState.json
 /.gitignore
+*.xml
+/BookLoop/BookLoop/BookLoop.sln

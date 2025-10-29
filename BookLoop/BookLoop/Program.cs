@@ -11,9 +11,10 @@ using BookLoop.Services.Pricing;
 using BookLoop.Services.Reports;
 using BookLoop.Services.Rules;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using System.Threading.Tasks;
 using BookLoop.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using System.IO;
@@ -22,54 +23,42 @@ using System;
 
 namespace BookLoop
 {
+
 	public class Program
 	{
+
 		public static async Task Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
 
-			// ------------------------------
-			// 連線字串：BookLoop > DefaultConnection
-			// ------------------------------
-			string? defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
-			string? bookLoopConn = builder.Configuration.GetConnectionString("BookLoop");
-			string? appDbConn = !string.IsNullOrWhiteSpace(bookLoopConn) ? bookLoopConn :
-								 !string.IsNullOrWhiteSpace(defaultConn) ? defaultConn : null;
+			var bookloopStr = builder.Configuration.GetConnectionString("BookLoop")
+			  ?? throw new InvalidOperationException("ConnectionStrings:BookLoop 未設定");
 
-			if (string.IsNullOrWhiteSpace(appDbConn))
-				throw new InvalidOperationException("ConnectionStrings:BookLoop 或 DefaultConnection 未設定。");
+			// 所有 Context 共用 bookloopStr 資料庫
+			builder.Services.AddDbContext<ApplicationDbContext>(options =>                
+				options.UseSqlServer(bookloopStr));
 
-			// Member 模組連線：若未設定則退回 appDbConn
-			string? memberConn = builder.Configuration.GetConnectionString("Member");
-			if (string.IsNullOrWhiteSpace(memberConn)) memberConn = appDbConn;
+			builder.Services.AddDbContext<OrdersysContext>(options =>                
+				options.UseSqlServer(bookloopStr));
 
-			// ------------------------------
-			// DbContexts
-			// ------------------------------
-			builder.Services.AddDbContext<ApplicationDbContext>(options =>
-				options.UseSqlServer(defaultConn ?? appDbConn));
-
-			builder.Services.AddDbContext<OrdersysContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn));
-
-			builder.Services.AddDbContext<BookSystemContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn));
+			builder.Services.AddDbContext<BookSystemContext>(options =>                
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDbContext<BorrowContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn));
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDbContext<ReportMailDbContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? appDbConn,
+				options.UseSqlServer(bookloopStr,
 					x => x.MigrationsAssembly(typeof(ReportMailDbContext).Assembly.FullName)));
 
 			builder.Services.AddDbContext<ShopDbContext>(options =>
-				options.UseSqlServer(bookLoopConn ?? defaultConn ?? appDbConn));
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDbContext<MemberContext>(options =>
-				options.UseSqlServer(memberConn));
+				options.UseSqlServer(bookloopStr));
 
-			builder.Services.AddDbContext<AppDbContext>(opt =>
-				opt.UseSqlServer(appDbConn));
+			builder.Services.AddDbContext<AppDbContext>(options =>
+				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -170,22 +159,24 @@ namespace BookLoop
 			// ------------------------------
 			var app = builder.Build();
 
-			// 啟動時印出實際連到的 DB，並做初始化
-			using (var scope = app.Services.CreateScope())
-			{
-				var appdb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-				var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(appdb.Database.GetConnectionString());
-				Console.WriteLine($"[AppDbContext] Server={csb.DataSource}, Database={csb.InitialCatalog}");
 
-				var memdb = scope.ServiceProvider.GetRequiredService<MemberContext>();
-				var csb2 = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(memdb.Database.GetConnectionString());
-				Console.WriteLine($"[MemberContext] Server={csb2.DataSource}, Database={csb2.InitialCatalog}");
 
-				// 啟動初始化：管理者密碼 + 權限/功能種子
-				var init = scope.ServiceProvider.GetRequiredService<DbInitializer>();
-				await init.EnsureAdminPasswordAsync("admin@bookstore.local", "Admin@12345!");
-				await init.EnsurePermissionAndFeatureSeedAsync("admin@bookstore.local");
-			}
+			// 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
+			//using (var scope = app.Services.CreateScope())
+			//{
+			//	var appdb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+			//	var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(appdb.Database.GetConnectionString());
+			//	Console.WriteLine($"[AppDbContext] Server={csb.DataSource}, Database={csb.InitialCatalog}");
+
+			//	var memdb = scope.ServiceProvider.GetRequiredService<MemberContext>();
+			//	var csb2 = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(memdb.Database.GetConnectionString());
+			//	Console.WriteLine($"[MemberContext] Server={csb2.DataSource}, Database={csb2.InitialCatalog}");
+
+			//	// 啟動時資料初始化
+			//	var init = scope.ServiceProvider.GetRequiredService<DbInitializer>();
+			//	await init.EnsureAdminPasswordAsync("admin@bookstore.local", "Admin@12345!");
+			//	await init.EnsurePermissionAndFeatureSeedAsync("admin@bookstore.local");
+			//}
 
 			if (app.Environment.IsDevelopment())
 			{
@@ -197,6 +188,7 @@ namespace BookLoop
 				app.UseExceptionHandler("/Home/Error");
 				app.UseHsts();
 			}
+
 
 			app.UseHttpsRedirection();
 			app.UseStaticFiles();

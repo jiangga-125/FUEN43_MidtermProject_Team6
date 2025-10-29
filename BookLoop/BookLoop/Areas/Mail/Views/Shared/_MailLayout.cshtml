@@ -1,0 +1,121 @@
+﻿@* Areas/Mail/Views/Shared/_MailLayout.cshtml *@
+@using Microsoft.AspNetCore.Authorization  @* 新增: 為了使用 IAuthorizationService *@
+@inject IAuthorizationService Authz        
+@{
+    ViewData["Title"] = ViewData["Title"] ?? "郵件管理"; 
+
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - BookLoop Mail</title>
+    
+    @* --- CSS 引用 (與 _AccountLayout.cshtml 一致) --- *@
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" /> @* *@
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" /> @* *@
+    <link rel="stylesheet" href="~/BookLoop.styles.css" asp-append-version="true" /> 
+
+    @* 保留 Styles Section *@
+    @await RenderSectionAsync("Styles", required: false) 
+</head>
+<body>
+    <header>
+        @* --- Navbar 結構 (模仿 _AccountLayout.cshtml 和 _Layout.cshtml) --- *@
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3"> @* *@
+            <div class="container"> 
+                @* Logo/Brand - 連結回主站台首頁 *@
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">BookLoop</a> 
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between"> @* *@
+                    @* --- Mail Area 專屬的主要導覽連結 --- *@
+                    <ul class="navbar-nav flex-grow-1"> @* *@
+                        
+                        @* 範本管理 (需要 Mail.Templates.Manage 權限 - 請自行定義或修改 Policy 名稱) *@
+                        @if ((await Authz.AuthorizeAsync(User, "Mail.Templates.Manage")).Succeeded)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark @(ViewContext.RouteData.Values["controller"]?.ToString() == "MailTemplates" ? "active" : "")"
+                                   asp-area="Mail" asp-controller="MailTemplates" asp-action="Index">範本管理</a>
+                            </li>
+                        }
+
+                        @* 寄信日誌 (需要 Mail.Logs.View 權限 - 請自行定義或修改 Policy 名稱) *@
+                        @if ((await Authz.AuthorizeAsync(User, "Mail.Logs.View")).Succeeded)
+                        {
+                            @* <li class="nav-item">
+                                <a class="nav-link text-dark @(ViewContext.RouteData.Values["controller"]?.ToString() == "MailLogs" ? "active" : "")"
+                                   asp-area="Mail" asp-controller="MailLogs" asp-action="Index">寄信日誌</a>
+                            </li>
+                             *@
+                        }
+                        
+                        @* 排程管理 (需要 Mail.Schedules.Manage 權限 - 請自行定義或修改 Policy 名稱) *@
+                         @if ((await Authz.AuthorizeAsync(User, "Mail.Schedules.Manage")).Succeeded)
+                        {
+                             @* <li class="nav-item">
+                                <a class="nav-link text-dark @(ViewContext.RouteData.Values["controller"]?.ToString() == "MailSchedules" ? "active" : "")"
+                                   asp-area="Mail" asp-controller="MailSchedules" asp-action="Index">排程管理</a>
+                            </li>
+                             *@
+                        }
+
+                        @* --- 加入返回其他重要區域的連結 --- *@
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="ReportMail" asp-controller="Reports" asp-action="Index">返回報表</a>
+                        </li>
+                        <li class="nav-item">
+                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">返回首頁</a> @* *@
+                        </li>
+
+                    </ul>
+                    @* --- 登入狀態 (複製 _AccountLayout.cshtml 的右側部分) --- *@
+                    <div class="d-flex align-items-center gap-2"> @* *@
+                        @if (User?.Identity?.IsAuthenticated ?? false) @* *@
+                        {
+                            @* 顯示使用者名稱 (需要 UserManager) - ★★★ 這裡可能觸發您之前的 UserManager 錯誤 ★★★ *@
+                            @* <span class="navbar-text">你好, @User.Identity?.Name!</span> *@
+                            <a class="btn btn-sm btn-outline-secondary" asp-area="" asp-controller="Account" asp-action="ChangePassword">修改密碼</a> @* *@
+                            <form method="post" asp-area="" asp-controller="Auth" asp-action="Logout" class="d-inline ms-2"> @* *@
+                                <button class="btn btn-sm btn-outline-danger">登出</button> @* *@
+                            </form>
+                        }
+                        else
+                        {
+                            <a class="btn btn-sm btn-primary" asp-area="" asp-controller="Auth" asp-action="Login">登入</a> @* *@
+                        }
+                    </div>
+                    @* ★ 或者，如果您主 Layout 使用 _LoginPartial，且確認 Identity 已正確註冊，可以用回 Partial View: *@
+                    @* <partial name="_LoginPartial" /> *@ 
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    @* --- 主體內容區域 (複製 _AccountLayout.cshtml) --- *@
+    <div class="container"> @* *@
+         <main role="main" class="pb-3"> @* *@
+             @RenderBody() @* 渲染來自 Controller View 的內容 *@
+         </main>
+    </div>
+
+    @* --- 頁尾 (複製 _AccountLayout.cshtml) --- *@
+    <footer class="border-top footer text-muted"> @* *@
+        <div class="container"> @* *@
+            &copy; 2025 - BookLoop Mail - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a> @* 修改文字 *@
+        </div>
+    </footer>
+
+    @* --- JS 引用 (複製 _AccountLayout.cshtml) --- *@
+    <script src="~/lib/jquery/dist/jquery.min.js"></script> @* *@
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script> @* *@
+    <script src="~/js/site.js" asp-append-version="true"></script> @* *@
+
+    @* 保留 Scripts Section *@
+    @await RenderSectionAsync("Scripts", required: false) @* *@
+</body>
+</html>

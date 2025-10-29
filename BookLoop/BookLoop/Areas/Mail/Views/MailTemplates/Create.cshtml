@@ -1,0 +1,144 @@
+﻿@model BookLoop.Models.MailTemplate
+
+@{
+    ViewData["Title"] = "建立郵件範本";
+}
+
+@section Styles {
+    <style>
+        .ck-editor__editable_inline {
+            min-height: 400px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+    </style>
+}
+
+<div class="container mt-4">
+    <h1>建立郵件範本</h1>
+
+    <hr />
+    <div class="row">
+        <div class="col-md-8">
+            <form asp-action="Create">
+                @Html.AntiForgeryToken()
+
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="form-group mb-3">
+                    <label asp-for="TemplateKey" class="control-label"></label>
+                    <select asp-for="TemplateKey" class="form-select" asp-items="ViewBag.TemplateKeyList">
+                        <option value="">-- 請選擇範本 Key --</option>
+                    </select>
+                    <span asp-validation-for="TemplateKey" class="text-danger"></span>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label asp-for="Subject" class="control-label"></label>
+                    <input asp-for="Subject" class="form-control" />
+                    <span asp-validation-for="Subject" class="text-danger"></span>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label asp-for="BodyHtml" class="control-label"></label>
+                    <textarea id="editor" asp-for="BodyHtml"></textarea>
+                    <span asp-validation-for="BodyHtml" class="text-danger"></span>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label asp-for="Description" class="control-label"></label>
+                    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                    <span asp-validation-for="Description" class="text-danger"></span>
+                </div>
+
+                <div class="form-group form-check mb-3">
+                    <label class="form-check-label">
+                        <input class="form-check-input" asp-for="IsActive" />
+                        @Html.DisplayNameFor(model => model.IsActive)
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <input type="submit" value="建立" class="btn btn-primary" />
+                    | <a asp-action="Index">返回列表</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <!-- 1) 先宣告 GPL 金鑰（一定要在 ckeditor.js 之前） -->
+    <script>
+        window.CKEDITOR_LICENSE_KEY = 'GPL';
+        window.CKEDITOR_GLOBAL_LICENSE_KEY = 'GPL';
+    </script>
+
+    <!-- 2) 載入你打包好的 UMD；使用 defer 讓它在 DOM 解析後執行 -->
+    <script src="@Url.Content("~/lib/ckeditor5-oss/ckeditor.js")" asp-append-version="true" defer></script>
+
+    <!-- 3) 初始化（等待腳本與 DOM 就緒，且只初始化一次） -->
+    <script>
+        (function () {
+            function resolveEditorCtor() {
+                const C = window.ClassicEditor;
+                if (!C) return null;
+                if (typeof C.create === 'function') return C;           // 直接匯出 class
+                if (C.default && typeof C.default.create === 'function') return C.default; // { default: class }
+                return null;
+            }
+
+            function initCKE() {
+                if (window.__ckInitDone) return; // 防止重複初始化
+
+                const Editor = resolveEditorCtor();
+                const el = document.querySelector('#editor');
+                if (!Editor || !el) return;      // 還沒就緒，交給下一個事件再試
+
+                window.__ckInitDone = true;
+                Editor.create(el, {
+                    licenseKey: 'GPL',
+                    language: 'zh-cn',
+                    toolbar: [
+                        'heading','|','bold','italic','link','|',
+                        'bulletedList','numberedList','blockQuote','|',
+                        'insertTable','|','imageUpload','|','undo','redo'
+                    ],
+                    table: { contentToolbar: ['tableColumn','tableRow','mergeTableCells'] },
+                    image: {
+                        toolbar: [
+                            'toggleImageCaption','imageTextAlternative','|',
+                            'imageStyle:inline','imageStyle:block','imageStyle:side'
+                        ],
+                        styles: ['inline','block','side']
+                    },
+                    simpleUpload: {
+                        uploadUrl: '@Url.Action("UploadImage", "MailTemplates", new { area = "Mail" })',
+                        headers: {
+                            'RequestVerificationToken':
+                                document.querySelector('form input[name="__RequestVerificationToken"]').value
+                        }
+                    }
+                })
+                .then(editor => {
+                    const form = el.closest('form');
+                    if (form) form.addEventListener('submit', () => el.value = editor.getData());
+                    window.editorInstance = editor;
+                    console.log('CKEditor 初始化完成');
+                })
+                .catch(e => {
+                    console.error('CKEditor 初始化失敗：', e);
+                    alert('CKEditor 初始化失敗，請開啟開發者工具查看錯誤訊息。');
+                });
+            }
+
+            // 多重保險：DOM 就緒與 window 載入後都嘗試一次
+            document.addEventListener('DOMContentLoaded', initCKE);
+            window.addEventListener('load', initCKE);
+        })();
+    </script>
+}

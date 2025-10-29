@@ -1,6 +1,6 @@
 ﻿@model BookLoop.User
 @{
-    Layout = "_Layout";
+    // Layout = "_Layout";
     ViewData["Title"] = "帳號詳情";
     string StatusBadge(byte s) => s switch { 1 => "bg-success", 2 => "bg-secondary", _ => "bg-light text-dark" };
     string StatusText(byte s) => s switch { 0 => "未啟用", 1 => "啟用", 2 => "停用", _ => "?" };

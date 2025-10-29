@@ -30,6 +30,8 @@ public partial class ReportDefinition
 
     public int SortOrder { get; set; } = 0;          // 排序順序
 
+    public int? OwnerUserID { get; set; }  // 新增：定義擁有者（可空）
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

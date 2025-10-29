@@ -1,8 +1,8 @@
 ﻿using BookLoop.Models;
-using DocumentFormat.OpenXml.InkML;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace BookLoop.Data;
 
@@ -43,22 +43,24 @@ public partial class MemberContext : DbContext
 
     public virtual DbSet<Category> Categories { get; set; } = default!;
 
+	public virtual DbSet<ReviewForbiddenKeyword> ReviewForbiddenKeyword { get; set; }
+
+    public virtual DbSet<Advertisement> Advertisements { get; set; }
+
 	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 	{
-		// 留空或直接刪掉這個方法（因為 Program.cs 已經設定好）
 	}
 
 
-	protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Coupon>(entity =>
+		modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        
+		modelBuilder.Entity<Coupon>(entity =>
         {
             entity.HasIndex(e => new { e.StartAt, e.EndAt }, "IX_Coupons_Date");
-
             entity.HasIndex(e => e.IsActive, "IX_Coupons_IsActive");
-
             entity.HasIndex(e => e.Code, "UX_Coupons_Code").IsUnique();
-
             entity.Property(e => e.CouponId).HasColumnName("CouponID");
             entity.Property(e => e.Code).HasMaxLength(32);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
@@ -81,14 +83,14 @@ public partial class MemberContext : DbContext
 
             entity.HasIndex(e => e.Username, "IX_Members_Username");
 
-            //entity.HasIndex(e => e.Account, "UQ_Members_Account").IsUnique();
+            entity.HasIndex(e => e.Account, "UQ_Members_Account").IsUnique();
 
             entity.HasIndex(e => e.UserID, "UX_Members_UserID")
                 .IsUnique()
                 .HasFilter("([UserID] IS NOT NULL)");
 
             entity.Property(e => e.MemberID).HasColumnName("MemberID");
-            //entity.Property(e => e.Account).HasMaxLength(50);
+            entity.Property(e => e.Account).HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysdatetime())");
             entity.Property(e => e.Email).HasMaxLength(254);
             entity.Property(e => e.Phone)
@@ -133,27 +135,26 @@ public partial class MemberContext : DbContext
                 .HasConstraintName("FK_MemberCoupons_Coupons");
         });
 
-		modelBuilder.Entity<MemberPoint>(entity =>
-		{
-			entity.ToTable("MemberPoints", tb => tb.HasTrigger("trg_MemberPoints_UpdateTime"));
+        modelBuilder.Entity<MemberPoint>(entity =>
+        {
+            entity.ToTable("MemberPoints", tb => tb.HasTrigger("trg_MemberPoints_UpdateTime"));
 
-			// 主鍵：MemberPointID (獨立流水號，不要再映射成 MemberID)
-			entity.HasKey(e => e.MemberPointID);
+            // 主鍵：MemberPointID (獨立流水號，不要再映射成 MemberID)
+            entity.HasKey(e => e.MemberPointID);
 
-			// 基本欄位設定
-			entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
-			entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())");
+            // 基本欄位設定
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())");
 
-			// 關聯：一個 Member 可以有多筆 MemberPoint
-			entity.HasOne(d => d.Member)
-				  .WithMany(p => p.MemberPoints)   // 改成 WithMany
-				  .HasForeignKey(d => d.MemberID) // FK 是 MemberID
-				  .OnDelete(DeleteBehavior.ClientSetNull)
-				  .HasConstraintName("FK_MemberPoints_Members");
-		});
+            // 關聯：一個 Member 可以有多筆 MemberPoint
+            entity.HasOne(d => d.Member)
+                  .WithMany(p => p.MemberPoints)   // 改成 WithMany
+                  .HasForeignKey(d => d.MemberID) // FK 是 MemberID
+                  .OnDelete(DeleteBehavior.ClientSetNull)
+                  .HasConstraintName("FK_MemberPoints_Members");
+        });
 
-
-		modelBuilder.Entity<Order>(entity =>
+        modelBuilder.Entity<Order>(entity =>
         {
             entity.HasIndex(e => e.MemberID, "IX_Orders_MemberID");
 
@@ -320,41 +321,51 @@ public partial class MemberContext : DbContext
                 .HasConstraintName("FK_RuleApps_Members");
         });
 
-		modelBuilder.Entity<Category>(e =>
-		{
-			e.ToTable("Categories", "dbo"); // ← 對方的 schema/表名
-											// 如果 PK 不是慣用名字，可補 e.HasKey(x => x.CategoryID);
-											// 不想讓遷移去動到對方表，可加：
-			e.ToTable(tb => tb.ExcludeFromMigrations());
-		});
-		modelBuilder.Entity<Coupon>(e => { e.ToTable("Coupons", "dbo"); });
+        modelBuilder.Entity<Category>(e =>
+        {
+            e.ToTable("Categories", "dbo"); // ← 對方的 schema/表名
+                                            // 如果 PK 不是慣用名字，可補 e.HasKey(x => x.CategoryID);
+                                            // 不想讓遷移去動到對方表，可加：
+            e.ToTable(tb => tb.ExcludeFromMigrations());
+        });
 
-		modelBuilder.Entity<CouponCategory>(e =>
-		{
-			e.ToTable("CouponCategories", "dbo");
-			e.HasKey(x => x.CouponCategoryID);
+        modelBuilder.Entity<Coupon>(e => { e.ToTable("Coupons", "dbo"); });
 
-			e.HasOne(x => x.Coupon)
-			 .WithMany(c => c.CouponCategories)
-			 .HasForeignKey(x => x.CouponID)
-			 .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CouponCategory>(e =>
+        {
+            e.ToTable("CouponCategories", "dbo");
+            e.HasKey(x => x.CouponCategoryID);
 
-			e.HasOne(x => x.Category)
-			 .WithMany(cat => cat.CouponCategories)
-			 .HasForeignKey(x => x.CategoryID)
-			 .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Coupon)
+             .WithMany(c => c.CouponCategories)
+             .HasForeignKey(x => x.CouponID)
+             .OnDelete(DeleteBehavior.Cascade);
 
-			e.HasIndex(x => x.CouponID).HasDatabaseName("IX_CouponCategories_CouponID");
-			e.HasIndex(x => x.CategoryID).HasDatabaseName("IX_CouponCategories_CategoryID");
+            e.HasOne(x => x.Category)
+             .WithMany(cat => cat.CouponCategories)
+             .HasForeignKey(x => x.CategoryID)
+             .OnDelete(DeleteBehavior.Cascade);
 
-			e.HasIndex(x => new { x.CouponID, x.CategoryID })
-			 .IsUnique()
-			 .HasDatabaseName("UX_CouponCategories_Coupon_Category");
-		});
+            e.HasIndex(x => x.CouponID).HasDatabaseName("IX_CouponCategories_CouponID");
+            e.HasIndex(x => x.CategoryID).HasDatabaseName("IX_CouponCategories_CategoryID");
 
+            e.HasIndex(x => new { x.CouponID, x.CategoryID })
+             .IsUnique()
+             .HasDatabaseName("UX_CouponCategories_Coupon_Category");
+        });
+
+        modelBuilder.Entity<ReviewForbiddenKeyword>(entity =>
+        {
+            entity.ToTable("ReviewForbiddenKeyword"); // 明確對應資料表名稱
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Keyword).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(200);
+            entity.Property(e => e.Severity).HasDefaultValue((byte)1);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+        });
 
 		OnModelCreatingPartial(modelBuilder);
-    }
-
+	}
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 }
