@@ -250,21 +250,22 @@
                             </button>
                         </td>
 
+                        
                         <td>
-    @if (item.Status == 0)  
-    {
-        <form asp-action="GoToPayment" asp-controller="Orders" method="post" target="_blank">
-            <input type="hidden" name="orderId" value="@item.OrderID" />
-            <button type="submit" class="btn btn-success btn-action">
-                前往付款
-            </button>
-        </form>
-    }
-    else
-    {
-        <span class="text-muted">已付款</span>
-    }
-</td>
+                            @if (item.Status == 0)
+                            {
+                                <form id="paymentForm_@item.OrderID" asp-action="GoToPayment" asp-controller="Orders" method="post" target="_blank">
+                                    <input type="hidden" name="orderId" value="@item.OrderID" />
+                                    <button type="button" class="btn btn-success btn-action" onclick="document.getElementById('paymentForm_@item.OrderID').submit();">
+                                        前往付款
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-muted">已付款</span>
+                            }
+                        </td>
                         @* <td>
                             <a asp-controller="Rentals" asp-action="ByID" asp-route-orderID="@item.OrderID" class="btn btn-secondary">
                                 查看租借書籍

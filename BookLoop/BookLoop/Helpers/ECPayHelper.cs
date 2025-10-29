@@ -15,37 +15,42 @@ namespace BookLoop.Helpers
 		private const string GatewayUrl = "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5";
 
 		/// <summary>
-		/// 產生綠界自動送出的表單
+		/// 產生綠界送出的表單
 		/// </summary>
-		public static string GeneratePostForm(ECPayRequest model)
+		public static string GeneratePostForm(ECPayRequest model, bool autoSubmit = false, string formId = "ecpayForm")
 		{
 			// 先生成 CheckMacValue
 			model.CheckMacValue = GenerateCheckMacValue(model);
 
-			var formBuilder = new StringBuilder();
-			formBuilder.AppendLine($"<form id='ecpayForm' method='post' action='{GatewayUrl}'>");
+			var submitFields = new string[]
+			{
+				"MerchantID","MerchantTradeNo","MerchantTradeDate","PaymentType",
+				"TotalAmount","TradeDesc","ItemName","ReturnURL",
+				"OrderResultURL","ChoosePayment","EncryptType","CheckMacValue"
+			};
 
-			// 使用反射生成表單欄位
+			var sb = new StringBuilder();
+			sb.AppendLine($"<form id='{formId}' method='post' action='{GatewayUrl}'>");
+
 			foreach (var prop in model.GetType().GetProperties())
 			{
+				if (!submitFields.Contains(prop.Name)) continue;
 				var value = prop.GetValue(model, null);
 				if (value != null)
 				{
-					formBuilder.AppendLine($"<input type='hidden' name='{prop.Name}' value='{HttpUtility.HtmlEncode(value.ToString())}' />");
+					sb.AppendLine($"<input type='hidden' name='{prop.Name}' value='{HttpUtility.HtmlEncode(value.ToString())}' />");
 				}
 			}
 
-			// 固定欄位
-			formBuilder.AppendLine("<input type='hidden' name='PaymentType' value='aio' />");
+			// autoSubmit = false，給使用者按鈕
+			if (!autoSubmit)
+				sb.AppendLine("<button type='submit'>前往綠界付款</button>");
 
-			formBuilder.AppendLine("</form>");
-			formBuilder.AppendLine("<script>document.getElementById('ecpayForm').submit();</script>");
+			sb.AppendLine("</form>");
 
-			Console.WriteLine("---------- ECPay Form Debug ----------");
-			Console.WriteLine(formBuilder.ToString());
-			Console.WriteLine("------------------------------------------------");
-
-			return formBuilder.ToString();
+			// ✅ 如果 autoSubmit = true，可以在外部 JS 觸發 submit
+			// 注意：不要用 inline script 避免 CSP 阻擋
+			return sb.ToString();
 		}
 
 		/// <summary>
@@ -53,55 +58,33 @@ namespace BookLoop.Helpers
 		/// </summary>
 		public static string GenerateCheckMacValue(ECPayRequest model)
 		{
-			// 將 model 屬性轉成 Dictionary（排除 CheckMacValue）
 			var parameters = model.GetType()
 				.GetProperties()
 				.Where(p => p.GetValue(model) != null && p.Name != "CheckMacValue")
 				.ToDictionary(p => p.Name, p => p.GetValue(model).ToString());
 
-			// 確保 PaymentType 固定存在
 			if (!parameters.ContainsKey("PaymentType"))
 				parameters.Add("PaymentType", "aio");
 
-			// 參數排序
 			var sortedParams = parameters.OrderBy(x => x.Key, StringComparer.Ordinal).ToList();
 
-			// 組成原始字串
 			var raw = $"HashKey={HashKey}&{string.Join("&", sortedParams.Select(x => $"{x.Key}={x.Value}"))}&HashIV={HashIV}";
 
-	
-
-			// 替換特殊字元（綠界官方建議）
 			var urlEncoded = HttpUtility.UrlEncode(raw).ToLower();
+			urlEncoded = urlEncoded.Replace("+", "%20")
+								   .Replace("%2d", "-")
+								   .Replace("%5f", "_")
+								   .Replace("%2e", ".")
+								   .Replace("%21", "!")
+								   .Replace("%2a", "*")
+								   .Replace("%28", "(")
+								   .Replace("%29", ")");
 
-			// ✅ 將空格換成 %20
-			urlEncoded = urlEncoded.Replace("+", "%20");
-
-			// 替換其他特殊字元
-			urlEncoded = urlEncoded
-				.Replace("%2d", "-")
-				.Replace("%5f", "_")
-				.Replace("%2e", ".")
-				.Replace("%21", "!")
-				.Replace("%2a", "*")
-				.Replace("%28", "(")
-				.Replace("%29", ")");
-
-			// SHA256 加密
 			using (var sha256 = SHA256.Create())
 			{
 				var bytes = Encoding.UTF8.GetBytes(urlEncoded);
 				var hash = sha256.ComputeHash(bytes);
-				var checkMac = BitConverter.ToString(hash).Replace("-", "").ToUpper();
-
-				// 🔹 Debug Log 保留
-				Console.WriteLine("---------- ECPay CheckMacValue Debug ----------");
-				Console.WriteLine($"RAW : {raw}");
-				Console.WriteLine($"Encoded : {urlEncoded}");
-				Console.WriteLine($"CheckMacValue : {checkMac}");
-				Console.WriteLine("------------------------------------------------");
-
-				return checkMac;
+				return BitConverter.ToString(hash).Replace("-", "").ToUpper();
 			}
 		}
 
@@ -111,16 +94,7 @@ namespace BookLoop.Helpers
 		public static bool VerifyNotification(ECPayRequest request)
 		{
 			var expected = GenerateCheckMacValue(request);
-			var isValid = string.Equals(expected, request.CheckMacValue, StringComparison.OrdinalIgnoreCase);
-
-			// 🔹 Debug Log 保留
-			Console.WriteLine("---------- ECPay Verify Debug ----------");
-			Console.WriteLine($"Expected : {expected}");
-			Console.WriteLine($"Received : {request.CheckMacValue}");
-			Console.WriteLine($"Result : {(isValid ? "✅ Valid" : "❌ Invalid")}");
-			Console.WriteLine("------------------------------------------------");
-
-			return isValid;
+			return string.Equals(expected, request.CheckMacValue, StringComparison.OrdinalIgnoreCase);
 		}
 	}
 }

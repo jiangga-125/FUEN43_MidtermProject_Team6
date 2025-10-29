@@ -1,0 +1,29 @@
+﻿@model Dictionary<string, string>
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="utf-8" />
+    <title>跳轉綠界付款中...</title>
+</head>
+<body>
+    <p style="text-align:center; font-family:sans-serif; margin-top:50px;">
+        正在跳轉至綠界付款頁面，請稍候...
+    </p>
+
+    <form id="ecpayForm" method="post" action="https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5">
+        @foreach (var key in Model.Keys)
+        {
+            <input type="hidden" name="@key" value="@Model[key]" />
+        }
+    </form>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            document.getElementById("ecpayForm").submit();
+        });
+    </script>
+</body>
+</html>

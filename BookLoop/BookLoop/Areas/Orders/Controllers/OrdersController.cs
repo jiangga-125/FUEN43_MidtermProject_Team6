@@ -227,38 +227,53 @@ namespace BookLoop.Ordersys.Controllers
 		public IActionResult GoToPayment(int orderId)
 		{
 			var order = _context.Orders.FirstOrDefault(o => o.OrderID == orderId);
-			if (order == null) return NotFound();
+			if (order == null)
+				return NotFound();
 
-			// 商店訂單編號 (確保唯一)
 			string merchantTradeNo = $"B{DateTime.Now:yyMMddHHmm}{order.OrderID}";
+			string website = "https://yourdomain"; // ⚠️ 改成你的實際網域（或 localhost 測試）
 
-			var ecpay = new ECPayRequest
+			var ecpayRequest = new ECPayRequest
 			{
-				MerchantID = "3002607",  // 測試商店代號
+				MerchantID = "3002607",
 				MerchantTradeNo = merchantTradeNo,
 				MerchantTradeDate = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"),
-				TotalAmount = Math.Max(1, (int)Math.Ceiling(order.TotalAmount)),
+				PaymentType = "aio",
+				TotalAmount = (int)Math.Ceiling(order.TotalAmount <= 0 ? 1 : order.TotalAmount),
 				TradeDesc = "BookLoop 書籍付款",
 				ItemName = "書籍或租借",
-				ReturnURL = "https://yourdomain/api/ecpay/notify",         // Server 通知 URL
-				OrderResultURL = "https://yourdomain/Orders/PaymentResult", // 前端導回 URL
+				ReturnURL = $"{website}/api/ecpay/notify",
+				OrderResultURL = $"{website}/Orders/PaymentResult",
 				ChoosePayment = "ALL",
 				EncryptType = "1"
 			};
 
-			string postForm = ECPayHelper.GeneratePostForm(ecpay);
+			// ✅ 使用你自己的 Helper 方法來生成 CheckMacValue
+			ecpayRequest.CheckMacValue = ECPayHelper.GenerateCheckMacValue(ecpayRequest);
 
-			Console.WriteLine($"[GoToPayment] called for orderId={orderId} at {DateTime.UtcNow}");
-			Console.WriteLine($"MerchantID: {ecpay.MerchantID}");
-			Console.WriteLine($"MerchantTradeNo: {ecpay.MerchantTradeNo}");
-			Console.WriteLine($"MerchantTradeDate: {ecpay.MerchantTradeDate}");
-			Console.WriteLine($"TotalAmount: {ecpay.TotalAmount}");
-			Console.WriteLine($"ReturnURL: {ecpay.ReturnURL}");
+			// ✅ 將參數轉成 Dictionary 給 View 顯示（跳轉表單）
+			var orderDict = new Dictionary<string, string>
+	{
+		{ "MerchantID", ecpayRequest.MerchantID },
+		{ "MerchantTradeNo", ecpayRequest.MerchantTradeNo },
+		{ "MerchantTradeDate", ecpayRequest.MerchantTradeDate },
+		{ "PaymentType", ecpayRequest.PaymentType },
+		{ "TotalAmount", ecpayRequest.TotalAmount.ToString() },
+		{ "TradeDesc", ecpayRequest.TradeDesc },
+		{ "ItemName", ecpayRequest.ItemName },
+		{ "ReturnURL", ecpayRequest.ReturnURL },
+		{ "OrderResultURL", ecpayRequest.OrderResultURL },
+		{ "ChoosePayment", ecpayRequest.ChoosePayment },
+		{ "EncryptType", ecpayRequest.EncryptType },
+		{ "CheckMacValue", ecpayRequest.CheckMacValue }
+	};
 
-			return Content(postForm, "text/html");
+			// ✅ 直接導向 View，會自動送出到綠界
+			return View("GoToPayment", orderDict);
 		}
-
-		// ✅ 綠界付款完成通知
+		//
+		// ✅ 綠界付款完成通知 (Server -> Server)
+		//
 		[HttpPost]
 		[Route("api/ecpay/notify")]
 		public IActionResult ECPayNotify([FromForm] ECPayRequest data)
@@ -269,7 +284,7 @@ namespace BookLoop.Ordersys.Controllers
 			if (!ECPayHelper.VerifyNotification(data))
 				return Content("0|ErrorCheckMacValue");
 
-			// 驗證成功 -> 更新訂單狀態
+			// === step 4 : 更新訂單狀態 ===
 			int orderId = -1;
 			var digits = new string(data.MerchantTradeNo.Reverse().TakeWhile(char.IsDigit).Reverse().ToArray());
 			if (int.TryParse(digits, out var parsedId))
@@ -280,21 +295,22 @@ namespace BookLoop.Ordersys.Controllers
 				var order = _context.Orders.FirstOrDefault(o => o.OrderID == orderId);
 				if (order != null)
 				{
-					order.Status = 1; // 訂單付款完成狀態
+					order.Status = 1; // ✅ 訂單付款完成狀態
 					_context.SaveChanges();
 				}
 			}
 
-			return Content("1|OK"); // 回覆綠界
+			return Content("1|OK"); // 回覆綠界「成功」
 		}
 
-		// ✅ 付款完成前端導回頁面
+		//
+		// ✅ 付款完成導回頁面
+		//
 		[HttpGet]
 		public IActionResult PaymentResult()
 		{
 			ViewBag.Message = "付款完成！感謝您的訂購。";
 			return View();
 		}
-
 	}
 }
