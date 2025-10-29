@@ -1,0 +1,19 @@
+﻿@model BookLoop.Models.Branch
+@{
+    ViewData["Title"] = "新增據點";
+}
+<h3>@ViewData["Title"]</h3>
+
+<form asp-area="Books" asp-controller="Branches" asp-action="Create" method="post">
+    <div class="mb-3">
+        <label asp-for="BranchName" class="form-label">據點名稱</label>
+        <input asp-for="BranchName" class="form-control" />
+        <span asp-validation-for="BranchName" class="text-danger"></span>
+    </div>
+    <div class="form-check mb-3">
+        <input asp-for="IsActive" class="form-check-input" />
+        <label asp-for="IsActive" class="form-check-label">啟用</label>
+    </div>
+    <button class="btn btn-primary" type="submit">建立</button>
+    <a asp-area="Books" asp-controller="Branches" asp-action="Index" class="btn btn-secondary">返回</a>
+</form>

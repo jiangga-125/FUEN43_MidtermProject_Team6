@@ -1,0 +1,136 @@
+﻿@model IEnumerable<BookLoop.Models.PenaltyRule>
+
+@{
+    ViewData["Title"] = "Index";
+}
+@{
+    var msg = TempData["FlashMessage"] as string;
+}
+@if (!string.IsNullOrEmpty(msg))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @msg
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+
+<button class="btn btn-primary" id="btn-show-rules">查看規則</button>
+<a asp-action="Create" class="btn btn-success">新增規則</a>
+
+<div class="modal fade" id="rulesModal" tabindex="-1" aria-labelledby="rulesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-success">
+                <h5 class="modal-title" id="rulesModalLabel">規則清單</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div id="flash-area"></div>
+            <div class="modal-body" id="rules-modal-body"></div>
+        </div>
+    </div>
+</div>
+@* 放一顆 Anti-forgery Token 讓 JS 取用 *@
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        // Bootstrap 5: 用元素建立 Modal
+        const modalEl    = document.getElementById('rulesModal');
+        const modal      = new bootstrap.Modal(modalEl);
+        const modalBody  = document.getElementById('rules-modal-body');
+        const modalTitle = document.getElementById('rulesModalLabel');
+
+        // 取得 Anti-forgery token（全站共用）
+        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        const token = tokenInput ? tokenInput.value : '';
+
+        // 1) 載入清單
+        async function loadRulesList() {
+          modalTitle.textContent = '規則清單';
+          modalBody.innerHTML = '<div class="p-3">載入中…</div>';
+          const res = await fetch('@Url.Action("TablePartial", "PenaltyRules")', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+          modalBody.innerHTML = res.ok ? await res.text() : '<div class="text-danger p-3">載入失敗</div>';
+          modal.show();
+        }
+
+        // 2) 載入編輯畫面
+        async function loadRuleEdit(id) {
+          modalTitle.textContent = '修改規則';
+          modalBody.innerHTML = '<div class="p-3">載入中…</div>';
+          const res = await fetch('@Url.Action("EditRow", "PenaltyRules")?id=' + encodeURIComponent(id), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+          modalBody.innerHTML = res.ok ? await res.text() : '<div class="text-danger p-3">載入失敗</div>';
+        }
+
+        // 3) 統一的 POST 幫手（FormData 或 URLSearchParams 都可）
+        async function postAndReload(url, data) {
+          let body;
+          if (data instanceof FormData) {
+            if (token && !data.has('__RequestVerificationToken')) {
+              data.append('__RequestVerificationToken', token);
+            }
+            body = data;
+          } else {
+            body = new URLSearchParams(data);
+            if (token && !body.has('__RequestVerificationToken')) {
+              body.append('__RequestVerificationToken', token);
+            }
+          }
+          const res  = await fetch(url, { method:'POST', body });
+          const json = await res.json();
+          if (!json.ok) throw new Error(json.message || '操作失敗');
+          await loadRulesList();
+        }
+
+        // 4) 事件委派：只綁一次，處理「動態載入」的所有按鈕/表單
+        modalBody.addEventListener('click', (e) => {
+          const target = e.target;
+          // 4-1) 編輯按鈕
+          const editBtn = target.closest('.btn-edit');
+          if (editBtn) {
+            const tr = editBtn.closest('tr');
+            const id = tr?.dataset?.id;
+            if (id) loadRuleEdit(id);
+            return;
+          }
+
+          // 4-2) 停用按鈕
+          const deactBtn = target.closest('.btn-deactivate');
+          if (deactBtn) {
+            const tr = deactBtn.closest('tr');
+            const id = tr?.dataset?.id;
+            if (!id) return;
+            if (!window.confirm('確定要停用嗎？')) return;
+            postAndReload('@Url.Action("Deactivate", "PenaltyRules")', { id });
+            return;
+          }
+
+          // 4-3) 編輯畫面的「返回清單」
+          if (target.id === 'btn-back') {
+            loadRulesList();
+            return;
+          }
+        });
+
+        // 4-4) 編輯表單的 submit（委派）
+        modalBody.addEventListener('submit', (e) => {
+          const form = e.target;
+          if (form && form.id === 'ruleForm') {
+            e.preventDefault();
+            postAndReload(form.action, new FormData(form));
+          }
+        });
+       
+        // 5) 綁定「查看規則」按鈕
+        document.getElementById('btn-show-rules')?.addEventListener('click', loadRulesList);
+
+        // 6) 需要在其他地方呼叫時，暴露全域（選用）
+        window.loadRulesList = loadRulesList;
+        window.loadRuleEdit  = loadRuleEdit;
+        window.postAndReload = postAndReload;
+    </script>
+}

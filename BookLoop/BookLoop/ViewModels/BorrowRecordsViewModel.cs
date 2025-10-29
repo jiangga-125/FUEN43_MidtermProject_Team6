@@ -1,21 +1,20 @@
 ﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel.DataAnnotations;
+using BookLoop.Models;
 
-namespace BorrowSystem.ViewModels
+namespace BookLoop.ViewModels
 {
     public class BorrowRecordsViewModel
     {
         [Display(Name ="讀者ID")]
         public int RecordID { get; set; }
         [Display(Name = "借閱人")]
-        public string MemberName { get; set; } = string.Empty;
+        public string MemberName { get; set; } = "";
         public int ListingID { get; set; }
-        // 作者（從 Listing 關聯而來）
-        public List<int> AuthorIds { get; set; } = new();
-        [BindNever]
-        public List<string> AuthorNames { get; set; } = new();
-        public int? MemberID { get; set; }
+       
+        
+        public int MemberID { get; set; }
 
         [Display(Name = "預約編號")]
         public int? ReservationID { get; set; }
@@ -45,13 +44,22 @@ namespace BorrowSystem.ViewModels
         [Display(Name = "紀錄生成日")]
         public DateTime CreatedAt { get; set; }
 
-        // 借閱人下拉選單用
-        public IEnumerable<SelectListItem> Members { get; set; } = Enumerable.Empty<SelectListItem>();
 
-        [Display(Name = "有庫存")]
-        public bool IsAvailable { get; set; }
 
-        public const int LoanDays = 14;
+
+        public enum ReturnConditionEnum : byte {
+            [Display(Name = "正常歸還")]
+            Normal = 0,
+            [Display(Name = "損毀")]
+            Damaged = 1,
+            [Display(Name = "遺失")]
+            Lost = 2 }
+
+        public ReturnConditionEnum? ReturnCondition { get; set; }
+
+       
+
+        public const int LoanDays = 3;
 
         public enum BorrowCondition : byte
         {

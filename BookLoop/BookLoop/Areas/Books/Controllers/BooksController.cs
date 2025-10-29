@@ -53,9 +53,32 @@ namespace BookSystem.Controllers
 
 			ViewBag.PrimaryImages = primaryMap;
 
+			var totals = await _context.BookInventories
+			.GroupBy(i => i.BookID)
+			.Select(g => new { BookID = g.Key, Total = g.Sum(x => x.OnHand - x.Reserved) })
+			.ToDictionaryAsync(x => x.BookID, x => x.Total);
+			ViewBag.InventoryTotals = totals;
+
 			return View(list);
 		}
 
+		// ⬇️新增 Action：提供各據點可售量，給前台彈窗用
+		// GET: /Books/Books/Availability/5
+		[HttpGet]
+		public async Task<IActionResult> Availability(int id)
+		{
+			var items = await _context.BookInventories
+				.Where(i => i.BookID == id)
+				.Select(i => new
+				{
+					branchName = i.Branch.BranchName,
+					available = i.OnHand - i.Reserved
+				})
+				.OrderByDescending(x => x.available)
+				.ToListAsync();
+
+			return Json(items);
+		}
 
 		#endregion
 
@@ -330,6 +353,21 @@ namespace BookSystem.Controllers
 			var book = await _bookService.GetBookWithRelationsAsync(id.Value);
 			if (book == null) return NotFound();
 
+			var stocks = await _context.BookInventories
+				.Where(x => x.BookID == id.Value)
+				.Select(x => new
+				{
+					x.BranchID,
+					x.Branch.BranchName,
+					Available = x.OnHand - x.Reserved
+				})
+				.Where(x => x.Available > 0)
+				.OrderByDescending(x => x.Available)
+				.ToListAsync();
+
+			ViewBag.BranchStocks = stocks;
+			ViewBag.TotalAvailable = stocks.Sum(s => s.Available);
+
 			return View(book);
 		}
 
@@ -356,6 +394,16 @@ namespace BookSystem.Controllers
 				.Where(i => i.IsPrimary)
 				.GroupBy(i => i.BookID)
 				.ToDictionaryAsync(g => g.Key, g => g.First().FilePath);
+
+			// 新增：庫存 map
+			ViewBag.StockMap = await _context.BookInventories
+				.GroupBy(bi => bi.BookID)
+				.Select(g => new
+				{
+					BookID = g.Key,
+					TotalAvailable = g.Sum(x => x.OnHand - x.Reserved)
+				})
+				.ToDictionaryAsync(x => x.BookID, x => x.TotalAvailable);
 
 			return PartialView("_BooksTable", books);
 		}

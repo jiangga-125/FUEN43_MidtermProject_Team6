@@ -1,0 +1,52 @@
+﻿@model BookLoop.ViewModels.BorrowRecordsViewModel
+
+@{
+    ViewData["Title"] = "Create";
+}
+<h1>借書</h1>
+<div class="row">
+    <div class="col-md-4">
+        @* 因為「書名」與「借閱人」只是顯示用，真正要送出的是 ListingID 和 MemberID（已用 hidden 綁好）。
+        沒有 asp-for 就不會產生 name，瀏覽器就不會把這兩個顯示欄位的值送回去，避免干擾模型繫結。 *@
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="ListingID" />
+            <input type="hidden" asp-for="ReservationID" />
+            <div class="mb-3 d-flex gap-2 align-items-center">
+                <label class="form-label text-nowrap text-center">書名</label>
+                <input class="form-control" value="@Model.BookTitle" readonly />
+            </div>
+            <input asp-for="MemberID" type="hidden" />
+            <div class="mb-3 d-flex gap-2 align-items-center">
+                <label class="form-label text-nowrap text-center">借閱人</label>
+                <input class="form-control" value="@Model.MemberName" readonly />
+            </div>
+            
+            <div class="mb-3 d-flex gap-2 align-items-center">
+                <label class="form-label text-nowrap text-center">借閱日</label>
+                <span class="form-control">
+                    @Model.BorrowDate.ToString("yyyy-MM-dd")
+                </span>
+            </div>
+
+            <div class="mb-3 d-flex gap-2 align-items-center">
+                <label class="form-label text-nowrap text-center">應還日</label>
+                <span class="form-control">
+                    @Model.DueDate.ToString("yyyy-MM-dd")
+                </span>
+            </div>
+            
+            <div class="form-group">
+                <input type="submit" value="確認借閱" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-controller="Reservations" asp-action="Index">返回</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

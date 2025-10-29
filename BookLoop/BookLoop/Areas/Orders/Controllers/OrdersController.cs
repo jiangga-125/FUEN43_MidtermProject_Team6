@@ -22,30 +22,55 @@ namespace BookLoop.Ordersys.Controllers
         }
 
 		// GET: Orders
-		public async Task<IActionResult> Index(int page = 1, int pageSize = 10, int? searchOrderID = null)
+		public async Task<IActionResult> Index(int page = 1,
+			int pageSize = 10,
+			int? searchOrderID = null,
+			string? searchCustomerName = null,
+			int? searchCustomerID = null,
+			DateTime? searchStartDate = null,
+			DateTime? searchEndDate = null,
+			string? searchBookName = null)
 		{
 			var query = _context.Orders
 				.Include(o => o.Customer)
+				 .Include(o => o.OrderDetails)
+		       
 				.AsQueryable();
 
 			// 搜尋條件
 			if (searchOrderID.HasValue)
-			{
 				query = query.Where(o => o.OrderID == searchOrderID.Value);
+
+			if (!string.IsNullOrEmpty(searchCustomerName))
+				query = query.Where(o => o.Customer.CustomerName.Contains(searchCustomerName));
+
+			if (searchCustomerID.HasValue)
+				query = query.Where(o => o.CustomerID == searchCustomerID.Value);
+
+			if (searchStartDate.HasValue)
+				query = query.Where(o => o.OrderDate >= searchStartDate.Value);
+
+			if (searchEndDate.HasValue)
+				query = query.Where(o => o.OrderDate <= searchEndDate.Value);
+			
+            if (!string.IsNullOrEmpty(searchBookName))
+			{
+				query = query.Where(o => o.OrderDetails.Any(od => od.ProductName.Contains(searchBookName)));
 			}
+
 
 			// 總筆數
 			var totalCount = await query.CountAsync();
 
 			// 分頁資料
             var orders = await query
-			   .OrderByDescending(o => o.OrderID) // ← 從第一筆開始
-				.Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+              .OrderByDescending(o => o.OrderID) // ← 從第一筆開始
+            .Skip((page - 1) * pageSize)
+                        .Take(pageSize)
+                        .ToListAsync();
 
-			// 分頁資訊丟到 ViewBag
-			ViewBag.CurrentPage = page;
+            // 分頁資訊丟到 ViewBag
+            ViewBag.CurrentPage = page;
 			ViewBag.PageSize = pageSize;
 			ViewBag.TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 			ViewBag.TotalCount = totalCount;

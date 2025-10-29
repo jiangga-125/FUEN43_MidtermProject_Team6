@@ -1,0 +1,73 @@
+﻿@model IEnumerable<BookLoop.Models.PenaltyRule>
+<table class="table table-hover" id="rulesTable">
+    <thead>
+        <tr>
+            <th>
+                罰款原因
+            </th>
+            <th>
+                計算罰金方式
+            </th>
+            <th>
+                單價
+            </th>
+            <th>
+                規則啟用時間
+            </th>
+            <th>
+                規則停用時間
+            </th>
+            <th>
+                狀態
+            </th>
+            <th>操作欄位</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr class="row-main" data-id="@item.RuleID">
+                <td>
+                    @Html.DisplayFor(modelItem => item.ReasonCode)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.ChargeType)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.UnitAmount)
+                </td>
+                <td>
+                    @item.EffectiveFrom.ToString("yyyy/MM/dd")
+                </td>
+                <td>
+                    @item.EffectiveTo?.ToString("yyyy/MM/dd")                    
+                </td>
+                <td>
+                    @if(item.IsActive == true)
+                    {                      
+                        <span style="font-weight:600;background-color:green;color:#fff;padding:0 .2em;border-radius:.25em">啟用中</span>
+                    }
+                    else
+                    {
+                        <span style="font-weight:600;background-color:red;color:#fff;padding:0 .2em;border-radius:.25em">已停用</span>
+
+					}	                   
+                </td>
+                <td data-col="Ops">
+                    @if (item.IsActive)
+					{//如果是啟用中，顯示停用按鈕
+                     <button class="btn btn-sm btn-warning btn-deactivate">停用</button>
+                    }
+                    else
+					{//如果是停用中，顯示修改按鈕
+                     <button class="btn btn-sm btn-primary btn-edit">修改規則</button>
+                    }                                                            
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+   
+
