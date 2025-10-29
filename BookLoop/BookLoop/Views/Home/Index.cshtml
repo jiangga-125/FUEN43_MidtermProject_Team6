@@ -1,129 +1,136 @@
 ﻿@{
-    ViewData["Title"] = "首頁";
+    ViewBag.Title = "後台儀表板";
 }
-
-<div class="hero-section d-flex align-items-center justify-content-center text-center">
-    <div class="container">
-        <h1 class="display-4 fw-bold text-white mb-3">📚 歡迎來到 BookLoop</h1>
-        <p class="lead text-light mb-4">
-            管理書籍、訂單、二手書共享、報表分析、會員帳號與優惠券
-            一站式後台系統
-        </p>
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12 d-flex align-items-center">
+            <!-- 搜尋列（可保留） -->
+        </div>
     </div>
-</div>
 
-<div class="container my-5">
-    <div class="row g-4">
-        <!-- 書籍管理 -->
-        <div class="col-md-4 col-sm-6">
-            <div class="card shadow-lg h-100 text-center border-0 feature-card">
-                <div class="card-body">
-                    <div class="icon mb-3">📘</div>
-                    <h4 class="fw-bold">書籍管理</h4>
-                    <p class="text-muted">管理新書資訊、分類與出版社。</p>
-                    <a asp-area="Books" asp-controller="Books" asp-action="Index" class="btn btn-dark">進入</a>
-                </div>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <div class="card p-3">
+                <div class="small text-muted">今日訂單數</div>
+                <div id="todayOrderCount" class="h4">--</div>
             </div>
         </div>
-
-        <!-- 訂單管理 -->
-        <div class="col-md-4 col-sm-6">
-            <div class="card shadow-lg h-100 text-center border-0 feature-card">
-                <div class="card-body">
-                    <div class="icon mb-3">🛒</div>
-                    <h4 class="fw-bold">訂單管理</h4>
-                    <p class="text-muted">檢視與管理用戶的訂單資料。</p>
-                    <a asp-area="Orders" asp-controller="Orders" asp-action="Index" class="btn btn-dark">進入</a>
-                </div>
+        <div class="col-md-3">
+            <div class="card p-3">
+                <div class="small text-muted">今日營收</div>
+                <div id="todayRevenue" class="h4">NT$ --</div>
             </div>
         </div>
-
-        <!-- 二手書籍 -->
-        <div class="col-md-4 col-sm-6">
-            <div class="card shadow-lg h-100 text-center border-0 feature-card">
-                <div class="card-body">
-                    <div class="icon mb-3">📚</div>
-                    <h4 class="fw-bold">二手書籍</h4>
-                    <p class="text-muted">共享、借閱與二手書交易。</p>
-                    <a asp-area="Borrow" asp-controller="Listings" asp-action="Index" class="btn btn-dark">進入</a>
-                </div>
+        <div class="col-md-3">
+            <div class="card p-3">
+                <div class="small text-muted">未出貨</div>
+                <div id="unshippedCount" class="h4">--</div>
             </div>
         </div>
-
-        <!-- 報表分析 -->
-        <div class="col-md-4 col-sm-6">
-            <div class="card shadow-lg h-100 text-center border-0 feature-card">
-                <div class="card-body">
-                    <div class="icon mb-3">📊</div>
-                    <h4 class="fw-bold">報表分析</h4>
-                    <p class="text-muted">產生與匯出營運統計報表。</p>
-                    <a asp-area="ReportMail" asp-controller="Reports" asp-action="Index" class="btn btn-dark">進入</a>
-                </div>
+        <div class="col-md-3">
+            <div class="card p-3">
+                <div class="small text-muted">庫存告警</div>
+                <div id="inventoryAlerts" class="h4">--</div>
             </div>
         </div>
+    </div>
 
-        <!-- 帳號管理 -->
-        <div class="col-md-4 col-sm-6">
-            <div class="card shadow-lg h-100 text-center border-0 feature-card">
-                <div class="card-body">
-                    <div class="icon mb-3">👤</div>
-                    <h4 class="fw-bold">帳號管理</h4>
-                    <p class="text-muted">會員帳號與權限控管。</p>
-                    <a asp-area="Account" asp-controller="Home" asp-action="Index" class="btn btn-dark">進入</a>
+    <div class="row mt-3 g-3">
+        <div class="col-lg-8">
+            <div class="card p-3">
+                <div class="d-flex justify-content-between">
+                    <div class="fw-medium">近 14 天銷售走勢</div>
+                    <div>
+                        <select id="salesType" class="form-select form-select-sm">
+                            <option value="revenue">營收</option>
+                            <option value="orders">訂單數</option>
+                        </select>
+                    </div>
                 </div>
+                <canvas id="mySalesChart" height="120"></canvas>
             </div>
         </div>
-
-        <!-- 優惠券 -->
-        <div class="col-md-4 col-sm-6">
-            <div class="card shadow-lg h-100 text-center border-0 feature-card">
-                <div class="card-body">
-                    <div class="icon mb-3">🎟️</div>
-                    <h4 class="fw-bold">優惠券</h4>
-                    <p class="text-muted">建立與管理優惠活動。</p>
-                    <a asp-area="Members" asp-controller="Checkout" asp-action="Index" class="btn btn-dark">進入</a>
-                </div>
+        <div class="col-lg-4">
+            <div class="card p-3">
+                <div class="fw-medium mb-2">最新訂單</div>
+                <div id="latestOrdersList" class="list-group"></div>
             </div>
         </div>
     </div>
 </div>
 
-@section Styles {
-    <style>
-        /* Hero 區塊 */
-        .hero-section {
-            background: url('/images/Background.png') no-repeat center center;
-            background-size: cover;
-            min-height: 60vh;
-            position: relative;
-            color: #fff;
-        }
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-            .hero-section::before {
-                content: "";
-                position: absolute;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.55);
+    <script>
+        (function(){
+          let salesChart;
+
+          async function fetchSummary(){
+            try {
+              const rsp = await fetch('/api/dashboard/summary');
+              if(!rsp.ok) throw new Error('network');
+              const json = await rsp.json();
+
+              document.getElementById('todayOrderCount').textContent = json.todayOrderCount ?? 0;
+              document.getElementById('todayRevenue').textContent = 'NT$ ' + (json.todayRevenue ?? 0).toLocaleString();
+              document.getElementById('unshippedCount').textContent = json.unshippedCount ?? 0;
+              document.getElementById('inventoryAlerts').textContent = json.inventoryAlerts ?? 0;
+
+              const list = document.getElementById('latestOrdersList');
+              list.innerHTML = '';
+              (json.latestOrders || []).forEach(o => {
+                const a = document.createElement('a');
+                a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                a.href = '/Orders/Details/' + (o.Id || o.id || o.OrderId || o.orderId);
+                a.innerHTML = `<div><strong>${o.Id || o.id || o.OrderId || o.orderId}</strong><div class="text-muted small">${o.Member||''}</div></div>
+                               <div class="text-end">${(o.TotalAmount||o.totalAmount||0).toLocaleString()}</div>`;
+                list.appendChild(a);
+              });
+
+            } catch (e) {
+              console.error('fetchSummary err', e);
             }
+          }
 
-            .hero-section .container {
-                position: relative;
-                z-index: 2;
+          async function fetchSales(){
+            try {
+              const rsp = await fetch('/api/dashboard/sales14');
+              if(!rsp.ok) throw new Error('network');
+              const j = await rsp.json();
+
+              const ctx = document.getElementById('mySalesChart').getContext('2d');
+              if(salesChart) salesChart.destroy();
+              salesChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                  labels: j.labels,
+                  datasets: [{
+                    label: '銷售',
+                    data: j.data,
+                    borderWidth: 2,
+                    tension: 0.3,
+                    pointRadius: 3,
+                  }]
+                },
+                options: {
+                  responsive: true,
+                  plugins: { legend: { display: false } },
+                  scales: { y: { beginAtZero: true } }
+                }
+              });
+
+            } catch (e) {
+              console.error('fetchSales err', e);
             }
+          }
 
-        /* 功能卡片 */
-        .feature-card .icon {
-            font-size: 3rem;
-        }
+          fetchSummary();
+          fetchSales();
+          setInterval(()=>{ fetchSummary(); fetchSales(); }, 60000);
 
-        .feature-card {
-            transition: transform 0.2s, box-shadow 0.2s;
-            border-radius: 12px;
-        }
-
-            .feature-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-            }
-    </style>
+          document.getElementById('salesType')?.addEventListener('change', ()=> {
+          });
+        })();
+    </script>
 }
