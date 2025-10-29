@@ -1,0 +1,41 @@
+﻿@model BookLoop.Models.ReviewForbiddenKeyword
+@{
+    ViewData["Title"] = "編輯禁用詞";
+}
+
+<h2 class="mb-3">@ViewData["Title"]</h2>
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+
+    <div class="mb-3">
+        <label asp-for="Keyword" class="form-label"></label>
+        <input asp-for="Keyword" class="form-control" />
+        <span asp-validation-for="Keyword" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Severity" class="form-label"></label>
+        <select asp-for="Severity" class="form-select">
+            <option value="1" selected="@Model.Severity == 1">輕微（警告）</option>
+            <option value="2" selected="@Model.Severity == 2">嚴重（封鎖）</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Description" class="form-label"></label>
+        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="IsActive" class="form-check-input" />
+        <label asp-for="IsActive" class="form-check-label"></label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">💾 更新</button>
+    <a asp-action="Index" class="btn btn-secondary">返回清單</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

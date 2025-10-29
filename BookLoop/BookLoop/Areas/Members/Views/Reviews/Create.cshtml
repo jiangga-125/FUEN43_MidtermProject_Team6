@@ -31,10 +31,11 @@
     </div>
 
     <!-- 書名 -->
-    <div class="mb-3">
-        <label asp-for="TargetBookName" class="form-label">書名</label>
-        <input asp-for="TargetBookName" class="form-control" />
-        <span asp-validation-for="TargetBookName" class="text-danger"></span>
+    <div class="form-group mb-3">
+        <label class="form-label">書名</label>
+        <select class="form-select" asp-for="TargetBookID" asp-items="ViewBag.PurchasedBooks">
+            <option value="">-- 請選擇您購買過的書籍 --</option>
+        </select>
     </div>
 
     <!-- 會員暱稱 -->

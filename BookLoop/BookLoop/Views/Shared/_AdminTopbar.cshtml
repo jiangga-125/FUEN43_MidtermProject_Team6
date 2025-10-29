@@ -1,0 +1,349 @@
+﻿@* /Views/Shared/_AdminTopbar.cshtml *@
+<div class="container-fluid">
+    <div class="d-flex align-items-center gap-3 py-2 position-relative">
+        <!-- 左：搜尋 -->
+        <div class="flex-grow-1 position-relative" id="admin-search-wrap" style="max-width:720px;">
+            <form id="admin-search-form" class="d-none d-md-block" autocomplete="off">
+                <div class="input-group">
+                    @* <span class="input-group-text"><i class="bi bi-search"></i></span> *@
+                    <input id="admin-search-input" class="form-control"
+                           placeholder="搜尋訂單 / 書名 / 會員…" />
+                    <button id="admin-search-go" class="btn btn-outline-secondary" type="button">🔍</button>
+                </div>
+            </form>
+
+            <!-- 下拉建議 -->
+            <div id="admin-suggest" class="dropdown-menu w-100" style="max-height:320px; overflow:auto;"></div>
+        </div>
+
+        <!-- 右：帳號 / 標籤等 -->
+        <div class="d-flex align-items-center gap-3 ms-auto">
+            <div class="dropdown">
+                <button class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="bi bi-person-circle me-1"></i> @User?.Identity?.Name
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" asp-area="Account" asp-controller="Users" asp-action="Index">帳號設定</a></li>
+                    <li><a class="dropdown-item" asp-area="Account" asp-controller="Permissions" asp-action="Index">權限/角色</a></li>
+                    <li><hr class="dropdown-divider" /></li>
+                    <li>
+                        <form asp-area="" asp-controller="Auth" asp-action="Logout" method="post" class="px-3 py-1 m-0">
+                            <button type="submit" class="btn btn-link text-danger p-0 w-100 text-start">登出</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 即時結果面板（不跳頁） -->
+<div id="admin-live-results" class="container-fluid admin-live" style="display:none; position:sticky; top:64px; z-index:1020;">
+    <div class="card border-0 shadow-xl admin-live-card">
+        <div class="d-flex align-items-center justify-content-between px-3 pt-3">
+            <div class="admin-live-title">
+                <i class="bi bi-lightning-charge"></i> 即時搜尋結果
+            </div>
+            <button class="btn btn-sm btn-outline-secondary rounded-pill" id="admin-live-close">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="card-body pt-2 pb-3">
+            <div id="admin-live-list" class="list-group list-group-flush admin-list"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* —— 美化（僅此元件作用） —— */
+    #admin-search .admin-search-bar {
+        border-radius: 16px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 8px 24px rgba(15,23,42,.07);
+    }
+
+    #admin-search .form-control {
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    #admin-search .input-group-text {
+        background: transparent;
+        border: 0;
+        font-size: 1.1rem;
+    }
+
+    #admin-search .form-control:focus {
+        outline: none;
+        box-shadow: none;
+    }
+    /* 下拉建議：玻璃卡片 + 柔和邊框 */
+    .admin-suggest {
+        display: block;
+        visibility: hidden;
+        opacity: 0;
+        transform: translateY(8px);
+        width: 100%;
+        max-height: 360px;
+        overflow: auto;
+        border: 1px solid rgba(15,23,42,.08);
+        border-radius: 14px;
+        padding: .5rem;
+        backdrop-filter: blur(8px);
+        background: rgba(255,255,255,.85);
+        transition: all .18s ease;
+    }
+
+    .admin-suggest.show {
+        visibility: visible;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .admin-suggest .dropdown-item {
+        border-radius: 10px;
+        padding: .55rem .75rem;
+        display: flex;
+        gap: .75rem;
+        align-items: center;
+    }
+
+    .admin-suggest .dropdown-item:hover {
+        background: #f4f7fb;
+    }
+
+    .admin-suggest .dropdown-item strong {
+        color: #2563eb;
+        font-weight: 700;
+        margin-right: .25rem;
+    }
+
+    .admin-suggest .dropdown-item .text-muted {
+        font-size: .82rem;
+    }
+
+    /* 即時結果面板：柔光卡片 */
+    .admin-live-card {
+        border-radius: 18px;
+        overflow: hidden;
+        backdrop-filter: blur(8px);
+        background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.88));
+        box-shadow: 0 12px 32px rgba(15,23,42,.12);
+        animation: fadeInUp .22s ease;
+    }
+
+    .admin-live-title {
+        font-weight: 700;
+        letter-spacing: .02em;
+        color: #0f172a;
+    }
+
+    .admin-list .list-group-item {
+        border: 0;
+        padding: .8rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-radius: 12px;
+        margin: .15rem 0;
+    }
+
+    .admin-list .list-group-item:hover {
+        background: #f6f8fc;
+    }
+
+    .admin-list .list-group-item strong {
+        color: #0ea5e9;
+    }
+
+    .admin-list .text-muted {
+        font-size: .85rem;
+    }
+
+    .shadow-xl {
+        box-shadow: 0 16px 40px rgba(15,23,42,.18) !important;
+    }
+
+    @@keyframes fadeInUp {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+</style>
+
+<script>
+    (function(){
+      'use strict';
+
+      // 等 DOM 準備好再執行（避免 document.getElementById 回傳 null）
+      document.addEventListener('DOMContentLoaded', function () {
+
+        // 取得元素（安全取用）
+        const input   = document.getElementById('admin-search-input');
+        const btnGo   = document.getElementById('admin-search-go');
+        const form    = document.getElementById('admin-search-form');
+        const suggest = document.getElementById('admin-suggest');
+        const liveBox = document.getElementById('admin-live-results');
+        const liveLst = document.getElementById('admin-live-list');
+        const liveClose = document.getElementById('admin-live-close');
+
+        // 基本護欄：如果沒有主要元件就不繼續（避免後續錯誤）
+        if(!input || !form || !suggest) {
+          // 不要拋錯，記錄在 console 幫助除錯
+          console.warn('Admin search script: 必要 DOM 元素缺失，已停止初始化。', {
+            input: !!input, form: !!form, suggest: !!suggest, liveBox: !!liveBox
+          });
+          return;
+        }
+
+        // 小工具：防抖（保持你原本行為）
+        const debounce = (fn, d=200)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), d); }; };
+
+        // 如果有 form，阻止實際 submit（你的原本邏輯）
+        form.addEventListener('submit', e=> e.preventDefault());
+
+        // 安全地註冊按鈕事件（若 btnGo 存在）
+        if(btnGo) btnGo.addEventListener('click', ()=> doQuick(input.value));
+
+        // 收合提示：確保 wrap 存在才用 contains
+        document.addEventListener('click', (e)=>{
+          const wrap = document.getElementById('admin-search');
+          if(!wrap) return;
+          if(!wrap.contains(e.target)) suggest.classList.remove('show');
+        });
+
+        // liveClose 可能不存在：檢查後再綁定
+        if(liveClose) liveClose.addEventListener('click', hideLive);
+
+        // 鍵盤：Enter→即時結果、Esc→關閉（input 一定存在，因為上面有檢查）
+        input.addEventListener('keydown', (e)=>{
+          if(e.key==='Escape'){ suggest.classList.remove('show'); hideLive(); }
+          if(e.key==='Enter'){ e.preventDefault(); doQuick(input.value); }
+        });
+
+        // 下拉建議：input 一定存在
+        input.addEventListener('input', ()=> doSuggest(input.value));
+
+        // 安全的 escapeHtml（若全域不存在，這裡有 fallback）
+        function escapeHtml(s){
+          s = (s===undefined || s===null) ? '' : String(s);
+          return s.replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); });
+        }
+
+        // 你原本的 item 建構範本（保留註解版，必要時可打開）
+        function itemSuggest(x){
+          const icon = iconByType(x.type);
+          return `
+            <a class="dropdown-item" href="${x.url}">
+              <div class="d-flex align-items-start">
+                <div class="me-2 mt-1">${icon}</div>
+                <div>
+                  <div><strong>[${escapeHtml(x.type)}]</strong> ${escapeHtml(x.title)}</div>
+                  ${x.sub?`<div class="text-muted">${escapeHtml(x.sub)}</div>`:''}
+                </div>
+              </div>
+              <i class="bi bi-box-arrow-up-right"></i>
+            </a>`;
+        }
+
+        function itemLive(x){
+          const icon = iconByType(x.type);
+          return `
+            <a class="list-group-item list-group-item-action" href="${x.url}">
+              <div class="d-flex align-items-start">
+                <div class="me-2 mt-1">${icon}</div>
+                <div>
+                  <div><strong>[${escapeHtml(x.type)}]</strong> ${escapeHtml(x.title)}</div>
+                  ${x.sub?`<div class="text-muted">${escapeHtml(x.sub)}</div>`:''}
+                </div>
+              </div>
+              <i class="bi bi-chevron-right"></i>
+            </a>`;
+        }
+
+        // doSuggest（防抖）
+        const doSuggest = debounce(async (q)=>{
+          q = (q||'').trim();
+          if(q.length<2){ suggest.classList.remove('show'); return; }
+          try {
+            const rsp  = await fetch(`/api/search/suggest?q=${encodeURIComponent(q)}`);
+            if(!rsp.ok) throw new Error('network');
+            const data = await rsp.json();
+            const items = data.items || [];
+            if(!items.length){ suggest.classList.remove('show'); return; }
+
+            suggest.innerHTML = items.map(x => itemSuggest(x)).join('');
+            suggest.classList.add('show');
+          } catch(err){
+            console.warn('doSuggest err', err);
+            suggest.classList.remove('show');
+          }
+        }, 160);
+
+        // doQuick（即時結果）
+        async function doQuick(q){
+          q = (q||'').trim();
+          if(q.length<2){ hideLive(); return; }
+          try {
+            const rsp  = await fetch(`/api/search/quick?q=${encodeURIComponent(q)}`);
+            if(!rsp.ok) throw new Error('network');
+            const data = await rsp.json();
+            const items = data.items || [];
+            if(!items.length){
+              if(liveLst) liveLst.innerHTML = `<div class="p-3 text-muted">找不到「${escapeHtml(q)}」</div>`;
+              showLive(); return;
+            }
+            if(liveLst){
+              liveLst.innerHTML = items.map(x =>
+                `<a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="${x.url}">
+                   <div><strong>[${escapeHtml(x.type)}]</strong> ${escapeHtml(x.title)}
+                   ${x.sub?`<div class="text-muted small">${escapeHtml(x.sub)}</div>`:''}</div>
+                   <i class="bi bi-chevron-right"></i>
+                 </a>`
+              ).join('');
+            }
+            showLive();
+            suggest.classList.remove('show');
+          } catch(err){
+            console.warn('doQuick err', err);
+            hideLive();
+          }
+        }
+
+        // show/hide 用 function（用 function 宣告可被 hoist，避免 TDZ）
+        function showLive(){ if(liveBox) liveBox.style.display='block'; }
+        function hideLive(){ if(liveBox) liveBox.style.display='none'; }
+
+        // icon helper（放這裡備援）
+        function iconByType(t){
+          t = (t||'').toLowerCase();
+          if(t.includes('book'))   return '<i class="bi bi-book text-primary"></i>';
+          if(t.includes('order'))  return '<i class="bi bi-receipt text-success"></i>';
+          if(t.includes('member')) return '<i class="bi bi-person text-info"></i>';
+          if(t.includes('borrow')) return '<i class="bi bi-journal-arrow-down text-warning"></i>';
+          if(t.includes('mail'))   return '<i class="bi bi-envelope-paper text-danger"></i>';
+          return '<i class="bi bi-search"></i>';
+        }
+
+        // （可選）把部分常用函式掛到 window，若頁面其他 inline handler 會呼叫到它
+        window.doQuick = doQuick;
+        window.showLive = showLive;
+        window.hideLive = hideLive;
+        window.iconByType = iconByType;
+        window.escapeHtml = escapeHtml;
+
+      }); // DOMContentLoaded end
+
+    })(); // IIFE 結束
+</script>
+
