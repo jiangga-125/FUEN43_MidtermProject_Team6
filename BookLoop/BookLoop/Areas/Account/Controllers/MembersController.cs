@@ -9,9 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Account.Controllers;
 
-[Authorize(Policy = "Members.View")]
-[Area("Account")]
-public class MembersController : Controller
+// ✅ 改成繼承 Base（Base 上有 [Area("Account")] + [Authorize(Policy="Account.Access")]）
+public class MembersController : AccountAreaController
 {
 	private readonly AppDbContext _db;
 
@@ -19,6 +18,8 @@ public class MembersController : Controller
 
 	// GET: /Members
 	// 支援：keyword、status、page、pageSize、sort、dir（asc/desc）
+	// ✅ 查看清單需要 Members.Index
+	[Authorize(Policy = "Members.Index")]
 	public async Task<IActionResult> Index(
 		string? keyword,
 		int? status,
@@ -32,7 +33,6 @@ public class MembersController : Controller
 
 		var now = DateTime.UtcNow;
 
-		// 基礎查詢 + 條件
 		var baseQuery = _db.Members.AsNoTracking();
 
 		if (!string.IsNullOrWhiteSpace(keyword))
@@ -49,7 +49,6 @@ public class MembersController : Controller
 			baseQuery = baseQuery.Where(m => m.Status == status.Value);
 		}
 
-		// 投影：把「是否黑名單中」以子查詢算出（不依賴 View/Keyless）
 		var query =
 			from m in baseQuery
 			select new MemberListVM
@@ -68,7 +67,6 @@ public class MembersController : Controller
 					b.LiftedAt == null)
 			};
 
-		// 排序（含黑名單欄位）
 		bool asc = string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase);
 		query = sort switch
 		{
@@ -82,12 +80,8 @@ public class MembersController : Controller
 			"id" or _ => asc ? query.OrderBy(x => x.MemberID) : query.OrderByDescending(x => x.MemberID),
 		};
 
-		// 總數 + 分頁
 		var total = await query.CountAsync();
-		var items = await query
-			.Skip((page - 1) * pageSize)
-			.Take(pageSize)
-			.ToListAsync();
+		var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
 		var vm = new MemberIndexVM
 		{
@@ -104,7 +98,7 @@ public class MembersController : Controller
 		return View(vm);
 	}
 
-	// 其餘 CRUD（若你已實作可保留原版）
+	// ✅ 建立/編輯/刪除：使用 Members.Edit
 	[Authorize(Policy = "Members.Edit")]
 	public IActionResult Create()
 	{
@@ -176,7 +170,6 @@ public class MembersController : Controller
 		entity.TotalBorrows = input.TotalBorrows;
 		entity.UpdatedAt = DateTime.UtcNow;
 
-		// 併發（若你有 RowVersion）
 		try
 		{
 			await _db.SaveChangesAsync();
@@ -197,6 +190,8 @@ public class MembersController : Controller
 		}
 	}
 
+	// ✅ 詳細：可視為列表延伸，沿用 Members.Index（或你也可獨立成 Members.Details）
+	[Authorize(Policy = "Members.Index")]
 	public async Task<IActionResult> Details(int id)
 	{
 		var m = await _db.Members.AsNoTracking().FirstOrDefaultAsync(x => x.MemberID == id);

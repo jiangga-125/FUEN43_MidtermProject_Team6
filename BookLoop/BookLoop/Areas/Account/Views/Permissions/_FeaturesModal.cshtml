@@ -1,0 +1,97 @@
+﻿@* Modal + Script for 功能設定 *@
+<div class="modal fade" id="featModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">功能設定</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <div id="feat_body" class="container-fluid">
+                    <div class="text-muted">載入中...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form id="__af">@Html.AntiForgeryToken()</form>
+<input type="hidden" id="feat_perm_id" />
+
+<script>
+    (function(){
+      
+      document.addEventListener('click', function(e){
+        const btn = e.target.closest('.btn-features');
+        if(!btn) return;
+
+        const id = btn.getAttribute('data-id');
+        if(!id){ alert('找不到 PermissionID'); return; }
+
+        document.getElementById('feat_perm_id').value = id;
+        document.getElementById('feat_body').innerHTML = "<div class='text-muted'>載入中...</div>";
+        new bootstrap.Modal(document.getElementById('featModal')).show();
+
+        fetch("@Url.Action("GetFeatures", "Permissions", new { area = "Account" })?id=" + encodeURIComponent(id),
+              { credentials: 'same-origin' })
+          .then(r => { if(!r.ok) throw r; return r.json(); })
+          .then(res => {
+            if(!res || !Array.isArray(res.features)){
+              document.getElementById('feat_body').innerHTML = "<div class='text-danger'>讀到非預期資料</div>";
+              console.error('GetFeatures unexpected:', res);
+              return;
+            }
+            const checked = res.checkedIds || [];
+            let html = "<div class='row'>";
+            res.features.forEach(f => {
+              const isChecked = checked.indexOf(f.featureID) >= 0 ? "checked" : "";
+              const label = (f.featureGroup ? "[" + f.featureGroup + "] " : "") + (f.name || f.code);
+              html += `
+                <div class="col-6 col-md-4">
+                  <div class="form-check">
+                    <input class="form-check-input feat-toggle" type="checkbox"
+                           data-id="${id}" data-fid="${f.featureID}" ${isChecked}>
+                    <label class="form-check-label">${label}</label>
+                  </div>
+                </div>`;
+            });
+            html += "</div>";
+            document.getElementById('feat_body').innerHTML = html;
+          })
+          .catch(err => {
+            document.getElementById('feat_body').innerHTML =
+              "<div class='text-danger'>讀取功能列表失敗：" + (err.status || '') + "</div>";
+            console.error('GetFeatures failed:', err);
+          });
+      });
+
+      // 勾選/取消
+      document.addEventListener('change', function(e){
+        const chk = e.target.closest('.feat-toggle');
+        if(!chk) return;
+
+        const id  = chk.getAttribute('data-id');
+        const fid = chk.getAttribute('data-fid');
+        const enable = chk.checked;
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        fetch("@Url.Action("ToggleFeature", "Permissions", new { area = "Account" })", {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'RequestVerificationToken': token
+          },
+          body: new URLSearchParams({ id:id, featureId:fid, enable:String(enable) })
+        }).then(r => { if(!r.ok) throw r; })
+          .catch(err => {
+            alert('更新失敗：' + (err.status || ''));
+            console.error('ToggleFeature failed:', err);
+          });
+      });
+
+    })();
+</script>

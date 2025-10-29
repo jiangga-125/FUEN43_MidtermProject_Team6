@@ -1,0 +1,112 @@
+/* --- BookLoop Admin Theme --- */
+:root {
+    /* 基本調色盤 */
+    --bg: #f6f7f8;
+    --panel: #ffffff;
+    --ink: #212529;
+    --muted: #6c757d;
+    --brand: #2aa198; 
+    --brand-2: #116466; 
+    --accent: #ffc857; 
+    --line: #e9ecef;
+    --sidebar: #0f172a;
+    --sidebar-ink: #e2e8f0;
+    --bs-body-bg: var(--bg);
+    --bs-body-color: var(--ink);
+    --bs-border-color: var(--line);
+    --bs-primary: var(--brand);
+    --bs-secondary: var(--brand-2);
+    --bs-warning: var(--accent);
+    --bs-link-color: var(--brand);
+    --bs-link-hover-color: #1f7e79;
+    --bs-card-bg: var(--panel);
+    --bs-card-border-color: var(--line);
+}
+
+/* 版面骨架 */
+body {
+    background: var(--bg);
+    color: var(--ink);
+}
+.card {
+    background: var(--panel);
+    border-color: var(--line);
+}
+.card .text-muted {
+    color: var(--muted) !important;
+}
+
+
+
+/* 側欄 */
+.sidebar {
+    width: 240px;
+    background: #0f172a;
+    color: #e2e8f0;
+    overflow: visible;
+}
+.sidebar .nav-link {
+    color: #9adbd5; /* 青綠字色（比白亮一點） */
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background: rgba(255,255,255,.08);
+    color: #fff;
+}
+
+/* dropdown 在側欄顯示層級 */
+.sidebar .dropdown-menu {
+    z-index: 2000;
+}
+
+/* Navbar / 標題列 */
+.navbar {
+    background: #ffffff;
+    border-bottom: 1px solid var(--line);
+}
+.navbar .navbar-brand {
+    color: var(--brand-2);
+}
+.navbar .form-control {
+    background: #fff;
+}
+/* 主按鈕色系與狀態色 */
+.btn-primary {
+    background: var(--brand);
+    border-color: var(--brand);
+}
+.btn-primary:hover {
+    filter: brightness(0.95);
+}
+.badge.bg-warning {
+    color: #4a3b00;
+}
+
+/* 表格/連結 */
+.table thead th {
+    border-bottom-color: var(--line);
+}
+a {
+    color: var(--brand);
+}
+a:hover {
+    color: #1f7e79;
+}
+
+/* 小工具卡片上的數字/標籤微調 */
+.metric-tag {
+    color: var(--muted);
+}
+.metric-value {
+    color: var(--ink);
+}
+:root {
+    --chart-line: var(--brand);
+    --chart-fill: rgba(42,161,152,.12);
+}

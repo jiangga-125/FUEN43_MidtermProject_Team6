@@ -2,6 +2,7 @@
 using BookLoop.Helpers;
 using BookLoop.Models;
 using BookLoop.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -14,6 +15,7 @@ using System.Threading.Tasks;
 namespace BookSystem.Controllers
 {
 	[Area("Books")]
+	[Authorize(Policy = "Books.Access")]
 	public class BooksController : Controller
 	{
 		private readonly BookSystemContext _context;
