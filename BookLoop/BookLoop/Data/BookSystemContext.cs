@@ -26,7 +26,11 @@ public partial class BookSystemContext : DbContext
 
     public virtual DbSet<RawBook> RawBooks { get; set; }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+	public DbSet<Branch> Branches { get; set; } = null!;
+	public DbSet<BookInventory> BookInventories { get; set; } = null!;
+
+
+	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Author>(entity =>
         {
@@ -98,7 +102,41 @@ public partial class BookSystemContext : DbContext
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
         });
 
-        OnModelCreatingPartial(modelBuilder);
+		modelBuilder.Entity<Branch>(e =>
+		{
+			e.ToTable("Branches");
+			e.HasKey(x => x.BranchID);
+			e.Property(x => x.BranchName).HasMaxLength(100).IsRequired();
+			e.Property(x => x.IsActive).HasDefaultValue(true);
+			e.Property(x => x.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+			e.Property(x => x.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+		});
+
+		modelBuilder.Entity<BookInventory>(e =>
+		{
+			e.ToTable("BookInventory");
+			e.HasKey(x => x.InventoryID);
+			e.HasIndex(x => new { x.BookID, x.BranchID }).IsUnique();
+
+			e.Property(x => x.OnHand).HasDefaultValue(0);
+			e.Property(x => x.Reserved).HasDefaultValue(0);
+			e.Property(x => x.RowVersion).IsRowVersion();
+			e.Property(x => x.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+
+			e.HasOne(x => x.Book)
+			 .WithMany(b => b.Inventories)
+			 .HasForeignKey(x => x.BookID)
+			 .OnDelete(DeleteBehavior.NoAction)
+			 .HasConstraintName("FK_BookInventory_Books");
+
+			e.HasOne(x => x.Branch)
+			 .WithMany(b => b.Inventories)
+			 .HasForeignKey(x => x.BranchID)
+			 .OnDelete(DeleteBehavior.NoAction)
+			 .HasConstraintName("FK_BookInventory_Branches");
+		});
+
+		OnModelCreatingPartial(modelBuilder);
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);

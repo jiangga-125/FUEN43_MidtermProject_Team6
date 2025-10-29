@@ -1,0 +1,53 @@
+﻿@model BookLoop.ViewModels.ReservationsViewModel
+
+@{
+    ViewData["Title"] = "借書";
+}
+
+<h1>借書</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="BeforeReservation" method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="ListingID" />
+            <div class="mb-3 d-flex gap-2 align-items-center">
+                <label class="form-label text-nowrap text-center">書名</label>
+                <input asp-for="BookTitle" class="form-control" readonly style="width:600px"/>
+            </div>
+            <div class="mb-3 d-flex gap-2 align-items-center">
+                <label asp-for="MemberID" class="form-label text-nowrap text-center">選擇預約者</label>
+                <select asp-for="MemberID" asp-items="Model.Members" class="form-select">
+                    <option value="">-- 請選擇 --</option>
+                </select>
+                <span asp-validation-for="MemberID" class="text-danger text-nowrap text-center"></span>
+            </div>
+            <div class="form-group d-flex gap-2 align-items-center mt-4 text-nowrap">
+                <label asp-for="RequestedPickupDate" class="control-label text-nowrap text-center"></label>
+                <input asp-for="RequestedPickupDate" id="pickupDate" class="form-control" type="date"
+                       min="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")"
+                       max="@DateTime.Today.AddDays(3).ToString("yyyy-MM-dd")" required />
+                <span asp-validation-for="RequestedPickupDate" class="text-danger"></span>
+            </div>
+
+            <div class="form-group d-flex gap-2 align-items-center mt-2 text-nowrap">
+                <label asp-for="RequestedPickupTime" class="control-label text-nowrap text-center">最晚取書時間</label>
+                <input asp-for="RequestedPickupTime" id="pickupTime" class="form-control"
+                       type="time" readonly/>
+                <span asp-validation-for="RequestedPickupTime" class="text-danger"></span>
+               
+            </div>                      
+            <div class="form-group mt-4 d-flex gap-2">
+                <input type="submit" value="借書" class="btn btn-primary" />
+				<a class="btn btn-success" asp-controller="Listings" asp-action="Indexfront">回書籍總覽</a>               
+            </div>
+        </form>
+    </div>
+</div>
+
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+   
+   
+}

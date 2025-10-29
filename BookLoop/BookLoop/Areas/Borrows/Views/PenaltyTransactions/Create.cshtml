@@ -1,0 +1,77 @@
+﻿@model BookLoop.ViewModels.PenaltyTransactionsViewModel
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h4>設定罰金紀錄</h4>
+
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create" method="post">           
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="MemberID" />
+            <input type="hidden" asp-for="RecordID" />
+                <div class="form-group mb-3 d-flex gap-2 align-items-center">
+                <label asp-for="RecordID" class="form-label text-nowrap text-center">借閱紀錄ID</label>
+                <input asp-for="RecordID" class ="form-control" readonly />
+            </div>
+            <div class="form-group mb-3 d-flex gap-2 align-items-center">
+                <label asp-for="MemberName" class="form-label text-nowrap text-center">借閱人姓名</label>
+                <input asp-for="MemberName" class="form-control" readonly />
+            </div>
+            <div class="form-group mb-3 d-flex gap-2 align-items-center">
+                <label asp-for="RuleID" class="form-label text-nowrap text-center">規則</label>
+                <select asp-for="RuleID" class ="form-control" asp-items="ViewBag.RuleID"></select>
+            </div>
+
+            <div class="form-group mb-3 d-flex gap-2 align-items-center">
+                <label asp-for="Quantity" class="form-label text-nowrap text-center">數量</label>
+                <input asp-for="Quantity" class="form-control" min="1" max="300" />
+                <span asp-validation-for="Quantity" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3 d-flex gap-2 align-items-center">
+                <label asp-for="UnitAmount" class="form-label text-nowrap text-center">單價</label>
+                <input asp-for="UnitAmount" class="form-control" readonly />
+                <span asp-validation-for="UnitAmount" class="text-danger"></span>
+            </div>
+            <div class="form-group mb-3 d-flex gap-2 align-items-center">
+                <label asp-for="PaidAt" class="form-label text-nowrap text-center">繳清時間</label>
+                <input asp-for="PaidAt" class="form-control" type="date" />
+                <span asp-validation-for="PaidAt" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="設定罰金紀錄" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-controller="BorrowRecords" asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
+    <script>
+        // 從後端拿到 { RuleID: UnitAmount } 的對照表
+        const prices = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.RulePrices));
+
+        const sel = document.getElementById('RuleID');
+        const amount = document.getElementById('UnitAmount');
+
+        function updatePrice() {
+          const id = sel.value;
+          if (prices && prices.hasOwnProperty(id)) {
+            amount.value = prices[id];
+          } else {
+            amount.value = '';
+          }
+        }
+
+        // 初始載入和每次變更都同步單價
+        document.addEventListener('DOMContentLoaded', updatePrice);
+        sel.addEventListener('change', updatePrice);
+    </script>
+}

@@ -1,0 +1,65 @@
+﻿@model IEnumerable<BookLoop.Models.PenaltyTransaction>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.CreatedAt)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Quantity)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PaidAt)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Member)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Record)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Rule)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.CreatedAt)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Quantity)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.PaidAt)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Member.Username)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Record.RecordID)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Rule.ChargeType)
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.PenaltyID">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.PenaltyID">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.PenaltyID">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

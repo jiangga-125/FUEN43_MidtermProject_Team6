@@ -41,4 +41,6 @@ public partial class Category
 	public virtual ICollection<Listing> Listings { get; set; } = new List<Listing>();
 
 	public virtual Category? Parent { get; set; }
+
+	public virtual ICollection<CouponCategory> CouponCategories { get; set; } = new List<CouponCategory>();
 }
