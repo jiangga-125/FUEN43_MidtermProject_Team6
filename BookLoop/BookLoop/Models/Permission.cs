@@ -1,10 +1,12 @@
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace BookLoop
 {
     public class Permission
     {
-        public int PermissionID { get; set; }
+		[Key]
+		public int PermissionID { get; set; }
         public string PermKey { get; set; } = "";
         public string PermName { get; set; } = "";
         public string? PermGroup { get; set; }

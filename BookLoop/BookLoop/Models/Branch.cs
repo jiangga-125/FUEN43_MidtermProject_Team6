@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace BookLoop.Models
 {
 	public class Branch
 	{
+		[Key]
 		public int BranchID { get; set; }
 		public string BranchName { get; set; } = null!;
 		public bool IsActive { get; set; } = true;

@@ -7,8 +7,10 @@ using ReportFilter = BookLoop.Models.ReportFilter;
 
 namespace BookLoop.Models;
 
+
 public partial class ReportMailDbContext : DbContext
 {
+
     public ReportMailDbContext(DbContextOptions<ReportMailDbContext> options)
         : base(options)
     {
@@ -23,3 +25,5 @@ public partial class ReportMailDbContext : DbContext
     public virtual DbSet<ReportFilter> ReportFilters { get; set; }
 
 }
+
+
