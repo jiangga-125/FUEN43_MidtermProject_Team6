@@ -1,65 +1,133 @@
-﻿@model Account.Controllers.MembersController.MemberIndexVM
+﻿@inject Microsoft.AspNetCore.Authorization.IAuthorizationService Authz
+@model Account.Controllers.MembersController.MemberIndexVM
 @{
     ViewData["Title"] = "會員清單";
+    // 重要：使用三參數多載（resource 以 null 傳入）
+    var canCreate = (await Authz.AuthorizeAsync(User, null, "Members.Create")).Succeeded;
 }
 
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <h2 class="mb-0">會員清單</h2>
-    @if (User.HasClaim("perm", "Members.Edit"))
-    {
-        <a class="btn btn-primary" asp-action="Create">新增會員</a>
-    }
-</div>
+<h2 class="mb-3 page-title">🧑‍🤝‍🧑 會員帳號列表</h2>
 
 @await Html.PartialAsync("_Alerts")
 
-<form id="filter-form" method="get" class="row g-2 mb-3">
-    <div class="col-sm-4">
-        <input name="keyword" class="form-control" placeholder="關鍵字（姓名 / Email / Phone）" value="@Model.Keyword" />
-    </div>
-    <div class="col-sm-3">
-        @await Html.PartialAsync(
-        "_StatusSelect",
-                viewData: new ViewDataDictionary(ViewData)
-                {
-                    ["selected"] = Model.Status,
-                    ["includeAll"] = true,
-                    ["allText"] = "全部狀態",
-                    ["name"] = "status",
-                    ["class"] = "form-select js-auto-submit"
-                })
-    </div>
-    <div class="col-sm-2">
-        @await Html.PartialAsync(
-                "_PageSizeSelect",
-                viewData: new ViewDataDictionary(ViewData)
-                {
-                    ["selected"] = Model.PageSize,
-                    ["name"] = "pageSize",
-                    ["class"] = "form-select js-auto-submit",
-                    ["sizes"] = new[] { 10, 20, 50 }
-                })
-    </div>
-    <div class="col-sm-3">
-        <button class="btn btn-outline-secondary">搜尋</button>
-        <a class="btn btn-outline-dark ms-1" asp-action="Index">重置</a>
-    </div>
-</form>
+<div class="list-shell">
+    @* 共用篩選列 *@
+    @await Html.PartialAsync("_ListFilterBar", viewData: new ViewDataDictionary(ViewData) {
+        ["keywordName"]  = "keyword",
+        ["keywordValue"] = Model.Keyword ?? "",
 
-<div id="list-container">
-    @await Html.PartialAsync("_MembersList", Model)  @* 首次 SSR，之後 AJAX 置換 *@
+        ["statusPartial"] = await Html.PartialAsync("_StatusSelect",
+            viewData: new ViewDataDictionary(ViewData) {
+                ["selected"]   = Model.Status,
+                ["includeAll"] = true,
+                ["allText"]    = "全部狀態",
+                ["name"]       = "status",
+                ["class"]      = "form-select js-auto-submit"
+            }
+        ),
+
+        ["pageSizePartial"] = await Html.PartialAsync("_PageSizeSelect",
+            viewData: new ViewDataDictionary(ViewData) {
+                ["selected"] = Model.PageSize,
+                ["name"]     = "pageSize",
+                ["class"]    = "form-select js-auto-submit",
+                ["sizes"]    = new[] { 10, 20, 50 }
+            }
+        ),
+
+        // 以 Policy 控制是否顯示「新增」按鈕
+        ["newButton"]      = canCreate,
+        ["newText"]        = "新增會員",
+        ["newAction"]      = "Create",
+        ["newController"]  = "Members",
+        ["newArea"]        = "Account"
+    })
+
+    <div id="list-container">
+        @await Html.PartialAsync("_MembersList", Model)
+    </div>
 </div>
 
-@section Scripts {
-    @await Html.PartialAsync(
-    "_ListAjaxScripts",
-        viewData: new ViewDataDictionary(ViewData)
-        {
-            ["controller"] = "Members",
-            ["listAction"] = "List",
-            ["indexAction"] = "Index",
-            ["formId"] = "filter-form",
-            ["containerId"] = "list-container",
-            // ["fixedQuery"] = "supplierId=3" // 如需固定參數可開啟
-        })
+@* 刪除用 Modal（置中顯示） *@
+<div class="modal fade" id="delModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow">
+      <form id="delForm" method="post" data-action="@Url.Action("DeleteAjax","Members", new { area = "Account" })">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" id="del-id" />
+        <div class="modal-header">
+          <h5 class="modal-title">刪除確認</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-warning">
+            你即將刪除下列會員，動作無法還原：
+            <div class="mt-2">
+              <div><strong>ID：</strong><span id="del-mid">-</span></div>
+              <div><strong>姓名：</strong><span id="del-name">-</span></div>
+              <div><strong>Email：</strong><span id="del-email">-</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="submit" class="btn btn-danger">確認刪除</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+@section Scripts{
+<script>
+  // 啟動共用 AJAX 換頁/篩選
+  listPageBoot({
+    listUrl:  '@Url.Action("List","Members",  new { area = "Account" })',
+    indexUrl: '@Url.Action("Index","Members", new { area = "Account" })',
+    onAfterRender: bindRowEvents
+  });
+
+  function bindRowEvents() {
+    document.querySelectorAll('.js-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('del-id').value         = btn.dataset.id;
+        document.getElementById('del-mid').textContent  = btn.dataset.id;
+        document.getElementById('del-name').textContent = btn.dataset.name || '-';
+        document.getElementById('del-email').textContent= btn.dataset.email || '-';
+        new bootstrap.Modal(document.getElementById('delModal')).show();
+      });
+    });
+  }
+  bindRowEvents();
+
+  // 刪除送出（AJAX）
+  const delForm = document.getElementById('delForm');
+  delForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const anti = delForm.querySelector('input[name="__RequestVerificationToken"]').value;
+    const id   = document.getElementById('del-id').value;
+    try {
+      const resp = await fetch(delForm.dataset.action, {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({ '__RequestVerificationToken': anti, id })
+      });
+      if (resp.status === 401) { location.href='@Url.Content("~/Auth/Login")'; return; }
+      if (resp.status === 403) { alert('沒有權限執行刪除。'); return; }
+      const data = await resp.json();
+      if (data?.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('delModal'))?.hide();
+        listPageReload();
+      } else {
+        alert(data?.message || '刪除失敗');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('網路異常，請稍後再試。');
+    }
+  });
+</script>
 }
