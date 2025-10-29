@@ -27,7 +27,7 @@ public partial class ReportFilter
     [StringLength(20)]
     public string Operator { get; set; } = null!;
 
-    [StringLength(200)]
+  
     public string ValueJson { get; set; } = "{}";
 
     public string? Options { get; set; }

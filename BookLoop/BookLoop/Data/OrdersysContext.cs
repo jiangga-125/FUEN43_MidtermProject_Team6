@@ -1,8 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using BookLoop.Models;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
 
-namespace BookLoop.Models;
+namespace BookLoop.Data;
 
 public partial class OrdersysContext : DbContext
 {
@@ -31,11 +33,13 @@ public partial class OrdersysContext : DbContext
 
 	public virtual DbSet<Member> Members { get; set; }  // ← 新增
 
-	public DbSet<Book> Books { get; set; } = null!;// ← 新增
+	public virtual DbSet<Book> Books { get; set; } = null!;// ← 新增
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Customer>(entity =>
+		modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+		modelBuilder.Entity<Customer>(entity =>
         {
             entity.HasKey(e => e.CustomerID).HasName("PK__Customer__A4AE64B8EBB2EF37");
 
@@ -193,8 +197,6 @@ public partial class OrdersysContext : DbContext
 		{
 			entity.HasKey(e => e.MemberID);
 			entity.Property(e => e.MemberID).HasColumnName("MemberID");
-			entity.Property(e => e.Username).HasMaxLength(100);
-			// 其他欄位設定
 		});
 
 		OnModelCreatingPartial(modelBuilder);

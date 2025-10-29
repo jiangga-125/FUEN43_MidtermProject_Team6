@@ -1,0 +1,88 @@
+﻿@* /Views/Shared/_AdminSidebar.cshtml *@
+<div class="brand d-flex align-items-center gap-2 p-3" style="border-bottom:1px solid #0b1222;">
+    <span class="logo" style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--brand-2));display:inline-block;"></span>
+    <span class="text fw-bold">BookLoop 後台管理</span>
+</div>
+
+<div class="p-3">
+    <div class="section-title text-uppercase small text-secondary px-2">主功能</div>
+    <nav class="nav flex-column gap-1">
+        <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">
+            <i class="bi bi-speedometer2"></i><span class="ms-2 text">儀表板</span>
+        </a>
+        <a class="nav-link" asp-area="ReportMail" asp-controller="Reports" asp-action="Index">
+            <i class="bi bi-graph-up"></i><span class="ms-2 text">報表總覽</span>
+        </a>
+    </nav>
+
+    <div class="section-title text-uppercase small text-secondary px-2 mt-3">營運模組</div>
+    <nav class="nav flex-column gap-1">
+        <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-buy" href="javascript:void(0)">
+            <i class="bi bi-book"></i><span class="ms-2 text">購書管理</span><i class="bi bi-caret-down ms-auto"></i>
+        </a>
+        <div id="m-buy" class="submenu ps-4">
+            <a class="nav-link" asp-area="Books" asp-controller="Books" asp-action="Index">書籍列表</a>
+            <a class="nav-link" asp-area="Books" asp-controller="Publishers" asp-action="Index">出版社</a>
+            <a class="nav-link" asp-area="Books" asp-controller="Categories" asp-action="Index">分類</a>
+            <a class="nav-link" asp-area="Books" asp-controller="Import" asp-action="Index">資料匯入</a>
+        </div>
+
+        <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-borrow" href="javascript:void(0)">
+            <i class="bi bi-journal-arrow-down"></i><span class="ms-2 text">借閱管理</span><i class="bi bi-caret-down ms-auto"></i>
+        </a>
+        <div id="m-borrow" class="submenu ps-4">
+            <a class="nav-link" asp-area="Borrows" asp-controller="Listings" asp-action="Index">二手書清單</a>
+            <a class="nav-link" asp-area="Borrows" asp-controller="Reservations" asp-action="Index">預約</a>
+            <a class="nav-link" asp-area="Borrows" asp-controller="BorrowRecords" asp-action="Index">借出/歸還</a>
+            <a class="nav-link" asp-area="Borrows" asp-controller="PenaltyRules" asp-action="Index">罰金規則</a>
+            <a class="nav-link" asp-area="Borrows" asp-controller="PenaltyTransactions" asp-action="Index">罰金???</a>
+        </div>
+
+        <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-orders" href="javascript:void(0)">
+            <i class="bi bi-receipt"></i><span class="ms-2 text">訂單管理</span><i class="bi bi-caret-down ms-auto"></i>
+        </a>
+        <div id="m-orders" class="submenu ps-4">
+            <a class="nav-link" asp-area="Orders" asp-controller="Orders" asp-action="Index">訂單</a>
+            @* <a class="nav-link" asp-area="XXX" asp-controller="XXX" asp-action="Index">XXX</a> 要加什麼自己加*@
+        </div>
+
+        <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-mkt" href="javascript:void(0)">
+            <i class="bi bi-megaphone"></i><span class="ms-2 text">行銷管理</span><i class="bi bi-caret-down ms-auto"></i>
+        </a>
+        <div id="m-mkt" class="submenu ps-4">
+            @* <a class="nav-link" asp-area="XXX" asp-controller="XXX" asp-action="Index">XXX</a> 要加什麼自己加*@
+        </div>
+
+        <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-noti" href="javascript:void(0)">
+            <i class="bi bi-bell"></i><span class="ms-2 text">通知管理</span><i class="bi bi-caret-down ms-auto"></i>
+        </a>
+        <div id="m-noti" class="submenu ps-4">
+            <a class="nav-link" asp-area="Notifications" asp-controller="System" asp-action="Index">系統通知</a>
+            @* <a class="nav-link" asp-area="XXX" asp-controller="XXX" asp-action="Index">XXX</a> 要加什麼自己加*@
+        </div>
+
+        <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-branch" href="javascript:void(0)">
+            <i class="bi bi-building"></i><span class="ms-2 text">分店管理</span><i class="bi bi-caret-down ms-auto"></i>
+        </a>
+        <div id="m-branch" class="submenu ps-4">
+            <a class="nav-link" asp-area="Books" asp-controller="Branches" asp-action="Index">分店列表</a>
+            <a class="nav-link" asp-area="Books" asp-controller="Transfers" asp-action="Index">庫存調撥</a>
+        </div>
+
+        <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-report" href="javascript:void(0)">
+            <i class="bi bi-bar-chart"></i><span class="ms-2 text">報表管理</span><i class="bi bi-caret-down ms-auto"></i>
+        </a>
+        <div id="m-report" class="submenu ps-4">
+            <a class="nav-link" asp-area="ReportMail" asp-controller="Reports" asp-action="Index">銷售報表</a>
+            @* <a class="nav-link" asp-area="XXX" asp-controller="XXX" asp-action="Index">XXX</a> 要加什麼自己加*@
+        </div>
+
+        <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-acl" href="javascript:void(0)">
+            <i class="bi bi-shield-lock"></i><span class="ms-2 text">權限管理</span><i class="bi bi-caret-down ms-auto"></i>
+        </a>
+        <div id="m-acl" class="submenu ps-4">
+            <a class="nav-link" asp-area="Account" asp-controller="Users" asp-action="Index">角色與權限</a>
+            @* <a class="nav-link" asp-area="XXX" asp-controller="XXX" asp-action="Index">XXX</a> 要加什麼自己加*@
+        </div>
+    </nav>
+</div>

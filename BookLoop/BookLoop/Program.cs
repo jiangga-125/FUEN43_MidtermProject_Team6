@@ -12,9 +12,10 @@ using BookLoop.Services.Pricing;
 using BookLoop.Services.Reports;
 using BookLoop.Services.Rules;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using System.Threading.Tasks;
 using BookLoop.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using System.IO;
@@ -169,22 +170,24 @@ namespace BookLoop
             // ------------------------------
             var app = builder.Build();
 
+
+
 			// 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
-			using (var scope = app.Services.CreateScope())
-			{
-				var appdb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-				var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(appdb.Database.GetConnectionString());
-				Console.WriteLine($"[AppDbContext] Server={csb.DataSource}, Database={csb.InitialCatalog}");
+			//using (var scope = app.Services.CreateScope())
+			//{
+			//	var appdb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+			//	var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(appdb.Database.GetConnectionString());
+			//	Console.WriteLine($"[AppDbContext] Server={csb.DataSource}, Database={csb.InitialCatalog}");
 
-				var memdb = scope.ServiceProvider.GetRequiredService<MemberContext>();
-				var csb2 = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(memdb.Database.GetConnectionString());
-				Console.WriteLine($"[MemberContext] Server={csb2.DataSource}, Database={csb2.InitialCatalog}");
+			//	var memdb = scope.ServiceProvider.GetRequiredService<MemberContext>();
+			//	var csb2 = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(memdb.Database.GetConnectionString());
+			//	Console.WriteLine($"[MemberContext] Server={csb2.DataSource}, Database={csb2.InitialCatalog}");
 
-				// 啟動時資料初始化
-				var init = scope.ServiceProvider.GetRequiredService<DbInitializer>();
-				await init.EnsureAdminPasswordAsync("admin@bookstore.local", "Admin@12345!");
-				await init.EnsurePermissionAndFeatureSeedAsync("admin@bookstore.local");
-			}
+			//	// 啟動時資料初始化
+			//	var init = scope.ServiceProvider.GetRequiredService<DbInitializer>();
+			//	await init.EnsureAdminPasswordAsync("admin@bookstore.local", "Admin@12345!");
+			//	await init.EnsurePermissionAndFeatureSeedAsync("admin@bookstore.local");
+			//}
 
 			if (app.Environment.IsDevelopment())
 			{
@@ -196,6 +199,7 @@ namespace BookLoop
 				app.UseExceptionHandler("/Home/Error");
 				app.UseHsts();
 			}
+
 
 			app.UseHttpsRedirection();
 			app.UseStaticFiles();

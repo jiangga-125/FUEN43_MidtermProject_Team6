@@ -1,107 +1,89 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Text.Json;
+﻿using BookLoop.Data;
+using BookLoop.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using BookLoop.Data;
-using BookLoop.Models;
+using System;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace ReportMail.Areas.ReportMail.Controllers
 {
-    [Area("ReportMail")]
-    [Route("ReportMail/[controller]/[action]")]
-    public class LookupController : Controller
+    public class LookupController : ReportMailAreaController
     {
         private readonly ShopDbContext _shop;
         public LookupController(ShopDbContext shop) => _shop = shop;
 
         [HttpGet]
-        public async Task<IActionResult> Categories(
-            [FromQuery] string? kind,
-            [FromQuery(Name = "baseKind")] string? baseKind,
-            [FromQuery] DateTime? start,
-            [FromQuery] DateTime? end)
+        [Authorize(Policy = "ReportMail.Reports.Query")]
+        public async Task<IActionResult> Categories(string? kind, [FromQuery(Name = "baseKind")] string? baseKind,
+                                            DateTime? start, DateTime? end)
         {
+            var (canAll, mySupplierId) = await GetScopeAsync();
+            if (!canAll && mySupplierId is null) return Forbid();
+
             var source = (baseKind ?? kind ?? "sales").Trim().ToLowerInvariant();
             var startDate = start?.Date;
-            var endDate = end?.Date;
+            DateTime? endExclusive = end.HasValue ? end.Value.Date.AddDays(1) : (DateTime?)null;
 
-            if (startDate.HasValue && endDate.HasValue && startDate > endDate)
-            {
-                return Json(Array.Empty<object>());
-            }
-
-            DateTime? endExclusive = endDate?.AddDays(1);
-
-            IQueryable<Category> query;
+            IQueryable<int> idQuery;
 
             if (source == "borrow")
             {
-                var borrowQuery = from record in _shop.BorrowRecords.AsNoTracking()
-                                  join listing in _shop.Listings.AsNoTracking() on record.ListingID equals listing.ListingID
-                                  join category in _shop.Categories.AsNoTracking() on listing.CategoryID equals category.CategoryID
-                                  select new { record.BorrowDate, Category = category };
+                // BorrowRecords → Listings → Publishers(拿 SupplierID) → Categories
+                var q = from record in _shop.BorrowRecords.AsNoTracking()
+                        join listing in _shop.Listings.AsNoTracking() on record.ListingID equals listing.ListingID
+                        join pub in _shop.Publishers.AsNoTracking() on listing.PublisherID equals pub.PublisherID
+                        join category in _shop.Categories.AsNoTracking() on listing.CategoryID equals category.CategoryID
+                        select new { record.BorrowDate, SupplierID = pub.SupplierID, category.CategoryID };
 
-                if (startDate.HasValue)
-                {
-                    borrowQuery = borrowQuery.Where(x => x.BorrowDate >= startDate.Value);
-                }
+                if (startDate.HasValue) q = q.Where(x => x.BorrowDate >= startDate.Value);
+                if (endExclusive.HasValue) q = q.Where(x => x.BorrowDate < endExclusive.Value);
+                if (!canAll) q = q.Where(x => x.SupplierID == mySupplierId);
 
-                if (endExclusive.HasValue)
-                {
-                    borrowQuery = borrowQuery.Where(x => x.BorrowDate < endExclusive.Value);
-                }
-
-                query = borrowQuery.Select(x => x.Category);
+                idQuery = q.Select(x => x.CategoryID);
             }
             else
             {
-                var salesQuery = from detail in _shop.OrderDetails.AsNoTracking()
-                                 join order in _shop.Orders.AsNoTracking() on detail.OrderID equals order.OrderID
-                                 join book in _shop.Books.AsNoTracking() on detail.BookID equals book.BookID
-                                 join category in _shop.Categories.AsNoTracking() on book.CategoryID equals category.CategoryID
-                                 select new { order.OrderDate, order.Status, Category = category };
+                // OrderDetails → Orders → Books → Publishers(拿 SupplierID) → Categories
+                var q = from d in _shop.OrderDetails.AsNoTracking()
+                        join o in _shop.Orders.AsNoTracking() on d.OrderID equals o.OrderID
+                        join b in _shop.Books.AsNoTracking() on d.BookID equals b.BookID
+                        join pub in _shop.Publishers.AsNoTracking() on b.PublisherID equals pub.PublisherID
+                        join category in _shop.Categories.AsNoTracking() on b.CategoryID equals category.CategoryID
+                        where o.Status != 0
+                        select new { o.OrderDate, SupplierID = pub.SupplierID, category.CategoryID };
 
-                if (startDate.HasValue)
-                {
-                    salesQuery = salesQuery.Where(x => x.OrderDate >= startDate.Value);
-                }
+                if (startDate.HasValue) q = q.Where(x => x.OrderDate >= startDate.Value);
+                if (endExclusive.HasValue) q = q.Where(x => x.OrderDate < endExclusive.Value);
+                if (!canAll) q = q.Where(x => x.SupplierID == mySupplierId);
 
-                if (endExclusive.HasValue)
-                {
-                    salesQuery = salesQuery.Where(x => x.OrderDate < endExclusive.Value);
-                }
-
-                // 預設排除已取消的訂單（狀態 0），與既有報表邏輯一致。
-                salesQuery = salesQuery.Where(x => x.Status != 0);
-
-                query = salesQuery.Select(x => x.Category);
+                idQuery = q.Select(x => x.CategoryID);
             }
 
-            // 先取「有紀錄」的唯一 CategoryID（排除 0）
-            var idQuery = query
-                .Select(c => c.CategoryID)
-                .Where(id => id != 0)
-                .Distinct();
+            var ids = await idQuery.Where(id => id != 0).Distinct().ToListAsync();
 
-            // 再回到 Categories 表把名稱撈齊（由 DB 來排序）
             var result = await _shop.Categories.AsNoTracking()
-                .Where(c => idQuery.Contains(c.CategoryID))
+                .Where(c => ids.Contains(c.CategoryID))
                 .Select(c => new { value = c.CategoryID, text = c.CategoryName })
                 .OrderBy(x => x.text)
                 .ToListAsync();
 
             return Json(result);
-
         }
+
 
         // 依「所選日期區間」+「已選書籍種類」回傳排行上限：
         //   sales → distinct BookID；borrow → distinct ListingID（用 Listings.CategoryID 篩）
         [HttpPost]
+        [Authorize(Policy = "ReportMail.Reports.Query")]
         public async Task<IActionResult> MaxRank([FromBody] MaxRankRequest req)
         {
-            var kind = (req?.BaseKind ?? "sales").Trim().ToLowerInvariant();
+            var (canAll, mySupplierId) = await GetScopeAsync();
+            if (!canAll && mySupplierId is null) return Forbid();
+
+            var source = (req?.BaseKind ?? "sales").Trim().ToLowerInvariant();
 
             // 解析日期（含當日）
             DateTime? startDate = null, endExclusive = null;
@@ -140,38 +122,68 @@ namespace ReportMail.Areas.ReportMail.Controllers
                 catch { }
             }
 
+            // ★ 新增：解析已選的 SupplierIDs（書商篩選）
+            var supplierIds = new List<int>();
+            var supFilter = req?.Filters?.FirstOrDefault(f =>
+                string.Equals(f.FieldName, "SupplierID", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(f.FieldName, "PublisherID", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(supFilter?.ValueJson))
+            {
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(supFilter!.ValueJson!);
+                    if (doc.RootElement.TryGetProperty("values", out var arr))
+                        foreach (var x in arr.EnumerateArray())
+                            if (x.TryGetInt32(out var id) && id > 0) supplierIds.Add(id);
+                }
+                catch { }
+            }
+            // ★ 結束：解析已選的 SupplierIDs
+
+
             int count;
 
-            if (kind == "borrow")
+            if (source == "borrow")
             {
-                // 借閱：BorrowRecords × Listings（用 Listings.CategoryID 直接過濾）
                 var q = from br in _shop.BorrowRecords.AsNoTracking()
                         join l in _shop.Listings.AsNoTracking() on br.ListingID equals l.ListingID
-                        select new { br.BorrowDate, l.CategoryID, br.ListingID };
+                        join pub in _shop.Publishers.AsNoTracking() on l.PublisherID equals pub.PublisherID // ★ Supplier
+                        select new { br.BorrowDate, l.CategoryID, br.ListingID, SupplierID = pub.SupplierID };
 
                 if (startDate.HasValue) q = q.Where(x => x.BorrowDate >= startDate.Value);
                 if (endExclusive.HasValue) q = q.Where(x => x.BorrowDate < endExclusive.Value);
                 if (categoryIds.Count > 0) q = q.Where(x => categoryIds.Contains(x.CategoryID));
 
+                // ★ 應用自訂書商篩選
+                if (supplierIds.Count > 0) q = q.Where(x => supplierIds.Contains(x.SupplierID));
+
+                // ★ Data Scope 限制（最後套用）
+                if (!canAll) q = q.Where(x => x.SupplierID == mySupplierId);
+
                 count = await q.Select(x => x.ListingID).Distinct().CountAsync();
             }
             else
             {
-                // 銷售：OrderDetails × Orders × Books（Books.CategoryID 過濾；Orders.Status != 0）
                 var q = from d in _shop.OrderDetails.AsNoTracking()
                         join o in _shop.Orders.AsNoTracking() on d.OrderID equals o.OrderID
                         join b in _shop.Books.AsNoTracking() on d.BookID equals b.BookID
+                        join pub in _shop.Publishers.AsNoTracking() on b.PublisherID equals pub.PublisherID // ★ Supplier
                         where o.Status != 0
-                        select new { o.OrderDate, b.CategoryID, d.BookID };
+                        select new { o.OrderDate, b.CategoryID, d.BookID, SupplierID = pub.SupplierID };
 
                 if (startDate.HasValue) q = q.Where(x => x.OrderDate >= startDate.Value);
                 if (endExclusive.HasValue) q = q.Where(x => x.OrderDate < endExclusive.Value);
                 if (categoryIds.Count > 0) q = q.Where(x => categoryIds.Contains(x.CategoryID));
 
+                // ★ 應用自訂書商篩選
+                if (supplierIds.Count > 0) q = q.Where(x => supplierIds.Contains(x.SupplierID));
+
+                // ★ Data Scope 限制（最後套用）
+                if (!canAll) q = q.Where(x => x.SupplierID == mySupplierId);
+
                 count = await q.Select(x => x.BookID).Distinct().CountAsync();
             }
 
-            // 需要更大上限可把 100 調整或拿掉
             var maxRank = Math.Max(1, Math.Min(100, count));
             return Json(new { maxRank });
         }
@@ -186,6 +198,17 @@ namespace ReportMail.Areas.ReportMail.Controllers
         {
             public string? FieldName { get; set; }          // 例如 OrderDate / BorrowDate / CategoryID / ...
             public string? ValueJson { get; set; }          // JSON（e.g. {"from":"2025-10-01","to":"2025-10-12"}）
+        }
+        //取 scope
+        private async Task<(bool canAll, int? mySupplierId)> GetScopeAsync()
+        {
+            var auth = HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
+            var canAll = (await auth.AuthorizeAsync(User, "ReportMail.Reports.Data.All")).Succeeded;
+            if (canAll) return (true, null);
+
+            var s = User.FindFirst("supplier")?.Value;
+            if (int.TryParse(s, out var sid)) return (false, sid);
+            return (false, null);// 沒有 supplier claim ⇒ 視為無權
         }
 
     }

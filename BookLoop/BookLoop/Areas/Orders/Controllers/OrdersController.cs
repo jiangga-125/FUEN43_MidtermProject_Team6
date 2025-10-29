@@ -1,4 +1,5 @@
-﻿using BookLoop.Helpers;
+﻿using BookLoop.Data;
+using BookLoop.Helpers;
 using BookLoop.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -36,7 +37,7 @@ namespace BookLoop.Ordersys.Controllers
 			var query = _context.Orders
 				.Include(o => o.Member)       // 改用 Member
 				.Include(o => o.OrderDetails)
-				 .Include(o => o.Customer)
+				.Include(o => o.Customer)
 				.AsQueryable();
 
 			// 搜尋條件

@@ -56,8 +56,8 @@ public class CheckoutController : Controller
 			return Json(res);
 
 		// 非 AJAX：用文字或導頁
-		if (!res.Ok) return Content($"下單失敗：{res.Message}");
-		return Content($"下單成功，OrderID={res.Data}");
+		//if (!res.Ok) return Content($"下單失敗：{res.Message}");
+		//return Content($"下單成功，OrderID={res.Data}");
 		// 之後你也可以改成：return RedirectToAction("Detail", "Orders", new { id = res.Data });
 	}
 }

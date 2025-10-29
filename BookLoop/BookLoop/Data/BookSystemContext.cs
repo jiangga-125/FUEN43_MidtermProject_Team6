@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using BookLoop.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,6 +33,32 @@ public partial class BookSystemContext : DbContext
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+		modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        
+		modelBuilder.Entity<Member>(entity =>
+        {
+            entity.ToTable(tb => tb.HasTrigger("trg_Members_Update"));
+
+            entity.HasIndex(e => e.Username, "IX_Members_Username");
+
+            //entity.HasIndex(e => e.Account, "UQ_Members_Account").IsUnique();
+
+            entity.HasIndex(e => e.UserID, "UX_Members_UserID")
+                .IsUnique()
+                .HasFilter("([UserID] IS NOT NULL)");
+
+            entity.Property(e => e.MemberID).HasColumnName("MemberID");
+            //entity.Property(e => e.Account).HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysdatetime())");
+            entity.Property(e => e.Email).HasMaxLength(254);
+            entity.Property(e => e.Phone)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysdatetime())");
+            entity.Property(e => e.UserID).HasColumnName("UserID");
+            entity.Property(e => e.Username).HasMaxLength(50);
+        });
+
         modelBuilder.Entity<Author>(entity =>
         {
             entity.HasKey(e => e.AuthorID).HasName("PK__Authors__70DAFC147A159AB8");

@@ -1,0 +1,40 @@
+﻿@model BookLoop.Models.SearchResultVm
+@{
+    ViewBag.Title = "全域搜尋";
+}
+
+<div class="card p-3">
+    <form method="get" asp-controller="Search" asp-action="Index">
+        <div class="input-group">
+            <input name="q" class="form-control" value="@Model.Query" placeholder="輸入關鍵字（書名、會員、訂單、郵件）" />
+            <button class="btn btn-primary">搜尋</button>
+        </div>
+    </form>
+</div>
+
+@if (string.IsNullOrWhiteSpace(Model.Query))
+{
+    <div class="text-muted mt-3">請輸入要搜尋的關鍵字。</div>
+}
+else if (!Model.Hits.Any())
+{
+    <div class="alert alert-warning mt-3">找不到與「@Model.Query」相關的結果。</div>
+}
+else
+{
+    <div class="list-group mt-3">
+        @foreach (var h in Model.Hits)
+        {
+            <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="@h.Url">
+                <div>
+                    <div class="fw-bold">[@h.Type] @h.Title</div>
+                    @if (!string.IsNullOrEmpty(h.Sub))
+                    {
+                        <div class="text-muted small">@h.Sub</div>
+                    }
+                </div>
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        }
+    </div>
+}
