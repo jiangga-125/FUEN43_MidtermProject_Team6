@@ -6,12 +6,12 @@ namespace BookLoop.Controllers.Api
 	[Route("api/_debug")]
 	public class DebugController : ControllerBase
 	{
-		// GET /api/_debug/ping  → 200 OK
+		// GET /api/_debug/ping
 		[HttpGet("ping")]
 		[AllowAnonymous]
 		public IActionResult Ping() => Ok(new { ok = true, time = DateTime.UtcNow });
 
-		// GET /api/_debug/whoami → 看看目前是否登入（不會丟例外）
+		// GET /api/_debug/whoami
 		[HttpGet("whoami")]
 		[AllowAnonymous]
 		public IActionResult WhoAmI()

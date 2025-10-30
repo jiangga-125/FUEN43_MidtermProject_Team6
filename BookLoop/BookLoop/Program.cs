@@ -17,6 +17,7 @@ using Microsoft.Extensions.Options;
 using System.Threading.Tasks;
 using BookLoop.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+
 using System.IO;
 using Microsoft.AspNetCore.Http;
 using System;
