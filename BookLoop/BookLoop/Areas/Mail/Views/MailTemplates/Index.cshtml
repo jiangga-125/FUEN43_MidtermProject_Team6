@@ -19,9 +19,6 @@
                 @Html.DisplayNameFor(model => model.Subject)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.BodyHtml)
-            </th>
-            <th>
                 @Html.DisplayNameFor(model => model.Description)
             </th>
             <th>
@@ -46,9 +43,6 @@
                 @Html.DisplayFor(modelItem => item.Subject)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.BodyHtml)
-            </td>
-            <td>
                 @Html.DisplayFor(modelItem => item.Description)
             </td>
             <td>
@@ -64,8 +58,6 @@
                 <a asp-action="Edit" asp-route-id="@item.TemplateID">Edit</a> |
 @*                 <a asp-action="Details" asp-route-id="@item.TemplateID">Details</a> |*@                
                 <a asp-action="Delete" asp-route-id="@item.TemplateID">Delete</a>
-                    <a asp-area="Mail" asp-controller="MailTemplates" asp-action="Preview" asp-route-id="@item.TemplateID"
-                       class="btn btn-outline-primary btn-sm">預覽</a>
             </td>
         </tr>
 }

@@ -1,256 +1,125 @@
-﻿@model BookLoop.Models.MailTemplate
-
+﻿@* 開發用：看長度 *@
+<!-- DesignJson length: @(Model?.DesignJson?.Length ?? 0) -->
+@model BookLoop.Models.MailTemplate
 @{
-    ViewData["Title"] = "編輯郵件範本";
+    ViewData["Title"] = "編輯郵件範本（Unlayer）";
 }
 
 @section Styles {
     <style>
-        .ck-editor__editable_inline {
-            min-height: 400px;
-            max-height: 600px;
-            overflow-y: auto;
+        .unlayer-editor {
+            height: calc(100vh - 260px); /* 視窗高-上方欄位與邊距 */
+            min-height: 560px;
+            border: 1px solid #e5e5e5;
+            border-radius: .5rem;
+            background: #fff;
+        }
+
+        .preview-frame {
+            height: calc(100vh - 260px);
+            min-height: 560px;
+            background: #fff;
+        }
+
+        .side-note {
+            font-size: .85rem;
+            color: #6c757d
         }
     </style>
 }
 
-<div class="container mt-4">
-    <h1>編輯郵件範本</h1>
-    <hr />
-
-    <div class="row">
-        <div class="col-md-8">
-            <form asp-action="Edit">
+<div class="container-fluid mt-4">
+    <h1 class="mb-3">@ViewData["Title"]</h1>
+    <div class="row g-3">
+        <!-- 左：表單（欄位 + 儲存） + 編輯器 -->
+        <div class="col-xl-8 col-lg-7">
+            <form asp-action="Edit" id="form-basic">
                 @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="TemplateID" id="TemplateID" />
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
 
-                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-                <!-- 主鍵 -->
-                <input type="hidden" asp-for="TemplateID" />
-
-                <!-- TemplateKey 改唯讀 -->
-                <div class="form-group mb-3">
-                    <label asp-for="TemplateKey" class="control-label"></label>
-                    <input asp-for="TemplateKey" class="form-control-plaintext" readonly />
-                    <span asp-validation-for="TemplateKey" class="text-danger"></span>
+                <div class="row g-2 align-items-end">
+                    <div class="col-12">
+                        <label asp-for="TemplateKey" class="form-label">範本識別碼</label>
+                        <!-- 唯讀顯示（disabled 不會回送，下面用 hidden 回送值） -->
+                        <select asp-for="TemplateKey" class="form-select" asp-items="ViewBag.TemplateKeyList" disabled>
+                            <option value="">-- 請選擇範本 Key --</option>
+                        </select>
+                        <input type="hidden" asp-for="TemplateKey" />
+                        <span asp-validation-for="TemplateKey" class="text-danger"></span>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="Subject" class="form-label">郵件主旨</label>
+                        <input asp-for="Subject" class="form-control" />
+                        <span asp-validation-for="Subject" class="text-danger"></span>
+                    </div>
                 </div>
 
-                <div class="form-group mb-3">
-                    <label asp-for="Subject" class="control-label"></label>
-                    <input asp-for="Subject" class="form-control" />
-                    <span asp-validation-for="Subject" class="text-danger"></span>
-                </div>
-
-                <div class="form-group mb-3">
-                    <label asp-for="BodyHtml" class="control-label"></label>
-                    <!-- 用 CKEditor 編輯 -->
-                    <textarea id="editor" asp-for="BodyHtml"></textarea>
-                    <span asp-validation-for="BodyHtml" class="text-danger"></span>
-                </div>
-
-                <div class="form-group mb-3">
-                    <label asp-for="Description" class="control-label"></label>
-                    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
-                    <span asp-validation-for="Description" class="text-danger"></span>
-                </div>
-
-                <div class="form-group form-check mb-3">
-                    <label class="form-check-label">
-                        <input class="form-check-input" asp-for="IsActive" />
-                        @Html.DisplayNameFor(model => model.IsActive)
-                    </label>
-                </div>
-
-                <div class="form-group mb-3">
-                    <label asp-for="CreatedAt" class="control-label"></label>
-                    <input asp-for="CreatedAt" class="form-control" />
-                    <span asp-validation-for="CreatedAt" class="text-danger"></span>
-                </div>
-
-                <div class="form-group">
-                    <input type="submit" value="儲存" class="btn btn-primary" />
-                    | <a asp-action="Index">返回列表</a>
-                </div>
+                <!-- Hidden：Unlayer 匯出 -->
+                <input type="hidden" asp-for="BodyHtml" id="Html" />
+                <input type="hidden" asp-for="DesignJson" id="DesignJson" />
             </form>
-        </div>
-    </div>
-    <div class="card mt-3">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <strong>即時預覽</strong>
-            <small class="text-muted">可用變數：<code>{{Recipient}}</code>、<code>{{Name}}</code>，或在下方輸入 JSON 變數</small>
-        </div>
-        <div class="card-body">
-            <div class="row g-2 mb-2">
-                <div class="col-md-6">
-                    <input class="form-control form-control-sm" id="pv-recipient" placeholder="recipient@example.com">
-                </div>
-                <div class="col-md-6">
-                    <input class="form-control form-control-sm" id="pv-name" placeholder="Name（可選）">
-                </div>
-                <div class="col-12">
-                    <textarea class="form-control form-control-sm" id="pv-token" rows="2"
-                              placeholder='可選：JSON 變數，例如 {"OrderNo":"AB123","Link":"https://..."}'></textarea>
-                </div>
+
+            <div id="editor" class="unlayer-editor mt-3"></div>
+
+            <div class="col-12">
+                <label asp-for="Description" class="form-label">範本說明</label>
+                <textarea asp-for="Description" class="form-control" rows="2"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
             </div>
+            <div class="col-12 d-flex align-items-center justify-content-between">
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="IsActive" id="IsActive" />
+                    <label class="form-check-label" for="IsActive">啟用</label>
+                </div>
+                <button type="button" class="btn btn-primary" id="btn-save-all">儲存</button>
+            </div>
+        </div>
 
-            <div class="mb-2"><strong>Subject：</strong> <span id="pv-subject"></span></div>
-            <iframe id="pv-frame" class="w-100 border rounded" style="height:520px;background:#fff"></iframe>
+        <!-- 右：試寄（在上方） + 預覽 -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="d-flex align-items-center justify-content-between">
+                <h6 class="mb-0">試寄</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-test-send">送出測試</button>
+            </div>
+            <div class="row g-2 mt-2">
+                <div class="col-8"><input id="pv-recipient" class="form-control form-control-sm" placeholder="recipient@example.com" /></div>
+                <div class="col-4"><input id="pv-name" class="form-control form-control-sm" placeholder="Name" /></div>
+            </div>
+            <div class="side-note mt-2">可用變數：<code>{{Recipient}}</code>、<code>{{Name}}</code></div>
+
+            <div class="d-flex align-items-center justify-content-between mt-3">
+                <h6 class="mb-0">預覽</h6>
+                <div class="side-note">主旨：<span id="pv-subject"></span></div>
+            </div>
+            <iframe id="pv-frame" class="w-100 border rounded preview-frame mt-2"></iframe>
         </div>
     </div>
-
 </div>
 
 @section Scripts {
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
-
-    <!-- 1) GPL 金鑰（一定在 ckeditor.js 之前） -->
+    <script src="https://editor.unlayer.com/embed.js"></script>
+    <script src="~/js/unlayer-mail.js" asp-append-version="true"></script>
     <script>
-        window.CKEDITOR_LICENSE_KEY = 'GPL';
-        window.CKEDITOR_GLOBAL_LICENSE_KEY = 'GPL';
+        UnlayerMail.init({
+          mode: 'edit',
+          formId: 'form-basic',
+          editorId: 'editor',
+          subjectSelector: '[name="Subject"]',
+          subjectOutSelector: '#pv-subject',
+          designFieldId: 'DesignJson',
+          htmlFieldId: 'Html',
+          previewFrameId: 'pv-frame',
+          recipientSelector: '#pv-recipient',
+          nameSelector: '#pv-name',
+          saveButtonSelector: '#btn-save-all',
+          testButtonSelector: '#btn-test-send',
+          testSendUrl: '@Url.Action("TestSend", "MailTemplates", new { area = "Mail" })',
+          uploadUrl: '@Url.Action("Upload", "Assets", new { area = "Mail" })',
+          antiForgery: document.querySelector('#form-basic input[name="__RequestVerificationToken"]').value
+        });
     </script>
-
-    <!-- 2) 載入你打包好的 UMD -->
-    <script src="@Url.Content("~/lib/ckeditor5-oss/ckeditor.js")" asp-append-version="true" defer></script>
-
-    <!-- 3) 初始化：等腳本與 DOM 就緒，且只跑一次 -->
-    <script>
-        (function () {
-            function resolveEditorCtor() {
-                const C = window.ClassicEditor;
-                if (!C) return null;
-                if (typeof C.create === 'function') return C;
-                if (C.default && typeof C.default.create === 'function') return C.default;
-                return null;
-            }
-
-            function initCKE() {
-                if (window.__ckEditInitDone) return; // 防止重複初始化
-
-                const Editor = resolveEditorCtor();
-                const el = document.querySelector('#editor');
-                if (!Editor || !el) return;
-
-                window.__ckEditInitDone = true;
-
-                Editor.create(el, {
-                    licenseKey: 'GPL',
-                    language: 'zh-cn',
-                    toolbar: [
-                        'heading','|','bold','italic','link','|',
-                        'bulletedList','numberedList','blockQuote','|',
-                        'insertTable','|','imageUpload','|','undo','redo'
-                    ],
-                    table: { contentToolbar: ['tableColumn','tableRow','mergeTableCells'] },
-                    image: {
-                        toolbar: [
-                            'toggleImageCaption','imageTextAlternative','|',
-                            'imageStyle:inline','imageStyle:block','imageStyle:side'
-                        ],
-                        styles: ['inline','block','side']
-                    },
-                    simpleUpload: {
-                        uploadUrl: '@Url.Action("UploadImage", "MailTemplates", new { area = "Mail" })',
-                        headers: {
-                            'RequestVerificationToken':
-                                document.querySelector('form input[name="__RequestVerificationToken"]').value
-                        }
-                    }
-                })
-                .then(editor => {
-                    const form = el.closest('form');
-                    if (form) form.addEventListener('submit', () => el.value = editor.getData());
-                    window.editorInstance = editor;
-                    console.log('CKEditor (Edit) 初始化完成');
-                })
-                .catch(e => {
-                    console.error('CKEditor (Edit) 初始化失敗：', e);
-                    alert('CKEditor 初始化失敗，請開啟開發者工具查看錯誤訊息。');
-                });
-            }
-
-            document.addEventListener('DOMContentLoaded', initCKE);
-            window.addEventListener('load', initCKE);
-        })();
-    </script>
-
-    <script>
-    (function () {
-      // 讀 Anti-forgery token
-      function getCsrf() {
-        const f = document.querySelector('input[name="__RequestVerificationToken"]');
-        return f ? f.value : '';
-      }
-
-      // 讀欄位
-      function getSubject() {
-        const el = document.querySelector('[name="Subject"]');
-        return el ? el.value : '';
-      }
-      function getBodyHtml() {
-        // ✅ 用你現成的 CKEditor 實例，不改它的設定
-        if (window.editorInstance && typeof window.editorInstance.getData === 'function') {
-          return window.editorInstance.getData();
-        }
-        // 後備（萬一 editor 尚未準備好）
-        const ta = document.getElementById('BodyHtml');
-        return ta ? ta.value : '';
-      }
-
-      const $rec = document.getElementById('pv-recipient');
-      const $name = document.getElementById('pv-name');
-      const $token = document.getElementById('pv-token');
-      const $subject = document.getElementById('pv-subject');
-      const $frame = document.getElementById('pv-frame');
-
-      let timer = null;
-      function schedule() { clearTimeout(timer); timer = setTimeout(render, 400); }
-
-      async function render() {
-        const payload = {
-          subject: getSubject(),
-          bodyHtml: getBodyHtml(),
-          tokenJson: $token.value,
-          recipient: $rec.value,
-          name: $name.value
-        };
-        try {
-          const res = await fetch('@Url.Action("RenderPreview","MailTemplates", new { area="Mail" })', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'RequestVerificationToken': getCsrf()
-            },
-            body: JSON.stringify(payload)
-          });
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const data = await res.json();
-          $subject.textContent = data.subject || '';
-          $frame.srcdoc = data.html || '';
-        } catch (err) {
-          console.error('preview failed:', err);
-        }
-      }
-
-      // 綁定：Subject 欄位、右側三個輸入框
-      document.addEventListener('input', function (e) {
-        const n = e.target.name || e.target.id || '';
-        if (n === 'Subject' || n === 'pv-recipient' || n === 'pv-name' || n === 'pv-token') schedule();
-      });
-
-      // 當 CKEditor 準備好時，由你原來的初始化程式把 editor 放到 window.editorInstance
-      // 我們只監聽它的變更，不改你的設定（包含圖片上傳）
-      const waitEditor = setInterval(() => {
-        if (window.editorInstance && window.editorInstance.model) {
-          window.editorInstance.model.document.on('change:data', schedule);
-          clearInterval(waitEditor);
-          schedule();
-        }
-      }, 200);
-
-      // 首次渲染（避免頁面進來就空白）
-      schedule();
-    })();
-  </script>
 }

@@ -11,7 +11,9 @@ using System.IO; // 檔案操作
 using System.Linq;
 using System.Threading.Tasks;
 using BookLoop.Services.Mail;    
-using System.Text.Json;          
+using System.Text.Json;
+using BookLoop.Services;         // MailService
+using Newtonsoft.Json.Linq;      // JToken
 
 namespace BookLoop.Areas.Mail.Controllers
 {
@@ -59,8 +61,8 @@ namespace BookLoop.Areas.Mail.Controllers
         // POST: Mail/MailTemplates/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("TemplateKey,Subject,BodyHtml,Description,IsActive")] MailTemplate mailTemplate)
-        {
+		public async Task<IActionResult> Create([Bind("TemplateKey,Subject,BodyHtml,DesignJson,Description,IsActive")] MailTemplate mailTemplate)
+		{
             // 移除 ModelState 中由資料庫生成的欄位，避免驗證錯誤
             ModelState.Remove("TemplateID");
             ModelState.Remove("CreatedAt");
@@ -90,18 +92,28 @@ namespace BookLoop.Areas.Mail.Controllers
         // GET: Mail/MailTemplates/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null) return NotFound();
-            var mailTemplate = await _context.MailTemplates.FindAsync(id);
-            if (mailTemplate == null) return NotFound();
-            PopulateTemplateKeysDropdown(mailTemplate.TemplateKey);
-            return View(mailTemplate);
-        }
+			var tpl = await _context.MailTemplates
+					.AsNoTracking()
+					.FirstOrDefaultAsync(x => x.TemplateID == id);
+			if (tpl == null) return NotFound();
+
+			// 下拉資料，要把目前值選上
+			ViewBag.TemplateKeyList = new SelectList(
+				await _context.MailTemplates
+					.Select(x => x.TemplateKey)
+					.Distinct()
+					.ToListAsync(),
+				tpl.TemplateKey // selectedValue
+			);
+
+			return View(tpl); // 帶回 Model.DesignJson / BodyHtml / TemplateKey / Subject / ...
+		}
 
         // POST: Mail/MailTemplates/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("TemplateID,TemplateKey,Subject,BodyHtml,Description,IsActive")] MailTemplate mailTemplate)
-        {
+		public async Task<IActionResult> Edit(int id, [Bind("TemplateID,TemplateKey,Subject,BodyHtml,DesignJson,Description,IsActive,CreatedAt,UpdatedAt")] MailTemplate mailTemplate)
+		{
             if (id != mailTemplate.TemplateID) return NotFound();
 
             // 移除 ModelState 中由資料庫生成的欄位
@@ -210,31 +222,6 @@ namespace BookLoop.Areas.Mail.Controllers
 			return Json(new { subject, html });
 		}
 
-		// === 試寄（右側按鈕用；前端用 fetch 傳 JSON）===
-		// POST: Mail/MailTemplates/TestSend
-		[HttpPost]
-		[ValidateAntiForgeryToken]
-		public async Task<IActionResult> TestSend([FromBody] TestSendDto dto, CancellationToken ct = default)
-		{
-			if (dto == null || string.IsNullOrWhiteSpace(dto.To))
-				return BadRequest("To is required.");
-
-			// 以 Recipient / Name 為唯一可用 token（已拿掉 JSON 變數）
-			var model = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-			{
-				["Recipient"] = dto.To
-			};
-			if (!string.IsNullOrWhiteSpace(dto.Name))
-				model["Name"] = dto.Name!;
-
-			// 與實際寄送一致：用同一個 renderer 做 token 替換
-			var subject = _renderer.Render(dto.Subject ?? "", model);
-			var html = _renderer.Render(dto.BodyHtml ?? "", model);
-
-			await _mail.SendAsync(dto.To, subject, html, ct);
-			return Json(new { ok = true });
-		}
-
 		// 圖片上傳 Action
 		[HttpPost]
         [ValidateAntiForgeryToken] // 建議加上 CSRF 保護
@@ -292,8 +279,56 @@ namespace BookLoop.Areas.Mail.Controllers
 
             return Ok(new { url = imageUrl }); //CKEditor SimpleUploadAdapter 需要 "url" 屬性
         }
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> SaveDesign([FromBody] SaveDesignDto dto)
+		{
+			if (dto == null) return BadRequest();
+			if (dto.TemplateId == null) return Json(new { ok = true, hint = "design-only" }); // Create 階段先寫 Hidden Field
 
-        private bool MailTemplateExists(int id)
+			var tpl = await _context.MailTemplates.FindAsync(dto.TemplateId.Value);
+			if (tpl == null) return NotFound();
+
+			tpl.DesignJson = dto.DesignJson?.ToString(Newtonsoft.Json.Formatting.None);
+			// 可選：版本號 + UpdatedAt（你已有 DB Trigger，就略過）
+			await _context.SaveChangesAsync();
+			return Json(new { ok = true });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> ExportHtml([FromBody] ExportHtmlDto dto)
+		{
+			if (dto == null) return BadRequest();
+			if (dto.TemplateId == null) return Json(new { ok = true, hint = "html-only" }); // Create 階段先塞 Hidden Field
+
+			var tpl = await _context.MailTemplates.FindAsync(dto.TemplateId.Value);
+			if (tpl == null) return NotFound();
+
+			tpl.BodyHtml = dto.Html ?? string.Empty;   // 匯出的 HTML 回存到你原本的 BodyHtml
+			await _context.SaveChangesAsync();
+			return Json(new { ok = true });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> TestSend([FromBody] TestSendDto dto, CancellationToken ct)
+		{
+			if (dto == null || string.IsNullOrWhiteSpace(dto.To))
+				return BadRequest(new { error = "請提供收件者" });
+
+			var subject = dto.Subject ?? "(No Subject)";
+			var html = dto.BodyHtml ?? string.Empty;
+
+			// 簡單 tokens（先與前端一致；之後可切 ITemplateRenderer）
+			if (!string.IsNullOrEmpty(dto.Name))
+				html = html.Replace("{{Name}}", dto.Name, StringComparison.OrdinalIgnoreCase);
+			html = html.Replace("{{Recipient}}", dto.To, StringComparison.OrdinalIgnoreCase);
+
+			await _mail.SendAsync(dto.To!, subject, html, ct);
+			return Json(new { ok = true });
+		}
+		private bool MailTemplateExists(int id)
         {
             return _context.MailTemplates.Any(e => e.TemplateID == id);
         }
@@ -329,7 +364,9 @@ namespace BookLoop.Areas.Mail.Controllers
 			try { return JsonSerializer.Deserialize<Dictionary<string, string>>(json!) ?? new(); }
 			catch { return new(); }
 		}
-
+		public sealed class SaveDesignDto { public int? TemplateId { get; set; } public JToken? DesignJson { get; set; } }
+		public sealed class ExportHtmlDto { public int? TemplateId { get; set; } public string? Html { get; set; } }
+		public sealed class TestSendDto { public string? To { get; set; } public string? Subject { get; set; } public string? BodyHtml { get; set; } public string? Name { get; set; } }
 		public sealed class PreviewInput
 		{
 			public string? Subject { get; set; }
@@ -339,13 +376,6 @@ namespace BookLoop.Areas.Mail.Controllers
 			public string? Name { get; set; }
 		}
 
-		public sealed class TestSendDto
-		{
-			public string To { get; set; } = "";
-			public string? Name { get; set; }
-			public string? Subject { get; set; }
-			public string? BodyHtml { get; set; }
-		}
 
 	}
 }

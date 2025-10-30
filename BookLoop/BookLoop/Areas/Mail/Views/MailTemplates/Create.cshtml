@@ -1,108 +1,93 @@
 ﻿@model BookLoop.Models.MailTemplate
-
 @{
-    ViewData["Title"] = "建立郵件範本";
+    ViewData["Title"] = "建立郵件範本（Unlayer）";
 }
 
 @section Styles {
     <style>
-        .ck-editor__editable_inline {
-            min-height: 400px;
-            max-height: 600px;
-            overflow-y: auto;
+        .unlayer-editor {
+            height: calc(100vh - 260px); /* 視窗高-上方欄位與邊距 */
+            min-height: 560px;
+            border: 1px solid #e5e5e5;
+            border-radius: .5rem;
+            background: #fff;
         }
-        /* 內容若很寬（例如大表格/長連結），避免把整個頁面撐壞：出現水平捲軸 */
-        .ck-editor__editable_inline .ck-content {
-            overflow-x: auto;
-            overflow-wrap: anywhere; /* 長字/長連結可換行，避免排版爆開 */
-            word-break: break-word;
+
+        .preview-frame {
+            height: calc(100vh - 260px);
+            min-height: 560px;
+            background: #fff;
         }
-        /* （可選）保險：就算外掛沒移除，縮放角點也不顯示 */
-        .ck .ck-widget__resizer {
-            display: none !important;
+
+        .side-note {
+            font-size: .85rem;
+            color: #6c757d
         }
     </style>
 }
 
-<div class="container mt-4">
-    <h1>建立郵件範本</h1>
-
-    <hr />
-    <div class="row">
-        <!-- 左：你原本的建立表單（保留，不動 CKEditor） -->
-        <div class="col-md-8">
-            <form asp-action="Create">
+<div class="container-fluid mt-4">
+    <h1 class="mb-3">@ViewData["Title"]</h1>
+    <div class="row g-3">
+        <!-- 左：表單（欄位 + 儲存） + 編輯器 -->
+        <div class="col-xl-8 col-lg-7">
+            <form asp-action="Create" id="form-basic">
                 @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
 
-                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-12">
+                        <label asp-for="TemplateKey" class="form-label">範本識別碼</label>
+                        <select asp-for="TemplateKey" class="form-select" asp-items="ViewBag.TemplateKeyList">
+                            <option value="">-- 請選擇範本 Key --</option>
+                        </select>
+                        <span asp-validation-for="TemplateKey" class="text-danger"></span>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="Subject" class="form-label">郵件主旨</label>
+                        <input asp-for="Subject" class="form-control" />
+                        <span asp-validation-for="Subject" class="text-danger"></span>
+                    </div>
 
-                <div class="form-group mb-3">
-                    <label asp-for="TemplateKey" class="control-label"></label>
-                    <select asp-for="TemplateKey" class="form-select" asp-items="ViewBag.TemplateKeyList">
-                        <option value="">-- 請選擇範本 Key --</option>
-                    </select>
-                    <span asp-validation-for="TemplateKey" class="text-danger"></span>
                 </div>
 
-                <div class="form-group mb-3">
-                    <label asp-for="Subject" class="control-label"></label>
-                    <input asp-for="Subject" class="form-control" />
-                    <span asp-validation-for="Subject" class="text-danger"></span>
-                </div>
-
-                <div class="form-group mb-3">
-                    <label asp-for="BodyHtml" class="control-label"></label>
-                    <textarea id="editor" asp-for="BodyHtml"></textarea>
-                    <span asp-validation-for="BodyHtml" class="text-danger"></span>
-                </div>
-
-                <div class="form-group mb-3">
-                    <label asp-for="Description" class="control-label"></label>
-                    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
-                    <span asp-validation-for="Description" class="text-danger"></span>
-                </div>
-
-                <div class="form-group form-check mb-3">
-                    <label class="form-check-label">
-                        <input class="form-check-input" asp-for="IsActive" />
-                        @Html.DisplayNameFor(model => model.IsActive)
-                    </label>
-                </div>
-
-                <div class="form-group">
-                    <input type="submit" value="建立" class="btn btn-primary" />
-                    | <a asp-action="Index">返回列表</a>
-                </div>
+                <!-- Hidden：Unlayer 匯出 -->
+                <input type="hidden" asp-for="BodyHtml" id="Html" />
+                <input type="hidden" asp-for="DesignJson" id="DesignJson" />
             </form>
+
+            <div id="editor" class="unlayer-editor mt-3"></div>
+            <div class="col-12">
+                <label asp-for="Description" class="form-label">範本說明</label>
+                <textarea asp-for="Description" class="form-control" rows="2"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+            <div class="col-12 d-flex align-items-center justify-content-between">
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="IsActive" id="IsActive" />
+                    <label class="form-check-label" for="IsActive">啟用</label>
+                </div>
+                <button type="button" class="btn btn-primary" id="btn-save-all">儲存</button>
+            </div>
         </div>
 
-        <!-- 右：即時預覽 -->
-        <div class="col-md-4">
+        <!-- 右：試寄（在上方） + 預覽 -->
+        <div class="col-xl-4 col-lg-5">
             <div class="d-flex align-items-center justify-content-between">
-                <h5 class="mb-0">即時預覽</h5>
-                <small class="text-muted">
-                    可用變數：<code>{{Recipient}}</code>、<code>{{Name}}</code>
-                </small>
+                <h6 class="mb-0">試寄</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-test-send">送出測試</button>
             </div>
-
-            <div class="border rounded p-2 my-2">
-                <div class="mb-2">
-                    <label class="form-label d-flex justify-content-between align-items-center mb-1">
-                        <span class="small text-muted">收件者 (Recipient)</span>
-                        <button type="button" class="btn btn-sm btn-primary" id="btn-test-send">
-                            試寄
-                        </button>
-                    </label>
-                    <input class="form-control form-control-sm" id="pv-recipient" placeholder="recipient@example.com" />
-                </div>
-                <div class="mb-2">
-                    <span class="small text-muted">Name（可選）</span>
-                    <input class="form-control form-control-sm" id="pv-name" placeholder="Name（可選）" />
-                </div>
+            <div class="row g-2 mt-2">
+                <div class="col-8"><input id="pv-recipient" class="form-control form-control-sm" placeholder="recipient@example.com" /></div>
+                <div class="col-4"><input id="pv-name" class="form-control form-control-sm" placeholder="Name" /></div>
             </div>
+            <div class="side-note mt-2">可用變數：<code>{{Recipient}}</code>、<code>{{Name}}</code></div>
 
-            <div class="mb-2"><strong>Subject：</strong> <span id="pv-subject"></span></div>
-            <iframe id="pv-frame" class="w-100 border rounded" style="height:520px;background:#fff"></iframe>
+            <div class="d-flex align-items-center justify-content-between mt-3">
+                <h6 class="mb-0">預覽</h6>
+                <div class="side-note">主旨：<span id="pv-subject"></span></div>
+            </div>
+            <iframe id="pv-frame" class="w-100 border rounded preview-frame mt-2"></iframe>
         </div>
     </div>
 </div>
@@ -111,147 +96,25 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
-
-    <!-- 1) 先宣告 GPL 金鑰（一定要在 ckeditor.js 之前） -->
+    <script src="https://editor.unlayer.com/embed.js"></script>
+    <script src="~/js/unlayer-mail.js" asp-append-version="true"></script>
     <script>
-        window.CKEDITOR_LICENSE_KEY = 'GPL';
-        window.CKEDITOR_GLOBAL_LICENSE_KEY = 'GPL';
-    </script>
-
-    <!-- 2) 載入你打包好的 UMD；使用 defer 讓它在 DOM 解析後執行 -->
-    <script src="@Url.Content("~/lib/ckeditor5-oss/ckeditor.js")" asp-append-version="true" defer></script>
-
-    <!-- 3) 初始化（移除縮放與置左/中/右） -->
-    <script>
-        (function () {
-            function resolveEditorCtor() {
-                const C = window.ClassicEditor;
-                if (!C) return null;
-                if (typeof C.create === 'function') return C;           // 直接匯出 class
-                if (C.default && typeof C.default.create === 'function') return C.default; // { default: class }
-                return null;
-            }
-
-            function initCKE() {
-                if (window.__ckInitDone) return; // 防止重複初始化
-
-                const Editor = resolveEditorCtor();
-                const el = document.querySelector('#editor');
-                if (!Editor || !el) return;      // 還沒就緒，交給下一個事件再試
-
-                window.__ckInitDone = true;
-                Editor.create(el, {
-                    licenseKey: 'GPL',
-                    language: 'zh-cn',
-
-                    /* 關閉：影像縮放（ImageResize）、影像對齊（ImageStyle）、段落對齊（Alignment） */
-                    removePlugins: ['ImageResize', 'ImageStyle', 'Alignment'],
-
-                    /* 主工具列：移除對齊/縮放相關按鈕，只保留基本功能 */
-                    toolbar: [
-                        'heading','|','bold','italic','link','|',
-                        'bulletedList','numberedList','blockQuote','|',
-                        'insertTable','|','imageUpload','|','undo','redo'
-                    ],
-
-                    /* 影像工具列：只留標題/替代文字，不顯示縮放與置左中右 */
-                    image: {
-                        toolbar: ['toggleImageCaption','imageTextAlternative']
-                        // 不設定 styles/resizeOptions → 不提供對齊/縮放
-                    },
-
-                    table: { contentToolbar: ['tableColumn','tableRow','mergeTableCells'] },
-
-                    /* 保留你的圖片上傳設定 */
-                    simpleUpload: {
-                        uploadUrl: '@Url.Action("UploadImage", "MailTemplates", new { area = "Mail" })',
-                        headers: {
-                            'RequestVerificationToken':
-                                document.querySelector('form input[name="__RequestVerificationToken"]').value
-                        }
-                    }
-                })
-                .then(editor => {
-                    const form = el.closest('form');
-                    if (form) form.addEventListener('submit', () => el.value = editor.getData());
-                    window.editorInstance = editor;
-                    console.log('CKEditor 初始化完成（已關閉縮放 & 對齊功能）');
-                })
-                .catch(e => {
-                    console.error('CKEditor 初始化失敗：', e);
-                    alert('CKEditor 初始化失敗，請開啟開發者工具查看錯誤訊息。');
-                });
-            }
-
-            // 多重保險：DOM 就緒與 window 載入後都嘗試一次
-            document.addEventListener('DOMContentLoaded', initCKE);
-            window.addEventListener('load', initCKE);
-        })();
-    </script>
-
-    <!-- 4) 即時預覽（載入外部檔） -->
-    <script src="~/js/mail-preview.js" asp-append-version="true"></script>
-    <script>
-        // 初始化（已移除 jsonId / copyBtnId）
-        MailPreview.init({
+        UnlayerMail.init({
+          mode: 'create',
+          formId: 'form-basic',
           editorId: 'editor',
           subjectSelector: '[name="Subject"]',
-          recipientId: 'pv-recipient',
-          nameId: 'pv-name',
-          subjectOutId: 'pv-subject',
-          frameId: 'pv-frame'
+          subjectOutSelector: '#pv-subject',
+          designFieldId: 'DesignJson',
+          htmlFieldId: 'Html',
+          previewFrameId: 'pv-frame',
+          recipientSelector: '#pv-recipient',
+          nameSelector: '#pv-name',
+          saveButtonSelector: '#btn-save-all',
+          testButtonSelector: '#btn-test-send',
+          testSendUrl: '@Url.Action("TestSend", "MailTemplates", new { area = "Mail" })',
+          uploadUrl: '@Url.Action("Upload", "Assets", new { area = "Mail" })',
+          antiForgery: document.querySelector('#form-basic input[name="__RequestVerificationToken"]').value
         });
-
-        // === 試寄 ===
-        (function () {
-          const btn  = document.getElementById('btn-test-send');
-          const form = document.querySelector('form'); // 左側那個建立表單
-          const token = form?.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
-
-          const url = '@Url.Action("TestSend", "MailTemplates", new { area = "Mail" })';
-
-          async function testSend() {
-            const to = document.getElementById('pv-recipient')?.value?.trim();
-            if (!to) { alert('請先輸入收件者 Email'); return; }
-
-            const subjectEl = document.querySelector('[name="Subject"]');
-            const subject = subjectEl ? subjectEl.value : '';
-
-            const htmlEl = document.getElementById('editor');
-            const html = (window.editorInstance && typeof window.editorInstance.getData === 'function')
-              ? window.editorInstance.getData()
-              : (htmlEl ? htmlEl.value : '');
-
-            try {
-              const res = await fetch(url, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json; charset=utf-8',
-                  'RequestVerificationToken': token
-                },
-                body: JSON.stringify({
-                  to: to,
-                  subject: subject,
-                  bodyHtml: html
-                })
-              });
-
-              if (!res.ok) {
-                const txt = await res.text();
-                throw new Error(txt || ('HTTP ' + res.status));
-              }
-
-              const data = await res.json().catch(() => ({}));
-              if (data?.ok === false) throw new Error(data?.error || '試寄失敗');
-
-              alert('已送出試寄！請到信箱確認。');
-            } catch (err) {
-              console.error(err);
-              alert('試寄失敗：' + (err?.message || '未知錯誤'));
-            }
-          }
-
-          btn?.addEventListener('click', testSend);
-        })();
     </script>
 }

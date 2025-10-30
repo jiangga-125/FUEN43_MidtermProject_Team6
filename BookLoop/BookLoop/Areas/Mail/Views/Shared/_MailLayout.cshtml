@@ -66,11 +66,12 @@
 
                         @* --- 加入返回其他重要區域的連結 --- *@
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="ReportMail" asp-controller="Reports" asp-action="Index">返回報表</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">返回首頁</a> @* *@
                         </li>
                         <li class="nav-item">
-                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">返回首頁</a> @* *@
+                            <a class="nav-link text-dark" asp-area="Mail" asp-controller="MailTemplates" asp-action="Index">返回郵件首頁</a>
                         </li>
+
 
                     </ul>
                     @* --- 登入狀態 (複製 _AccountLayout.cshtml 的右側部分) --- *@
