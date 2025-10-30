@@ -76,27 +76,28 @@
             </form>
         </div>
 
-        <!-- 右：即時預覽（新增；不動 CKEditor） -->
+        <!-- 右：即時預覽 -->
         <div class="col-md-4">
             <div class="d-flex align-items-center justify-content-between">
                 <h5 class="mb-0">即時預覽</h5>
-                <small class="text-muted">可用變數：<code>{{Recipient}}</code>、<code>{{Name}}</code>；或輸入 JSON</small>
+                <small class="text-muted">
+                    可用變數：<code>{{Recipient}}</code>、<code>{{Name}}</code>
+                </small>
             </div>
 
             <div class="border rounded p-2 my-2">
                 <div class="mb-2">
+                    <label class="form-label d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted">收件者 (Recipient)</span>
+                        <button type="button" class="btn btn-sm btn-primary" id="btn-test-send">
+                            試寄
+                        </button>
+                    </label>
                     <input class="form-control form-control-sm" id="pv-recipient" placeholder="recipient@example.com" />
                 </div>
                 <div class="mb-2">
+                    <span class="small text-muted">Name（可選）</span>
                     <input class="form-control form-control-sm" id="pv-name" placeholder="Name（可選）" />
-                </div>
-                <div class="mb-2">
-                    <div class="input-group input-group-sm">
-                        <textarea class="form-control" id="pv-token" rows="2"
-                                  placeholder='可選：{"OrderNo":"AB123","Amount":"1200","Link":"https://..."}'></textarea>
-                        <button type="button" class="btn btn-outline-secondary" id="btn-copy-json">複製JSON</button>
-                    </div>
-                    <div class="mt-1 small text-muted">「複製JSON」只會把內容複製到剪貼簿，<b>不會</b>動你的編輯器。</div>
                 </div>
             </div>
 
@@ -191,16 +192,66 @@
     <!-- 4) 即時預覽（載入外部檔） -->
     <script src="~/js/mail-preview.js" asp-append-version="true"></script>
     <script>
-        // 初始化（對應你頁面上的元素 Id）
+        // 初始化（已移除 jsonId / copyBtnId）
         MailPreview.init({
           editorId: 'editor',
           subjectSelector: '[name="Subject"]',
           recipientId: 'pv-recipient',
           nameId: 'pv-name',
-          jsonId: 'pv-token',
           subjectOutId: 'pv-subject',
-          frameId: 'pv-frame',
-          copyBtnId: 'btn-copy-json'
+          frameId: 'pv-frame'
         });
+
+        // === 試寄 ===
+        (function () {
+          const btn  = document.getElementById('btn-test-send');
+          const form = document.querySelector('form'); // 左側那個建立表單
+          const token = form?.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+          const url = '@Url.Action("TestSend", "MailTemplates", new { area = "Mail" })';
+
+          async function testSend() {
+            const to = document.getElementById('pv-recipient')?.value?.trim();
+            if (!to) { alert('請先輸入收件者 Email'); return; }
+
+            const subjectEl = document.querySelector('[name="Subject"]');
+            const subject = subjectEl ? subjectEl.value : '';
+
+            const htmlEl = document.getElementById('editor');
+            const html = (window.editorInstance && typeof window.editorInstance.getData === 'function')
+              ? window.editorInstance.getData()
+              : (htmlEl ? htmlEl.value : '');
+
+            try {
+              const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json; charset=utf-8',
+                  'RequestVerificationToken': token
+                },
+                body: JSON.stringify({
+                  to: to,
+                  subject: subject,
+                  bodyHtml: html
+                })
+              });
+
+              if (!res.ok) {
+                const txt = await res.text();
+                throw new Error(txt || ('HTTP ' + res.status));
+              }
+
+              const data = await res.json().catch(() => ({}));
+              if (data?.ok === false) throw new Error(data?.error || '試寄失敗');
+
+              alert('已送出試寄！請到信箱確認。');
+            } catch (err) {
+              console.error(err);
+              alert('試寄失敗：' + (err?.message || '未知錯誤'));
+            }
+          }
+
+          btn?.addEventListener('click', testSend);
+        })();
     </script>
 }

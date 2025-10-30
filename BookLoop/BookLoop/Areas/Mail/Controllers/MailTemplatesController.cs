@@ -210,26 +210,29 @@ namespace BookLoop.Areas.Mail.Controllers
 			return Json(new { subject, html });
 		}
 
-		// === 試寄 ===
+		// === 試寄（右側按鈕用；前端用 fetch 傳 JSON）===
 		// POST: Mail/MailTemplates/TestSend
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public async Task<IActionResult> TestSend([FromForm] int id, [FromForm] string to,
-			[FromForm] string? name = null, [FromForm] string? tokenJson = null, CancellationToken ct = default)
+		public async Task<IActionResult> TestSend([FromBody] TestSendDto dto, CancellationToken ct = default)
 		{
-			var tpl = await _context.MailTemplates.FirstOrDefaultAsync(x => x.TemplateID == id, ct);
-			if (tpl == null) return NotFound("Template not found");
+			if (dto == null || string.IsNullOrWhiteSpace(dto.To))
+				return BadRequest("To is required.");
 
-			var model = ParseJson(tokenJson);
-			if (!string.IsNullOrWhiteSpace(name)) model["Name"] = name;
-			if (!model.ContainsKey("Recipient")) model["Recipient"] = to;
+			// 以 Recipient / Name 為唯一可用 token（已拿掉 JSON 變數）
+			var model = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+			{
+				["Recipient"] = dto.To
+			};
+			if (!string.IsNullOrWhiteSpace(dto.Name))
+				model["Name"] = dto.Name!;
 
-			var subject = _renderer.Render(tpl.Subject ?? "", model);
-			var html = _renderer.Render(tpl.BodyHtml ?? "", model);
+			// 與實際寄送一致：用同一個 renderer 做 token 替換
+			var subject = _renderer.Render(dto.Subject ?? "", model);
+			var html = _renderer.Render(dto.BodyHtml ?? "", model);
 
-			await _mail.SendAsync(to, subject, html, ct);
-			TempData["ok"] = "測試郵件已送出";
-			return RedirectToAction(nameof(Preview), new { id, recipient = to, Name = name });
+			await _mail.SendAsync(dto.To, subject, html, ct);
+			return Json(new { ok = true });
 		}
 
 		// 圖片上傳 Action
@@ -327,7 +330,6 @@ namespace BookLoop.Areas.Mail.Controllers
 			catch { return new(); }
 		}
 
-		// 放在 controller 內任意位置（class scope）
 		public sealed class PreviewInput
 		{
 			public string? Subject { get; set; }
@@ -336,5 +338,14 @@ namespace BookLoop.Areas.Mail.Controllers
 			public string? Recipient { get; set; }
 			public string? Name { get; set; }
 		}
+
+		public sealed class TestSendDto
+		{
+			public string To { get; set; } = "";
+			public string? Name { get; set; }
+			public string? Subject { get; set; }
+			public string? BodyHtml { get; set; }
+		}
+
 	}
 }
