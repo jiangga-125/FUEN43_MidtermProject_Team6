@@ -131,7 +131,7 @@ namespace BookLoop
 			//});
 			#endregion
 
-			#region 驗證加上 JwtBearer
+			#region 驗證：SmartScheme（自動在 Cookie / JWT 間選擇）
 			var jwtKey = builder.Configuration["Jwt:Key"];
 			if (string.IsNullOrEmpty(jwtKey))
 			{
@@ -149,16 +149,39 @@ namespace BookLoop
 				signingKey = new SymmetricSecurityKey(keyBytes);
 			}
 
-			builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-			.AddCookie(opt =>
+			// 重要：使用 PolicyScheme（SmartScheme） 來自動選擇 JWT 或 Cookie
+			builder.Services.AddAuthentication(options =>
+			{
+				// 預設使用 SmartScheme，由它決定使用哪個實際 scheme
+				options.DefaultScheme = "SmartScheme";
+			})
+			.AddPolicyScheme("SmartScheme", "Smart auth selection", options =>
+			{
+				// 若 request 帶 Authorization: Bearer ... -> 選 JwtBearer
+				// 否則 fallback to Cookie
+				options.ForwardDefaultSelector = context =>
+				{
+					var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+					if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+						return JwtBearerDefaults.AuthenticationScheme;
+
+					// 若有 cookie 名稱「bookloop.auth」也能優先判斷回傳 Cookie scheme（非必要）
+					if (context.Request.Cookies.ContainsKey("bookloop.auth"))
+						return CookieAuthenticationDefaults.AuthenticationScheme;
+
+					// 預設回 Cookie（保持原本網站介面行為）
+					return CookieAuthenticationDefaults.AuthenticationScheme;
+				};
+			})
+
+			// 保留你原本的 Cookie 設定（不變或可微調）
+			.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, opt =>
 			{
 				opt.Cookie.Name = "bookloop.auth";
 				opt.Cookie.HttpOnly = true;
 
-				//opt.Cookie.SameSite = SameSiteMode.Lax;
 				opt.Cookie.SameSite = SameSiteMode.None;
 				opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-				// 開發期是跨網域（5173↔後端），Cookie 需 None+Secure；上線時同網域時可改回 Lax
 
 				opt.LoginPath = "/Auth/Login";
 				opt.AccessDeniedPath = "/Auth/Denied";
@@ -189,6 +212,7 @@ namespace BookLoop
 					}
 				};
 			})
+
 			.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 			{
 				// 開發時如果是 http，可先把 RequireHttpsMetadata 設 false；上線務必 true
@@ -208,6 +232,7 @@ namespace BookLoop
 				};
 			});
 			#endregion
+
 
 			// 只要求「需登入」，其餘 Policy 全交由 PermissionPolicyProvider 動態生成
 			builder.Services.AddAuthorization(options =>
