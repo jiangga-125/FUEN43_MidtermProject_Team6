@@ -1,7 +1,10 @@
-﻿namespace BookLoop.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace BookLoop.Models
 {
 	public class RefreshToken
 	{
+		[Key]
 		public int RefreshID { get; set; }
 		public int UserID { get; set; }
 

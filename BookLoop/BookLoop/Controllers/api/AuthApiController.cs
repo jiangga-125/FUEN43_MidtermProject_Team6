@@ -80,12 +80,12 @@ namespace BookLoop.Controllers.Api
 				signingKey = new SymmetricSecurityKey(keyBytes);
 			}
 
-			// 取得 user 的基本欄位（用 reflection 容錯）
-			string uid = user?.GetType().GetProperty("UserId")?.GetValue(user)?.ToString()
-				?? user?.GetType().GetProperty("Id")?.GetValue(user)?.ToString() ?? "";
-			string email = user?.GetType().GetProperty("Email")?.GetValue(user)?.ToString() ?? dto.Account;
-			string name = user?.GetType().GetProperty("UserName")?.GetValue(user)?.ToString()
-				?? user?.GetType().GetProperty("Name")?.GetValue(user)?.ToString() ?? email;
+			// 取得 user 資料（直接使用明確欄位）
+			string uid = user.UserID.ToString();          // 用 UserID (int) 直接轉 string
+			string email = user.Email ?? dto.Account;
+			string name = (user.GetType().GetProperty("UserName")?.GetValue(user)?.ToString()
+						   ?? user.GetType().GetProperty("Name")?.GetValue(user)?.ToString()
+						   ?? email);
 
 			// claims（按需擴充）
 			var claims = new List<Claim>
@@ -129,7 +129,7 @@ namespace BookLoop.Controllers.Api
 			int.TryParse(uid, out int userIdInt); // 若無法 parse，請改成對應型別處理
 			var rt = new RefreshToken
 			{
-				UserID = userIdInt,
+				UserID = user.UserID,
 				TokenHash = tokenHash,
 				CreatedAt = DateTime.UtcNow,
 				ExpiresAt = DateTime.UtcNow.AddDays(30),
@@ -219,7 +219,7 @@ namespace BookLoop.Controllers.Api
 			});
 
 			// 產生新 access token（找 user -> 用原本的 token 產生邏輯）
-			var user = await auth.FindByIdAsync(existing.UserID.ToString());
+			var user = await auth.FindByIdAsync(existing.UserID); 
 			if (user == null) return Unauthorized(new { message = "user not found" });
 
 			// 產生 access token（複製 token 產生邏輯）

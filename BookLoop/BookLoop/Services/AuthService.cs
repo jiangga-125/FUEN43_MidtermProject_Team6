@@ -155,18 +155,10 @@ public class AuthService
 	// 新增 FindByIdAsync / CreateAccessToken / CreateAndStoreRefreshTokenAsync / RevokeRefreshTokenByRawAsync
 
 	#region FindByIdAsync方法
-	// 根據字串 id 找 user（支援 int UserID 與 string Id）Controller 會呼 auth.FindByIdAsync(existing.UserID.ToString())
-	public async Task<User?> FindByIdAsync(string id)
+	// 根據字串 id 找 user int UserID）Controller 呼叫 auth.FindByIdAsync(existing.UserID.ToString())
+	public async Task<User?> FindByIdAsync(int id)
 	{
-		// 優先支援 int PK (UserID)
-		if (int.TryParse(id, out int intId))
-		{
-			return await _db.Users.FirstOrDefaultAsync(u => u.UserID == intId);
-		}
-
-		// 若你的 Users PK 是 string (Identity.Id)，試用 Id 屬性
-		// 若你的 User 類別沒有 Id 屬性，這行會回 null
-		return await _db.Users.FirstOrDefaultAsync(u => EF.Property<string>(u, "Id") == id);
+		return await _db.Users.FirstOrDefaultAsync(u => u.UserID == id);
 	}
 	#endregion
 
