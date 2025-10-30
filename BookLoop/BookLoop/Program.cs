@@ -70,20 +70,59 @@ namespace BookLoop
 					Path.Combine(builder.Environment.ContentRootPath, "dpkeys")))
 				.SetApplicationName("BookLoop");
 
+			// CORS：允許從 Vite (5173) 來的請求、並攜帶 Cookie
+			builder.Services.AddCors(opts =>
+			{
+				opts.AddPolicy("DevCors", p => p
+					.WithOrigins("http://localhost:5173") //vue dev server位置
+					.AllowAnyHeader()
+					.AllowAnyMethod()
+					.AllowCredentials());
+			});
+
 			// ------------------------------
 			// 驗證與授權（動態 Policy）
 			// ------------------------------
 			builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-				.AddCookie(opt =>
+			.AddCookie(opt =>
+			{
+				opt.Cookie.Name = "bookloop.auth";
+				opt.Cookie.HttpOnly = true;
+
+				//opt.Cookie.SameSite = SameSiteMode.Lax;
+				opt.Cookie.SameSite = SameSiteMode.None;                 // [MODIFY]
+				opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+				// 開發期是跨網域（5173↔後端），Cookie 需 None+Secure；上線時同網域時可改回 Lax
+
+				opt.LoginPath = "/Auth/Login";
+				opt.AccessDeniedPath = "/Auth/Denied";
+				opt.ExpireTimeSpan = TimeSpan.FromHours(12);
+				opt.SlidingExpiration = true;
+
+				opt.Events = new CookieAuthenticationEvents
 				{
-					opt.Cookie.Name = "bookloop.auth";
-					opt.Cookie.HttpOnly = true;
-					opt.Cookie.SameSite = SameSiteMode.Lax;
-					opt.LoginPath = "/Auth/Login";
-					opt.AccessDeniedPath = "/Auth/Denied";
-					opt.ExpireTimeSpan = TimeSpan.FromHours(12);
-					opt.SlidingExpiration = true;
-				});
+					OnRedirectToLogin = ctx =>
+					{
+						if (ctx.Request.Path.StartsWithSegments("/api"))
+						{
+							ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+							return Task.CompletedTask;
+						}
+						ctx.Response.Redirect(ctx.RedirectUri);
+						return Task.CompletedTask;
+					},
+					OnRedirectToAccessDenied = ctx =>
+					{
+						if (ctx.Request.Path.StartsWithSegments("/api"))
+						{
+							ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+							return Task.CompletedTask;
+						}
+						ctx.Response.Redirect(ctx.RedirectUri);
+						return Task.CompletedTask;
+					}
+				};
+			});
 
 			// 只要求「需登入」，其餘 Policy 全交由 PermissionPolicyProvider 動態生成
 			builder.Services.AddAuthorization(options =>
@@ -195,9 +234,15 @@ namespace BookLoop
 
 			app.UseRouting();
 
-			// 重要順序：Authentication -> Authorization
+			app.UseCors("DevCors");
 			app.UseAuthentication();
 			app.UseAuthorization();
+			// 順序：UseCors -> Authentication -> Authorization
+
+			//app.UseStaticFiles();                  // 服務 wwwroot 靜態檔
+			app.MapControllers(); // 讓路由的 /api/* 運作
+			//app.MapFallbackToFile("index.html"); // 正式上線時 SPA 前端路由回傳 index.html
+
 
 			app.MapControllerRoute(
 				name: "areas",
@@ -206,6 +251,9 @@ namespace BookLoop
 			app.MapControllerRoute(
 				name: "default",
 				pattern: "{controller=Home}/{action=Index}/{id?}");
+
+			// 上線把 Vue 靜態檔放 wwwroot，使用 history 路由時需要回傳 index.html
+			// app.MapFallbackToFile("index.html");
 
 			app.MapRazorPages();
 
