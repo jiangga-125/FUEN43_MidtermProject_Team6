@@ -3,12 +3,8 @@
 @{
     ViewData["Title"] = "Index";
 }
-@if (TempData["SuccessMessage"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        @TempData["SuccessMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css">
 }
 @if (TempData["ErrorMessage"] != null)
 {
@@ -47,7 +43,7 @@
 @Html.AntiForgeryToken()
 
 
-<table class="table">
+<table id="penaltiesTable" class="table">
     <thead>
         <tr>
             <th>
@@ -140,6 +136,7 @@
     </tbody>
 </table>
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@latest" defer></script>
     <script>
         // Bootstrap 5: 用元素建立 Modal
         const modalEl    = document.getElementById('rulesModal');
@@ -239,4 +236,24 @@
         window.loadRuleEdit  = loadRuleEdit;
         window.postAndReload = postAndReload;
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const el = document.querySelector('#penaltiesTable');
+            if (!el) return;
+
+            const dt = new simpleDatatables.DataTable(el, {
+                perPage: 10,
+                fixedHeight: true,
+                searchable: true,
+				sortable: false,
+                labels: {
+                    placeholder: "搜尋…",
+                    perPage: "筆/頁",
+                    noRows: "沒有資料",
+                    info: "顯示第 {start}–{end} 筆，共 {rows} 筆"
+                },              
+            });
+        });
+    </script>
+
 }

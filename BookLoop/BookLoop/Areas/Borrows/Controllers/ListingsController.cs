@@ -30,7 +30,7 @@ namespace BookLoop.Controllers
 
         // GET: Listings
         public  IActionResult Index()
-        {
+        {                           
             return View();
         }
         
@@ -219,7 +219,7 @@ namespace BookLoop.Controllers
 
                 await _context.SaveChangesAsync();
                 await tx.CommitAsync();
-
+                TempData["ShowResultModal"] = true;
                 return RedirectToAction(nameof(Index));
             }
             catch

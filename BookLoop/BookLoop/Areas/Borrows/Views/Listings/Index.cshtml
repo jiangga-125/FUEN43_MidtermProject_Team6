@@ -4,13 +4,29 @@
 {
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" />
     <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.1/css/fixedHeader.dataTables.min.css" />
+    <style>
+        #booktable.dataTable tbody tr:hover,
+        #booktable.dataTable tbody tr:hover > td,
+        #booktable.dataTable tbody tr:hover > th {
+            background-color: #fff8dc !important;
+            color: #3a3a3a !important;
+        }
+
+        /* 若有條紋：確保 odd/even 在 hover 時也被蓋掉 */
+        #booktable.dataTable.table-striped tbody tr.odd:hover > td,
+        #booktable.dataTable.table-striped tbody tr.even:hover > td {
+            background-color: #fff8dc !important;
+            color: #3a3a3a !important;
+        }
+    </style>  
+    
 }
 <a id="createBtn" href="@Url.Action("Create", "Listings")"
    class="btn btn-primary btn-sm d-none">
     <i class="fa-solid fa-plus"></i>新增書籍
 </a>
 
-<table class="table table-striped table-hover" id="booktable">
+<table class="table table-striped table-hover"id="booktable">
     <thead>
         <tr>            
             <th>書名</th>			            
@@ -20,7 +36,7 @@
             <th>出版社</th>
             <th>ISBN</th>
             <th>現況</th>                
-            <th>操作欄位</th>
+
         </tr>
     </thead>
    
@@ -54,7 +70,15 @@
         </div>
     </div>
 </div>
-
+@if (TempData["ShowResultModal"] != null)
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          var modalEl = document.getElementById('resultModal');
+          new bootstrap.Modal(modalEl).show();
+        });
+    </script>
+}
 
 @section Scripts {
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
@@ -64,6 +88,9 @@
         $(function () {
           $('#booktable').DataTable({
             dom: '<"dt-toolbar d-flex align-items-center gap-5 mb-2" l f <"ms-auto dt-actions"> >rtip',
+            scrollY: '65vh',
+            scrollCollapse: true,
+            fixedHeader: { header: true },
             ajax: {
               url: '@Url.Action("GetBooks", "Listings")',
               type: 'GET',
@@ -97,8 +124,8 @@
                 render: function (data, type, row) {
                 const map = {
                 0: { text: '可借',   cls: 'badge bg-success px-3 py-2 fs-6' },
-                1: { text: '保留中', cls: 'badge bg-warning text-dark px-3 py-2 fs-6' },
-                2: { text: '借出',   cls: 'badge bg-primary px-3 py-2 fs-6' }
+                1: { text: '保留中', cls: 'badge bg-primary text-dark px-3 py-2 fs-6' },
+                2: { text: '借出',   cls: 'badge bg-warning px-3 py-2 fs-6' }
               };
                 const item = map[data] || { text: '未知', cls: 'badge bg-light text-dark' };
 
@@ -110,13 +137,6 @@
                 }
         }
         ,
-                   {
-                       data: 'listingId', orderable: false,
-                render: function (id) {
-                  return `<a href="/Listings/Edit/${id}">Edit</a>`;
-                   } 
-                }
-
             ],
             pageLength: 10,
             language: {
