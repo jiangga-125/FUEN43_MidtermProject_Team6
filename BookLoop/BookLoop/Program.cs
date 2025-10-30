@@ -17,7 +17,9 @@ using Microsoft.Extensions.Options;
 using System.Threading.Tasks;
 using BookLoop.Authorization;
 using Microsoft.AspNetCore.DataProtection;
-
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using System.IO;
 using Microsoft.AspNetCore.Http;
 using System;
@@ -32,10 +34,10 @@ namespace BookLoop
 		{
 			var builder = WebApplication.CreateBuilder(args);
 
+			#region context 統一共用 bookloopstr連線字串
 			var bookloopStr = builder.Configuration.GetConnectionString("BookLoop")
 			  ?? throw new InvalidOperationException("ConnectionStrings:BookLoop 未設定");
 
-			// 所有 Context 共用 bookloopStr 資料庫
 			builder.Services.AddDbContext<ApplicationDbContext>(options =>                
 				options.UseSqlServer(bookloopStr));
 
@@ -60,6 +62,7 @@ namespace BookLoop
 
 			builder.Services.AddDbContext<AppDbContext>(options =>
 				options.UseSqlServer(bookloopStr));
+			#endregion
 
 			builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -81,9 +84,71 @@ namespace BookLoop
 					.AllowCredentials());
 			});
 
+			#region 原本的驗證(註解了)
 			// ------------------------------
 			// 驗證與授權（動態 Policy）
 			// ------------------------------
+
+			//builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+			//.AddCookie(opt =>
+			//{
+			//	opt.Cookie.Name = "bookloop.auth";
+			//	opt.Cookie.HttpOnly = true;
+
+			//	//opt.Cookie.SameSite = SameSiteMode.Lax;
+			//	opt.Cookie.SameSite = SameSiteMode.None;                 // [MODIFY]
+			//	opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+			//	// 開發期是跨網域（5173↔後端），Cookie 需 None+Secure；上線時同網域時可改回 Lax
+
+			//	opt.LoginPath = "/Auth/Login";
+			//	opt.AccessDeniedPath = "/Auth/Denied";
+			//	opt.ExpireTimeSpan = TimeSpan.FromHours(12);
+			//	opt.SlidingExpiration = true;
+
+			//	opt.Events = new CookieAuthenticationEvents
+			//	{
+			//		OnRedirectToLogin = ctx =>
+			//		{
+			//			if (ctx.Request.Path.StartsWithSegments("/api"))
+			//			{
+			//				ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+			//				return Task.CompletedTask;
+			//			}
+			//			ctx.Response.Redirect(ctx.RedirectUri);
+			//			return Task.CompletedTask;
+			//		},
+			//		OnRedirectToAccessDenied = ctx =>
+			//		{
+			//			if (ctx.Request.Path.StartsWithSegments("/api"))
+			//			{
+			//				ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+			//				return Task.CompletedTask;
+			//			}
+			//			ctx.Response.Redirect(ctx.RedirectUri);
+			//			return Task.CompletedTask;
+			//		}
+			//	};
+			//});
+			#endregion
+
+			#region 驗證加上 JwtBearer
+			var jwtKey = builder.Configuration["Jwt:Key"];
+			if (string.IsNullOrEmpty(jwtKey))
+			{
+				throw new InvalidOperationException("Jwt:Key 未設定，請在 appsettings / user-secrets 或環境變數設定 Jwt:Key");
+			}
+			SymmetricSecurityKey signingKey;
+			try
+			{
+				var keyBytes = Convert.FromBase64String(jwtKey);
+				signingKey = new SymmetricSecurityKey(keyBytes);
+			}
+			catch
+			{
+				var keyBytes = Encoding.UTF8.GetBytes(jwtKey);
+				signingKey = new SymmetricSecurityKey(keyBytes);
+			}
+
 			builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 			.AddCookie(opt =>
 			{
@@ -91,7 +156,7 @@ namespace BookLoop
 				opt.Cookie.HttpOnly = true;
 
 				//opt.Cookie.SameSite = SameSiteMode.Lax;
-				opt.Cookie.SameSite = SameSiteMode.None;                 // [MODIFY]
+				opt.Cookie.SameSite = SameSiteMode.None;
 				opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 				// 開發期是跨網域（5173↔後端），Cookie 需 None+Secure；上線時同網域時可改回 Lax
 
@@ -123,7 +188,26 @@ namespace BookLoop
 						return Task.CompletedTask;
 					}
 				};
+			})
+			.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+			{
+				// 開發時如果是 http，可先把 RequireHttpsMetadata 設 false；上線務必 true
+				options.RequireHttpsMetadata = false;
+				options.SaveToken = false;
+
+				options.TokenValidationParameters = new TokenValidationParameters
+				{
+					ValidateIssuer = true,
+					ValidIssuer = builder.Configuration["Jwt:Issuer"],
+					ValidateAudience = true,
+					ValidAudience = builder.Configuration["Jwt:Audience"],
+					ValidateIssuerSigningKey = true,
+					IssuerSigningKey = signingKey,
+					ValidateLifetime = true,
+					ClockSkew = TimeSpan.FromSeconds(30)
+				};
 			});
+			#endregion
 
 			// 只要求「需登入」，其餘 Policy 全交由 PermissionPolicyProvider 動態生成
 			builder.Services.AddAuthorization(options =>
@@ -138,9 +222,7 @@ namespace BookLoop
 			builder.Services.AddMemoryCache();
 			builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
-			// ------------------------------
-			// 服務註冊
-			// ------------------------------
+			#region 服務註冊
 			builder.Services.Configure<BookLoop.Services.ImageValidationOptions>(opts =>
 			{
 				opts.MaxFileBytes = 5 * 1024 * 1024; // 5MB
@@ -193,6 +275,8 @@ namespace BookLoop
 			// MVC & Razor Pages
 			builder.Services.AddControllersWithViews();
 			builder.Services.AddRazorPages();
+
+			#endregion
 
 			// ------------------------------
 			// 應用程式管線
