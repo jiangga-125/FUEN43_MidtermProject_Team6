@@ -21,9 +21,12 @@ namespace BookLoop.Data
 		public DbSet<PermissionFeature> PermissionFeatures => Set<PermissionFeature>();
 		public DbSet<Blacklist> Blacklists => Set<Blacklist>();
 		public DbSet<Member> Members => Set<Member>();
-        public DbSet<MailTemplate> MailTemplates { get; set; }
+		//public DbSet<MailTemplate> MailTemplates { get; set; }
+		public DbSet<Template> Templates => Set<Template>();
+		public DbSet<TemplateVersion> TemplateVersions => Set<TemplateVersion>();
 
-        protected override void OnModelCreating(ModelBuilder b)
+
+		protected override void OnModelCreating(ModelBuilder b)
 		{
 			base.OnModelCreating(b);
 
@@ -120,6 +123,24 @@ namespace BookLoop.Data
 				e.HasOne(x => x.Permission).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.PermissionID);
 				e.HasOne(x => x.Feature).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.FeatureID);
 			});
+
+			//Mail
+			b.Entity<Template>().ToTable("Template"); 
+			b.Entity<TemplateVersion>().ToTable("TemplateVersion");
+
+			b.Entity<Template>().HasIndex(x => x.TemplateKey).IsUnique();
+
+			b.Entity<TemplateVersion>()
+				.HasOne(v => v.Template).WithMany(t => t.Versions)
+				.HasForeignKey(v => v.TemplateId).OnDelete(DeleteBehavior.Cascade);
+
+			b.Entity<TemplateVersion>()
+				.HasIndex(v => new { v.TemplateId, v.TemplateName }).IsUnique();
+
+			b.Entity<TemplateVersion>() // 篩選唯一：每個 Template 只能 1 個預設版
+				.HasIndex(v => new { v.TemplateId, v.IsDefault })
+				.HasFilter("[IsDefault] = 1")
+				.IsUnique();
 		}
 	}
 }
