@@ -1,13 +1,22 @@
+using BookLoop.Data;
+using BookLoop.Helpers;
+using BookLoop.Models;
 using BookLoop.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using System;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace BookLoop.Controllers.Api
 {
@@ -22,7 +31,7 @@ namespace BookLoop.Controllers.Api
 		[AllowAnonymous]
 		public async Task<IActionResult> Login(
 			[FromBody] LoginDto dto,
-			[FromServices] AuthService auth 
+			[FromServices] AuthService auth
 		)
 		{
 			var user = await auth.FindByEmailAsync(dto.Account);
@@ -40,7 +49,8 @@ namespace BookLoop.Controllers.Api
 		#region jwt token
 		[HttpPost("token")]
 		[AllowAnonymous]
-		public async Task<IActionResult> Token([FromBody] LoginDto dto, [FromServices] AuthService auth)
+		// [FromServices] AppDbContext db 參數，用來存 Refresh Token
+		public async Task<IActionResult> Token([FromBody] LoginDto dto, [FromServices] AuthService auth, [FromServices] AppDbContext db, [FromServices] IConfiguration cfg)
 		{
 			// 驗證帳密
 			var user = await auth.FindByEmailAsync(dto.Account);
@@ -50,8 +60,7 @@ namespace BookLoop.Controllers.Api
 			if (!auth.VerifyPassword(user, dto.Password))
 				return Unauthorized(new { message = "帳號或密碼錯誤" });
 
-			// 讀取 jwt 設定（請確認 appsettings 或 user-secrets 已設定）
-			var cfg = HttpContext.RequestServices.GetRequiredService<IConfiguration>();
+			// 讀取 jwt 設定
 			var jwtSection = cfg.GetSection("Jwt");
 			var keyStr = jwtSection["Key"] ?? throw new Exception("Jwt:Key 未設定");
 			var issuer = jwtSection["Issuer"];
@@ -88,7 +97,8 @@ namespace BookLoop.Controllers.Api
 			new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
 			};
 
-			// **可選**：如果 AuthService 支援取得 roles / permissions，打開以下程式碼加入 claims
+			// 如果 AuthService 支援取得 roles / permissions，用以下程式碼加入 claims
+
 			/*
 			var roles = await auth.GetRolesAsync(user); // 若有此方法
 			foreach (var r in roles) claims.Add(new Claim(ClaimTypes.Role, r));
@@ -109,6 +119,36 @@ namespace BookLoop.Controllers.Api
 			);
 
 			var tokenStr = new JwtSecurityTokenHandler().WriteToken(jwt);
+
+			// Refresh Token 產生、存DB、設 HttpOnly Cookie 的流程
+			// 產生 raw refresh token 並 hash 存 DB
+			var rawRefresh = RefreshTokenHelper.GenerateRefreshTokenRaw();
+			var tokenHash = RefreshTokenHelper.HashRefreshToken(rawRefresh);
+
+			// 取得 user id
+			int.TryParse(uid, out int userIdInt); // 若無法 parse，請改成對應型別處理
+			var rt = new RefreshToken
+			{
+				UserID = userIdInt,
+				TokenHash = tokenHash,
+				CreatedAt = DateTime.UtcNow,
+				ExpiresAt = DateTime.UtcNow.AddDays(30),
+				IsRevoked = false
+			};
+			db.RefreshTokens.Add(rt);
+			await db.SaveChangesAsync();
+
+			// 設 HttpOnly cookie（跨域 dev: SameSite=None, Secure=true）
+			var cookieOptions = new CookieOptions
+			{
+				HttpOnly = true,
+				Secure = true,
+				SameSite = SameSiteMode.None,
+				Expires = rt.ExpiresAt,
+				Path = "/"
+			};
+			Response.Cookies.Append("refreshToken", rawRefresh, cookieOptions);
+
 			return Ok(new { token = tokenStr, expires = jwt.ValidTo });
 		}
 		#endregion
@@ -135,10 +175,129 @@ namespace BookLoop.Controllers.Api
 		}
 		#endregion
 
+		#region refresh 方法
+		// refresh endpoint，使用 HttpOnly cookie 裡的 refreshToken 換新 access token
+		[HttpPost("refresh")]
+		[AllowAnonymous]
+		public async Task<IActionResult> Refresh([FromServices] AppDbContext db, [FromServices] AuthService auth, [FromServices] IConfiguration cfg)
+		{
+			// 取 cookie
+			if (!Request.Cookies.TryGetValue("refreshToken", out var rawToken))
+				return Unauthorized(new { message = "refreshToken cookie not found" });
+
+			// 計算 hash 並查 DB
+			var hash = RefreshTokenHelper.HashRefreshToken(rawToken);
+			var existing = await db.RefreshTokens.FirstOrDefaultAsync(r => r.TokenHash == hash && !r.IsRevoked);
+			if (existing == null || existing.ExpiresAt < DateTime.UtcNow)
+				return Unauthorized(new { message = "invalid or expired refresh token" });
+
+			// revoke old
+			existing.IsRevoked = true;
+
+			// rotate -> 新增一筆 refresh token
+			var newRaw = RefreshTokenHelper.GenerateRefreshTokenRaw();
+			var newHash = RefreshTokenHelper.HashRefreshToken(newRaw);
+			var newRt = new RefreshToken
+			{
+				UserID = existing.UserID,
+				TokenHash = newHash,
+				CreatedAt = DateTime.UtcNow,
+				ExpiresAt = DateTime.UtcNow.AddDays(30),
+				IsRevoked = false
+			};
+			db.RefreshTokens.Add(newRt);
+			await db.SaveChangesAsync();
+
+			// 設新的 HttpOnly cookie（覆蓋）
+			Response.Cookies.Append("refreshToken", newRaw, new CookieOptions
+			{
+				HttpOnly = true,
+				Secure = true,
+				SameSite = SameSiteMode.None,
+				Expires = newRt.ExpiresAt,
+				Path = "/"
+			});
+
+			// 產生新 access token（找 user -> 用原本的 token 產生邏輯）
+			var user = await auth.FindByIdAsync(existing.UserID.ToString());
+			if (user == null) return Unauthorized(new { message = "user not found" });
+
+			// 產生 access token（複製 token 產生邏輯）
+			var jwtSection = cfg.GetSection("Jwt");
+			var keyStr = jwtSection["Key"] ?? throw new Exception("Jwt:Key 未設定");
+			var issuer = jwtSection["Issuer"];
+			var audience = jwtSection["Audience"];
+			var accessMinutes = int.Parse(jwtSection["AccessTokenMinutes"] ?? "15");
+
+			SymmetricSecurityKey signingKey;
+			try
+			{
+				var keyBytes = Convert.FromBase64String(keyStr);
+				signingKey = new SymmetricSecurityKey(keyBytes);
+			}
+			catch
+			{
+				var keyBytes = Encoding.UTF8.GetBytes(keyStr);
+				signingKey = new SymmetricSecurityKey(keyBytes);
+			}
+
+			string uid = user?.GetType().GetProperty("UserId")?.GetValue(user)?.ToString()
+				?? user?.GetType().GetProperty("Id")?.GetValue(user)?.ToString() ?? "";
+			string email = user?.GetType().GetProperty("Email")?.GetValue(user)?.ToString() ?? "";
+			string name = user?.GetType().GetProperty("UserName")?.GetValue(user)?.ToString() ?? email;
+
+			var claims = new List<Claim>
+			{
+				new Claim(JwtRegisteredClaimNames.Sub, email),
+				new Claim("uid", uid),
+				new Claim(ClaimTypes.Email, email),
+				new Claim(ClaimTypes.Name, name),
+				new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+			};
+
+			var creds = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
+			var now = DateTime.UtcNow;
+			var jwt = new JwtSecurityToken(
+				issuer: issuer,
+				audience: audience,
+				claims: claims,
+				notBefore: now,
+				expires: now.AddMinutes(accessMinutes),
+				signingCredentials: creds
+			);
+
+			var tokenStr = new JwtSecurityTokenHandler().WriteToken(jwt);
+			// 回傳新 access token
+			return Ok(new { token = tokenStr, expires = jwt.ValidTo });
+		}
+		#endregion
+
 		#region logout方法
 		[HttpPost("logout")]
-		public async Task<IActionResult> Logout()
+		public async Task<IActionResult> Logout([FromServices] AppDbContext db)
 		{
+			// 撤銷 refreshToken（若有）
+			if (Request.Cookies.TryGetValue("refreshToken", out var rawToken))
+			{
+				var hash = RefreshTokenHelper.HashRefreshToken(rawToken);
+				var rt = await db.RefreshTokens.FirstOrDefaultAsync(t => t.TokenHash == hash && !t.IsRevoked);
+				if (rt != null)
+				{
+					rt.IsRevoked = true;
+					await db.SaveChangesAsync();
+				}
+			}
+
+			// 刪除 cookie
+			Response.Cookies.Delete("refreshToken", new CookieOptions
+			{
+				HttpOnly = true,
+				Secure = true,
+				SameSite = SameSiteMode.None,
+				Path = "/"
+			});
+
+			// signout cookie 行為保留
 			await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 			return Ok(new { message = "signed out" });
 		}
