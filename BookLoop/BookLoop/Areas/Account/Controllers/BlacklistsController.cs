@@ -1,16 +1,17 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using BookLoop;
 using BookLoop.Data;
-using BookLoop;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Account.Controllers
 {
-	// ✅ 改成繼承 Base；[Area("Account")] + Account.Access 門票由 Base 統一處理
+	// 假設你的 AccountAreaController 已含 [Area("Account")] 與門票
 	public class BlacklistsController : AccountAreaController
 	{
 		private readonly AppDbContext _db;
@@ -28,22 +29,24 @@ namespace Account.Controllers
 				new SelectListItem("非生效","0"),
 			};
 
-			var now = DateTime.UtcNow;
+			var nowUtc = DateTime.UtcNow;
 
+			// LEFT JOIN：即使會員被刪除也能看到黑名單
 			var q = from b in _db.Blacklists.AsNoTracking()
-					join m in _db.Members.AsNoTracking() on b.MemberID equals m.MemberID
+					join mm in _db.Members.AsNoTracking() on b.MemberID equals mm.MemberID into gj
+					from m in gj.DefaultIfEmpty()
 					select new Row
 					{
 						BlacklistID = b.BlacklistID,
 						MemberID = b.MemberID,
-						MemberName = m.Username,
-						Email = m.Email,
-						Phone = m.Phone,
+						MemberName = m != null ? m.Username : "(會員已刪除)",
+						Email = m != null ? m.Email : null,
+						Phone = m != null ? m.Phone : null,
 						Reason = b.Reason,
 						StartAt = b.StartAt,
 						EndAt = b.EndAt,
 						LiftedAt = b.LiftedAt,
-						IsActive = b.StartAt <= now && (b.EndAt == null || b.EndAt > now) && b.LiftedAt == null
+						IsActive = b.StartAt <= nowUtc && (b.EndAt == null || b.EndAt > nowUtc) && b.LiftedAt == null
 					};
 
 			if (!string.IsNullOrWhiteSpace(keyword))
@@ -55,6 +58,7 @@ namespace Account.Controllers
 					(x.Phone != null && x.Phone.Contains(k)) ||
 					(x.Reason != null && x.Reason.Contains(k)));
 			}
+
 			if (status.HasValue)
 			{
 				bool active = status.Value == 1;
@@ -64,19 +68,16 @@ namespace Account.Controllers
 			var isDesc = string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
 			q = (sort?.ToLowerInvariant()) switch
 			{
-				"member" => (isDesc ? q.OrderByDescending(x => x.MemberName) : q.OrderBy(x => x.MemberName)),
-				"email" => (isDesc ? q.OrderByDescending(x => x.Email) : q.OrderBy(x => x.Email)),
-				"start" => (isDesc ? q.OrderByDescending(x => x.StartAt) : q.OrderBy(x => x.StartAt)),
-				"end" => (isDesc ? q.OrderByDescending(x => x.EndAt) : q.OrderBy(x => x.EndAt)),
-				"active" => (isDesc ? q.OrderByDescending(x => x.IsActive) : q.OrderBy(x => x.IsActive)),
-				_ => (isDesc ? q.OrderByDescending(x => x.BlacklistID) : q.OrderBy(x => x.BlacklistID)),
+				"member" => isDesc ? q.OrderByDescending(x => x.MemberName) : q.OrderBy(x => x.MemberName),
+				"email" => isDesc ? q.OrderByDescending(x => x.Email) : q.OrderBy(x => x.Email),
+				"start" => isDesc ? q.OrderByDescending(x => x.StartAt) : q.OrderBy(x => x.StartAt),
+				"end" => isDesc ? q.OrderByDescending(x => x.EndAt) : q.OrderBy(x => x.EndAt),
+				"active" => isDesc ? q.OrderByDescending(x => x.IsActive) : q.OrderBy(x => x.IsActive),
+				_ => isDesc ? q.OrderByDescending(x => x.BlacklistID) : q.OrderBy(x => x.BlacklistID),
 			};
 
 			var total = await q.CountAsync();
-			var items = await q
-				.Skip((page - 1) * pageSize)
-				.Take(pageSize)
-				.ToListAsync();
+			var items = await q.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
 			ViewBag.Sort = sort?.ToLowerInvariant() ?? "id";
 			ViewBag.Dir = isDesc ? "desc" : "asc";
@@ -92,8 +93,8 @@ namespace Account.Controllers
 			};
 		}
 
-		// ===== 清單 / 局部清單 =====
-		[Authorize(Policy = "Blacklists.Index")]
+		// ===== List / Index（需要 View）=====
+		[Authorize(Policy = "Blacklists.View")]
 		public async Task<IActionResult> Index(string? keyword, int? status, string? sort = "id", string? dir = "desc",
 											   int page = 1, int pageSize = 20)
 		{
@@ -102,7 +103,7 @@ namespace Account.Controllers
 		}
 
 		[HttpGet]
-		[Authorize(Policy = "Blacklists.Index")]
+		[Authorize(Policy = "Blacklists.View")]
 		public async Task<IActionResult> List(string? keyword, int? status, string? sort = "id", string? dir = "desc",
 											  int page = 1, int pageSize = 20)
 		{
@@ -110,8 +111,8 @@ namespace Account.Controllers
 			return PartialView("_BlacklistsList", vm);
 		}
 
-		// ===== 詳細 =====
-		[Authorize(Policy = "Blacklists.Index")] // 詳細視為瀏覽權限；也可獨立 Blacklists.Details
+		// ===== Details（與 View 同權）=====
+		[Authorize(Policy = "Blacklists.View")]
 		public async Task<IActionResult> Details(int id)
 		{
 			var b = await _db.Blacklists.AsNoTracking().FirstOrDefaultAsync(x => x.BlacklistID == id);
@@ -140,7 +141,7 @@ namespace Account.Controllers
 		}
        
 
-        [Authorize(Policy = "Blacklists.Manage")]
+		[Authorize(Policy = "Blacklists.Create")]
 		[HttpPost, ValidateAntiForgeryToken]
 		public async Task<IActionResult> Create(Blacklist input)
 		{
@@ -162,8 +163,8 @@ namespace Account.Controllers
 			return RedirectToAction(nameof(Index));
 		}
 
-		// ===== 編輯 / 解封 =====
-		[Authorize(Policy = "Blacklists.Manage")]
+		// ===== Edit =====
+		[Authorize(Policy = "Blacklists.Edit")]
 		public async Task<IActionResult> Edit(int id)
 		{
 			var b = await _db.Blacklists.FirstOrDefaultAsync(x => x.BlacklistID == id);
@@ -172,7 +173,7 @@ namespace Account.Controllers
 			return View(b);
 		}
 
-		[Authorize(Policy = "Blacklists.Manage")]
+		[Authorize(Policy = "Blacklists.Edit")]
 		[HttpPost, ValidateAntiForgeryToken]
 		public async Task<IActionResult> Edit(int id, Blacklist input)
 		{
@@ -194,15 +195,15 @@ namespace Account.Controllers
 			entity.SourceType = input.SourceType;
 			entity.StartAt = input.StartAt;
 			entity.EndAt = input.EndAt;
-			entity.LiftedAt = input.LiftedAt; // 若有時間即視為解封
+			entity.LiftedAt = input.LiftedAt;
 
 			await _db.SaveChangesAsync();
 			TempData["ok"] = "已更新黑名單";
 			return RedirectToAction(nameof(Index));
 		}
 
-		// ===== 刪除 =====
-		[Authorize(Policy = "Blacklists.Manage")]
+		// ===== Delete =====
+		[Authorize(Policy = "Blacklists.Delete")]
 		public async Task<IActionResult> Delete(int id)
 		{
 			var b = await _db.Blacklists.AsNoTracking().FirstOrDefaultAsync(x => x.BlacklistID == id);
@@ -211,7 +212,7 @@ namespace Account.Controllers
 			return View(b);
 		}
 
-		[Authorize(Policy = "Blacklists.Manage")]
+		[Authorize(Policy = "Blacklists.Delete")]
 		[HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
 		public async Task<IActionResult> DeleteConfirmed(int id)
 		{
@@ -245,8 +246,9 @@ namespace Account.Controllers
 			public int Page { get; set; }
 			public int PageSize { get; set; }
 			public int Total { get; set; }
-			public System.Collections.Generic.List<Row> Items { get; set; } = new();
+			public List<Row> Items { get; set; } = new();
 		}
+
 		public class Row
 		{
 			public int BlacklistID { get; set; }
