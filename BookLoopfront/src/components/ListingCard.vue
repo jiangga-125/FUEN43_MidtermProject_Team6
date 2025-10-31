@@ -1,65 +1,77 @@
-<!-- src/components/ListingCard.vue -->
 <template>
-  <div class="card listing-card h-100">
-    <router-link :to="detailUrl" class="card-img-top-link">
-      <img :src="listing.coverUrl || placeholder" class="card-img-top" alt="cover" />
+  <div v-if="listing" class="card listing-card h-100">
+    <router-link v-if="hasId" :to="detailUrl" class="card-img-top-link">
+      <img
+        :src="listing.image || listing.coverUrl || placeholder"
+        class="card-img-top"
+        alt="cover"
+      />
     </router-link>
+    <div v-else class="card-img-top-link">
+      <img
+        :src="listing.image || listing.coverUrl || placeholder"
+        class="card-img-top"
+        alt="cover"
+      />
+    </div>
 
     <div class="card-body d-flex flex-column">
-      <router-link :to="detailUrl" class="text-decoration-none">
-        <h6 class="card-title text-dark">{{ listing.title }}</h6>
-      </router-link>
+      <div>
+        <router-link v-if="hasId" :to="detailUrl" class="text-decoration-none">
+          <h6 class="card-title text-dark">{{ listing.title }}</h6>
+        </router-link>
+        <h6 v-else class="card-title text-dark">{{ listing.title }}</h6>
+      </div>
+
+      <p class="mb-2 text-muted small" v-if="listing.category">分類：{{ listing.category.name }}</p>
 
       <div class="mt-auto d-flex justify-content-between align-items-center">
+        <div class="text-success fw-semibold">借閱</div>
+
         <div class="btn-group">
-          <button class="btn btn-sm btn-primary" @click="addToCart">加入購物車</button>
-          <button class="btn btn-sm btn-outline-secondary" @click="toggleFavorite">收藏</button>
+          <button class="btn btn-sm btn-outline-primary" type="button" @click.prevent="borrowNow">
+            借閱/申請
+          </button>
+          <button
+            class="btn btn-sm btn-outline-secondary"
+            type="button"
+            @click.prevent="toggleFavorite"
+          >
+            收藏
+          </button>
         </div>
       </div>
     </div>
   </div>
+
+  <div v-else class="card listing-card placeholder h-100">
+    <div class="card-img-top skeleton" />
+    <div class="card-body">
+      <div class="skeleton-line" style="width: 60%"></div>
+      <div class="skeleton-line" style="width: 40%"></div>
+    </div>
+  </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import type { Listing } from '@/api/Listings'
+const props = defineProps({ listing: Object })
+const placeholder = '/img/placeholder.png'
 
-const props = defineProps<{ listing: Listing }>()
-const placeholder = '../assets/ad.png' // 再改路徑(佔位圖)
+const hasId = computed(() => !!(props.listing && (props.listing.id || props.listing.listingId)))
+const detailUrl = computed(() => {
+  const id = props.listing?.id ?? props.listing?.listingId
+  return id ? { name: 'ListingDetail', params: { id } } : { path: '#' }
+})
+
 const router = useRouter()
-
-const detailUrl = computed(() => ({
-  name: 'ListingDetail',
-  params: { id: props.listing.listingId },
-})) // 如果沒有 detail route，可改為 `/listings/${id}`
-
-function addToCart() {
-  // TODO: 呼叫 cart service 或 emit 事件。暫時示範 toast
-  // emit 或使用全域 store (Pinia/Vuex) 更好
-  alert(`加入購物車：${props.listing.title}`)
+function borrowNow() {
+  const id = props.listing?.id ?? props.listing?.listingId
+  if (id) router.push({ name: 'ListingDetail', params: { id }, query: { action: 'borrow' } })
+  else alert('此項目可借閱，請至詳情頁申請借閱')
 }
-
 function toggleFavorite() {
-  alert(`已加入收藏：${props.listing.title}`)
+  alert('已加入收藏')
 }
 </script>
-
-<style scoped>
-.listing-card {
-  border-radius: 10px;
-  overflow: hidden;
-}
-.card-img-top {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-  background: #f6f6f6;
-}
-.card-img-top-link {
-  display: block;
-}
-.card {
-  min-height: 270px;
-}
-</style>
