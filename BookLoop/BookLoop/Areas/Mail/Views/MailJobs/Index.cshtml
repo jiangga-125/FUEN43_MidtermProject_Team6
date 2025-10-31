@@ -1,0 +1,30 @@
+﻿@model IEnumerable<BookLoop.Models.MailJob>
+
+<h2>群發活動列表</h2>
+<p><a asp-action="Create" class="btn btn-primary">新增活動</a></p>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>活動名稱</th>
+            <th>TemplateKey</th>
+            <th>狀態</th>
+            <th>建立時間</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.CampaignName</td>
+                <td>@item.TemplateKey</td>
+                <td>@item.Status</td>
+                <td>@item.CreatedAtUtc.ToLocalTime()</td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@item.JobId" class="btn btn-sm btn-outline-primary">查看</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

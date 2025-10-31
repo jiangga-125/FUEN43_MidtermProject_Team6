@@ -1,0 +1,127 @@
+﻿
+@model IEnumerable<BookLoop.Models.MailSendLog>
+@{
+    ViewData["Title"] = "寄送日誌";
+    string badge(string status) => status?.ToLower() switch
+    {
+        "pending" => "badge bg-secondary",
+        "sent" or "accepted" => "badge bg-success",
+        "failed" => "badge bg-danger",
+        _ => "badge bg-light text-dark"
+    };  
+    var q = ViewContext.HttpContext?.Request?.Query;
+    string from = q?["from"];
+    string to = q?["to"];
+    string status = q?["status"];
+    string templateKey = q?["templateKey"];
+    string recipient = q?["recipient"];
+}
+
+<div class="container py-4">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <h2 class="mb-0">📬 寄送日誌</h2>
+        <a class="btn btn-sm btn-outline-primary" asp-area="Mail" asp-controller="MailLogs" asp-action="Index">
+            重新整理
+        </a>
+    </div>
+
+    <!-- 篩選列：GET 查詢（你之後可在 Controller 接 from/to/status/templateKey/recipient） -->
+    <form method="get" class="mt-3 border rounded p-3 bg-light">
+        <div class="row g-3">
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label">起日 (UTC)</label>
+                <input type="date" name="from" class="form-control" value="@from />
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label">迄日 (UTC)</label>
+                <input type="date" name="to" class="form-control" value="@to />
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label">狀態</label>
+                <select name="status" class="form-select">
+
+
+                    <option value="" selected="@(string.IsNullOrEmpty(status))">全部</option>
+                    <option value="Pending" selected="@(status == "Pending")">Pending</option>
+                    <option value="Sent" selected="@(status == "Sent")">Sent</option>
+                    <option value="Failed" selected="@(status == "Failed")">Failed</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label">TemplateKey</label>
+                <input type="text" name="templateKey" class="form-control" value="@templateKey placeholder="例如: WelcomeEmail" />
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label">收件者 (Email)</label>
+                <input type="text" name="recipient" class="form-control" value="@recipient placeholder="example@mail.com" />
+            </div>
+            <div class="col-12 col-md-6 col-lg-3 align-self-end">
+                <button class="btn btn-primary w-100" type="submit">套用篩選</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="table-responsive mt-3">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="text-nowrap">#</th>
+                    <th class="text-nowrap">寄送時間 (UTC)</th>
+                    <th class="text-nowrap">狀態</th>
+                    <th class="text-nowrap">收件者</th>
+                    <th class="text-nowrap">主旨</th>
+                    <th class="text-nowrap">Template</th>
+                    <th class="text-nowrap text-end">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model == null || !Model.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            尚無資料。請到模板頁按「試寄」或建立群發後再回來查看。
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var x in Model.OrderByDescending(m => m.LogId))
+                    {
+                        <tr>
+                            <td class="text-muted">@x.LogId</td>
+                            <td>
+                                <div class="small text-nowrap">@x.SentAtUtc:yyyy-MM-dd HH:mm:ss</div>
+                            </td>
+                            <td>
+                                <span class="@badge(x.Status)">@x.Status</span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span>@x.Recipient</span>
+                                    <button class="btn btn-xs btn-outline-secondary py-0 px-2"
+                                            type="button"
+                                            title="複製"
+                                            onclick="navigator.clipboard?.writeText('@x.Recipient')">
+                                        複製
+                                    </button>
+                                </div>
+                            </td>
+                            <td class="text-truncate" style="max-width: 360px;">
+                                @x.Subject
+                            </td>
+                            <td class="text-truncate" style="max-width: 220px;">
+                                @x.TemplateKey
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary"
+                                   asp-area="Mail" asp-controller="MailLogs" asp-action="Details" asp-route-id="@x.LogId">
+                                    明細
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

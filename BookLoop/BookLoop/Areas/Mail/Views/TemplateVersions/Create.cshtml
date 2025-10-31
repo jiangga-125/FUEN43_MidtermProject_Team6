@@ -1,6 +1,6 @@
 ﻿@model BookLoop.Models.TemplateVersion
 @{
-    ViewData["Title"] = "新増版本（Unlayer）";
+    ViewData["Title"] = "新増版本";
 }
 
 @section Styles {
@@ -72,7 +72,7 @@
             <div class="mt-3 d-flex justify-content-between">
                 <a class="btn btn-link"
                    asp-area="Mail" asp-controller="TemplateVersions" asp-action="Index" asp-route-templateId="@Model.TemplateId">← 返回版本列表</a>
-                <button type="button" class="btn btn-primary" id="btn-save-all-dup">儲存</button>
+                <button type="button" class="btn btn-primary" id="btn-save-all">儲存</button>
             </div>
         </div>
 

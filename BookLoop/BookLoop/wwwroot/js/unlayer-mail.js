@@ -147,9 +147,7 @@
 
                 fetch(form.action, { // form.action 應為 /Mail/TemplateVersions/Create?templateId=...
                     method: 'POST',
-                    // headers: { 
-                    //     'RequestVerificationToken': opts.antiForgery || '' // FormData 會自動包含 Token
-                    // },
+
                     body: formData
                 })
                     .then(r => r.json()) // 假設伺服器一定會返回 JSON
@@ -176,12 +174,6 @@
                             saveButton.innerHTML = originalButtonText;
                         }
                     });
-
-                // === 舊的程式碼 ===
-                // var form = byId(opts.formId);
-                // if (!form) { alert('找不到表單，無法送出'); return; }
-                // form.submit();
-                // =================
 
             }).catch(function (err) {
                 alert('Unlayer 匯出失敗：' + (err?.message || err));

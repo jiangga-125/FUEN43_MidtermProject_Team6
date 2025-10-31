@@ -11,8 +11,8 @@ namespace BookLoop.Services.Mail
 	public class TemplateMailer : ITemplateMailer
 	{
 		private readonly AppDbContext _db;
-		private readonly ITemplateRenderer _renderer;  // 你原本的
-		private readonly IMailService _mail;           // 你原本的
+		private readonly ITemplateRenderer _renderer;  
+		private readonly IMailService _mail;           
 
 		public TemplateMailer(AppDbContext db, ITemplateRenderer renderer, IMailService mail)
 		{ _db = db; _renderer = renderer; _mail = mail; }
@@ -35,7 +35,19 @@ namespace BookLoop.Services.Mail
 			var subject = _renderer.Render(version.Subject ?? "", tokens);
 			var body = _renderer.Render(version.BodyHtml ?? "", tokens);
 
-			await _mail.SendAsync(to, subject, body, ct); // ← 用你原本的寄信服務
-		}
+            await _mail.SendAsync(
+    to: to,
+    subject: subject,
+    body: body,
+    attachmentName: null,
+    attachmentBytes: null,
+    contentType: "application/octet-stream",
+    templateId: version.TemplateId,
+    templateKey: version.Template.TemplateKey,
+    templateVersionId: version.TemplateVersionId,
+    mailJobId: null,             // 群發時請由控制器傳入 JobId
+    category: "System",
+    cancellationToken: ct);
+        }
 	}
 }

@@ -68,7 +68,7 @@
             <div class="mt-3 d-flex justify-content-between">
                 <a class="btn btn-link"
                    asp-area="Mail" asp-controller="TemplateVersions" asp-action="Index" asp-route-templateId="@Model.TemplateId">← 返回版本列表</a>
-                <button type="button" class="btn btn-primary" id="btn-save-all-dup">儲存</button>
+                <button type="button" class="btn btn-primary" id="btn-save-all">儲存</button>
             </div>
         </div>
         <!-- 右：試寄 + 預覽 -->
@@ -92,34 +92,29 @@
 
 @section Scripts {
     @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial"); /* */
+        await Html.RenderPartialAsync("_ValidationScriptsPartial"); 
     }
     <script src="https://editor.unlayer.com/embed.js"></script>
     <script src="~/js/unlayer-mail.js" asp-append-version="true"></script>
     <script>
-        // 同樣綁第二顆儲存鈕
-        document.getElementById('btn-save-all-dup')?.addEventListener('click', function(e){
-            e.preventDefault(); document.getElementById('btn-save-all')?.click();
-        });
-
         // 初始化 (Edit 模式)
         UnlayerMail.init({
-          mode: 'edit', /* */
-          formId: 'form-basic', /* */
+          mode: 'edit', 
+          formId: 'form-basic',
           editorId: 'editor',
           subjectSelector: '[name="Subject"]',
           subjectOutSelector: '#pv-subject',
-          designFieldId: 'DesignJson',   // ★ edit：editor:ready 會讀這個並載入
-          htmlFieldId: 'Html', /* */
+          designFieldId: 'DesignJson',   
+          htmlFieldId: 'Html', 
           previewFrameId: 'pv-frame',
-          recipientSelector: '#pv-recipient', /* */
+          recipientSelector: '#pv-recipient',
           nameSelector: '#pv-name',
           saveButtonSelector: '#btn-save-all',
           testButtonSelector: '#btn-test-send',
           // API URLs (注意：Action 和 Route 參數與 Create 不同)
-          testSendUrl: '@Url.Action("TestSend", "TemplateVersions", new { area = "Mail", templateId = Model.TemplateId })', /* */
-          uploadUrl:   '@Url.Action("Upload", "TemplateVersions", new { area = "Mail", templateId = Model.TemplateId })', /* */
-          antiForgery: document.querySelector('#form-basic input[name="__RequestVerificationToken"]').value /* */
-        }); /* */
+          testSendUrl: '@Url.Action("TestSend", "TemplateVersions", new { area = "Mail", templateId = Model.TemplateId })',
+          uploadUrl:   '@Url.Action("Upload", "TemplateVersions", new { area = "Mail", templateId = Model.TemplateId })', 
+          antiForgery: document.querySelector('#form-basic input[name="__RequestVerificationToken"]').value 
+        }); 
     </script>
 }

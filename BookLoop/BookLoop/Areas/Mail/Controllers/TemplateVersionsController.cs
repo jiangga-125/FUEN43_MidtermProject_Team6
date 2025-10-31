@@ -1,17 +1,18 @@
 ﻿// Areas/Mail/Controllers/TemplateVersionsController.cs
-using System;
-using System.IO;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services.Mail;
+using DocumentFormat.OpenXml.Bibliography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace BookLoop.Areas.Mail.Controllers
 {
@@ -21,13 +22,15 @@ namespace BookLoop.Areas.Mail.Controllers
 		private readonly AppDbContext _db;
 		private readonly IWebHostEnvironment _env;
 		private readonly IMailService _mail;
+        private readonly ITemplateRenderer _renderer;
         private readonly ILogger<TemplateVersionsController> _logger;
 
-        public TemplateVersionsController(AppDbContext db, IWebHostEnvironment env, IMailService mail, ILogger<TemplateVersionsController> logger)
+        public TemplateVersionsController(AppDbContext db, IWebHostEnvironment env, IMailService mail, ITemplateRenderer renderer, ILogger<TemplateVersionsController> logger)
         {
             _db = db;
             _env = env;
             _mail = mail;
+            _renderer = renderer;
             _logger = logger;
         }
 
@@ -40,7 +43,7 @@ namespace BookLoop.Areas.Mail.Controllers
 
 			if (t == null) return NotFound();
 
-			return View(t); // <-- ✅ 修正：直接傳遞 't' (Template 物件)
+			return View(t); // Template 物件
 		}
 
 		// GET: /Mail/TemplateVersions/Create?templateId=123
@@ -61,14 +64,9 @@ namespace BookLoop.Areas.Mail.Controllers
 
 		// POST: /Mail/TemplateVersions/Create
 		[HttpPost, ValidateAntiForgeryToken]
-		// public async Task<IActionResult> Create(TemplateVersion model) // 舊簽章
 		public async Task<IActionResult> Create([Bind("TemplateId,TemplateName,Subject,BodyHtml,DesignJson,IsActive,IsDefault")] TemplateVersion model) // 新簽章，明確 Bind
 		{
-			// === 修正 ===
-			// 我們是透過 TemplateId 繫結，而非 Template 物件，
-			// 所以要移除因導覽屬性為 null 而產生的驗證錯誤。
 			ModelState.Remove("Template");
-			// ============
 
 			// 1) 基本驗證
 			// 我們可以手動添加更多驗證
@@ -90,8 +88,6 @@ namespace BookLoop.Areas.Mail.Controllers
 			if (template == null)
 			{
 				return Json(new { ok = false, errors = new[] { "所屬 Template 不存在。" } });
-				// ModelState.AddModelError("", "所屬 Template 不存在。"); // 舊的
-				// return View(model); // 舊的
 			}
 
 			// 3) IsDefault：確保每個 Template 只有一個預設版
@@ -111,7 +107,6 @@ namespace BookLoop.Areas.Mail.Controllers
 			var redirectUrl = Url.Action("Index", "TemplateVersions", new { area = "Mail", templateId = model.TemplateId });
 			return Json(new { ok = true, redirectUrl = redirectUrl });
 
-			// return RedirectToAction("Index", "TemplateVersions", new { area = "Mail", templateId = model.TemplateId }); // 舊的返回
 		}
 		// GET: /Mail/TemplateVersions/Edit/5
 		public async Task<IActionResult> Edit(int id)
@@ -127,10 +122,9 @@ namespace BookLoop.Areas.Mail.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit([Bind("TemplateVersionId,TemplateId,TemplateName,Subject,BodyHtml,DesignJson,IsActive,IsDefault")] TemplateVersion m)
         {
-            // 移除因導覽屬性為 null 產生的驗證錯誤
             ModelState.Remove("Template");
 
-            // === 新增：檢查 TemplateName 唯一性 ===
+            //檢查 TemplateName 唯一性
             if (!string.IsNullOrWhiteSpace(m.TemplateName))
             {
                 // 檢查在同一個 TemplateId 下，是否有 *其他* 版本使用了相同的名稱
@@ -144,7 +138,6 @@ namespace BookLoop.Areas.Mail.Controllers
                     ModelState.AddModelError(nameof(m.TemplateName), "此版本名稱已被使用，請更換。");
                 }
             }
-            // ======================================
 
             if (string.IsNullOrWhiteSpace(m.TemplateName))
                 ModelState.AddModelError(nameof(m.TemplateName), "請輸入版本名稱");
@@ -156,7 +149,7 @@ namespace BookLoop.Areas.Mail.Controllers
                 return Json(new { ok = false, errors = errors });
             }
 
-            // === 新增：使用 Try...Catch 捕捉所有儲存錯誤 ===
+            //使用 Try...Catch 捕捉所有儲存錯誤
             try
             {
                 var entity = await _db.TemplateVersions.FindAsync(m.TemplateVersionId);
@@ -183,7 +176,7 @@ namespace BookLoop.Areas.Mail.Controllers
                     foreach (var v in others) v.IsDefault = false;
                 }
 
-                await _db.SaveChangesAsync(); // 👈 這裡是潛在的錯誤點
+                await _db.SaveChangesAsync();
 
                 // 返回 JSON 成功訊息
                 var redirectUrl = Url.Action(nameof(Index), new { templateId = entity.TemplateId });
@@ -199,44 +192,91 @@ namespace BookLoop.Areas.Mail.Controllers
                     errors = new[] { "儲存時發生資料庫錯誤，請稍後再試。", ex.Message }
                 });
             }
-            // ======================================
         }
 
-        // POST: /Mail/TemplateVersions/TestSend?templateId=xx
-        // 由前端送 JSON: { to, subject, bodyHtml, name }
+        // POST: /Mail/TemplateVersions/TestSend?templateId=xx&templateVersionId=yy   ← yy 可選
         [HttpPost]
-		[ValidateAntiForgeryToken]
-		public async Task<IActionResult> TestSend(int templateId, [FromBody] TestSendDto dto)
-		{
-			if (dto == null || string.IsNullOrWhiteSpace(dto.To))
-				return BadRequest(new { ok = false, error = "缺少收件者" });
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> TestSend(int templateId, int? templateVersionId, [FromBody] TestSendDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.To))
+                return BadRequest(new { ok = false, error = "缺少收件者" });
 
-			var t = await _db.Templates.FindAsync(templateId);
-			if (t == null) return NotFound(new { ok = false, error = "找不到模板群組" });
+            // 1) 讀 Template（拿 TemplateKey）
+            var template = await _db.Templates
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.TemplateId == templateId);
+            if (template == null)
+                return NotFound(new { ok = false, error = "找不到模板群組" });
 
-			// 簡單 Token 替換（你若有 ITemplateRenderer，可改成 _renderer.Render(...)）
-			string body = dto.BodyHtml ?? string.Empty;
-			body = body.Replace("{{Recipient}}", dto.To ?? "", StringComparison.OrdinalIgnoreCase)
-					   .Replace("{{Name}}", dto.Name ?? "", StringComparison.OrdinalIgnoreCase);
+            // 2) 若有指定 TemplateVersionId，就讀版本（拿 VersionId 與預設 Subject/Body）
+            TemplateVersion? version = null;
+            if (templateVersionId.HasValue)
+            {
+                version = await _db.TemplateVersions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(v => v.TemplateVersionId == templateVersionId.Value && v.TemplateId == templateId);
+                if (version == null)
+                    return NotFound(new { ok = false, error = "找不到指定的模板版本" });
+            }
+            else
+            {
+                version = await _db.TemplateVersions
+                    .AsNoTracking()
+                    .Where(v => v.TemplateId == templateId && v.IsActive)
+                    .OrderByDescending(v => v.IsDefault).ThenByDescending(v => v.UpdatedAt)
+                    .FirstOrDefaultAsync();
+                // 沒有版本也允許試寄（只用前端傳來的 subject/body）
+            }
 
-			try
-			{
-				await _mail.SendAsync(dto.To, dto.Subject ?? "(無主旨)", body);
-				return Json(new { ok = true });
-			}
-			catch (Exception ex)
-			{
-				return StatusCode(500, new { ok = false, error = ex.Message });
-			}
-		}
+            // 3) 建 token 並渲染（優先用前端送來的 Subject/Body；若沒帶就使用版本內容）
+            var tokens = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Recipient"] = dto.To ?? "",
+                ["Name"] = dto.Name ?? ""
+                // 之後要加更多測試變數可在這裡擴充
+            };
 
-		public class TestSendDto
+            var rawSubject = !string.IsNullOrWhiteSpace(dto.Subject) ? dto.Subject : (version?.Subject ?? "(無主旨)");
+            var rawBody = !string.IsNullOrWhiteSpace(dto.BodyHtml) ? dto.BodyHtml : (version?.BodyHtml ?? string.Empty);
+
+            string subject = _renderer.Render(rawSubject, tokens);
+            string body = _renderer.Render(rawBody, tokens);
+
+            try
+            {
+                // 4) ★ 用「新重載」把中繼資料一起傳下去，MailSendLogs 會寫齊
+                await _mail.SendAsync(
+                    to: dto.To,
+                    subject: subject,
+                    body: body,                                 // 這會寫到 BodySnapshot
+                    attachmentName: null,
+                    attachmentBytes: null,
+                    contentType: "application/octet-stream",
+                    templateId: template.TemplateId,
+                    templateKey: template.TemplateKey,          // ← 需要 Template 有 TemplateKey 欄位
+                    templateVersionId: version?.TemplateVersionId, // 沒指定版本就寫 null
+                    mailJobId: null,                            // 試寄不是群發
+                    category: "Test",                           // 試寄一律標記 "Test"
+                    cancellationToken: default
+                );
+
+                return Json(new { ok = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "TestSend 失敗 (TemplateId: {TemplateId}, TemplateVersionId: {TemplateVersionId})", templateId, templateVersionId);
+                return StatusCode(500, new { ok = false, error = ex.Message });
+            }
+        }
+        public class TestSendDto
 		{
 			public string To { get; set; }
-			public string Subject { get; set; }
-			public string BodyHtml { get; set; }
-			public string Name { get; set; }
-		}
+			public string? Subject { get; set; }
+			public string? BodyHtml { get; set; }
+			public string? Name { get; set; }
+            public int? TemplateVersionId { get; set; }
+        }
 		// POST: /Mail/TemplateVersions/Upload?templateId=xx
 		// Unlayer 圖片上傳端點
 		[HttpPost]
@@ -270,7 +310,7 @@ namespace BookLoop.Areas.Mail.Controllers
 				await file.CopyToAsync(fs);
 			}
 
-			// === 修正：產生絕對 URL ===
+			// === 產生絕對 URL ===
 
 			// 1. 取得網站的 Base URL (例如：https://localhost:7123)
 			var baseUrl = $"{Request.Scheme}://{Request.Host}";

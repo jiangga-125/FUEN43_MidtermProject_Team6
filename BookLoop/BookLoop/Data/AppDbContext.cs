@@ -26,6 +26,10 @@ namespace BookLoop.Data
 		//public DbSet<MailTemplate> MailTemplates { get; set; }
 		public DbSet<Template> Templates => Set<Template>();
 		public DbSet<TemplateVersion> TemplateVersions => Set<TemplateVersion>();
+        public DbSet<MailSendLog> MailSendLogs { get; set; }
+
+        public DbSet<MailJob> MailJobs => Set<MailJob>();
+
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -134,14 +138,29 @@ namespace BookLoop.Data
 				.HasIndex(v => new { v.TemplateId, v.IsDefault })
 				.HasFilter("[IsDefault] = 1")
 				.IsUnique();
-			//b.Entity<PermissionFeature>(e =>
-			//{
-			//	e.ToTable("PERMISSION_FEATURES"); // ← 與 DB 一致
-			//	e.HasKey(x => new { x.PermissionID, x.FeatureID });
-			//	e.HasOne(x => x.Permission).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.PermissionID);
-			//	e.HasOne(x => x.Feature).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.FeatureID);
-			//});
 
-		}
-	}
+            modelBuilder.Entity<MailJob>(e =>
+            {
+                e.HasKey(x => x.JobId);
+
+                e.Property(x => x.TemplateKey).HasMaxLength(100).IsRequired();
+                e.Property(x => x.CampaignName).HasMaxLength(200).IsRequired();
+                e.Property(x => x.Description).HasMaxLength(1000);
+                e.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("Scheduled");
+
+                e.HasIndex(x => x.SendAtUtc);
+                e.HasIndex(x => x.TemplateKey);
+                e.HasIndex(x => x.Status);
+            });
+
+            //b.Entity<PermissionFeature>(e =>
+            //{
+            //	e.ToTable("PERMISSION_FEATURES"); // ← 與 DB 一致
+            //	e.HasKey(x => new { x.PermissionID, x.FeatureID });
+            //	e.HasOne(x => x.Permission).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.PermissionID);
+            //	e.HasOne(x => x.Feature).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.FeatureID);
+            //});
+
+        }
+    }
 }

@@ -1,0 +1,41 @@
+﻿@model BookLoop.Models.MailJob
+@{
+    var logs = ViewBag.Logs as IEnumerable<BookLoop.Models.MailSendLog>;
+}
+
+<h2>活動明細：@Model.CampaignName</h2>
+<p><strong>Template：</strong>@Model.TemplateKey</p>
+<p><strong>狀態：</strong>@Model.Status</p>
+<p><strong>建立時間：</strong>@Model.CreatedAtUtc.ToLocalTime()</p>
+
+<form asp-action="Run" method="post" asp-route-id="@Model.JobId">
+    <button type="submit" class="btn btn-danger">立即執行群發</button>
+    <a asp-action="Index" class="btn btn-secondary">返回</a>
+</form>
+
+<hr />
+<h4>寄送記錄</h4>
+<table class="table table-sm table-striped">
+    <thead>
+        <tr>
+            <th>收件人</th>
+            <th>主旨</th>
+            <th>狀態</th>
+            <th>時間</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (logs != null)
+        {
+            foreach (var log in logs)
+            {
+                <tr>
+                    <td>@log.Recipient</td>
+                    <td>@log.Subject</td>
+                    <td>@log.Status</td>
+                    <td>@log.SentAtUtc.ToLocalTime()</td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
