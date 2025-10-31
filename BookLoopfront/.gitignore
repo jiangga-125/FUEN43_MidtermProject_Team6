@@ -29,8 +29,6 @@ coverage
 
 *.tsbuildinfo
 
-
-/BookLoopfront/node_modules/
 /BookLoopfront/dist/
 
 /BookLoop/**/bin/
