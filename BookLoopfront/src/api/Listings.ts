@@ -10,13 +10,10 @@ export interface Listing {
   title: string
   isbn?: string | null
   coverUrl?: string | null
-  price?: number | null
   condition?: string | null
   status?: number | null
   createdAt?: string | null
   category?: CategoryInfo | null
-  // 若後端有其他欄位會保留在 raw
-  raw?: any
 }
 
 export interface ListingsResponse {
@@ -27,44 +24,56 @@ export interface ListingsResponse {
 }
 
 const BasePath = '/listings'
-// Controller 用 api/[controller] -> 實際請求會是 /api/listings（取決於 http.baseURL）
-const mapItem = (i: any): Listing => {
-  if (!i) return { listingId: 0, title: '', raw: i }
-  return {
-    listingId: i.id ?? i.listingId ?? 0,
-    title: i.title ?? i.name ?? '',
-    isbn: i.isbn ?? null,
-    coverUrl: i.image ?? i.coverUrl ?? null,
-    price: i.price ?? null,
-    condition: i.condition ?? null,
-    status: i.status ?? null,
-    createdAt: i.createdAt ?? i.created_at ?? null,
-    category: i.category ? { id: i.category.id, name: i.category.name } : (i.categoryName ? { id: 0, name: i.categoryName } : null),
-    raw: i
-  }
-}
+// Controller 使用 [Route("api/[controller]")], http.baseURL 應為 '/api' -> 所以BasePath為/listings
 
 const ListingsApi = {
-  async list(params: { q?: string; categoryId?: number | string; page?: number; pageSize?: number } = {}) {
+  /**
+   * list: 取得分頁清單
+   * params: { q?, page?, pageSize? }
+   * 回傳 mapped 結構，方便前端直接使用 listing.listingId / listing.coverUrl 等欄位
+   */
+  async list(params: { q?: string; page?: number; pageSize?: number } = {}) {
     const resp = await http.get(BasePath, { params })
-    const payload = resp.data ?? {}
+    const payload = resp.data || {}
 
-    // 支援後端直接回傳 array（legacy）或回傳 { items, total, page, pageSize }
-    const itemsRaw = Array.isArray(payload) ? payload : (payload.items ?? payload.data ?? [])
-    const mapped = (itemsRaw || []).map(mapItem)
-    const total = payload.total ?? payload.count ?? mapped.length
-    const page = payload.page ?? params.page ?? 1
-    const pageSize = payload.pageSize ?? params.pageSize ?? 20
+    const mappedItems: Listing[] = (payload.items || []).map((i: any) => ({
+      listingId: i.id,
+      title: i.title,
+      isbn: i.isbn ?? null,
+      coverUrl: i.image ?? null,
+      condition: i.condition ?? null,
+      status: i.status ?? null,
+      createdAt: i.createdAt ?? null,
+      category: i.category ? { id: i.category.id, name: i.category.name } : null,
+    }))
 
-    return { items: mapped, total, page, pageSize } as ListingsResponse
+    return {
+      items: mappedItems,
+      total: payload.total ?? 0,
+      page: payload.page ?? params.page ?? 1,
+      pageSize: payload.pageSize ?? params.pageSize ?? 20,
+    } as ListingsResponse
   },
 
+  /**
+   * get: 取得單一 listing 詳細
+   * 回傳 controller 的原始資料（但也做小 mapping）
+   */
   async get(id: number) {
     const resp = await http.get(`${BasePath}/${id}`)
-    const p = resp.data ?? null
+    const p = resp.data
     if (!p) return null
-    return mapItem(p)
-  }
+    return {
+      listingId: p.id,
+      title: p.title,
+      isbn: p.isbn ?? null,
+      condition: p.condition ?? null,
+      status: p.status ?? null,
+      createdAt: p.createdAt ?? null,
+      images: p.images ?? [], // controller 回傳 images: [{ ImageID, url, Caption }, ...]
+      category: p.category ? { id: p.category.id, name: p.category.name } : null,
+    }
+  },
 }
 
 export default ListingsApi

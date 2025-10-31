@@ -6,13 +6,11 @@ import BannerCarousel from './components/BannerCarousel.vue'
 import SidebarCategories from './components/SidebarCategories.vue'
 import ProductTabs from './components/ProductTabs.vue'
 import { computed, ref } from 'vue'
-import { useTestStore } from '@/stores/test'
 
 /* 依路由判斷是否首頁 */
 import { useRoute, RouterView } from 'vue-router'
 const route = useRoute()
 const isHome = computed(() => route.path === '/') // 只有首頁為 true
-const s = useTestStore()
 
 /* 建立可為 null 的分類 id */
 const selectedCategoryId = ref<number | null>(null) // null=全部
@@ -21,12 +19,61 @@ function onPickCategory(id: number | null) {
   selectedCategoryId.value = id
 }
 
-s.inc()
+//    Auth Debug 面板（可開關，方便測試 token 流程）
+//    =========================== */
+// import { loginToken, logout as apiLogout } from './api/auth' // 【修改】確定檔案路徑正確
+// import http, { setAccessToken } from './api/http' // 【修改】請確認 http.ts 有匯出 setAccessToken
+
+// const debugOpen = ref(false)
+// const dbgAccount = ref('admin@bookstore.local')
+// const dbgPassword = ref('Admin@12345!')
+// const dbgMsg = ref('Auth debug panel: 尚未操作')
+
+// async function doDebugLogin() {
+//   try {
+//     const res = await loginToken(dbgAccount.value, dbgPassword.value)
+//     dbgMsg.value = `登入成功：access token 取得，expires=${res.expires}`
+//   } catch (e: any) {
+//     dbgMsg.value = '登入失敗：' + (e?.response?.data?.message ?? e.message ?? JSON.stringify(e))
+//   }
+// }
+
+// async function doDebugCallHello() {
+//   try {
+//     const r = await http.get('/secure/hello')
+//     dbgMsg.value = '呼叫成功：' + JSON.stringify(r.data)
+//   } catch (e: any) {
+//     dbgMsg.value = '呼叫失敗：' + (e?.response?.data?.message ?? e.message ?? JSON.stringify(e))
+//   }
+// }
+
+// async function doDebugRefresh() {
+//   try {
+//     // 模擬前端 token 過期：清記憶體 token -> interceptor 會呼 /auth/refresh
+//     setAccessToken(null)
+//     const r = await http.get('/secure/hello')
+//     dbgMsg.value = 'refresh 後呼叫成功：' + JSON.stringify(r.data)
+//   } catch (e: any) {
+//     dbgMsg.value = 'refresh 失敗：' + (e?.response?.data?.message ?? e.message ?? JSON.stringify(e))
+//   }
+// }
+
+// async function doDebugLogout() {
+//   try {
+//     await apiLogout()
+//     setAccessToken(null)
+//     dbgMsg.value = '已登出（前端 token 已清，後端若有 revoke refresh token 也會生效）'
+//   } catch (e: any) {
+//     dbgMsg.value = '登出失敗：' + (e?.message ?? JSON.stringify(e))
+//   }
+// }
+//
 </script>
 
 <template>
   <!-- TopBar（站內共用導覽） -->
   <TopBar />
+
 
   <!-- 首頁專屬區塊：只有在 '/' 才會渲染 -->
   <template v-if="isHome">
@@ -38,7 +85,6 @@ s.inc()
       <SidebarCategories :selected-id="selectedCategoryId" @select="onPickCategory" />
       <!-- 右：商品區，接收分類 id -->
       <ProductTabs :category-id="selectedCategoryId" />
-      <s class="inc"></s>
     </main>
   </template>
 
