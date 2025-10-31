@@ -16,25 +16,23 @@ using Microsoft.EntityFrameworkCore;
 namespace BookLoop.Areas.Mail.Controllers
 {
 	[Area("Mail")]
-	[Authorize] // 如果你暫時沒做身份驗證，可以先註解
 	public class TemplateVersionsController : Controller
 	{
 		private readonly AppDbContext _db;
 		private readonly IWebHostEnvironment _env;
-		private readonly IMailService _mail; // 你原本的 MailService 介面
-											 // 如果你有 ITemplateRenderer 要做 token 渲染，也可以注入；此處先給簡版
-											 // private readonly ITemplateRenderer _renderer;
+		private readonly IMailService _mail;
+        private readonly ILogger<TemplateVersionsController> _logger;
 
-		public TemplateVersionsController(AppDbContext db, IWebHostEnvironment env, IMailService mail /*, ITemplateRenderer renderer*/)
-		{
-			_db = db;
-			_env = env;
-			_mail = mail;
-			// _renderer = renderer;
-		}
+        public TemplateVersionsController(AppDbContext db, IWebHostEnvironment env, IMailService mail, ILogger<TemplateVersionsController> logger)
+        {
+            _db = db;
+            _env = env;
+            _mail = mail;
+            _logger = logger;
+        }
 
-		// 在 TemplateVersionsController.cs
-		public async Task<IActionResult> Index(int templateId)
+        // 在 TemplateVersionsController.cs
+        public async Task<IActionResult> Index(int templateId)
 		{
 			var t = await _db.Templates
 				.Include(x => x.Versions) // 確保載入了 Versions
@@ -124,43 +122,89 @@ namespace BookLoop.Areas.Mail.Controllers
 			return View(m);
 		}
 
-		// POST: /Mail/TemplateVersions/Edit
-		[HttpPost]
-		[ValidateAntiForgeryToken]
-		public async Task<IActionResult> Edit(TemplateVersion m)
-		{
-			var entity = await _db.TemplateVersions.FindAsync(m.TemplateVersionId);
-			if (entity == null) return NotFound();
+        // POST: /Mail/TemplateVersions/Edit
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit([Bind("TemplateVersionId,TemplateId,TemplateName,Subject,BodyHtml,DesignJson,IsActive,IsDefault")] TemplateVersion m)
+        {
+            // 移除因導覽屬性為 null 產生的驗證錯誤
+            ModelState.Remove("Template");
 
-			if (string.IsNullOrWhiteSpace(m.TemplateName))
-				ModelState.AddModelError(nameof(m.TemplateName), "請輸入版本名稱");
+            // === 新增：檢查 TemplateName 唯一性 ===
+            if (!string.IsNullOrWhiteSpace(m.TemplateName))
+            {
+                // 檢查在同一個 TemplateId 下，是否有 *其他* 版本使用了相同的名稱
+                bool nameExists = await _db.TemplateVersions.AnyAsync(v =>
+                    v.TemplateId == m.TemplateId && // 屬於同一個範本
+                    v.TemplateVersionId != m.TemplateVersionId && // 且不是自己
+                    v.TemplateName == m.TemplateName); // 名稱相同
 
-			if (!ModelState.IsValid) return View(m);
+                if (nameExists)
+                {
+                    ModelState.AddModelError(nameof(m.TemplateName), "此版本名稱已被使用，請更換。");
+                }
+            }
+            // ======================================
 
-			// 更新欄位
-			entity.TemplateName = m.TemplateName;
-			entity.Subject = m.Subject;
-			entity.BodyHtml = m.BodyHtml;    // 由前端 unlayer exportHtml 寫入 hidden
-			entity.DesignJson = m.DesignJson;  // 由前端 unlayer saveDesign 寫入 hidden
-			entity.IsActive = m.IsActive;
-			entity.IsDefault = m.IsDefault;
+            if (string.IsNullOrWhiteSpace(m.TemplateName))
+                ModelState.AddModelError(nameof(m.TemplateName), "請輸入版本名稱");
 
-			// 若本版本設為預設，把其他版本的 IsDefault 清掉
-			if (entity.IsDefault)
-			{
-				var others = await _db.TemplateVersions
-					.Where(v => v.TemplateId == entity.TemplateId && v.TemplateVersionId != entity.TemplateVersionId && v.IsDefault)
-					.ToListAsync();
-				foreach (var v in others) v.IsDefault = false;
-			}
+            if (!ModelState.IsValid)
+            {
+                // 返回 JSON 錯誤
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                return Json(new { ok = false, errors = errors });
+            }
 
-			await _db.SaveChangesAsync();
-			return RedirectToAction(nameof(Index), new { templateId = entity.TemplateId });
-		}
+            // === 新增：使用 Try...Catch 捕捉所有儲存錯誤 ===
+            try
+            {
+                var entity = await _db.TemplateVersions.FindAsync(m.TemplateVersionId);
+                if (entity == null)
+                {
+                    return Json(new { ok = false, errors = new[] { "找不到指定的版本。" } });
+                }
 
-		// POST: /Mail/TemplateVersions/TestSend?templateId=xx
-		// 由前端送 JSON: { to, subject, bodyHtml, name }
-		[HttpPost]
+                // 更新欄位
+                entity.TemplateName = m.TemplateName;
+                entity.Subject = m.Subject;
+                entity.BodyHtml = m.BodyHtml;
+                entity.DesignJson = m.DesignJson;
+                entity.IsActive = m.IsActive;
+                entity.IsDefault = m.IsDefault;
+                entity.UpdatedAt = DateTime.UtcNow;
+
+                // 若本版本設為預設，把其他版本的 IsDefault 清掉
+                if (entity.IsDefault)
+                {
+                    var others = await _db.TemplateVersions
+                        .Where(v => v.TemplateId == entity.TemplateId && v.TemplateVersionId != entity.TemplateVersionId && v.IsDefault)
+                        .ToListAsync();
+                    foreach (var v in others) v.IsDefault = false;
+                }
+
+                await _db.SaveChangesAsync(); // 👈 這裡是潛在的錯誤點
+
+                // 返回 JSON 成功訊息
+                var redirectUrl = Url.Action(nameof(Index), new { templateId = entity.TemplateId });
+                return Json(new { ok = true, redirectUrl = redirectUrl });
+            }
+            catch (Exception ex)
+            {
+                // 捕捉所有例外 (包含 DbUpdateException)，並回傳 JSON 錯誤
+                _logger.LogError(ex, "儲存 TemplateVersion (ID: {TemplateVersionId}) 時發生錯誤。", m.TemplateVersionId);
+                return Json(new
+                {
+                    ok = false,
+                    errors = new[] { "儲存時發生資料庫錯誤，請稍後再試。", ex.Message }
+                });
+            }
+            // ======================================
+        }
+
+        // POST: /Mail/TemplateVersions/TestSend?templateId=xx
+        // 由前端送 JSON: { to, subject, bodyHtml, name }
+        [HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> TestSend(int templateId, [FromBody] TestSendDto dto)
 		{
