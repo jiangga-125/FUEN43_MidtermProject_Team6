@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using BookLoop.Models;
 using BookLoop.ViewModels;
+using BookLoop.Data;
 
 namespace BookLoop.Controllers
 {

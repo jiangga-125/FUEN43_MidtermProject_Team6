@@ -24,8 +24,9 @@ namespace BookLoop.Data
 		public DbSet<Blacklist> Blacklists => Set<Blacklist>();
 		public DbSet<Member> Members => Set<Member>();
         public DbSet<MailTemplate> MailTemplates { get; set; }
+		public DbSet<RefreshToken> RefreshTokens { get; set; } = null!; // ·s¼WJWT RefreshTokens
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			base.OnModelCreating(modelBuilder);
 
