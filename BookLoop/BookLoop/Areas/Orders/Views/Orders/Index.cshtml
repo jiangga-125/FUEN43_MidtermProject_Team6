@@ -186,10 +186,10 @@
                             @Html.DisplayFor(modelItem => item.OrderID)
                         </td>
                         <td>
-                            @Html.DisplayFor(modelItem => item.OrderDate)
+                            @item.OrderDate.ToString("yyyy/MM/dd")
                         </td>
                         <td>
-                            @Html.DisplayFor(modelItem => item.TotalAmount)
+                            @String.Format("{0:N0} 元", item.TotalAmount)
                         </td>
                         <td>
                             @{
@@ -238,7 +238,7 @@
                             @Html.DisplayFor(modelItem => item.CouponNameSnap)
                         </td>
                         <td>
-                            @Html.DisplayFor(modelItem => item.CouponDiscountAmount)
+                            @String.Format("{0:N0}元", item.CouponDiscountAmount)
                         </td>
                     
                         <td>@item.Member.Username</td>

@@ -58,36 +58,32 @@ namespace BookLoop.Helpers
 		/// </summary>
 		public static string GenerateCheckMacValue(ECPayRequest model)
 		{
-			var parameters = model.GetType()
-				.GetProperties()
-				.Where(p => p.GetValue(model) != null && p.Name != "CheckMacValue")
-				.ToDictionary(p => p.Name, p => p.GetValue(model).ToString());
+			var parameters = new Dictionary<string, string>
+	{
+		{ "MerchantID", model.MerchantID },
+		{ "MerchantTradeNo", model.MerchantTradeNo },
+		{ "MerchantTradeDate", model.MerchantTradeDate },
+		{ "PaymentType", "aio" },
+		{ "TotalAmount", model.TotalAmount.ToString() },
+		{ "TradeDesc", model.TradeDesc },
+		{ "ItemName", model.ItemName },
+		{ "ReturnURL", model.ReturnURL },
+		{ "OrderResultURL", model.OrderResultURL },
+		{ "ChoosePayment", model.ChoosePayment },
+		{ "EncryptType", "1" }
+	};
 
-			if (!parameters.ContainsKey("PaymentType"))
-				parameters.Add("PaymentType", "aio");
-
-			var sortedParams = parameters.OrderBy(x => x.Key, StringComparer.Ordinal).ToList();
-
-			var raw = $"HashKey={HashKey}&{string.Join("&", sortedParams.Select(x => $"{x.Key}={x.Value}"))}&HashIV={HashIV}";
-
-			var urlEncoded = HttpUtility.UrlEncode(raw).ToLower();
-			urlEncoded = urlEncoded.Replace("+", "%20")
-								   .Replace("%2d", "-")
-								   .Replace("%5f", "_")
-								   .Replace("%2e", ".")
-								   .Replace("%21", "!")
-								   .Replace("%2a", "*")
-								   .Replace("%28", "(")
-								   .Replace("%29", ")");
+			var sorted = parameters.OrderBy(x => x.Key);
+			var raw = $"HashKey={HashKey}&{string.Join("&", sorted.Select(x => $"{x.Key}={x.Value}"))}&HashIV={HashIV}";
+			var encoded = HttpUtility.UrlEncode(raw, Encoding.UTF8).ToLower();
 
 			using (var sha256 = SHA256.Create())
 			{
-				var bytes = Encoding.UTF8.GetBytes(urlEncoded);
+				var bytes = Encoding.UTF8.GetBytes(encoded);
 				var hash = sha256.ComputeHash(bytes);
 				return BitConverter.ToString(hash).Replace("-", "").ToUpper();
 			}
 		}
-
 		/// <summary>
 		/// 驗證綠界回傳通知
 		/// </summary>

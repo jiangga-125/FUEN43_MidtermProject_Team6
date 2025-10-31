@@ -38,9 +38,9 @@
                 <td>@item.Book.Title</td>
                 <td>@item.ProductName</td>
                 <td>@item.Quantity</td>
-                <td>@item.UnitPrice</td>
-                <td>@(item.ProductDiscountAmount ?? 0)</td>
-                <td>@item.CreatedAt.ToString("yyyy/MM/dd HH:mm")</td>
+                <td>@String.Format("{0:N0}元", item.UnitPrice)</td>
+                <td>@String.Format("{0:N0}元", item.ProductDiscountAmount ?? 0)</td>
+                <td>@item.CreatedAt.ToString("yyyy/MM/dd")</td>
                 <td>@item.Order.OrderID</td>
                 <td>
           
