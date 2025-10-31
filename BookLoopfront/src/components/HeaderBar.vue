@@ -3,9 +3,7 @@
   <header class="headerbar bg-white py-2 shadow-sm">
     <div class="container d-flex align-items-center gap-3">
       <!-- LOGO -->
-      <router-link to="/" class="me-3 text-decoration-none">
-        <h4 class="mb-0">簿錄書城</h4>
-      </router-link>
+      <router-link to="/" class="me-3 text-decoration-none"> </router-link>
 
       <!-- 搜尋欄：按 Enter、按鈕皆會觸發搜尋 -->
       <div class="flex-grow-1">
