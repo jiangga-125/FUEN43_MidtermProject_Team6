@@ -122,18 +122,25 @@ namespace Account.Controllers
 
 		// ===== 建立 =====
 		[Authorize(Policy = "Blacklists.Manage")]
-		public async Task<IActionResult> Create(int? memberId)
+		public async Task<IActionResult> Create(int memberId)
 		{
-			await FillMembersSelect(memberId);
+            // 1) 基本參數檢查
+            if (memberId <= 0) return BadRequest("缺少或錯誤的 memberId。");
+
+            // 2) 驗證會員是否存在
+            var memberExists = await _db.Members.AnyAsync(m => m.MemberID == memberId);
+            if (!memberExists) return NotFound("找不到此會員。");
+            
 			return View(new Blacklist
 			{
-				MemberID = memberId ?? 0,
+				MemberID = memberId,
 				StartAt = DateTime.UtcNow,
 				EndAt = null
 			});
 		}
+       
 
-		[Authorize(Policy = "Blacklists.Manage")]
+        [Authorize(Policy = "Blacklists.Manage")]
 		[HttpPost, ValidateAntiForgeryToken]
 		public async Task<IActionResult> Create(Blacklist input)
 		{

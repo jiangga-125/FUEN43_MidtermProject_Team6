@@ -65,7 +65,8 @@
                 結清時間
             </th>
             <th>繳費顯示</th>
-            <th>操作欄位</th>
+            <th>繳費</th>
+            <th>黑名單設定</th>
         </tr>
     </thead>
     <tbody>
@@ -130,6 +131,18 @@
                     </div>
                     }
 
+                </td>
+                <td>
+                    @if (item.PaidAt == null)
+                    {
+                        <div class="form-check form-switch">
+                            <input class="form-check-input js-blacklist-switch"
+                                   type="checkbox"
+                                   role="switch"
+                                   data-member-id="@item.MemberID"
+                                   data-member-name="@item.MemberName" />
+                        </div>
+                    }                    
                 </td>
             </tr>
 }
@@ -255,5 +268,74 @@
             });
         });
     </script>
+    <script>
+        (() => {
+          // —— 可調整：控制器路徑（如有 Area 記得加）——
+          const createUrl = '@Url.Action("Create", "Blacklists", new { area = "Account" })';
+          // 若不在 Area：const createUrl = '@Url.Action("Create", "Blacklists")';
+
+          const KEY = (id) => `bl_sw:${id}`; // 每位會員各自的 key
+          let initializing = true;
+
+          // 1) 初始化：還原每顆開關狀態（不觸發跳轉）
+          document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.js-blacklist-switch').forEach(el => {
+              const rawId = el.dataset.memberId;
+              if (!rawId || !/^\d+$/.test(rawId)) {
+                console.warn('缺少或錯誤的 data-member-id：', rawId, el);
+                return;
+              }
+              const saved = localStorage.getItem(KEY(rawId)); // '1' | '0' | null
+              if (saved !== null) el.checked = (saved === '1');
+            });
+            initializing = false;
+          });
+
+          // 2) 事件委派：變更時寫回 localStorage；關→開才詢問並跳轉
+          document.addEventListener('change', (e) => {
+            const el = e.target;
+            if (!el.classList.contains('js-blacklist-switch')) return;
+            if (initializing) return; // 避免初始化時誤觸發
+
+            const rawId = el.dataset.memberId;
+            if (!rawId || !/^\d+$/.test(rawId)) {
+              alert('缺少或錯誤的 memberId（前端驗證）');
+              el.checked = false;
+              return;
+            }
+
+            if (el.checked) {
+              // 關→開：詢問 + 寫入 + 跳轉
+              const ok = window.confirm(`要把「${el.dataset.memberName || '此會員'}」設為黑名單嗎？`);
+              if (ok) {
+                localStorage.setItem(KEY(rawId), '1');          // ← 先寫入，確保返回也能還原
+                const url = `${createUrl}?memberId=${encodeURIComponent(rawId)}`;
+                console.log('redirect to:', url);
+                window.location.href = url;
+              } else {
+                el.checked = false;
+                localStorage.setItem(KEY(rawId), '0');
+              }
+            } else {
+              // 開→關：只記錄，不跳轉
+              localStorage.setItem(KEY(rawId), '0');
+            }
+          });
+
+          // 3)（可選）若後端已把該會員判定為黑名單並把開關 disable，可以清掉舊紀錄
+          document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.js-blacklist-switch[disabled]').forEach(el => {
+              const rawId = el.dataset.memberId;
+              if (rawId) localStorage.removeItem(KEY(rawId));
+            });
+          });
+        })();
+    </script>
+
+
+
+
+
+
 
 }

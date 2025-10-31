@@ -32,6 +32,7 @@ namespace BookLoop.Controllers
             {
                 PenaltyID = x.PenaltyID,
                 MemberName = x.Member.Username,
+                MemberID = x.MemberID,
                 ReasonCode = x.Rule.ReasonCode,
                 ChargeType = x.Rule.ChargeType,
                 UnitAmount = x.Rule.UnitAmount,
