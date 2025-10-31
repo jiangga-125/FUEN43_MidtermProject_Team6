@@ -27,12 +27,8 @@ namespace BookLoop.Data
 		public DbSet<Template> Templates => Set<Template>();
 		public DbSet<TemplateVersion> TemplateVersions => Set<TemplateVersion>();
 
-<<<<<<< HEAD
 
-		protected override void OnModelCreating(ModelBuilder b)
-=======
         protected override void OnModelCreating(ModelBuilder modelBuilder)
->>>>>>> d667f0b97ef644e0086fdd603349d37bae7aea90
 		{
 			base.OnModelCreating(modelBuilder);
 
@@ -121,34 +117,23 @@ namespace BookLoop.Data
 				e.HasIndex(x => x.Code).IsUnique();
 			});
 
-			// PERMISSION_FEATURES
-<<<<<<< HEAD
-			b.Entity<PermissionFeature>(e =>
-			{
-				e.ToTable("PERMISSION_FEATURES"); // ← 與 DB 一致
-				e.HasKey(x => new { x.PermissionID, x.FeatureID });
-				e.HasOne(x => x.Permission).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.PermissionID);
-				e.HasOne(x => x.Feature).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.FeatureID);
-			});
+            //Mail
+            modelBuilder.Entity<Template>().ToTable("Template");
+            modelBuilder.Entity<TemplateVersion>().ToTable("TemplateVersion");
 
-			//Mail
-			b.Entity<Template>().ToTable("Template"); 
-			b.Entity<TemplateVersion>().ToTable("TemplateVersion");
+            modelBuilder.Entity<Template>().HasIndex(x => x.TemplateKey).IsUnique();
 
-			b.Entity<Template>().HasIndex(x => x.TemplateKey).IsUnique();
-
-			b.Entity<TemplateVersion>()
+            modelBuilder.Entity<TemplateVersion>()
 				.HasOne(v => v.Template).WithMany(t => t.Versions)
 				.HasForeignKey(v => v.TemplateId).OnDelete(DeleteBehavior.Cascade);
 
-			b.Entity<TemplateVersion>()
+            modelBuilder.Entity<TemplateVersion>()
 				.HasIndex(v => new { v.TemplateId, v.TemplateName }).IsUnique();
 
-			b.Entity<TemplateVersion>() // 篩選唯一：每個 Template 只能 1 個預設版
+            modelBuilder.Entity<TemplateVersion>() // 篩選唯一：每個 Template 只能 1 個預設版
 				.HasIndex(v => new { v.TemplateId, v.IsDefault })
 				.HasFilter("[IsDefault] = 1")
 				.IsUnique();
-=======
 			//b.Entity<PermissionFeature>(e =>
 			//{
 			//	e.ToTable("PERMISSION_FEATURES"); // ← 與 DB 一致
@@ -156,7 +141,7 @@ namespace BookLoop.Data
 			//	e.HasOne(x => x.Permission).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.PermissionID);
 			//	e.HasOne(x => x.Feature).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.FeatureID);
 			//});
->>>>>>> d667f0b97ef644e0086fdd603349d37bae7aea90
+
 		}
 	}
 }

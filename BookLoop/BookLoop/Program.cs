@@ -1,11 +1,12 @@
 using BookLoop.Areas.Reviews;
+using BookLoop.Authorization;
 using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services;
-using BookLoop.Services.Mail;
 using BookLoop.Services.Coupons;
 using BookLoop.Services.Export;
 using BookLoop.Services.Import;
+using BookLoop.Services.Mail;
 using BookLoop.Services.Orders;
 using BookLoop.Services.Points;
 using BookLoop.Services.Pricing;
@@ -13,17 +14,14 @@ using BookLoop.Services.Reports;
 using BookLoop.Services.Rules;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using System.Threading.Tasks;
-using BookLoop.Authorization;
-using Microsoft.AspNetCore.DataProtection;
-using System.IO;
-using Microsoft.AspNetCore.Http;
-<<<<<<< HEAD
-=======
+using OfficeOpenXml;
 using System;
->>>>>>> d667f0b97ef644e0086fdd603349d37bae7aea90
+using System.IO;
+using System.Threading.Tasks;
 
 namespace BookLoop
 {
@@ -34,8 +32,9 @@ namespace BookLoop
 		public static async Task Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
+            ExcelPackage.License.SetNonCommercialOrganization("FUEN43 Team6");
 
-			var bookloopStr = builder.Configuration.GetConnectionString("BookLoop")
+            var bookloopStr = builder.Configuration.GetConnectionString("BookLoop")
 			  ?? throw new InvalidOperationException("ConnectionStrings:BookLoop 未設定");
 
 			// 所有 Context 共用 bookloopStr 資料庫
@@ -117,15 +116,10 @@ namespace BookLoop
 
 			builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
 			builder.Services.AddScoped<ReportQueryBuilder>();
-<<<<<<< HEAD
 			builder.Services.AddSingleton<IExcelExporter, EpplusExcelExporter>();
 			builder.Services.AddScoped<IMailService, MailService>();
 			builder.Services.AddSingleton<ITemplateRenderer, SimpleTemplateRenderer>();
 			builder.Services.AddScoped<ITemplateMailer, TemplateMailer>();
-=======
-			builder.Services.AddSingleton<IExcelExporter, ClosedXmlExcelExporter>();
-			builder.Services.AddScoped<MailService>();
->>>>>>> d667f0b97ef644e0086fdd603349d37bae7aea90
 
 			builder.Services.AddScoped<ICouponService, CouponService>();
 			builder.Services.AddScoped<IPointsService, PointsService>();
