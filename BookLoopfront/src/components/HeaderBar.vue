@@ -21,12 +21,6 @@
           <button class="btn btn-primary" @click="submitSearch" type="button">搜尋</button>
         </div>
       </div>
-
-      <!-- 右側按鈕 -->
-      <div class="d-flex align-items-center gap-2">
-        <router-link to="/auth/login" class="btn btn-outline-secondary btn-sm">登入</router-link>
-        <router-link to="/auth/register" class="btn btn-outline-secondary btn-sm">註冊</router-link>
-      </div>
     </div>
   </header>
 </template>
