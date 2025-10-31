@@ -1,63 +1,90 @@
-<script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-const router = useRouter()
-
-const q = ref('')
-
-function go() {
-  const s = q.value.trim()
-  if (!s) return
-  // 先直接導到 /member 當作 Demo；等你有 /search 頁後改成 /search?q=...
-  router.push({ path: '/member', query: { q: s } })
-}
-</script>
-
+<!-- src/components/HeaderBar.vue (覆蓋用) -->
 <template>
-  <header class="hdr container">
-    <div class="brand">簿錄書城</div>
-    <div class="search">
-      <input v-model="q" placeholder="請輸入書名、作者、ISBN…" @keyup.enter="go" />
-      <button @click="go">搜尋</button>
+  <header class="headerbar bg-white py-2 shadow-sm">
+    <div class="container d-flex align-items-center gap-3">
+      <!-- LOGO -->
+      <router-link to="/" class="me-3 text-decoration-none">
+        <h4 class="mb-0">簿錄書城</h4>
+      </router-link>
+
+      <!-- 搜尋欄：按 Enter、按鈕皆會觸發搜尋 -->
+      <div class="flex-grow-1">
+        <div class="input-group">
+          <input
+            v-model="searchText"
+            @keyup.enter="submitSearch"
+            type="search"
+            class="form-control"
+            placeholder="請輸入書名、作者、ISBN..."
+            aria-label="搜尋書籍"
+          />
+          <button class="btn btn-primary" @click="submitSearch" type="button">搜尋</button>
+        </div>
+      </div>
+
+      <!-- 右側按鈕 -->
+      <div class="d-flex align-items-center gap-2">
+        <router-link to="/auth/login" class="btn btn-outline-secondary btn-sm">登入</router-link>
+        <router-link to="/auth/register" class="btn btn-outline-secondary btn-sm">註冊</router-link>
+      </div>
     </div>
-    <div class="logo">BOOKLOOP</div>
   </header>
 </template>
 
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+
+const router = useRouter()
+const route = useRoute()
+
+// 初值取自 route.query.q（若你已在 /listings?q=xxx 時返回 header，就會顯示）
+const searchText = ref<string>((route.query.q as string) || '')
+
+/**
+ * submitSearch: 按下搜尋會導到 /listings?q=xxx
+ * 若 searchText 為空，會導到 /listings（不帶 q）
+ * 若你想導到其他 path（例如 /used），把 basePath 改成你要的路徑
+ */
+function submitSearch() {
+  const q = (searchText.value || '').trim()
+  const basePath = '/listings' // <- 若要導到別的頁，改這裡
+
+  if (!q) {
+    router.push({ path: basePath })
+    return
+  }
+
+  router.push({
+    path: basePath,
+    query: {
+      q,
+      page: '1',
+    },
+  })
+}
+
+// 當外部 route 的 query.q 變動時（例如按 browser back/forward），同步 input
+watch(
+  () => route.query.q,
+  (val) => {
+    searchText.value = String(val || '')
+  },
+)
+</script>
+
 <style scoped>
-.hdr {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 0;
+.headerbar {
+  position: sticky;
+  top: 0;
+  z-index: 1050;
 }
-.brand {
-  font-weight: 800;
-  font-size: 20px;
+.input-group .form-control {
+  min-width: 420px;
 }
-.search {
-  flex: 1;
-  display: flex;
-  gap: 8px;
-}
-.search input {
-  flex: 1;
-  padding: 10px 12px;
-  border: 1px solid #e1e1e1;
-  border-radius: 999px;
-}
-.search button {
-  padding: 10px 16px;
-  border-radius: 999px;
-  border: 0;
-  background: #d4a017;
-  color: #fff;
-  cursor: pointer;
-}
-.logo {
-  padding: 8px 12px;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  background: #fff;
+@media (max-width: 768px) {
+  .input-group .form-control {
+    min-width: 150px;
+  }
 }
 </style>

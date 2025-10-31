@@ -12,6 +12,7 @@ const router = createRouter({
     { path: '/login', name: 'login', component: Login },
     { path: '/register', name: 'register', component: Register },
     { path: '/member', name: 'member', component: MemberCenter, meta: { requiresAuth: true } },
+    { path: '/listings', name: 'Listings', component: () => import('@/views/Listings.vue') },
   ],
   // 切換路由時自動捲到頂部，避免看到「在下面」
   scrollBehavior() {
