@@ -101,30 +101,30 @@ namespace BookLoop.Areas.Borrows.Controllers
         }
 
         // GET: Borrows/BorrowRecords/Create
-        public async Task <IActionResult> Create(int listingId,int memberId,int reservationId)
-        {            
-            var borrowlist =await  _context.Listings
-                .Where(l=>l.ListingID == listingId)
-                .Select(l => new {l.ListingID,l.Title})
+        public async Task<IActionResult> Create(int listingId, int memberId, int reservationId)
+        {
+            var borrowlist = await _context.Listings
+                .Where(l => l.ListingID == listingId)
+                .Select(l => new { l.ListingID, l.Title })
                 .FirstOrDefaultAsync();
-            if (borrowlist == null) 
+            if (borrowlist == null)
             {
                 return NotFound($"找不到館藏（ListingID={listingId}）。");
             }
 
-            var memberlist= await _context.Members
-                .Where(m=>m.MemberID == memberId)//找出借閱人
-                .Select(m => new {m.MemberID,m.Username})//挑選需要顯示的欄位
+            var memberlist = await _context.Members
+                .Where(m => m.MemberID == memberId)//找出借閱人
+                .Select(m => new { m.MemberID, m.Username })//挑選需要顯示的欄位
                 .FirstOrDefaultAsync();
 
             if (memberlist == null) { return NotFound($"找不到這個會員（MemberID={memberId}）。"); }
 
-            var reservation =  await _context.Reservations
-                .Where(r=>r.ReservationID == reservationId)
-                .Select(r => new {r.RequestedPickupDate } ) .FirstOrDefaultAsync();
+            var reservation = await _context.Reservations
+                .Where(r => r.ReservationID == reservationId)
+                .Select(r => new { r.RequestedPickupDate }).FirstOrDefaultAsync();
 
             const int DefaultBorrowDays = 3;//預設借閱天數
-            var previewBorrow = DateTime.Now; 
+            var previewBorrow = DateTime.Now;
             var previewDue = previewBorrow.AddDays(DefaultBorrowDays);//預覽的應還日期
             var brvm = new BorrowRecordsViewModel
             {
@@ -132,8 +132,8 @@ namespace BookLoop.Areas.Borrows.Controllers
                 MemberID = memberlist.MemberID,
                 ReservationID = reservationId,
                 BookTitle = borrowlist.Title,
-                MemberName=memberlist.Username,
-                BorrowDate= previewBorrow,
+                MemberName = memberlist.Username,
+                BorrowDate = previewBorrow,
                 DueDate = previewDue
             };
 
@@ -167,7 +167,7 @@ namespace BookLoop.Areas.Borrows.Controllers
             if (reservation == null)
                 return NotFound($"找不到預約（ReservationID={vm.ReservationID}）。");
 
-            var borrowAt = DateTime.Now;                 
+            var borrowAt = DateTime.Now;
             var dueAt = borrowAt.AddDays(3);
 
             if (!ModelState.IsValid)
@@ -180,7 +180,7 @@ namespace BookLoop.Areas.Borrows.Controllers
 
                 return View(vm);
             }
-           
+
 
             var borrowRecord = new BorrowRecord
             {
@@ -192,18 +192,18 @@ namespace BookLoop.Areas.Borrows.Controllers
                 StatusCode = (byte)BorrowRecordsViewModel.BorrowCondition.Borrowed,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now,
-                ReturnDate= null,
-                ReturnCondition= null
+                ReturnDate = null,
+                ReturnCondition = null
             };
             _context.BorrowRecords.Add(borrowRecord);
 
             listing.Status = 2;//借出中
-            reservation.Status= 4;//完成借閱
+            reservation.Status = 4;//完成借閱
 
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
             TempData["Success"] = "借閱成功";
-            return RedirectToAction("Index","BorrowRecords");
+            return RedirectToAction("Index", "BorrowRecords");
         }
 
 
@@ -222,7 +222,7 @@ namespace BookLoop.Areas.Borrows.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            
+
 
             var vm = new BorrowRecordsViewModel
             {
@@ -248,14 +248,14 @@ namespace BookLoop.Areas.Borrows.Controllers
         public async Task<IActionResult> ReturnConfirmed(int id,
             [FromForm(Name = "ReturnCondition")] ReturnConditionEnum? ReturnCondition)
         {
-            
+
             var br = await _context.BorrowRecords.AsTracking()
                 .FirstOrDefaultAsync(x => x.RecordID == id);
             if (br == null)
             {
                 TempData["ErrorMessage"] = "找不到借閱紀錄。";
                 return RedirectToAction(nameof(Index));
-            }            
+            }
             try
             {
                 var today = DateTime.Today;
@@ -263,14 +263,14 @@ namespace BookLoop.Areas.Borrows.Controllers
                 br.StatusCode = (byte)BorrowCondition.Returned;
                 br.UpdatedAt = DateTime.Now;
                 var overdueDays = Math.Max((today - br.DueDate.Date).Days, 0);
-                
+
                 // 規則：逾期歸還 -> 狀態為 Overdue；未逾期歸還 -> 狀態為 Returned
                 //以returnat做區分,沒做歸還是null
                 br.StatusCode = (byte)(overdueDays > 0 ? BorrowCondition.Overdue
                                                : BorrowCondition.Returned);
 
 
-                             
+
                 br.ReturnCondition = ReturnCondition.HasValue ? (byte?)(byte)ReturnCondition.Value : null;
 
                 // 保險起見強制標記有變更
@@ -279,7 +279,7 @@ namespace BookLoop.Areas.Borrows.Controllers
                 //判斷罰金用
                 var promoted = await _queueService.PromoteNextReservationAsync(br.ListingID);
 
-               
+
                 await _context.SaveChangesAsync();
 
 
@@ -302,5 +302,60 @@ namespace BookLoop.Areas.Borrows.Controllers
             }
             return RedirectToAction(nameof(Index));
         }
+
+        [HttpGet]
+        public IActionResult _userdata()
+        {
+
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> BrIndexPartial()
+        {
+            const int fixedMemberId = 17; // ← 你要看的固定 MemberID
+
+            var items = await _context.BorrowRecords
+                .AsNoTracking()
+                .Include(b => b.Listing)
+                .Include(b => b.Member)
+                .Where(b => b.MemberID == fixedMemberId)  // 只看這個人
+                .Select(b => new BorrowRecordsViewModel
+                {
+                    ListingID = b.ListingID,
+                    RecordID = b.RecordID,
+                    BookTitle = b.Listing.Title,
+                    MemberID = b.MemberID,
+                    MemberName = b.Member.Username,
+                    BorrowDate = b.BorrowDate,
+                    ReturnDate = b.ReturnDate,
+                    DueDate = b.DueDate,
+                    StatusCode = b.StatusCode,
+                    CreatedAt = b.CreatedAt,
+                    ReturnCondition = (ReturnConditionEnum)b.ReturnCondition,
+                    ReservationStatus = _context.Reservations
+                        .Where(r =>
+                            (b.ReservationID != null && r.ReservationID == b.ReservationID) ||
+                            (r.ListingID == b.ListingID && r.MemberID == b.MemberID) ||
+                            (r.ListingID == b.ListingID)
+                        )
+                        .OrderByDescending(r =>
+                            b.ReservationID != null && r.ReservationID == b.ReservationID ? 3 :
+                            (r.ListingID == b.ListingID && r.MemberID == b.MemberID) ? 2 :
+                            (r.ListingID == b.ListingID) ? 1 : 0
+                        )
+                        .ThenByDescending(r => r.ReservationID)
+                        .ThenByDescending(r => r.ReservationAt)
+                        .ThenByDescending(r => r.CreatedAt)
+                        .Select(r => (ReservationStatus?)(byte?)r.Status)
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            return PartialView("_brIndex", items);
+        }
+
     }
+
 }
+

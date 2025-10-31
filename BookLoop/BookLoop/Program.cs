@@ -301,14 +301,16 @@ namespace BookLoop
 			builder.Services.AddControllersWithViews();
 			builder.Services.AddRazorPages();
 
+			//借閱service
+            builder.Services.AddScoped<ReservationExpiryService>();
+            builder.Services.AddHostedService<ReservationExpiryWorker>();
+            builder.Services.AddScoped<ReservationQueueService>();
 			#endregion
 
 			// ------------------------------
 			// 應用程式管線
 			// ------------------------------
 			var app = builder.Build();
-
-
 
 			// 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
 			//using (var scope = app.Services.CreateScope())
@@ -361,9 +363,6 @@ namespace BookLoop
 			app.MapControllerRoute(
 				name: "default",
 				pattern: "{controller=Home}/{action=Index}/{id?}");
-
-			// 上線把 Vue 靜態檔放 wwwroot，使用 history 路由時需要回傳 index.html
-			// app.MapFallbackToFile("index.html");
 
 			app.MapRazorPages();
 
