@@ -1,59 +1,153 @@
 ﻿@model BookLoop.User
 @{
-    Layout = "_Layout";
+    // Layout = "_Layout";
     ViewData["Title"] = "帳號詳情";
+    string StatusBadge(byte s) => s switch { 1 => "bg-success", 2 => "bg-secondary", _ => "bg-light text-dark" };
+    string StatusText(byte s) => s switch { 0 => "未啟用", 1 => "啟用", 2 => "停用", _ => "?" };
+    string TypeBadge(byte t) => t switch { 2 => "bg-primary", 3 => "bg-info", 1 => "bg-dark", _ => "bg-light text-dark" };
+    string TypeText(byte t) => t switch { 1 => "顧客", 2 => "員工", 3 => "書商", _ => "?" };
+
+    string initials = (string.IsNullOrWhiteSpace(Model.Name) ? Model.Email?.Trim() : Model.Name)
+                      ?.Trim()?.Substring(0, 1)?.ToUpper() ?? "?";
 }
 
-<h3>帳號詳情</h3>
+<div class="container px-0">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-area="Account" asp-controller="Users" asp-action="Index">後台帳號列表</a></li>
+            <li class="breadcrumb-item active" aria-current="page">帳號詳情</li>
+        </ol>
+    </nav>
 
-@if (TempData["ok"] != null)
-{
-    <div class="alert alert-success">@TempData["ok"]</div>
-}
-@if (TempData["err"] != null)
-{
-    <div class="alert alert-danger">@TempData["err"]</div>
-}
+    @await Html.PartialAsync("_Alerts")
 
-<table class="table">
-    <tr><th>ID</th><td>@Model.UserID</td></tr>
-    <tr><th>Email</th><td>@Model.Email</td></tr>
-    <tr><th>UserType</th><td>@Model.UserType</td></tr>
-    <tr><th>Status</th><td>@Model.Status</td></tr>
-    <tr><th>LastLoginAt</th><td>@Model.LastLoginAt</td></tr>
-</table>
-
-<div class="d-flex gap-2">
-    @if (User.HasClaim("perm", "Accounts.Edit"))
-    {
-        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.UserID">編輯</a>
-        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#resetPwdModal">重設密碼</button>
-    }
-</div>
-
-<!-- Reset Password Modal -->
-<div class="modal fade" id="resetPwdModal" tabindex="-1" aria-labelledby="resetPwdLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="post" asp-action="ResetPassword">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="id" value="@Model.UserID" />
-                <div class="modal-header">
-                    <h5 class="modal-title" id="resetPwdLabel">重設密碼 - @Model.Email</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="card shadow-sm mb-3">
+        <div class="card-body d-flex align-items-center">
+            <div class="me-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center"
+                     style="width:64px;height:64px;background:#eef2ff;color:#3b82f6;font-weight:700;font-size:24px;">
+                    @initials
                 </div>
-                <div class="modal-body">
-                    <div class="mb-2">
-                        <label class="form-label">新密碼</label>
-                        <input name="newPwd" type="password" class="form-control" required minlength="8" />
-                        <div class="form-text">至少 8 碼，建議含大小寫、數字與符號。</div>
+            </div>
+            <div class="flex-grow-1">
+                <h4 class="mb-1">
+                    @(string.IsNullOrWhiteSpace(Model.Name) ? "-" : Model.Name)
+                    <span class="ms-2 badge @StatusBadge(Model.Status)">@StatusText(Model.Status)</span>
+                    <span class="ms-1 badge @TypeBadge(Model.UserType)">@TypeText(Model.UserType)</span>
+                </h4>
+                <div class="text-muted small">
+                    ID: @Model.UserID · 建立：@Model.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")
+                    · 更新：@Model.UpdatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")
+                </div>
+            </div>
+
+            <div class="ms-2 d-flex gap-2">
+                <a class="btn btn-outline-secondary" asp-area="Account" asp-controller="Users" asp-action="Index">
+                    返回列表
+                </a>
+                <authorize policy="Users.Edit">
+                    <a class="btn btn-primary" asp-area="Account" asp-controller="Users" asp-action="Edit" asp-route-id="@Model.UserID">
+                        編輯
+                    </a>
+                    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#resetPwdModal">
+                        重設密碼
+                    </button>
+                </authorize>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-light fw-semibold">基本資料</div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-3">名稱</dt>
+                        <dd class="col-sm-9">@((string.IsNullOrWhiteSpace(Model.Name) ? "-" : Model.Name))</dd>
+
+                        <dt class="col-sm-3">Email</dt>
+                        <dd class="col-sm-9">
+                            <span class="me-2">@Model.Email</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    onclick="navigator.clipboard?.writeText('@Model.Email')">
+                                複製
+                            </button>
+                        </dd>
+
+                        <dt class="col-sm-3">電話</dt>
+                        <dd class="col-sm-9">@((string.IsNullOrWhiteSpace(Model.Phone) ? "-" : Model.Phone))</dd>
+
+                        <dt class="col-sm-3">最近登入</dt>
+                        <dd class="col-sm-9">
+                            @(Model.LastLoginAt.HasValue? Model.LastLoginAt.Value.ToLocalTime().ToString("yyyy/MM/dd HH:mm") : "-")
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-light fw-semibold">狀態 / 類型</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="text-muted small">目前狀態</div>
+                        <div class="fs-5">
+                            <span class="badge @StatusBadge(Model.Status)">@StatusText(Model.Status)</span>
+                        </div>
                     </div>
+                    <div class="mb-3">
+                        <div class="text-muted small">帳號類型</div>
+                        <div class="fs-5">
+                            <span class="badge @TypeBadge(Model.UserType)">@TypeText(Model.UserType)</span>
+                        </div>
+                    </div>
+
+                    <authorize policy="Users.Edit">
+                        <div class="alert alert-info small mb-0">
+                            若需變更狀態或類型，請點右上角「編輯」進行調整。
+                        </div>
+                    </authorize>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-warning">確認重設</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
+
+<authorize policy="Users.Edit">
+    <div class="modal fade" id="resetPwdModal" tabindex="-1" aria-labelledby="resetPwdLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow">
+                <form method="post" asp-area="Account" asp-controller="Users" asp-action="ResetPassword">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.UserID" />
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="resetPwdLabel">重設密碼</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-2">
+                            <label class="form-label">新密碼</label>
+                            <input name="newPwd" type="password" class="form-control" required minlength="8" />
+                            <div class="form-text">至少 8 碼，建議含大小寫、數字與符號。</div>
+                        </div>
+                        <div class="alert alert-warning d-flex align-items-center small mb-0">
+                            送出後將強制使用者於下次登入變更密碼。
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-warning">確認重設</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</authorize>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

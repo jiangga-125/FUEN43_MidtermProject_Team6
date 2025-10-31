@@ -2,31 +2,35 @@
 
 @{
     ViewData["Title"] = "訂單明細";
-    var hasData = Model != null && Model.Any();
 }
-<h2>訂單明細</h2>
 
-@if (hasData)
+<h2>訂單明細 - 訂單ID: @ViewBag.OrderID</h2>
+
+@if (Model != null && Model.Any())
 {
-    <table class="table">
+    <table class="table table-bordered">
         <thead>
             <tr>
-                <th>@Html.DisplayNameFor(m => m.First().ProductName)</th>
-                <th>@Html.DisplayNameFor(m => m.First().Quantity)</th>
-                <th>@Html.DisplayNameFor(m => m.First().UnitPrice)</th>
-                <th>@Html.DisplayNameFor(m => m.First().ProductDiscountAmount)</th>
-                <th>@Html.DisplayNameFor(m => m.First().CreatedAt)</th>
+                <th>訂單明細ID</th>
+                <th>書籍ID</th>
+                <th>商品名稱</th>
+                <th>數量</th>
+                <th>單價</th>
+                <th>折扣金額</th>
+                <th>建立時間</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var detail in Model)
             {
                 <tr>
+                    <td>@detail.OrderDetailID</td>
+                    <td>@detail.BookID</td>
                     <td>@detail.ProductName</td>
                     <td>@detail.Quantity</td>
                     <td>@detail.UnitPrice</td>
                     <td>@detail.ProductDiscountAmount</td>
-                    <td>@detail.CreatedAt</td>
+                    <td>@detail.CreatedAt.ToString("yyyy/MM/dd HH:mm")</td>
                 </tr>
             }
         </tbody>
@@ -34,10 +38,9 @@
 }
 else
 {
-    <p>沒有找到任何訂單明細。</p>
+    <p>此訂單沒有明細資料。</p>
 }
 
-
 <p>
-    <a asp-action="Index" class="btn btn-secondary">返回訂單列表</a>
+    <a asp-area="Orders" asp-controller="Orders" asp-action="Index" class="btn btn-secondary">返回訂單列表</a>
 </p>

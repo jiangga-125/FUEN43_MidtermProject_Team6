@@ -1,0 +1,55 @@
+﻿@model (int Page, int PageSize, int Total, string? Sort, string? Dir, string? Keyword, int? Status)
+
+@{
+    var sortVar = string.IsNullOrWhiteSpace(Model.Sort) ? "id" : Model.Sort!;
+    var dirVar = string.Equals(Model.Dir, "desc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+
+    int totalPages = (int)Math.Ceiling((double)Model.Total / (Model.PageSize > 0 ? Model.PageSize : 20));
+    if (totalPages < 1) totalPages = 1;
+    int window = 2;
+    int start = Math.Max(1, Model.Page - window);
+    int end = Math.Min(totalPages, Model.Page + window);
+}
+
+@if (totalPages > 1)
+{
+    <nav aria-label="pager" class="list-pager d-flex justify-content-center">
+        <ul class="pagination mb-0">
+            <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                <a class="page-link ajax-link"
+                   asp-action="List"
+                   asp-route-page="@(Model.Page - 1)"
+                   asp-route-pageSize="@Model.PageSize"
+                   asp-route-keyword="@Model.Keyword"
+                   asp-route-status="@Model.Status"
+                   asp-route-sort="@sortVar"
+                   asp-route-dir="@dirVar">上一頁</a>
+            </li>
+
+            @for (int i = start; i <= end; i++)
+            {
+                <li class="page-item @(i == Model.Page ? "active" : "")">
+                    <a class="page-link ajax-link"
+                       asp-action="List"
+                       asp-route-page="@i"
+                       asp-route-pageSize="@Model.PageSize"
+                       asp-route-keyword="@Model.Keyword"
+                       asp-route-status="@Model.Status"
+                       asp-route-sort="@sortVar"
+                       asp-route-dir="@dirVar">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(Model.Page >= totalPages ? "disabled" : "")">
+                <a class="page-link ajax-link"
+                   asp-action="List"
+                   asp-route-page="@(Model.Page + 1)"
+                   asp-route-pageSize="@Model.PageSize"
+                   asp-route-keyword="@Model.Keyword"
+                   asp-route-status="@Model.Status"
+                   asp-route-sort="@sortVar"
+                   asp-route-dir="@dirVar">下一頁</a>
+            </li>
+        </ul>
+    </nav>
+}

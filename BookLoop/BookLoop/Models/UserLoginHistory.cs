@@ -1,7 +1,10 @@
-﻿namespace BookLoop;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace BookLoop;
 
 public class UserLoginHistory
 {
+	[Key]
 	public int LoginID { get; set; }
 	public int UserID { get; set; }
 	public DateTime OccurredAt { get; set; }

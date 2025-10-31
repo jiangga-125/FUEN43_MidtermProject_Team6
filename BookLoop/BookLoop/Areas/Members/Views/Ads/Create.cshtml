@@ -1,0 +1,45 @@
+﻿@model BookLoop.Models.Advertisement
+
+@{
+    ViewData["Title"] = "新增廣告";
+}
+
+<h2>新增廣告</h2>
+
+<form asp-action="Create" enctype="multipart/form-data">
+    <div class="mb-3">
+        <label asp-for="Title" class="form-label">標題</label>
+        <input asp-for="Title" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label>圖片上傳</label>
+        <input type="file" name="imageFile" class="form-control" required />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="LinkUrl" class="form-label">連結</label>
+        <input asp-for="LinkUrl" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Position" class="form-label">顯示位置</label>
+        <select asp-for="Position" class="form-select">
+            <option>HomeBanner</option>
+            <option>EventPage</option>
+            <option>Sidebar</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="DisplayOrder" class="form-label">排序</label>
+        <input asp-for="DisplayOrder" type="number" class="form-control" />
+    </div>
+
+    <div class="form-check">
+        <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+        <label asp-for="IsActive" class="form-check-label">啟用</label>
+    </div>
+
+    <button type="submit" class="btn btn-success mt-3">新增</button>
+</form>

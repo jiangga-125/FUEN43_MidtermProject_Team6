@@ -4,7 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @{
     ViewData["Title"] = "報表主頁";
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    // Layout = "~/Views/Shared/_Layout.cshtml";
 
     // === 後端 API ===
     var apiLine = Url.Action("Line", "Reports", new { area = "ReportMail" }) ?? "#";

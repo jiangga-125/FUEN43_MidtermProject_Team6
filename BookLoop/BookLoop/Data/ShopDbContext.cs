@@ -1,7 +1,8 @@
+using BookLoop.Models;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
-using BookLoop.Models;
+using System.Reflection;
 
 namespace BookLoop.Data;
 
@@ -27,16 +28,15 @@ public partial class ShopDbContext : DbContext
     public virtual DbSet<Publisher> Publishers { get; set; }   
     public virtual DbSet<Supplier> Suppliers { get; set; }     
     public virtual DbSet<SupplierUser> SupplierUsers { get; set; } 
-	public DbSet<Member> Members { get; set; } = null!;
+	public virtual DbSet<Member> Members { get; set; } = null!;
 
-
-	//public DbSet<ShoppingCart> ShoppingCarts { get; set; }   // <--- 
-	//public DbSet<ShoppingCartItems> ShoppingCartItems { get; set; } // <--- 
 
         
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
-        modelBuilder.Entity<SupplierUser>(e =>
+		modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+		modelBuilder.Entity<SupplierUser>(e =>
 		{
 			e.ToTable("SUPPLIER_USERS");                      // 表名
 			e.HasKey(x => new { x.SupplierID, x.UserID });    // 複合主鍵（關鍵）
@@ -173,8 +173,6 @@ public partial class ShopDbContext : DbContext
 				  .HasForeignKey(i => i.BookID)
 				  .OnDelete(DeleteBehavior.Restrict);
 		});
-
-
 
 
 		OnModelCreatingPartial(modelBuilder);

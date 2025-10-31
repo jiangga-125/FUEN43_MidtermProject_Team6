@@ -1,11 +1,10 @@
 ﻿@model IEnumerable<BookLoop.Models.OrderDetail>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "訂單明細查詢";
 }
 
 <h1>訂單明細查詢</h1>
-
 
 <div class="d-flex justify-content-between mb-3">
     <form asp-action="Index" method="get" class="d-flex">
@@ -14,72 +13,41 @@
         <button type="submit" class="btn btn-primary" style="width:100px;">搜尋</button>
     </form>
 </div>
+
 <p>
     <a asp-action="Create">新增</a>
 </p>
+
 <table class="table" style="text-align: center">
     <thead>
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.BookID)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.ProductName)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Quantity)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.UnitPrice)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.ProductDiscountAmount)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.CreatedAt)
-            </th>
-            @* <th>
-                @Html.DisplayNameFor(model => model.UpdatedAt)
-            </th> *@
-            <th>
-                @Html.DisplayNameFor(model => model.OrderID)
-            </th>
+            <th>書名</th>
+            <th>商品名稱</th>
+            <th>數量</th>
+            <th>單價</th>
+            <th>折扣金額</th>
+            <th>建立時間</th>
+            <th>訂單編號</th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.BookID)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.ProductName)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Quantity)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.UnitPrice)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.ProductDiscountAmount)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.CreatedAt)
-            </td>
-            @* <td>
-                @Html.DisplayFor(modelItem => item.UpdatedAt)
-            </td> *@
-            <td>
-                @Html.DisplayFor(modelItem => item.Order.OrderID)
-            </td>
-            <td>
-                    <a asp-action="Edit" asp-route-id="@item.OrderDetailID" class="btn btn-success " style="width:80px;">修改</a>
-                    <a asp-action="Details" asp-route-id="@item.OrderDetailID" class="btn btn-info " style="width:100px;">詳細資訊</a> |
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Book.Title</td>
+                <td>@item.ProductName</td>
+                <td>@item.Quantity</td>
+                <td>@item.UnitPrice</td>
+                <td>@(item.ProductDiscountAmount ?? 0)</td>
+                <td>@item.CreatedAt.ToString("yyyy/MM/dd HH:mm")</td>
+                <td>@item.Order.OrderID</td>
+                <td>
+          
+                    <a asp-action="Details" asp-route-id="@item.OrderDetailID" class="btn btn-info" style="width:100px;">詳細資訊</a> |
                     <a asp-action="Delete" asp-route-id="@item.OrderDetailID" class="btn btn-danger" style="width:80px;">刪除</a>
-            </td>
-        </tr>
-}
+                </td>
+            </tr>
+        }
     </tbody>
 </table>

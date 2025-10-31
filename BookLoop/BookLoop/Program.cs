@@ -1,5 +1,4 @@
 using BookLoop.Areas.Reviews;
-using OfficeOpenXml;
 using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services;
@@ -21,16 +20,20 @@ using BookLoop.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using System.IO;
 using Microsoft.AspNetCore.Http;
+<<<<<<< HEAD
+=======
+using System;
+>>>>>>> d667f0b97ef644e0086fdd603349d37bae7aea90
 
 namespace BookLoop
 {
+
 	public class Program
 	{
+
 		public static async Task Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
-            //EPPlus v8 授權設定（學校/非商用）
-            ExcelPackage.License.SetNonCommercialOrganization("FUEN43 Team6");
 
 			var bookloopStr = builder.Configuration.GetConnectionString("BookLoop")
 			  ?? throw new InvalidOperationException("ConnectionStrings:BookLoop 未設定");
@@ -64,7 +67,7 @@ namespace BookLoop
 			builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 			// ------------------------------
-			// Data Protection 金鑰持久化（避免回收/重啟導致登出）
+			// Data Protection（避免回收/重啟導致登出）
 			// ------------------------------
 			builder.Services.AddDataProtection()
 				.PersistKeysToFileSystem(new DirectoryInfo(
@@ -72,7 +75,7 @@ namespace BookLoop
 				.SetApplicationName("BookLoop");
 
 			// ------------------------------
-			// 驗證與授權
+			// 驗證與授權（動態 Policy）
 			// ------------------------------
 			builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
 				.AddCookie(opt =>
@@ -82,14 +85,11 @@ namespace BookLoop
 					opt.Cookie.SameSite = SameSiteMode.Lax;
 					opt.LoginPath = "/Auth/Login";
 					opt.AccessDeniedPath = "/Auth/Denied";
-
-					// 存活 + 自動延展
 					opt.ExpireTimeSpan = TimeSpan.FromHours(12);
 					opt.SlidingExpiration = true;
-
 				});
 
-			// --- 授權：全站預設要登入（未標 AllowAnonymous 的頁面） ---
+			// 只要求「需登入」，其餘 Policy 全交由 PermissionPolicyProvider 動態生成
 			builder.Services.AddAuthorization(options =>
 			{
 				options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -97,7 +97,7 @@ namespace BookLoop
 					.Build();
 			});
 
-			// --- 動態 Policy Provider + 授權處理器（用 permkey + DB/快取展開 feature） ---
+			// 動態 Policy Provider + 處理器（關鍵）
 			builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 			builder.Services.AddMemoryCache();
 			builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
@@ -117,10 +117,15 @@ namespace BookLoop
 
 			builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
 			builder.Services.AddScoped<ReportQueryBuilder>();
+<<<<<<< HEAD
 			builder.Services.AddSingleton<IExcelExporter, EpplusExcelExporter>();
 			builder.Services.AddScoped<IMailService, MailService>();
 			builder.Services.AddSingleton<ITemplateRenderer, SimpleTemplateRenderer>();
 			builder.Services.AddScoped<ITemplateMailer, TemplateMailer>();
+=======
+			builder.Services.AddSingleton<IExcelExporter, ClosedXmlExcelExporter>();
+			builder.Services.AddScoped<MailService>();
+>>>>>>> d667f0b97ef644e0086fdd603349d37bae7aea90
 
 			builder.Services.AddScoped<ICouponService, CouponService>();
 			builder.Services.AddScoped<IPointsService, PointsService>();
@@ -147,7 +152,10 @@ namespace BookLoop
 
 			builder.Services.AddHttpContextAccessor();
 
-			
+			// BorrowSystem 背景服務
+			builder.Services.AddScoped<ReservationExpiryService>();
+			builder.Services.AddHostedService<ReservationExpiryWorker>();
+			builder.Services.AddScoped<ReservationQueueService>();
 
 			builder.Services.AddScoped<AuthService>();
 			builder.Services.AddScoped<PermissionService>();
@@ -157,37 +165,29 @@ namespace BookLoop
 			builder.Services.AddControllersWithViews();
 			builder.Services.AddRazorPages();
 
-			//借閱service
-            builder.Services.AddScoped<ReservationExpiryService>();
-            builder.Services.AddHostedService<ReservationExpiryWorker>();
-            builder.Services.AddScoped<ReservationQueueService>();
-
-
-
-
-            // ------------------------------
-            // 應用程式管線
-            // ------------------------------
-            var app = builder.Build();
+			// ------------------------------
+			// 應用程式管線
+			// ------------------------------
+			var app = builder.Build();
 
 
 
 			// 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
-			using (var scope = app.Services.CreateScope())
-			{
-				var appdb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-				var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(appdb.Database.GetConnectionString());
-				Console.WriteLine($"[AppDbContext] Server={csb.DataSource}, Database={csb.InitialCatalog}");
+			//using (var scope = app.Services.CreateScope())
+			//{
+			//	var appdb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+			//	var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(appdb.Database.GetConnectionString());
+			//	Console.WriteLine($"[AppDbContext] Server={csb.DataSource}, Database={csb.InitialCatalog}");
 
-				var memdb = scope.ServiceProvider.GetRequiredService<MemberContext>();
-				var csb2 = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(memdb.Database.GetConnectionString());
-				Console.WriteLine($"[MemberContext] Server={csb2.DataSource}, Database={csb2.InitialCatalog}");
+			//	var memdb = scope.ServiceProvider.GetRequiredService<MemberContext>();
+			//	var csb2 = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(memdb.Database.GetConnectionString());
+			//	Console.WriteLine($"[MemberContext] Server={csb2.DataSource}, Database={csb2.InitialCatalog}");
 
-				// 啟動時資料初始化
-				var init = scope.ServiceProvider.GetRequiredService<DbInitializer>();
-				await init.EnsureAdminPasswordAsync("admin@bookstore.local", "Admin@12345!");
-				await init.EnsurePermissionAndFeatureSeedAsync("admin@bookstore.local");
-			}
+			//	// 啟動時資料初始化
+			//	var init = scope.ServiceProvider.GetRequiredService<DbInitializer>();
+			//	await init.EnsureAdminPasswordAsync("admin@bookstore.local", "Admin@12345!");
+			//	await init.EnsurePermissionAndFeatureSeedAsync("admin@bookstore.local");
+			//}
 
 			if (app.Environment.IsDevelopment())
 			{

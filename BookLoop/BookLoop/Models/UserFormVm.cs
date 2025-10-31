@@ -1,13 +1,27 @@
-﻿namespace BookLoop;
+﻿using System.ComponentModel.DataAnnotations;
 
-public class UserFormVm
+namespace BookLoop
 {
-	public int? UserID { get; set; }        // null = Create；有值 = Edit
-	public string Email { get; set; } = "";
-	public byte UserType { get; set; } = 2;  // 2=員工, 3=書商
-	public string? Phone { get; set; }
-	public byte Status { get; set; } = 1;    // 0=未啟用,1=啟用,2=停用
+	public class UserFormVm
+	{
+		public int UserID { get; set; }
 
-	// 只在「新增」時可填（可選）
-	public string? NewPassword { get; set; }
+		[Required, EmailAddress, Display(Name = "Email")]
+		public string Email { get; set; } = "";
+
+		[Display(Name = "電話")]
+		public string? Phone { get; set; }
+
+		[Display(Name = "名稱")]
+		public string? Name { get; set; }
+
+		[Range(1, 2, ErrorMessage = "狀態僅允許啟用或停用。")]
+		[Display(Name = "狀態")]
+		public byte Status { get; set; } = 1;
+
+		// 1=顧客(前台不使用), 2=員工, 3=書商
+		[Range(1, 3, ErrorMessage = "帳號類型不正確。")]
+		[Display(Name = "類型")]
+		public byte UserType { get; set; } = 2;
+	}
 }

@@ -1,19 +1,42 @@
-﻿@* 共用：狀態下拉（支援「全部狀態」選項） *@
+﻿@* 共用：狀態下拉（支援「全部狀態」；優先用 ViewBag.StatusList） *@
+@using Microsoft.AspNetCore.Mvc.Rendering
 @{
-    int? selected = ViewData["selected"] as int?;
-    string name = (ViewData["name"] as string) ?? "status";
-    bool includeAll = (ViewData["includeAll"] as bool?) ?? false;
-    string allText = (ViewData["allText"] as string) ?? "全部狀態";
-    string css = (ViewData["class"] as string) ?? "form-select js-auto-submit";
-}
+    var name = (string?)ViewData["name"] ?? "status";
+    var css = (string?)ViewData["class"] ?? "form-select js-auto-submit";
+    var selected = ViewData["selected"]?.ToString(); // 統一用字串
+    var includeAll = (bool?)ViewData["includeAll"] ?? false;
+    var allText = (string?)ViewData["allText"] ?? "全部狀態";
 
+    IEnumerable<SelectListItem>? fromBag = ViewBag.StatusList as IEnumerable<SelectListItem>;
+    IEnumerable<SelectListItem> items = fromBag ?? new[]
+    {
+        new SelectListItem("啟用","1"),
+        new SelectListItem("停用","2"),
+    };
+}
 <select name="@name" class="@css">
     @if (includeAll)
     {
-        <option value="" selected="@(selected == null)">@allText</option>
+        if (string.IsNullOrEmpty(selected))
+        {
+            <option value="" selected>@allText</option>
+        }
+        else
+        {
+            <option value="">@allText</option>
+        }
     }
-    <option value="0" selected="@(selected == 0)">未啟用</option>
-    <option value="1" selected="@(selected == 1)">啟用</option>
-    <option value="2" selected="@(selected == 2)">停權</option>
-    <option value="3" selected="@(selected == 3)">關閉</option>
+    @foreach (var it in items)
+    {
+        var isSel = !string.IsNullOrEmpty(selected) &&
+        string.Equals(selected, it.Value, StringComparison.OrdinalIgnoreCase);
+        if (isSel)
+        {
+            <option value="@it.Value" selected>@it.Text</option>
+        }
+        else
+        {
+            <option value="@it.Value">@it.Text</option>
+        }
+    }
 </select>

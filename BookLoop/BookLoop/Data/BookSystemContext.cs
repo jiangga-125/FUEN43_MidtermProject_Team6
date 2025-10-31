@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using BookLoop.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,24 +33,9 @@ public partial class BookSystemContext : DbContext
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // ===== 1) 白名單：只保留本 DbContext 宣告的 DbSet<> =====
-        // (需要 using System.Reflection;)
-        var allowedTypes = this.GetType()
-            .GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
-            .Where(p => p.PropertyType.IsGenericType &&
-                        p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>))
-            .Select(p => p.PropertyType.GetGenericArguments()[0])
-            .ToHashSet();
-
-        var toIgnore = modelBuilder.Model.GetEntityTypes()
-            .Where(et => et.ClrType != null && !allowedTypes.Contains(et.ClrType))
-            .ToList();
-
-        foreach (var et in toIgnore)
-            modelBuilder.Ignore(et.ClrType!);
-
-        // ===== 2) Fluent 設定 (DbContext 原本的設定) =====
-        modelBuilder.Entity<Member>(entity =>
+		modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        
+		modelBuilder.Entity<Member>(entity =>
         {
             entity.ToTable(tb => tb.HasTrigger("trg_Members_Update"));
 

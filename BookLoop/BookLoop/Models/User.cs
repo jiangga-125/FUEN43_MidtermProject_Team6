@@ -6,12 +6,14 @@ namespace BookLoop
 {
     public class User
     {
-        public int UserID { get; set; }
+		[Key]
+		public int UserID { get; set; }
         /// <summary>1=顧客,2=員工,3=書商</summary>
         public byte UserType { get; set; }
         [MaxLength(254)] public string Email { get; set; } = string.Empty;
         public string? Phone { get; set; }
-        public byte Status { get; set; } = 1;
+		public string? Name { get; set; }
+		public byte Status { get; set; } = 1;
         public DateTime? LastLoginAt { get; set; }
         public DateTime? LockoutEndAt { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
