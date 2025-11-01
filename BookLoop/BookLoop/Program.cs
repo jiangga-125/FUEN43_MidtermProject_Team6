@@ -276,7 +276,7 @@ namespace BookLoop
 
 			builder.Services.AddScoped<IReviewRulePipeline, ReviewRulePipeline>();
 			builder.Services.AddScoped<IReviewModerationService, ReviewModerationService>();
-			builder.Services.AddScoped<IReviewRule, ForbiddenKeywordsRule>();
+			//builder.Services.AddScoped<IReviewRule, ForbiddenKeywordsRule>();
 			builder.Services.AddScoped<IReviewRuleProvider, DbReviewRuleProvider>();
 			builder.Services.AddScoped<IReviewRule>(sp =>
 			{
@@ -286,7 +286,7 @@ namespace BookLoop
 					var nowUtc = DateTime.UtcNow;
 					var text = comment.Trim();
 					return db.Reviews.Any(r =>
-						r.MemberId == authorMemberId &&
+						r.MemberID == authorMemberId &&
 						r.Content == text &&
 						r.CreatedAt >= nowUtc.AddHours(-24));
 				});
