@@ -42,6 +42,7 @@
 <ItemGroup>
   <Folder Include="Areas\Mail\Data\" />
   <Folder Include="Data\Shop\Entities\" />
+  <Folder Include="wwwroot\images\ads\" />
 </ItemGroup>
 
 <ItemGroup>
