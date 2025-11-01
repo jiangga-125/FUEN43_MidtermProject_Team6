@@ -30,8 +30,8 @@ namespace BookLoop.Models
         /// </summary>
         public bool IsActive { get; set; } = true;
 
-        public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
         public ICollection<TemplateVersion> Versions { get; set; } = new List<TemplateVersion>();
     }

@@ -6,7 +6,7 @@
 <h2>活動明細：@Model.CampaignName</h2>
 <p><strong>Template：</strong>@Model.TemplateKey</p>
 <p><strong>狀態：</strong>@Model.Status</p>
-<p><strong>建立時間：</strong>@Model.CreatedAtUtc.ToLocalTime()</p>
+<p><strong>建立時間：</strong>@Model.CreatedAt.ToLocalTime()</p>
 
 <form asp-action="Run" method="post" asp-route-id="@Model.JobId">
     <button type="submit" class="btn btn-danger">立即執行群發</button>
@@ -33,7 +33,7 @@
                     <td>@log.Recipient</td>
                     <td>@log.Subject</td>
                     <td>@log.Status</td>
-                    <td>@log.SentAtUtc.ToLocalTime()</td>
+                    <td>@log.SentAt.ToLocalTime()</td>
                 </tr>
             }
         }

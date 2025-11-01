@@ -129,7 +129,7 @@ namespace BookLoop.Services.Mail
                 Recipient = to,
                 Subject = subject ?? "",
                 Status = "Pending",
-                SentAtUtc = DateTime.UtcNow,
+                SentAt = DateTime.Now,
                 BodySnapshot = body
             };
 
@@ -156,7 +156,7 @@ namespace BookLoop.Services.Mail
                 log.ProviderMsgId = response;
                 log.BodySnapshot = body;
                 log.Error = null;
-                log.SentAtUtc = DateTime.UtcNow;
+                log.SentAt = DateTime.Now;
                 await _db.SaveChangesAsync(cancellationToken);
             }
             catch (Exception ex)

@@ -13,8 +13,8 @@ namespace BookLoop.Areas.Mail.Controllers
         public async Task<IActionResult> Index(DateTime? from, DateTime? to, string? status, string? templateKey, int page = 1)
         {
             var q = _db.MailSendLogs.AsQueryable();
-            if (from.HasValue) q = q.Where(x => x.SentAtUtc >= from.Value.Date);
-            if (to.HasValue) q = q.Where(x => x.SentAtUtc < to.Value.Date.AddDays(1));
+            if (from.HasValue) q = q.Where(x => x.SentAt >= from.Value.Date);
+            if (to.HasValue) q = q.Where(x => x.SentAt < to.Value.Date.AddDays(1));
             if (!string.IsNullOrWhiteSpace(status)) q = q.Where(x => x.Status == status);
             if (!string.IsNullOrWhiteSpace(templateKey)) q = q.Where(x => x.TemplateKey == templateKey);
 

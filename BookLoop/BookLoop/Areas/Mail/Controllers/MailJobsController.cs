@@ -27,7 +27,7 @@ namespace BookLoop.Areas.Mail.Controllers
         public async Task<IActionResult> Index()
         {
             var list = await _db.MailJobs
-                .OrderByDescending(x => x.CreatedAtUtc)
+                .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
             return View(list);
         }
@@ -55,7 +55,7 @@ namespace BookLoop.Areas.Mail.Controllers
             }
 
             job.Status = "Scheduled";
-            job.CreatedAtUtc = DateTime.UtcNow;
+            job.CreatedAt = DateTime.Now;
 
             _db.MailJobs.Add(job);
             await _db.SaveChangesAsync();
@@ -73,7 +73,7 @@ namespace BookLoop.Areas.Mail.Controllers
 
             var sent = await _db.MailSendLogs
                 .Where(x => x.MailJobId == id)
-                .OrderByDescending(x => x.SentAtUtc)
+                .OrderByDescending(x => x.SentAt)
                 .ToListAsync();
 
             ViewBag.Logs = sent;
@@ -123,7 +123,7 @@ namespace BookLoop.Areas.Mail.Controllers
                     Recipient = to,
                     Subject = templateVersion.Subject,
                     Status = "Pending",
-                    SentAtUtc = DateTime.UtcNow
+                    SentAt = DateTime.Now
                 };
                 _db.MailSendLogs.Add(log);
                 await _db.SaveChangesAsync();

@@ -102,7 +102,7 @@
                         <td class="text-truncate" style="max-width:420px">@v.Subject</td>
                         <td>@(v.IsDefault ? "✔" : "")</td>
                         <td>@(v.IsActive ? "✔" : "")</td>
-                        <td>@v.UpdatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
+                        <td>@v.UpdatedAt.ToString("yyyy/MM/dd HH:mm")</td>
                         <td class="text-end">
                             <a class="btn btn-sm btn-outline-secondary"
                                asp-area="Mail" asp-controller="TemplateVersions" asp-action="Edit"

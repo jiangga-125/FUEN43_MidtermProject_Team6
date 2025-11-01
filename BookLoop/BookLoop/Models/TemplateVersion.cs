@@ -31,12 +31,12 @@ namespace BookLoop.Models
         public bool IsActive { get; set; } = true;
         public bool IsDefault { get; set; } = false;
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
         /// <summary>
         /// 發佈/上線時間（與建立時間分離）
         /// </summary>
-        public DateTime? PublishedAtUtc { get; set; }
+        public DateTime? PublishedAt { get; set; }
     }
 }

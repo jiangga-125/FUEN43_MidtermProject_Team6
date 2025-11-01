@@ -148,7 +148,7 @@ namespace BookLoop.Data
                 e.Property(x => x.Description).HasMaxLength(1000);
                 e.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("Scheduled");
 
-                e.HasIndex(x => x.SendAtUtc);
+                e.HasIndex(x => x.SendAt);
                 e.HasIndex(x => x.TemplateKey);
                 e.HasIndex(x => x.Status);
             });

@@ -29,7 +29,7 @@ namespace BookLoop.Models
         /// <summary>
         /// 預定寄送時間（MVP 可先忽略，直接「立刻執行」）
         /// </summary>
-        public DateTime SendAtUtc { get; set; }
+        public DateTime SendAt { get; set; }
 
         /// <summary>
         /// 受眾來源（MVP：貼 Email 清單或一段條件字串；後續可改成 SegmentId）
@@ -41,7 +41,7 @@ namespace BookLoop.Models
         /// </summary>
         public string Status { get; set; } = "Scheduled";
 
-        public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
         public string? CreatedBy { get; set; }
     }
 }

@@ -100,9 +100,11 @@ namespace BookLoop.Areas.Mail.Controllers
 				await others.ForEachAsync(v => v.IsDefault = false);
 			}
 
-			// 4) 儲存（DesignJson/Html 來自 Hidden 欄位）
-			model.CreatedAt = DateTime.UtcNow;
-			model.UpdatedAt = DateTime.UtcNow; // 確保 UpdatedAt 也有值
+            // 4) 儲存（DesignJson/Html 來自 Hidden 欄位）
+            _logger.LogWarning("伺服器時間 (DateTime.Now): {ServerTime}", DateTime.Now);
+            _logger.LogWarning("伺服器 UTC 時間 (DateTime.UtcNow): {ServerUtcTime}", DateTime.UtcNow);
+            model.CreatedAt = DateTime.Now;
+			model.UpdatedAt = DateTime.Now; // 確保 UpdatedAt 也有值
 			_db.TemplateVersions.Add(model);
 			await _db.SaveChangesAsync();
 
@@ -168,7 +170,7 @@ namespace BookLoop.Areas.Mail.Controllers
                 entity.DesignJson = m.DesignJson;
                 entity.IsActive = m.IsActive;
                 entity.IsDefault = m.IsDefault;
-                entity.UpdatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.Now;
 
                 // 若本版本設為預設，把其他版本的 IsDefault 清掉
                 if (entity.IsDefault)
@@ -327,8 +329,8 @@ namespace BookLoop.Areas.Mail.Controllers
             if (!Regex.IsMatch(ext, @"^\.(jpg|jpeg|png|gif|webp)$", RegexOptions.IgnoreCase))
                 return BadRequest(new { error = "不支援的檔案類型" });
 
-            var today = DateTime.UtcNow.ToString("yyyyMMdd");
-            var name = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}_{Guid.NewGuid():N}{ext.ToLowerInvariant()}";
+            var today = DateTime.Now.ToString("yyyyMMdd");
+            var name = $"{DateTime.Now:yyyyMMddHHmmssfff}_{Guid.NewGuid():N}{ext.ToLowerInvariant()}";
             var key = _storage.BuildKey("uploads", "mailtemplateimages", templateId.ToString(), today, name);
 
             byte[] bytes;

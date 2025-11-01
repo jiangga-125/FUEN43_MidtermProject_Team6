@@ -48,7 +48,7 @@ namespace BookLoop.Models
         /// </summary>
         public string? ProviderMsgId { get; set; }
 
-        public DateTime SentAtUtc { get; set; } = DateTime.UtcNow;
+        public DateTime SentAt { get; set; } = DateTime.Now;
 
         /// <summary>
         /// 寄出當下的 HTML 快照（若你想 Logs/Details 直接顯示寄出樣子）

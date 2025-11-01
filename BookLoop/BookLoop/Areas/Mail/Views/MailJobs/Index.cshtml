@@ -20,7 +20,7 @@
                 <td>@item.CampaignName</td>
                 <td>@item.TemplateKey</td>
                 <td>@item.Status</td>
-                <td>@item.CreatedAtUtc.ToLocalTime()</td>
+                <td>@item.CreatedAt.ToLocalTime()</td>
                 <td>
                     <a asp-action="Details" asp-route-id="@item.JobId" class="btn btn-sm btn-outline-primary">查看</a>
                 </td>
