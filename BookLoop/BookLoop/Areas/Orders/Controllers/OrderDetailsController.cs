@@ -56,14 +56,17 @@ namespace Ordersys.Controllers
 		// GET: OrderDetails/Create
 		public IActionResult Create()
 		{
-			// 下拉選單顯示書名，但值為 BookID
-			ViewData["BookID"] = new SelectList(_context.Books, "BookID", "Title");
-			ViewData["OrderID"] = new SelectList(_context.Orders, "OrderID", "OrderID");
+			// 只取必要欄位，避免 null
+			var books = _context.Books
+								.Select(b => new { b.BookID, b.Title, b.SalePrice })
+								.ToList();
+			ViewData["BookID"] = new SelectList(books, "BookID", "Title");
+			ViewBag.BooksData = books;
 
-			// 將書籍資料傳給前端 JS 用於自動帶入商品名與單價
-			ViewBag.BooksData = _context.Books
-										.Select(b => new { b.BookID, b.Title, b.SalePrice })
-										.ToList();
+			var orders = _context.Orders
+								 .Select(o => new { o.OrderID })
+								 .ToList();
+			ViewData["OrderID"] = new SelectList(orders, "OrderID", "OrderID");
 
 			return View();
 		}
@@ -94,9 +97,19 @@ namespace Ordersys.Controllers
 			}
 
 			// 驗證失敗或書籍不存在時，重新載入下拉選單
-			ViewData["BookID"] = new SelectList(_context.Books, "BookID", "Title", orderDetail.BookID);
-			ViewData["OrderID"] = new SelectList(_context.Orders, "OrderID", "OrderID", orderDetail.OrderID);
-			ViewBag.BooksData = _context.Books.Select(b => new { b.BookID, b.Title, b.SalePrice }).ToList();
+			var books = _context.Books
+								.Where(b => b.BookID != null)    // 排除 null
+								.Select(b => new { b.BookID, b.Title, b.SalePrice })
+								.ToList();
+			ViewData["BookID"] = new SelectList(books, "BookID", "Title", orderDetail.BookID);
+
+			var orders = _context.Orders
+								 .Where(o => o.OrderID != null)  // 排除 null
+								 .ToList();
+			ViewData["OrderID"] = new SelectList(orders, "OrderID", "OrderID", orderDetail.OrderID);
+
+			ViewBag.BooksData = books;
+
 			return View(orderDetail);
 		}
 		[HttpPost]

@@ -28,9 +28,9 @@
                     <td>@detail.BookID</td>
                     <td>@detail.ProductName</td>
                     <td>@detail.Quantity</td>
-                    <td>@detail.UnitPrice</td>
-                    <td>@detail.ProductDiscountAmount</td>
-                    <td>@detail.CreatedAt.ToString("yyyy/MM/dd HH:mm")</td>
+                    <td>@String.Format("{0:N0}元", detail.UnitPrice)</td>
+                    <td>@String.Format("{0:N0}", detail.ProductDiscountAmount)</td>
+                    <td>@detail.CreatedAt.ToString("yyyy/MM/dd")</td>
                 </tr>
             }
         </tbody>

@@ -1,65 +1,341 @@
-﻿@model IEnumerable<BookLoop.Models.PenaltyTransaction>
+﻿@model IEnumerable<BookLoop.ViewModels.PenaltyTransactionsViewModel>
 
 @{
     ViewData["Title"] = "Index";
 }
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css">
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@{
+    var msg = TempData["FlashMessage"] as string;
+}
+@if (!string.IsNullOrEmpty(msg))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @msg
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
 
-<h1>Index</h1>
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
+<button class="btn btn-primary" id="btn-show-rules">查看規則</button>
+<a asp-controller="PenaltyRules" asp-action="Create" class="btn btn-success">新增規則</a>
+
+<div class="modal fade" id="rulesModal" tabindex="-1" aria-labelledby="rulesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-success">
+                <h5 class="modal-title" id="rulesModalLabel">規則清單</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div id="flash-area"></div>
+            <div class="modal-body" id="rules-modal-body"></div>
+        </div>
+    </div>
+</div>
+@Html.AntiForgeryToken()
+
+
+<table id="penaltiesTable" class="table">
     <thead>
         <tr>
             <th>
-                @Html.DisplayNameFor(model => model.CreatedAt)
+               借閱人
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Quantity)
+                罰金規則
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.PaidAt)
+                罰金單位
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Member)
+                數量
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Record)
+                總價
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Rule)
+                結清時間
             </th>
-            <th></th>
+            <th>繳費顯示</th>
+            <th>繳費</th>
+            <th>黑名單設定</th>
         </tr>
     </thead>
     <tbody>
 @foreach (var item in Model) {
         <tr>
             <td>
-                @Html.DisplayFor(modelItem => item.CreatedAt)
+				@Html.DisplayFor(modelItem => item.MemberName)
+            </td>
+          
+            <td>
+                @Html.DisplayFor(modelItem => item.ReasonCode)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.Quantity)
+                @Html.DisplayFor(modelItem => item.ChargeType)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.PaidAt)
+                    @Html.DisplayFor(modelItem => item.Quantity)
+                
             </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.totalMoney)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.PaidAt)
+                </td>
             <td>
-                @Html.DisplayFor(modelItem => item.Member.Username)
+                    @if (item.PaidAt == null)
+                    {
+                        <span class="text-danger fw-bold">未繳</span>
+                    }
+                    else
+                    {
+                        <span class="text-success fw-bold">已繳費</span>
+                    }
+                    
             </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Record.RecordID)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Rule.ChargeType)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.PenaltyID">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.PenaltyID">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.PenaltyID">Delete</a>
-            </td>
-        </tr>
+                <td>@if (item.PaidAt == null)
+                    {
+                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#givemoneyModal-@item.PenaltyID">
+                            繳費
+                        </button>
+                    
+                    <div class="modal fade" id="givemoneyModal-@item.PenaltyID" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content ">
+                                <div class="modal-header bg-primary">
+                                        <h2 class="modal-title text-black">繳費</h2>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+										<h3>確定繳費嗎</h3>
+                                </div>
+                                <div class="modal-footer">
+                                    <form asp-action="Pay" method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@item.PenaltyID" />
+                                        <button type="submit" class="btn btn-success">繳款</button>
+                                    </form>                                    
+                                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">取消</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    }
+
+                </td>
+                <td>
+                    @if (item.PaidAt == null)
+                    {
+                        <div class="form-check form-switch">
+                            <input class="form-check-input js-blacklist-switch"
+                                   type="checkbox"
+                                   role="switch"
+                                   data-member-id="@item.MemberID"
+                                   data-member-name="@item.MemberName" />
+                        </div>
+                    }                    
+                </td>
+            </tr>
 }
     </tbody>
 </table>
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@latest" defer></script>
+    <script>
+        // Bootstrap 5: 用元素建立 Modal
+        const modalEl    = document.getElementById('rulesModal');
+        const modal      = new bootstrap.Modal(modalEl);
+        const modalBody  = document.getElementById('rules-modal-body');
+        const modalTitle = document.getElementById('rulesModalLabel');
+
+        // 取得 Anti-forgery token（全站共用）
+        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        const token = tokenInput ? tokenInput.value : '';
+
+        // 1) 載入清單
+        async function loadRulesList() {
+          modalTitle.textContent = '規則清單';
+          modalBody.innerHTML = '<div class="p-3">載入中…</div>';
+          const res = await fetch('@Url.Action("TablePartial", "PenaltyRules")', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+          modalBody.innerHTML = res.ok ? await res.text() : '<div class="text-danger p-3">載入失敗</div>';
+          modal.show();
+        }
+
+        // 2) 載入編輯畫面
+        async function loadRuleEdit(id) {
+          modalTitle.textContent = '修改規則';
+          modalBody.innerHTML = '<div class="p-3">載入中…</div>';
+          const res = await fetch('@Url.Action("EditRow", "PenaltyRules")?id=' + encodeURIComponent(id), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+          modalBody.innerHTML = res.ok ? await res.text() : '<div class="text-danger p-3">載入失敗</div>';
+        }
+
+        // 3) 統一的 POST 幫手（FormData 或 URLSearchParams 都可）
+        async function postAndReload(url, data) {
+          let body;
+          if (data instanceof FormData) {
+            if (token && !data.has('__RequestVerificationToken')) {
+              data.append('__RequestVerificationToken', token);
+            }
+            body = data;
+          } else {
+            body = new URLSearchParams(data);
+            if (token && !body.has('__RequestVerificationToken')) {
+              body.append('__RequestVerificationToken', token);
+            }
+          }
+          const res  = await fetch(url, { method:'POST', body });
+          const json = await res.json();
+          if (!json.ok) throw new Error(json.message || '操作失敗');
+          await loadRulesList();
+        }
+
+        // 4) 事件委派：只綁一次，處理「動態載入」的所有按鈕/表單
+        modalBody.addEventListener('click', (e) => {
+          const target = e.target;
+          // 4-1) 編輯按鈕
+          const editBtn = target.closest('.btn-edit');
+          if (editBtn) {
+            const tr = editBtn.closest('tr');
+            const id = tr?.dataset?.id;
+            if (id) loadRuleEdit(id);
+            return;
+          }
+
+          // 4-2) 停用按鈕
+          const deactBtn = target.closest('.btn-deactivate');
+          if (deactBtn) {
+            const tr = deactBtn.closest('tr');
+            const id = tr?.dataset?.id;
+            if (!id) return;
+            if (!window.confirm('確定要停用嗎？')) return;
+            postAndReload('@Url.Action("Deactivate", "PenaltyRules")', { id });
+            return;
+          }
+
+          // 4-3) 編輯畫面的「返回清單」
+          if (target.id === 'btn-back') {
+            loadRulesList();
+            return;
+          }
+        });
+
+        // 4-4) 編輯表單的 submit（委派）
+        modalBody.addEventListener('submit', (e) => {
+          const form = e.target;
+          if (form && form.id === 'ruleForm') {
+            e.preventDefault();
+            postAndReload(form.action, new FormData(form));
+          }
+        });
+
+        // 5) 綁定「查看規則」按鈕
+        document.getElementById('btn-show-rules')?.addEventListener('click', loadRulesList);
+
+        // 6) 需要在其他地方呼叫時，暴露全域（選用）
+        window.loadRulesList = loadRulesList;
+        window.loadRuleEdit  = loadRuleEdit;
+        window.postAndReload = postAndReload;
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const el = document.querySelector('#penaltiesTable');
+            if (!el) return;
+
+            const dt = new simpleDatatables.DataTable(el, {
+                perPage: 10,
+                fixedHeight: true,
+                searchable: true,
+				sortable: false,
+                labels: {
+                    placeholder: "搜尋…",
+                    perPage: "筆/頁",
+                    noRows: "沒有資料",
+                    info: "顯示第 {start}–{end} 筆，共 {rows} 筆"
+                },              
+            });
+        });
+    </script>
+    <script>
+        (() => {
+          // —— 可調整：控制器路徑（如有 Area 記得加）——
+          const createUrl = '@Url.Action("Create", "Blacklists", new { area = "Account" })';
+          // 若不在 Area：const createUrl = '@Url.Action("Create", "Blacklists")';
+
+          const KEY = (id) => `bl_sw:${id}`; // 每位會員各自的 key
+          let initializing = true;
+
+          // 1) 初始化：還原每顆開關狀態（不觸發跳轉）
+          document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.js-blacklist-switch').forEach(el => {
+              const rawId = el.dataset.memberId;
+              if (!rawId || !/^\d+$/.test(rawId)) {
+                console.warn('缺少或錯誤的 data-member-id：', rawId, el);
+                return;
+              }
+              const saved = localStorage.getItem(KEY(rawId)); // '1' | '0' | null
+              if (saved !== null) el.checked = (saved === '1');
+            });
+            initializing = false;
+          });
+
+          // 2) 事件委派：變更時寫回 localStorage；關→開才詢問並跳轉
+          document.addEventListener('change', (e) => {
+            const el = e.target;
+            if (!el.classList.contains('js-blacklist-switch')) return;
+            if (initializing) return; // 避免初始化時誤觸發
+
+            const rawId = el.dataset.memberId;
+            if (!rawId || !/^\d+$/.test(rawId)) {
+              alert('缺少或錯誤的 memberId（前端驗證）');
+              el.checked = false;
+              return;
+            }
+
+            if (el.checked) {
+              // 關→開：詢問 + 寫入 + 跳轉
+              const ok = window.confirm(`要把「${el.dataset.memberName || '此會員'}」設為黑名單嗎？`);
+              if (ok) {
+                localStorage.setItem(KEY(rawId), '1');          // ← 先寫入，確保返回也能還原
+                const url = `${createUrl}?memberId=${encodeURIComponent(rawId)}`;
+                console.log('redirect to:', url);
+                window.location.href = url;
+              } else {
+                el.checked = false;
+                localStorage.setItem(KEY(rawId), '0');
+              }
+            } else {
+              // 開→關：只記錄，不跳轉
+              localStorage.setItem(KEY(rawId), '0');
+            }
+          });
+
+          // 3)（可選）若後端已把該會員判定為黑名單並把開關 disable，可以清掉舊紀錄
+          document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.js-blacklist-switch[disabled]').forEach(el => {
+              const rawId = el.dataset.memberId;
+              if (rawId) localStorage.removeItem(KEY(rawId));
+            });
+          });
+        })();
+    </script>
+
+
+
+
+
+
+
+}

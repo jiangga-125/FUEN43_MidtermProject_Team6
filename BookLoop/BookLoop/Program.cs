@@ -15,6 +15,10 @@ using BookLoop.Services.Rules;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.IO;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -32,12 +36,12 @@ namespace BookLoop
 		public static async Task Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
-            ExcelPackage.License.SetNonCommercialOrganization("FUEN43 Team6");
+      ExcelPackage.License.SetNonCommercialOrganization("FUEN43 Team6");
 
-            var bookloopStr = builder.Configuration.GetConnectionString("BookLoop")
+			#region context 統一共用 bookloopstr連線字串
+			var bookloopStr = builder.Configuration.GetConnectionString("BookLoop")
 			  ?? throw new InvalidOperationException("ConnectionStrings:BookLoop 未設定");
 
-			// 所有 Context 共用 bookloopStr 資料庫
 			builder.Services.AddDbContext<ApplicationDbContext>(options =>                
 				options.UseSqlServer(bookloopStr));
 
@@ -62,6 +66,7 @@ namespace BookLoop
 
 			builder.Services.AddDbContext<AppDbContext>(options =>
 				options.UseSqlServer(bookloopStr));
+			#endregion
 
 			builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -73,20 +78,165 @@ namespace BookLoop
 					Path.Combine(builder.Environment.ContentRootPath, "dpkeys")))
 				.SetApplicationName("BookLoop");
 
+			// CORS：允許從 Vite (5173) 來的請求、並攜帶 Cookie
+			builder.Services.AddCors(opts =>
+			{
+				opts.AddPolicy("DevCors", p => p
+					.WithOrigins("http://localhost:5173") //vue dev server位置
+					.AllowAnyHeader()
+					.AllowAnyMethod()
+					.AllowCredentials());
+			});
+
+			#region 原本的驗證(註解了)
 			// ------------------------------
 			// 驗證與授權（動態 Policy）
 			// ------------------------------
-			builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-				.AddCookie(opt =>
+
+			//builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+			//.AddCookie(opt =>
+			//{
+			//	opt.Cookie.Name = "bookloop.auth";
+			//	opt.Cookie.HttpOnly = true;
+
+			//	//opt.Cookie.SameSite = SameSiteMode.Lax;
+			//	opt.Cookie.SameSite = SameSiteMode.None;                 // [MODIFY]
+			//	opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+			//	// 開發期是跨網域（5173↔後端），Cookie 需 None+Secure；上線時同網域時可改回 Lax
+
+			//	opt.LoginPath = "/Auth/Login";
+			//	opt.AccessDeniedPath = "/Auth/Denied";
+			//	opt.ExpireTimeSpan = TimeSpan.FromHours(12);
+			//	opt.SlidingExpiration = true;
+
+			//	opt.Events = new CookieAuthenticationEvents
+			//	{
+			//		OnRedirectToLogin = ctx =>
+			//		{
+			//			if (ctx.Request.Path.StartsWithSegments("/api"))
+			//			{
+			//				ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+			//				return Task.CompletedTask;
+			//			}
+			//			ctx.Response.Redirect(ctx.RedirectUri);
+			//			return Task.CompletedTask;
+			//		},
+			//		OnRedirectToAccessDenied = ctx =>
+			//		{
+			//			if (ctx.Request.Path.StartsWithSegments("/api"))
+			//			{
+			//				ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+			//				return Task.CompletedTask;
+			//			}
+			//			ctx.Response.Redirect(ctx.RedirectUri);
+			//			return Task.CompletedTask;
+			//		}
+			//	};
+			//});
+			#endregion
+
+			#region 驗證：SmartScheme（自動在 Cookie / JWT 間選擇）
+			var jwtKey = builder.Configuration["Jwt:Key"];
+			if (string.IsNullOrEmpty(jwtKey))
+			{
+				throw new InvalidOperationException("Jwt:Key 未設定，請在 appsettings / user-secrets 或環境變數設定 Jwt:Key");
+			}
+			SymmetricSecurityKey signingKey;
+			try
+			{
+				var keyBytes = Convert.FromBase64String(jwtKey);
+				signingKey = new SymmetricSecurityKey(keyBytes);
+			}
+			catch
+			{
+				var keyBytes = Encoding.UTF8.GetBytes(jwtKey);
+				signingKey = new SymmetricSecurityKey(keyBytes);
+			}
+
+			// 重要：使用 PolicyScheme（SmartScheme） 來自動選擇 JWT 或 Cookie
+			builder.Services.AddAuthentication(options =>
+			{
+				// 預設使用 SmartScheme，由它決定使用哪個實際 scheme
+				options.DefaultScheme = "SmartScheme";
+			})
+			.AddPolicyScheme("SmartScheme", "Smart auth selection", options =>
+			{
+				// 若 request 帶 Authorization: Bearer ... -> 選 JwtBearer
+				// 否則 fallback to Cookie
+				options.ForwardDefaultSelector = context =>
 				{
-					opt.Cookie.Name = "bookloop.auth";
-					opt.Cookie.HttpOnly = true;
-					opt.Cookie.SameSite = SameSiteMode.Lax;
-					opt.LoginPath = "/Auth/Login";
-					opt.AccessDeniedPath = "/Auth/Denied";
-					opt.ExpireTimeSpan = TimeSpan.FromHours(12);
-					opt.SlidingExpiration = true;
-				});
+					var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+					if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+						return JwtBearerDefaults.AuthenticationScheme;
+
+					// 若有 cookie 名稱「bookloop.auth」也能優先判斷回傳 Cookie scheme（非必要）
+					if (context.Request.Cookies.ContainsKey("bookloop.auth"))
+						return CookieAuthenticationDefaults.AuthenticationScheme;
+
+					// 預設回 Cookie（保持原本網站介面行為）
+					return CookieAuthenticationDefaults.AuthenticationScheme;
+				};
+			})
+
+			// 保留你原本的 Cookie 設定（不變或可微調）
+			.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, opt =>
+			{
+				opt.Cookie.Name = "bookloop.auth";
+				opt.Cookie.HttpOnly = true;
+
+				opt.Cookie.SameSite = SameSiteMode.None;
+				opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+
+				opt.LoginPath = "/Auth/Login";
+				opt.AccessDeniedPath = "/Auth/Denied";
+				opt.ExpireTimeSpan = TimeSpan.FromHours(12);
+				opt.SlidingExpiration = true;
+
+				opt.Events = new CookieAuthenticationEvents
+				{
+					OnRedirectToLogin = ctx =>
+					{
+						if (ctx.Request.Path.StartsWithSegments("/api"))
+						{
+							ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+							return Task.CompletedTask;
+						}
+						ctx.Response.Redirect(ctx.RedirectUri);
+						return Task.CompletedTask;
+					},
+					OnRedirectToAccessDenied = ctx =>
+					{
+						if (ctx.Request.Path.StartsWithSegments("/api"))
+						{
+							ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+							return Task.CompletedTask;
+						}
+						ctx.Response.Redirect(ctx.RedirectUri);
+						return Task.CompletedTask;
+					}
+				};
+			})
+
+			.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+			{
+				// 開發時如果是 http，可先把 RequireHttpsMetadata 設 false；上線務必 true
+				options.RequireHttpsMetadata = false;
+				options.SaveToken = false;
+
+				options.TokenValidationParameters = new TokenValidationParameters
+				{
+					ValidateIssuer = true,
+					ValidIssuer = builder.Configuration["Jwt:Issuer"],
+					ValidateAudience = true,
+					ValidAudience = builder.Configuration["Jwt:Audience"],
+					ValidateIssuerSigningKey = true,
+					IssuerSigningKey = signingKey,
+					ValidateLifetime = true,
+					ClockSkew = TimeSpan.FromSeconds(30)
+				};
+			});
+			#endregion
+
 
 			// 只要求「需登入」，其餘 Policy 全交由 PermissionPolicyProvider 動態生成
 			builder.Services.AddAuthorization(options =>
@@ -101,9 +251,7 @@ namespace BookLoop
 			builder.Services.AddMemoryCache();
 			builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
-			// ------------------------------
-			// 服務註冊
-			// ------------------------------
+			#region 服務註冊
 			builder.Services.Configure<BookLoop.Services.ImageValidationOptions>(opts =>
 			{
 				opts.MaxFileBytes = 5 * 1024 * 1024; // 5MB
@@ -159,12 +307,16 @@ namespace BookLoop
 			builder.Services.AddControllersWithViews();
 			builder.Services.AddRazorPages();
 
+			//借閱service
+            builder.Services.AddScoped<ReservationExpiryService>();
+            builder.Services.AddHostedService<ReservationExpiryWorker>();
+            builder.Services.AddScoped<ReservationQueueService>();
+			#endregion
+
 			// ------------------------------
 			// 應用程式管線
 			// ------------------------------
 			var app = builder.Build();
-
-
 
 			// 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
 			//using (var scope = app.Services.CreateScope())
@@ -200,9 +352,15 @@ namespace BookLoop
 
 			app.UseRouting();
 
-			// 重要順序：Authentication -> Authorization
+			app.UseCors("DevCors");
 			app.UseAuthentication();
 			app.UseAuthorization();
+			// 順序：UseCors -> Authentication -> Authorization
+
+			//app.UseStaticFiles();                  // 服務 wwwroot 靜態檔
+			app.MapControllers(); // 讓路由的 /api/* 運作
+			//app.MapFallbackToFile("index.html"); // 正式上線時 SPA 前端路由回傳 index.html
+
 
 			app.MapControllerRoute(
 				name: "areas",
