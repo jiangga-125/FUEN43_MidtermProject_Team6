@@ -1,11 +1,19 @@
 ﻿@model BookLoop.Models.Template
 @{
-    ViewData["Title"] = $"模板「{Model.TemplateKey}」的版本";
+    ViewData["Title"] = $"範本群組「{Model.TemplateKey}」";
+    var hasDefault = Model.Versions.Any(x => x.IsDefault);     // 是否有預設版
 }
 
 <div class="container-fluid mt-4">
     <div class="d-flex align-items-center justify-content-between mb-3">
         <h1 class="h4 mb-0">@ViewData["Title"]</h1>
+        <div class="d-flex gap-2">
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    data-bs-toggle="collapse" data-bs-target="#editGroupBox"
+                    aria-expanded="false" aria-controls="editGroupBox">
+                編輯範本群組
+            </button>
         <a class="btn btn-primary"
            asp-area="Mail"
            asp-controller="TemplateVersions"
@@ -14,6 +22,65 @@
             新增版本
         </a>
     </div>
+ </div>
+    @* 收合容器 *@
+    <div id="editGroupBox" class="collapse">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body">
+                <h2 class="h5 mb-3">編輯範本群組</h2>
+
+                @* ===== 儲存（Edit）表單：更新 TemplateKey / Description ===== *@
+                <form asp-area="Mail"
+                      asp-controller="Templates"
+                      asp-action="Edit"
+                      asp-route-id="@Model.TemplateId"
+                      method="post"
+                      class="row gy-2 align-items-end">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="TemplateId" value="@Model.TemplateId" />
+
+                    <div class="col-md-4">
+                        <label class="form-label">TemplateKey</label>
+                        <input class="form-control" name="TemplateKey" value="@Model.TemplateKey" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">說明</label>
+                        <input class="form-control" name="Description" value="@Model.Description" />
+                    </div>
+
+                    <div class="col-md-2 text-end">
+                        <button type="submit" class="btn btn-success w-100">儲存</button>
+                    </div>
+                </form>
+
+                <hr class="my-3" />
+
+                @* ===== 刪除（DeleteConfirmed）表單：雙確認後刪除整個 Template 群組 ===== *@
+                <form asp-area="Mail"
+                      asp-controller="Templates"
+                      asp-action="DeleteConfirmed"
+                      asp-route-id="@Model.TemplateId"
+                      method="post"
+                      class="d-inline js-del-template">
+                    @* ⬅️ 新增：用 js-del-template 讓 JS 攔截雙確認 *@
+                    @Html.AntiForgeryToken()
+                    <button type="submit"
+                            class="btn btn-outline-danger"
+                            data-name="@Model.TemplateKey"
+                            data-has-default="@hasDefault>
+                        刪除範本群組
+                    </button>
+                    <small class="text-muted ms-2">（將同時刪除所有版本）</small>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <form id="af-form" style="display:none;">
+        @* ⬅️ 新增：隱藏 token，AJAX 刪除要用 *@
+        @Html.AntiForgeryToken()
+    </form>
 
     <div class="table-responsive">
         <table class="table table-hover align-middle">
@@ -40,6 +107,24 @@
                             <a class="btn btn-sm btn-outline-secondary"
                                asp-area="Mail" asp-controller="TemplateVersions" asp-action="Edit"
                                asp-route-id="@v.TemplateVersionId">編輯</a>
+                            @if (v.IsDefault)
+                            {
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        disabled
+                                        title="此版本為預設版，無法刪除。請先將其他版本設為預設。">
+                                    刪除
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger js-del-version"
+                                        data-id="@v.TemplateVersionId"
+                                        data-name="@v.TemplateName">
+                                    刪除
+                                </button>
+                            }
                         </td>
                     </tr>
                 }
@@ -51,3 +136,77 @@
         <a asp-area="Mail" asp-controller="Templates" asp-action="Index">← 返回模板清單</a>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('click', async function (e) {
+          const btn = e.target.closest('.js-del-version');
+          if (!btn) return;
+
+          const id = btn.dataset.id;
+          const name = btn.dataset.name || '';
+
+          // 二次確認（原生 confirm，不動任何 CSS）
+          if (!confirm(`確定要刪除版本「${name}」嗎？`)) return;
+          if (!confirm('此操作無法復原，真的要刪除嗎？')) return;
+
+          // 從隱藏表單抓 Anti-Forgery Token
+          const token = document.querySelector('#af-form input[name="__RequestVerificationToken"]')?.value;
+          if (!token) { alert('驗證逾時，請重新整理頁面後再試'); return; }
+
+          try {
+            const res = await fetch('@Url.Action("Delete", "TemplateVersions", new { area = "Mail" })', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({ id, __RequestVerificationToken: token })
+            });
+            const json = await res.json();
+
+            if (json.ok) {
+              // 後端通常會回 redirectUrl；有就導頁，沒有就重整
+              if (json.redirectUrl) location.href = json.redirectUrl;
+              else location.reload();
+            } else {
+              alert((json.errors || ['刪除失敗']).join('\n')); // 預設版禁刪等訊息會顯示在這
+            }
+          } catch (err) {
+            console.error(err);
+            alert('刪除時發生錯誤，請稍後再試');
+          }
+        });
+    </script>
+    @* Template編輯刪除 *@
+    <script>
+        // A) 刪除「模板群組」雙確認（攔截剛剛那個 js-del-template 表單）
+        document.addEventListener('submit', function (e) {
+          const f = e.target.closest('.js-del-template');
+          if (!f) return;
+
+        //若目前有預設版本，直接阻擋並提示
+        const btn = f.querySelector('button[type="submit"]');
+        if (btn?.dataset?.hasDefault === 'True' || btn?.dataset?.hasDefault === 'true') {
+          alert('此範本群組仍有「預設版本」，無法刪除。\n請先將所有版本取消預設或改成非預設。');
+          return;
+        }
+
+          e.preventDefault();
+          const name = f.querySelector('button[type="submit"]')?.dataset?.name || '';
+          if (!confirm(`確定要刪除 範本群組「${name}」以及其所有版本嗎？`)) return;
+          if (!confirm('此操作無法復原，真的要刪除嗎？')) return;
+
+          f.submit();
+        });
+
+        // B) 若你的專案沒有載入 Bootstrap JS，改用純 JS 切換收合（可選）
+        (function () {
+          const btn = document.querySelector('[data-bs-target="#editGroupBox"]');
+          const box = document.getElementById('editGroupBox');
+          if (btn && box && typeof bootstrap === 'undefined') {
+            btn.addEventListener('click', function () {
+              box.classList.toggle('show');  // 簡單切換 .show
+            });
+          }
+        })();
+    </script>
+
+}

@@ -2,6 +2,7 @@
 using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services.Mail;
+using BookLoop.Services.Storage;
 using DocumentFormat.OpenXml.Bibliography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
@@ -24,14 +25,16 @@ namespace BookLoop.Areas.Mail.Controllers
 		private readonly IMailService _mail;
         private readonly ITemplateRenderer _renderer;
         private readonly ILogger<TemplateVersionsController> _logger;
+        private readonly IFileStorage _storage;
 
-        public TemplateVersionsController(AppDbContext db, IWebHostEnvironment env, IMailService mail, ITemplateRenderer renderer, ILogger<TemplateVersionsController> logger)
+        public TemplateVersionsController(AppDbContext db, IWebHostEnvironment env, IMailService mail, ITemplateRenderer renderer, ILogger<TemplateVersionsController> logger, IFileStorage storage)
         {
             _db = db;
             _env = env;
             _mail = mail;
             _renderer = renderer;
             _logger = logger;
+            _storage = storage;
         }
 
         // 在 TemplateVersionsController.cs
@@ -194,7 +197,42 @@ namespace BookLoop.Areas.Mail.Controllers
             }
         }
 
-        // POST: /Mail/TemplateVersions/TestSend?templateId=xx&templateVersionId=yy   ← yy 可選
+        // POST: /Mail/TemplateVersions/Delete/5  （AJAX：回傳 JSON）
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var entity = await _db.TemplateVersions.FirstOrDefaultAsync(v => v.TemplateVersionId == id);
+            if (entity == null) return Json(new { ok = false, errors = new[] { "找不到指定的版本。" } });
+
+            // 預設版不可刪除
+            if (entity.IsDefault)
+            {
+                return Json(new
+                {
+                    ok = false,
+                    errors = new[] { "此版本為預設版，無法刪除。請先在其他版本勾選為預設後再嘗試。" }
+                });
+            }
+
+            try
+            {
+                int templateId = entity.TemplateId;
+
+                _db.TemplateVersions.Remove(entity);
+                await _db.SaveChangesAsync();
+
+                var redirectUrl = Url.Action(nameof(Index), new { templateId });
+                return Json(new { ok = true, redirectUrl });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "刪除 TemplateVersion (ID: {TemplateVersionId}) 失敗。", id);
+                return Json(new { ok = false, errors = new[] { "刪除時發生錯誤。", ex.Message } });
+            }
+        }
+
+
+        // POST: /Mail/TemplateVersions/TestSend?templateId=xx&templateVersionId=yy 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> TestSend(int templateId, int? templateVersionId, [FromBody] TestSendDto dto)
@@ -281,51 +319,38 @@ namespace BookLoop.Areas.Mail.Controllers
 		// Unlayer 圖片上傳端點
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public async Task<IActionResult> Upload(int templateId, IFormFile file)
+		public async Task<IActionResult> Upload(int templateId, IFormFile file, CancellationToken ct)
 		{
-			if (file == null || file.Length == 0)
-				return BadRequest(new { error = "沒有檔案" });
+            if (file == null || file.Length == 0) return BadRequest(new { error = "沒有檔案" });
 
-			// 目錄：/wwwroot/uploads/mailtemplateimages/{templateId}/yyyyMMdd/
-			var today = DateTime.UtcNow.ToString("yyyyMMdd");
-			var relDir = Path.Combine("uploads", "mailtemplateimages", templateId.ToString(), today);
-			var absDir = Path.Combine(_env.WebRootPath ?? "wwwroot", relDir);
-			Directory.CreateDirectory(absDir);
+            var ext = Path.GetExtension(file.FileName) ?? "";
+            if (!Regex.IsMatch(ext, @"^\.(jpg|jpeg|png|gif|webp)$", RegexOptions.IgnoreCase))
+                return BadRequest(new { error = "不支援的檔案類型" });
 
-			// 檔名：yyyyMMddHHmmssfff + 原副檔名
-			var ext = Path.GetExtension(file.FileName);
-			// 稍微加強副檔名的安全性檢查
-			var safeExt = Regex.IsMatch(ext, @"^\.(jpg|jpeg|png|gif|webp)$", RegexOptions.IgnoreCase)
-				? ext.ToLowerInvariant()
-				: ".bin";
+            var today = DateTime.UtcNow.ToString("yyyyMMdd");
+            var name = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}_{Guid.NewGuid():N}{ext.ToLowerInvariant()}";
+            var key = _storage.BuildKey("uploads", "mailtemplateimages", templateId.ToString(), today, name);
 
-			if (safeExt == ".bin")
-				return BadRequest(new { error = "不支援的檔案類型" });
+            byte[] bytes;
+            using (var ms = new MemoryStream())
+            {
+                await file.CopyToAsync(ms, ct);
+                bytes = ms.ToArray();
+            }
 
-			var name = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff") + safeExt;
+            var contentType = string.IsNullOrWhiteSpace(file.ContentType)
+                ? (ext.ToLowerInvariant() switch
+                {
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".png" => "image/png",
+                    ".gif" => "image/gif",
+                    ".webp" => "image/webp",
+                    _ => "application/octet-stream"
+                })
+                : file.ContentType;
 
-			var absPath = Path.Combine(absDir, name);
-			using (var fs = System.IO.File.Create(absPath))
-			{
-				await file.CopyToAsync(fs);
-			}
-
-			// === 產生絕對 URL ===
-
-			// 1. 取得網站的 Base URL (例如：https://localhost:7123)
-			var baseUrl = $"{Request.Scheme}://{Request.Host}";
-
-			// 2. 組合相對路徑 (例如：/uploads/mailtemplateimages/1/20251030/image.jpg)
-			var relativeUrl = "/" + Path.Combine(relDir, name).Replace("\\", "/");
-
-			// 3. 組合為絕對 URL
-			var absoluteUrl = baseUrl + relativeUrl;
-
-			// 舊的相對 URL:
-			// var url = "/" + Path.Combine(relDir, name).Replace("\\", "/");
-
-			// 返回絕對 URL 給 Unlayer
-			return Json(new { url = absoluteUrl });
-		}
+            var url = await _storage.UploadAsync(key, bytes, contentType, ct);
+            return Json(new { url }); // Unlayer 會把這個 src 直接放進 HTML
+        }
 	}
 }

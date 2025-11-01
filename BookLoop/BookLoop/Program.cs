@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using BookLoop.Services.Storage;
 using Microsoft.Extensions.Options;
 using OfficeOpenXml;
 using System;
@@ -120,8 +121,9 @@ namespace BookLoop
 			builder.Services.AddScoped<IMailService, MailService>();
 			builder.Services.AddSingleton<ITemplateRenderer, SimpleTemplateRenderer>();
 			builder.Services.AddScoped<ITemplateMailer, TemplateMailer>();
+            builder.Services.AddSingleton<IFileStorage, R2StorageService>();
 
-			builder.Services.AddScoped<ICouponService, CouponService>();
+            builder.Services.AddScoped<ICouponService, CouponService>();
 			builder.Services.AddScoped<IPointsService, PointsService>();
 			builder.Services.AddScoped<IPricingEngine, PricingEngine>();
 			builder.Services.AddScoped<IOrderService, OrderService>();

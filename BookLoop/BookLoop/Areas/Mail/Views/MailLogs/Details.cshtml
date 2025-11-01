@@ -41,20 +41,10 @@
                     </dl>
                 </div>
             </div>
-
-            <div class="card shadow-sm mt-3">
-                <div class="card-header">原始 HTML（純文字檢視）</div>
-                <div class="card-body">
-                    <pre class="small" style="white-space:pre-wrap; max-height:300px; overflow:auto">@Html.Raw(System.Net.WebUtility.HtmlEncode(Model?.BodySnapshot ?? "(無)"))</pre>
-                </div>
-            </div>
         </div>
 
         <div class="col-lg-7">
-            <div class="alert alert-warning d-flex align-items-start gap-2" role="alert" @(hasCid ? null : "hidden")>
-                <div>偵測到 <code>cid:</code> 內嵌圖片。瀏覽器預覽不支援，因此右側畫面可能看不到圖片（寄到收件者的郵件裡仍會正常顯示）。</div>
-                <button id="btnToggleRaw" class="btn btn-sm btn-outline-secondary ms-auto">改看原始 HTML</button>
-            </div>
+
 
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <h5 class="mb-0">實際預覽</h5>
