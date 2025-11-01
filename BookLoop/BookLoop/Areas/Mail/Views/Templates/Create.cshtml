@@ -1,0 +1,33 @@
+﻿@model BookLoop.Models.Template
+
+@{
+    ViewData["Title"] = "新增模板群組";
+}
+
+<div class="container mt-4">
+    <h1 class="h4 mb-3">@ViewData["Title"]</h1>
+
+    <form asp-area="Mail" asp-controller="Templates" asp-action="Create" method="post" class="card shadow-sm">
+        @Html.AntiForgeryToken()
+        <div class="card-body">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+            <div class="mb-3">
+                <label asp-for="TemplateKey" class="form-label">TemplateKey（群組識別碼）</label>
+                <input asp-for="TemplateKey" class="form-control" />
+                <div class="form-text">例如：<code>OrderPaid</code>、<code>Welcome</code>、<code>Promo</code>。</div>
+                <span asp-validation-for="TemplateKey" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label">說明（可選）</label>
+                <textarea asp-for="Description" rows="2" class="form-control"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+            <a class="btn btn-link" asp-area="Mail" asp-controller="Templates" asp-action="Index">← 返回清單</a>
+            <button type="submit" class="btn btn-primary">建立群組</button>
+        </div>
+    </form>
+</div>

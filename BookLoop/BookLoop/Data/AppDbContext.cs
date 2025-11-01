@@ -23,14 +23,19 @@ namespace BookLoop.Data
 		public DbSet<PermissionFeature> PermissionFeatures => Set<PermissionFeature>();
 		public DbSet<Blacklist> Blacklists => Set<Blacklist>();
 		public DbSet<Member> Members => Set<Member>();
-        public DbSet<MailTemplate> MailTemplates { get; set; }
-		public DbSet<RefreshToken> RefreshTokens { get; set; } = null!; // ·s¼WJWT RefreshTokens
+
+		//public DbSet<MailTemplate> MailTemplates { get; set; }
+		public DbSet<Template> Templates => Set<Template>();
+		public DbSet<TemplateVersion> TemplateVersions => Set<TemplateVersion>();
+
+		public DbSet<RefreshToken> RefreshTokens { get; set; } = null!; // æ–°å¢JWT RefreshTokens
+
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			base.OnModelCreating(modelBuilder);
 
-			// ===== 1) ¥Õ¦W³æ¡G¥u«O¯d¥» DbContext «Å§iªº DbSet<> =====
+			// ===== 1) ç™½åå–®ï¼šåªä¿ç•™æœ¬ DbContext å®£å‘Šçš„ DbSet<> =====
 			//var allowedTypes = this.GetType()
 			//	.GetProperties(BindingFlags.Public | BindingFlags.Instance)
 			//	.Where(p => p.PropertyType.IsGenericType &&
@@ -115,14 +120,31 @@ namespace BookLoop.Data
 				e.HasIndex(x => x.Code).IsUnique();
 			});
 
-			// PERMISSION_FEATURES
+            //Mail
+            modelBuilder.Entity<Template>().ToTable("Template");
+            modelBuilder.Entity<TemplateVersion>().ToTable("TemplateVersion");
+
+            modelBuilder.Entity<Template>().HasIndex(x => x.TemplateKey).IsUnique();
+
+            modelBuilder.Entity<TemplateVersion>()
+				.HasOne(v => v.Template).WithMany(t => t.Versions)
+				.HasForeignKey(v => v.TemplateId).OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TemplateVersion>()
+				.HasIndex(v => new { v.TemplateId, v.TemplateName }).IsUnique();
+
+            modelBuilder.Entity<TemplateVersion>() // ç¯©é¸å”¯ä¸€ï¼šæ¯å€‹ Template åªèƒ½ 1 å€‹é è¨­ç‰ˆ
+				.HasIndex(v => new { v.TemplateId, v.IsDefault })
+				.HasFilter("[IsDefault] = 1")
+				.IsUnique();
 			//b.Entity<PermissionFeature>(e =>
 			//{
-			//	e.ToTable("PERMISSION_FEATURES"); // ¡ö »P DB ¤@­P
+			//	e.ToTable("PERMISSION_FEATURES"); // â† èˆ‡ DB ä¸€è‡´
 			//	e.HasKey(x => new { x.PermissionID, x.FeatureID });
 			//	e.HasOne(x => x.Permission).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.PermissionID);
 			//	e.HasOne(x => x.Feature).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.FeatureID);
 			//});
+
 		}
 	}
 }

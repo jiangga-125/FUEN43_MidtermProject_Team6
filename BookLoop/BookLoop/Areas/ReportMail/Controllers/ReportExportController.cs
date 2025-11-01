@@ -1,7 +1,7 @@
 using BookLoop.Data;
 using BookLoop.Models;
-using BookLoop.Services;
 using BookLoop.Services.Export;
+using BookLoop.Services.Mail;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -25,11 +25,11 @@ namespace ReportMail.Areas.ReportMail.Controllers
 	public class ReportExportController : Controller
 	{
 		private readonly IExcelExporter _excel;
-		private readonly MailService _mail;
+		private readonly IMailService _mail;
 		private readonly ReportMailDbContext _db;
 		private readonly ShopDbContext _shop;
 
-		public ReportExportController(IExcelExporter excel, MailService mail, ReportMailDbContext db, ShopDbContext shop)
+		public ReportExportController(IExcelExporter excel, IMailService mail, ReportMailDbContext db, ShopDbContext shop)
 		{
 			_excel = excel;
 			_mail = mail;
@@ -116,7 +116,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                 throw new InvalidOperationException("無法確定收件者 Email 地址。");
             }
 
-            await _mail.SendReportAsync(
+            await _mail.SendAsync(
                 to: targetEmail,
                 subject: subject,
 				body: body,
@@ -259,7 +259,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
 						});
 
 						const float px = 390f;
-						const float ChartHeightPt = px * 72f / 96f;  // ≈ 390px
+						const float ChartMaxWidthPt = px * 72f / 96f;  // ≈ 390px
 
 						page.Content()
 						   .Background(Colors.White)
@@ -269,9 +269,9 @@ namespace ReportMail.Areas.ReportMail.Controllers
 							   {
 								   col.Item()
 									  .AlignCenter()
-									  .Height(ChartHeightPt)
+									  .MaxWidth(ChartMaxWidthPt)
 									  .Image(chartBytes)
-									  .FitHeight();
+									  .FitWidth();
 
 								   col.Item().PaddingVertical(6);
 							   }
@@ -367,7 +367,7 @@ namespace ReportMail.Areas.ReportMail.Controllers
                 throw new InvalidOperationException("無法確定收件者 Email 地址。");
             }
 
-            await _mail.SendReportAsync(
+            await _mail.SendAsync(
                 to: targetEmail,
 				subject: subject,
 				body: body,
