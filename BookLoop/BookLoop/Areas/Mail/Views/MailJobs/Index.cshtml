@@ -23,6 +23,17 @@
                 <td>@item.CreatedAt</td>
                 <td>
                     <a asp-action="Details" asp-route-id="@item.JobId" class="btn btn-sm btn-outline-primary">查看</a>
+                    <form asp-area="Mail" asp-controller="MailJobs" asp-action="Cancel"
+                          method="post" class="d-inline"
+                          onsubmit="return confirm('確定要取消這個批次嗎？');">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@item.JobId" />
+                        <button type="submit"
+                                class="btn btn-sm btn-outline-danger"
+                                @(item.Status == "Scheduled" || item.Status == "Sending" ? "" : "disabled")>
+                            取消
+                        </button>
+                    </form>
                 </td>
             </tr>
         }

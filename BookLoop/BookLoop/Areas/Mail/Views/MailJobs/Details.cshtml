@@ -9,7 +9,7 @@
     ~ @(Model.FinishedAt?.ToString("yyyy/MM/dd HH:mm") ?? "-")
 </p>
 
-<h4>名單（部分）</h4>
+<h4>名單</h4>
 <table class="table table-sm">
     <thead>
         <tr><th>Email</th><th>姓名</th><th>狀態</th><th>寄出時間</th><th>錯誤</th></tr>
@@ -28,7 +28,7 @@
     </tbody>
 </table>
 
-<h4>日誌（近期 200 筆）</h4>
+<h4>日誌</h4>
 <table class="table table-sm">
     <thead>
         <tr><th>時間</th><th>收件者</th><th>主旨</th><th>狀態</th><th>錯誤</th></tr>
@@ -46,3 +46,4 @@
         }
     </tbody>
 </table>
+<a asp-action="Index" class="btn btn-outline-secondary">返回</a>

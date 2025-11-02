@@ -66,7 +66,7 @@
             </div>
 
             <div class="mb-3">
-                <label asp-for="SegmentQuery" class="form-label">名單（每行一筆：email[,name]）</label>
+                <label asp-for="SegmentQuery" class="form-label">名單（每行一筆：email,name）</label>
                 <textarea asp-for="SegmentQuery" class="form-control" rows="8" placeholder="a@ex.com,Alice&#10;b@ex.com,Bob"></textarea>
                 <span asp-validation-for="SegmentQuery" class="text-danger"></span>
             </div>

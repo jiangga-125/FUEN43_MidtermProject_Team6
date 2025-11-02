@@ -160,13 +160,13 @@ namespace BookLoop.Areas.Mail.Controllers
             var recipients = await _db.MailJobRecipients.AsNoTracking()
                 .Where(x => x.MailJobId == id)
                 .OrderBy(x => x.MailJobRecipientId)
-                .Take(500)
+                .Take(int.MaxValue)
                 .ToListAsync();
 
             var logs = await _db.MailSendLogs.AsNoTracking()
                 .Where(x => x.MailJobId == id && x.JobRecipientId != null)
                 .OrderByDescending(x => x.LogId)
-                .Take(200)
+                .Take(int.MaxValue)
                 .ToListAsync();
 
             ViewBag.Recipients = recipients;
