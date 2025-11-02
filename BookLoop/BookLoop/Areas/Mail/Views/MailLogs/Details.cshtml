@@ -2,6 +2,22 @@
 @{
     ViewData["Title"] = "寄送明細";
     var hasCid = (Model?.BodySnapshot ?? "").IndexOf("cid:", StringComparison.OrdinalIgnoreCase) >= 0;
+
+    string DT(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy/MM/dd HH:mm") : "-";
+    Func<string?, string> statusBadge = s => s switch
+    {
+        "pending" => "badge bg-secondary",
+        "Sent" => "badge text-bg-success",
+        "Failed" => "badge text-bg-danger",
+        _ => "badge text-bg-secondary"
+    };
+    string StatusText(string? s) => s switch
+    {
+        "pending" => "待寄送",
+        "Sent" => "已寄出",
+        "Failed" => "失敗",
+        _ => s ?? "未知"
+    };
 }
 
 <div class="container mt-4">
@@ -23,7 +39,7 @@
                         <dd class="col-8">@Model.Subject</dd>
                         <dt class="col-4">狀態</dt>
                         <dd class="col-8">
-                            <span class="badge @(Model.Status == "Sent" ? "bg-success" : "bg-danger")">@Model.Status</span>
+                            <span class="@statusBadge(Model.Status)">@StatusText(Model.Status)</span>
                         </dd>
                         @if (!string.IsNullOrWhiteSpace(Model.Error))
                         {

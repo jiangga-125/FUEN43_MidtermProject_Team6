@@ -9,6 +9,13 @@
         "failed" => "badge bg-danger",
         _ => "badge bg-light text-dark"
     };  
+    string StatusText(string? s) => s switch
+    {
+        "pending" => "待寄送",
+        "Sent" => "已寄出",
+        "Failed" => "失敗",
+        _ => s ?? "未知"
+    };
     var q = ViewContext.HttpContext?.Request?.Query;
     string from = q?["from"];
     string to = q?["to"];
@@ -39,8 +46,6 @@
             <div class="col-12 col-md-6 col-lg-3">
                 <label class="form-label">狀態</label>
                 <select name="status" class="form-select">
-
-
                     <option value="" selected="@(string.IsNullOrEmpty(status))">全部</option>
                     <option value="Pending" selected="@(status == "Pending")">Pending</option>
                     <option value="Sent" selected="@(status == "Sent")">Sent</option>
@@ -49,11 +54,11 @@
             </div>
             <div class="col-12 col-md-6 col-lg-3">
                 <label class="form-label">TemplateKey</label>
-                <input type="text" name="templateKey" class="form-control" value="@templateKey placeholder="例如: WelcomeEmail" />
+                <input type="text" name="templateKey" class="form-control" value="@templateKey "例如: WelcomeEmail" />
             </div>
             <div class="col-12 col-md-6 col-lg-3">
                 <label class="form-label">收件者 (Email)</label>
-                <input type="text" name="recipient" class="form-control" value="@recipient placeholder="example@mail.com" />
+                <input type="text" name="recipient" class="form-control" value="@recipient "example@mail.com" />
             </div>
             <div class="col-12 col-md-6 col-lg-3 align-self-end">
                 <button class="btn btn-primary w-100" type="submit">套用篩選</button>
@@ -93,7 +98,7 @@
                                 <div class="small text-nowrap">@x.SentAt</div>
                             </td>
                             <td>
-                                <span class="@badge(x.Status)">@x.Status</span>
+                                <span class="@badge(x.Status)">@StatusText(x.Status)</span>
                             </td>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
