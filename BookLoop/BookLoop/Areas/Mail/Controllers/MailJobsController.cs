@@ -64,13 +64,24 @@ namespace BookLoop.Areas.Mail.Controllers
             if (string.IsNullOrWhiteSpace(m.SegmentQuery))
                 ModelState.AddModelError(nameof(m.SegmentQuery), "請貼上收件者名單（每行一筆：email[,name]）。");
 
-            // 檢查版本是否存在且隸屬該 Template
-            var versionExists = await _db.TemplateVersions
-                .AnyAsync(v => v.TemplateId == m.TemplateId && v.TemplateVersionId == m.TemplateVersionId);
+            // 檢查版本並取得 Template 物件
+            var template = await _db.Templates
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.TemplateId == m.TemplateId);
 
-            if (!versionExists)
-                ModelState.AddModelError(nameof(m.TemplateVersionId), "找不到對應的模板版本。");
+            if (template == null)
+            {
+                ModelState.AddModelError(nameof(m.TemplateId), "找不到對應的模板群組。");
+            }
+            else
+            {
+                // 順便檢查版本是否存在
+                var versionExists = await _db.TemplateVersions
+                    .AnyAsync(v => v.TemplateId == m.TemplateId && v.TemplateVersionId == m.TemplateVersionId);
 
+                if (!versionExists)
+                    ModelState.AddModelError(nameof(m.TemplateVersionId), "找不到對應的模板版本。");
+            }
             if (!ModelState.IsValid)
             {
                 await PopulateMailJobSelectsAsync(m.TemplateId, m.TemplateVersionId); // 驗證失敗也要重塞下拉
@@ -81,7 +92,7 @@ namespace BookLoop.Areas.Mail.Controllers
             m.Status = "Scheduled";
             m.CreatedAt = DateTime.Now;                // 本地時間
             m.CreatedBy = User?.Identity?.Name ?? "system";
-            m.TemplateKey = m.TemplateKey?.Trim() ?? "";
+            m.TemplateKey = template.TemplateKey;
             m.CampaignName = m.CampaignName?.Trim();
             _db.MailJobs.Add(m);
             await _db.SaveChangesAsync();              // 拿到 m.JobId
