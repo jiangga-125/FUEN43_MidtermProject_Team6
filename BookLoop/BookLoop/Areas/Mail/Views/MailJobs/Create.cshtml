@@ -3,34 +3,114 @@
     ViewData["Title"] = "建立群發活動";
 }
 
-<h2>@ViewData["Title"]</h2>
+<h2 class="mb-3">@ViewData["Title"]</h2>
 
-<form asp-action="Create" method="post">
-    <div class="mb-3">
-        <label asp-for="TemplateId" class="form-label">選擇模板</label>
-        <select asp-for="TemplateId" class="form-select" asp-items="@(new SelectList(ViewBag.Templates, "TemplateId", "TemplateKey"))"></select>
-    </div>
-    <div class="mb-3">
-        <label asp-for="TemplateVersionId" class="form-label">版本 ID</label>
-        <input asp-for="TemplateVersionId" class="form-control" />
-    </div>
-    <div class="mb-3">
-        <label asp-for="TemplateKey" class="form-label">Template Key</label>
-        <input asp-for="TemplateKey" class="form-control" />
-    </div>
-    <div class="mb-3">
-        <label asp-for="CampaignName" class="form-label">活動名稱</label>
-        <input asp-for="CampaignName" class="form-control" />
-    </div>
-    <div class="mb-3">
-        <label asp-for="SegmentQuery" class="form-label">收件者清單 (以逗號或換行分隔)</label>
-        <textarea asp-for="SegmentQuery" rows="5" class="form-control"></textarea>
-    </div>
-    <div class="mb-3">
-        <label asp-for="SendAt" class="form-label">寄送時間</label>
-        <input asp-for="SendAt" class="form-control" type="datetime-local" />
-    </div>
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-    <button type="submit" class="btn btn-success">建立活動</button>
-    <a asp-action="Index" class="btn btn-secondary">返回列表</a>
-</form>
+            <!-- Template -->
+            <div class="mb-3">
+                <label asp-for="TemplateId" class="form-label">模板群組</label>
+                <select asp-for="TemplateId"
+                        asp-items="@(ViewBag.TemplateId ?? Enumerable.Empty<SelectListItem>())"
+                        class="form-select" id="TemplateId">
+                    <option value="">-- 請選擇模板 --</option>
+                </select>
+                <span asp-validation-for="TemplateId" class="text-danger"></span>
+            </div>
+
+            <!-- Template Version -->
+            <div class="mb-3">
+                <label asp-for="TemplateVersionId" class="form-label">模板版本</label>
+                <select asp-for="TemplateVersionId"
+                        asp-items="@(ViewBag.TemplateVersionId ?? Enumerable.Empty<SelectListItem>())"
+                        class="form-select" id="TemplateVersionId">
+                    <option value="">-- 請選擇版本 --</option>
+                </select>
+                <span asp-validation-for="TemplateVersionId" class="text-danger"></span>
+            </div>
+
+            <!-- Campaign Name -->
+            <div class="mb-3">
+                <label asp-for="CampaignName" class="form-label">活動名稱</label>
+                <input asp-for="CampaignName" class="form-control" />
+                <span asp-validation-for="CampaignName" class="text-danger"></span>
+            </div>
+
+            <!-- SendAt -->
+            <div class="mb-3">
+                <label asp-for="SendAt" class="form-label">預定發送時間</label>
+                <input asp-for="SendAt" class="form-control" type="datetime-local"
+                       value="@(Model.SendAt == default ? DateTime.Now.AddMinutes(10).ToString("yyyy-MM-ddTHH:mm") : Model.SendAt.ToString("yyyy-MM-ddTHH:mm"))" />
+                <span asp-validation-for="SendAt" class="text-danger"></span>
+            </div>
+
+            <!-- Segment Query -->
+            <div class="mb-3">
+                <label asp-for="SegmentQuery" class="form-label">名單（每行一筆：email[,name]）</label>
+                <textarea asp-for="SegmentQuery" class="form-control" rows="8" placeholder="a@ex.com,Alice&#10;b@ex.com,Bob"></textarea>
+                <span asp-validation-for="SegmentQuery" class="text-danger"></span>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">建立</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">返回</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+          const tplSel = document.getElementById("TemplateId");
+          const verSel = document.getElementById("TemplateVersionId");
+          const loadingOption = '<option value="">載入中…</option>';
+          const emptyOption = '<option value="">-- 請選擇版本 --</option>';
+
+          async function refreshVersions(templateId, selectedValue) {
+            verSel.innerHTML = loadingOption;
+            if (!templateId) {
+              verSel.innerHTML = emptyOption;
+              return;
+            }
+            try {
+              const url = '@Url.Action("GetVersions", "MailJobs", new { area = "Mail" })' + `?templateId=${templateId}`;
+              const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+              const data = await res.json();
+
+              verSel.innerHTML = emptyOption;
+              data.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.id;
+                opt.textContent = v.text;
+                if (selectedValue && String(selectedValue) === String(v.id)) {
+                  opt.selected = true;
+                }
+                verSel.appendChild(opt);
+              });
+            } catch (e) {
+              console.error(e);
+              verSel.innerHTML = '<option value="">載入失敗，請重試</option>';
+            }
+          }
+
+          // 變更 Template → 刷新 Version
+          tplSel.addEventListener('change', () => {
+            refreshVersions(tplSel.value, null);
+          });
+
+          // 首次進頁：如果已有 TemplateId（例如驗證失敗回填），刷新版本並選回 TemplateVersionId
+          document.addEventListener('DOMContentLoaded', () => {
+            const initTemplateId = tplSel.value;
+            const initVersionId = verSel.value;
+            if (initTemplateId && (!verSel.options || verSel.options.length <= 1)) {
+              refreshVersions(initTemplateId, initVersionId);
+            }
+          });
+        })();
+    </script>
+}

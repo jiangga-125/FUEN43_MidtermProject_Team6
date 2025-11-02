@@ -43,26 +43,10 @@ namespace BookLoop.Areas.Mail.Controllers
 
         // GET: /Mail/MailJobs/Create?templateId=123
         [HttpGet]
-        public async Task<IActionResult> Create(int templateId)
+        public async Task<IActionResult> Create(int? templateId = null)
         {
-            // 載入版本清單（僅顯示啟用版本，預設版排前面）
-            var versions = await _db.TemplateVersions
-                .AsNoTracking()
-                .Where(v => v.TemplateId == templateId && v.IsActive)
-                .OrderByDescending(v => v.IsDefault)
-                .ThenByDescending(v => v.UpdatedAt)
-                .Select(v => new { v.TemplateVersionId, Text = (v.IsDefault ? "★ " : "") + (v.TemplateName ?? ("v" + v.TemplateVersionId)) })
-                .ToListAsync();
-
-            ViewBag.TemplateVersions = new SelectList(versions, "TemplateVersionId", "Text");
-
-            var m = new MailJob
-            {
-                TemplateId = templateId,
-                // 預設下一個十分鐘（以台北時區顯示的話，View 自行註記；此處存的屬性本身為 DateTime）
-                SendAt = DateTime.Now.AddMinutes(10)
-            };
-            return View(m); // 你可先做個極簡 Create.cshtml 表單
+            await PopulateMailJobSelectsAsync(templateId, null);
+            return View(new MailJob { TemplateId = templateId ?? 0, SendAt = DateTime.Now.AddMinutes(10) });
         }
 
         // POST: /Mail/MailJobs/Create
@@ -89,15 +73,7 @@ namespace BookLoop.Areas.Mail.Controllers
 
             if (!ModelState.IsValid)
             {
-                // 重新載入版本下拉選單
-                var versions = await _db.TemplateVersions
-                    .AsNoTracking()
-                    .Where(v => v.TemplateId == m.TemplateId && v.IsActive)
-                    .OrderByDescending(v => v.IsDefault)
-                    .ThenByDescending(v => v.UpdatedAt)
-                    .Select(v => new { v.TemplateVersionId, Text = (v.IsDefault ? "★ " : "") + (v.TemplateName ?? ("v" + v.TemplateVersionId)) })
-                    .ToListAsync();
-                ViewBag.TemplateVersions = new SelectList(versions, "TemplateVersionId", "Text", m.TemplateVersionId);
+                await PopulateMailJobSelectsAsync(m.TemplateId, m.TemplateVersionId); // 驗證失敗也要重塞下拉
                 return View(m);
             }
 
@@ -199,7 +175,66 @@ namespace BookLoop.Areas.Mail.Controllers
         }
 
         // ==== Helpers ====
+        // 共用：Create/Edit 頁所需下拉
+        private async Task PopulateMailJobSelectsAsync(int? templateId = null, int? templateVersionId = null)
+        {
+            // Templates 下拉
+            var templateItems = await _db.Templates
+                .AsNoTracking()
+                .OrderBy(t => t.TemplateKey)
+                .Select(t => new SelectListItem
+                {
+                    Value = t.TemplateId.ToString(),
+                    Text = t.TemplateKey,
+                    Selected = (templateId != null && t.TemplateId == templateId.Value)
+                })
+                .ToListAsync();
 
+            ViewBag.TemplateId = templateItems;
+
+            // Versions 下拉（若未選 Template → 給空清單）
+            List<SelectListItem> versionItems;
+            if (templateId.HasValue)
+            {
+                versionItems = await _db.TemplateVersions
+                    .AsNoTracking()
+                    .Where(v => v.TemplateId == templateId.Value && v.IsActive)
+                    .OrderByDescending(v => v.IsDefault)
+                    .ThenByDescending(v => v.UpdatedAt)
+                    .Select(v => new SelectListItem
+                    {
+                        Value = v.TemplateVersionId.ToString(),
+                        Text = (v.IsDefault ? "★ " : "") + (v.TemplateName ?? ("v" + v.TemplateVersionId)),
+                        Selected = (templateVersionId != null && v.TemplateVersionId == templateVersionId.Value)
+                    })
+                    .ToListAsync();
+            }
+            else
+            {
+                versionItems = new List<SelectListItem>();
+            }
+
+            ViewBag.TemplateVersionId = versionItems;
+        }
+
+        // AJAX：依 Template 取版本清單
+        [HttpGet]
+        public async Task<IActionResult> GetVersions(int templateId)
+        {
+            var versions = await _db.TemplateVersions
+                .AsNoTracking()
+                .Where(v => v.TemplateId == templateId && v.IsActive)
+                .OrderByDescending(v => v.IsDefault)
+                .ThenByDescending(v => v.UpdatedAt)
+                .Select(v => new
+                {
+                    id = v.TemplateVersionId,
+                    text = (v.IsDefault ? "★ " : "") + (v.TemplateName ?? ("v" + v.TemplateVersionId))
+                })
+                .ToListAsync();
+
+            return Json(versions);
+        }
         /// <summary>
         /// 把未指定 Kind 的時間視為台北時間並轉換成 UTC；若已是 UTC 就直接回傳。
         /// </summary>

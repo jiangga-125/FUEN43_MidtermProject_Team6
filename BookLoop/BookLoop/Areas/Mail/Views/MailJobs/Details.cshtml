@@ -2,7 +2,7 @@
 
 <h2>@Model.CampaignName</h2>
 <p>
-    預定：@Model.SendAt:yyyy/MM/dd HH:mm
+    預定：@Model.SendAt
     ，狀態：<strong>@Model.Status</strong>
     ，進度：<strong>@(ViewBag.Progress)</strong>
     ，起訖：@(Model.StartedAt?.ToString("yyyy/MM/dd HH:mm") ?? "-")
@@ -37,7 +37,7 @@
         @foreach (var l in (IEnumerable<BookLoop.Models.MailSendLog>)ViewBag.Logs)
         {
             <tr>
-                <td>@l.SentAt:yyyy/MM/dd HH:mm</td>
+                <td>@l.SentAt</td>
                 <td>@l.Recipient</td>
                 <td>@l.Subject</td>
                 <td>@l.Status</td>
