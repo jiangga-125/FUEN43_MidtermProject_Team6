@@ -15,6 +15,8 @@ using BookLoop.Services.Rules;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Hangfire;
+using Hangfire.MemoryStorage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using BookLoop.Services.Storage;
@@ -122,6 +124,7 @@ namespace BookLoop
 			builder.Services.AddSingleton<ITemplateRenderer, SimpleTemplateRenderer>();
 			builder.Services.AddScoped<ITemplateMailer, TemplateMailer>();
             builder.Services.AddSingleton<IFileStorage, R2StorageService>();
+            builder.Services.AddScoped<MailJobRunner>();
 
             builder.Services.AddScoped<ICouponService, CouponService>();
 			builder.Services.AddScoped<IPointsService, PointsService>();
@@ -161,31 +164,47 @@ namespace BookLoop
 			builder.Services.AddControllersWithViews();
 			builder.Services.AddRazorPages();
 
-			// ------------------------------
-			// 應用程式管線
-			// ------------------------------
-			var app = builder.Build();
+            // Hangfire（開發期先用記憶體儲存；正式環境可改 SQL Storage）
+            builder.Services.AddHangfire(cfg => cfg.UseMemoryStorage());
+            builder.Services.AddHangfireServer();
 
-
-
-			// 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
-			//using (var scope = app.Services.CreateScope())
-			//{
-			//	var appdb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-			//	var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(appdb.Database.GetConnectionString());
-			//	Console.WriteLine($"[AppDbContext] Server={csb.DataSource}, Database={csb.InitialCatalog}");
-
-			//	var memdb = scope.ServiceProvider.GetRequiredService<MemberContext>();
-			//	var csb2 = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(memdb.Database.GetConnectionString());
-			//	Console.WriteLine($"[MemberContext] Server={csb2.DataSource}, Database={csb2.InitialCatalog}");
-
-			//	// 啟動時資料初始化
-			//	var init = scope.ServiceProvider.GetRequiredService<DbInitializer>();
-			//	await init.EnsureAdminPasswordAsync("admin@bookstore.local", "Admin@12345!");
-			//	await init.EnsurePermissionAndFeatureSeedAsync("admin@bookstore.local");
-			//}
+            // ------------------------------
+            // 應用程式管線
+            // ------------------------------
+            var app = builder.Build();
 
 			if (app.Environment.IsDevelopment())
+			{
+				app.UseDeveloperExceptionPage();
+				app.UseMigrationsEndPoint();
+
+				// 開發中觀察排程與工作狀態
+				app.UseHangfireDashboard("/hangfire");
+			}
+			else
+			{
+				app.UseExceptionHandler("/Home/Error");
+				app.UseHsts();
+			}
+
+                // 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
+                //using (var scope = app.Services.CreateScope())
+                //{
+                //	var appdb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                //	var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(appdb.Database.GetConnectionString());
+                //	Console.WriteLine($"[AppDbContext] Server={csb.DataSource}, Database={csb.InitialCatalog}");
+
+                //	var memdb = scope.ServiceProvider.GetRequiredService<MemberContext>();
+                //	var csb2 = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(memdb.Database.GetConnectionString());
+                //	Console.WriteLine($"[MemberContext] Server={csb2.DataSource}, Database={csb2.InitialCatalog}");
+
+                //	// 啟動時資料初始化
+                //	var init = scope.ServiceProvider.GetRequiredService<DbInitializer>();
+                //	await init.EnsureAdminPasswordAsync("admin@bookstore.local", "Admin@12345!");
+                //	await init.EnsurePermissionAndFeatureSeedAsync("admin@bookstore.local");
+                //}
+
+                if (app.Environment.IsDevelopment())
 			{
 				app.UseDeveloperExceptionPage();
 				app.UseMigrationsEndPoint();

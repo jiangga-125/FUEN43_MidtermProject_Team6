@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BookLoop.Models
 {
@@ -6,6 +7,7 @@ namespace BookLoop.Models
     /// 群發活動/批次：何時、寄給誰、用哪個模板版本。
     /// 判斷是否群發：MailSendLog.MailJobId != null。
     /// </summary>
+    [Table("MailJob")]
     public class MailJob
     {
         public long JobId { get; set; }

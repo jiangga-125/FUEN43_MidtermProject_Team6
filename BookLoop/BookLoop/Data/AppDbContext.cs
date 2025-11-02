@@ -27,7 +27,6 @@ namespace BookLoop.Data
 		public DbSet<Template> Templates => Set<Template>();
 		public DbSet<TemplateVersion> TemplateVersions => Set<TemplateVersion>();
         public DbSet<MailSendLog> MailSendLogs { get; set; }
-
         public DbSet<MailJob> MailJobs => Set<MailJob>();
 
 
