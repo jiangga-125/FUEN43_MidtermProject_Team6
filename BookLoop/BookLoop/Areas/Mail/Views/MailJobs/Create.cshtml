@@ -49,6 +49,23 @@
 
             <!-- Segment Query -->
             <div class="mb-3">
+                <label class="form-label">從會員匯入名單</label>
+                <div class="input-group">
+                    <select id="MemberRoleSelect"
+                            class="form-select"
+                            asp-items="@(ViewBag.MemberRoles ?? Enumerable.Empty<SelectListItem>())">
+                        <option value="">-- 請選擇會員角色 --</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" type="button" id="ImportMembersBtn">
+                        <i class="fas fa-download me-1"></i> 匯入
+                    </button>
+                </div>
+                <div class="form-text">
+                    點選「匯入」將會*覆蓋*下方名單欄位。
+                </div>
+            </div>
+
+            <div class="mb-3">
                 <label asp-for="SegmentQuery" class="form-label">名單（每行一筆：email[,name]）</label>
                 <textarea asp-for="SegmentQuery" class="form-control" rows="8" placeholder="a@ex.com,Alice&#10;b@ex.com,Bob"></textarea>
                 <span asp-validation-for="SegmentQuery" class="text-danger"></span>
@@ -110,7 +127,62 @@
             if (initTemplateId && (!verSel.options || verSel.options.length <= 1)) {
               refreshVersions(initTemplateId, initVersionId);
             }
+            });
+        // 匯入Member名單
+
+        // 1. 選取新加入的 HTML 元素
+        const roleSel = document.getElementById("MemberRoleSelect");
+        const importBtn = document.getElementById("ImportMembersBtn");
+        const segmentQueryTa = document.getElementById("SegmentQuery"); // asp-for="SegmentQuery" 會自動產生此 ID
+
+        // 2. 幫「匯入」按鈕加上點擊事件
+        importBtn.addEventListener('click', async () => {
+            const selectedRole = roleSel.value;
+            if (!selectedRole) {
+                alert('請先選擇一個會員角色。');
+                return;
+            }
+
+            // 3. 禁用按鈕，避免重複點擊
+            importBtn.disabled = true;
+            importBtn.innerHTML = '匯入中...';
+
+            try {
+                // 4. 呼叫 Controller 的 GetMembersByRole 動作 (AJAX)
+                const url = '@Url.Action("GetMembersByRole", "MailJobs", new { area = "Mail" })' + `?role=${selectedRole}`;
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+
+                if (!res.ok) {
+                    throw new Error(`伺服器錯誤: ${res.status}`);
+                }
+
+                const members = await res.json();
+
+                if (members.length === 0) {
+                    alert('找不到該角色的會員，或者這些會員沒有 Email。');
+                    segmentQueryTa.value = ''; // 清空
+                    return;
+                }
+
+                // 5. 核心：將 JSON 資料轉換為 "email,username" 格式
+                const memberLines = members.map(m => `${m.email},${m.username}`);
+
+                // 6. 將組合好的字串填入 textarea
+                segmentQueryTa.value = memberLines.join('\n'); // 用換行符號組合
+
+                alert(`成功匯入 ${members.length} 筆會員資料。`);
+
+            } catch (e) {
+                console.error('Failed to import members:', e);
+                alert('匯入失敗，請查看 console log。');
+            } finally {
+                // 7. 無論成功或失敗，都恢復按鈕
+                importBtn.disabled = false;
+                importBtn.innerHTML = '<i class="fas fa-download me-1"></i> 匯入';
+            }
           });
         })();
+
+
     </script>
 }

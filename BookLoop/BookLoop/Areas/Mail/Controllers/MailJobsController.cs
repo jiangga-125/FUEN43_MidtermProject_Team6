@@ -46,6 +46,14 @@ namespace BookLoop.Areas.Mail.Controllers
         public async Task<IActionResult> Create(int? templateId = null)
         {
             await PopulateMailJobSelectsAsync(templateId, null);
+
+            //提供會員角色的下拉選單
+            // 根據您的 Member.cs 註解 // 0=一般,1=管理會員(保留)
+            ViewBag.MemberRoles = new List<SelectListItem>
+    {
+        new SelectListItem { Value = "0", Text = "0 - 一般會員" },
+        new SelectListItem { Value = "1", Text = "1 - 管理會員" }
+    };
             return View(new MailJob { TemplateId = templateId ?? 0, SendAt = DateTime.Now.AddMinutes(10) });
         }
 
@@ -183,6 +191,23 @@ namespace BookLoop.Areas.Mail.Controllers
                 TempData["ok"] = $"Job #{id} 已取消。";
             }
             return RedirectToAction(nameof(Details), new { id });
+        }
+
+        // AJAX 動作 - 根據角色獲取會員 Email/Username
+        [HttpGet]
+        public async Task<IActionResult> GetMembersByRole(byte role)
+        {
+            var members = await _db.Members
+                .AsNoTracking()
+                .Where(m => m.Role == role && !string.IsNullOrEmpty(m.Email)) // 確保有 Email
+                .Select(m => new
+                {
+                    m.Email,
+                    m.Username
+                })
+                .ToListAsync();
+
+            return Json(members);
         }
 
         // ==== Helpers ====
