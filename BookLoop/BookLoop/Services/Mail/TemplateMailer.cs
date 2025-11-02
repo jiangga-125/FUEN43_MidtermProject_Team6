@@ -46,6 +46,7 @@ namespace BookLoop.Services.Mail
     templateKey: version.Template.TemplateKey,
     templateVersionId: version.TemplateVersionId,
     mailJobId: null,             // 群發時請由控制器傳入 JobId
+    jobRecipientId: null,
     category: "System",
     cancellationToken: ct);
         }

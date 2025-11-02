@@ -43,7 +43,18 @@ namespace BookLoop.Models
         /// </summary>
         public string Status { get; set; } = "Scheduled";
 
+        /// <summary>
+        /// 進度與實際起迄
+        /// </summary>
+        public int TotalRecipients { get; set; } = 0;   // 名單總數
+        public int SentCount { get; set; } = 0;         // 已成功寄送數
+        public DateTime? StartedAt { get; set; }        // 實際開始時間（第一封送出）
+        public DateTime? FinishedAt { get; set; }       // 實際結束時間（最後一封處理完）
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
         public string? CreatedBy { get; set; }
+
+        // 導覽屬性
+        public ICollection<MailJobRecipient> Recipients { get; set; } = new List<MailJobRecipient>();
     }
 }

@@ -1,41 +1,48 @@
 ﻿@model BookLoop.Models.MailJob
-@{
-    var logs = ViewBag.Logs as IEnumerable<BookLoop.Models.MailSendLog>;
-}
 
-<h2>活動明細：@Model.CampaignName</h2>
-<p><strong>Template：</strong>@Model.TemplateKey</p>
-<p><strong>狀態：</strong>@Model.Status</p>
-<p><strong>建立時間：</strong>@Model.CreatedAt.ToLocalTime()</p>
+<h2>@Model.CampaignName</h2>
+<p>
+    預定：@Model.SendAt:yyyy/MM/dd HH:mm
+    ，狀態：<strong>@Model.Status</strong>
+    ，進度：<strong>@(ViewBag.Progress)</strong>
+    ，起訖：@(Model.StartedAt?.ToString("yyyy/MM/dd HH:mm") ?? "-")
+    ~ @(Model.FinishedAt?.ToString("yyyy/MM/dd HH:mm") ?? "-")
+</p>
 
-<form asp-action="Run" method="post" asp-route-id="@Model.JobId">
-    <button type="submit" class="btn btn-danger">立即執行群發</button>
-    <a asp-action="Index" class="btn btn-secondary">返回</a>
-</form>
-
-<hr />
-<h4>寄送記錄</h4>
-<table class="table table-sm table-striped">
+<h4>名單（部分）</h4>
+<table class="table table-sm">
     <thead>
-        <tr>
-            <th>收件人</th>
-            <th>主旨</th>
-            <th>狀態</th>
-            <th>時間</th>
-        </tr>
+        <tr><th>Email</th><th>姓名</th><th>狀態</th><th>寄出時間</th><th>錯誤</th></tr>
     </thead>
     <tbody>
-        @if (logs != null)
+        @foreach (var r in (IEnumerable<BookLoop.Models.MailJobRecipient>)ViewBag.Recipients)
         {
-            foreach (var log in logs)
-            {
-                <tr>
-                    <td>@log.Recipient</td>
-                    <td>@log.Subject</td>
-                    <td>@log.Status</td>
-                    <td>@log.SentAt.ToLocalTime()</td>
-                </tr>
-            }
+            <tr>
+                <td>@r.RecipientEmail</td>
+                <td>@r.RecipientName</td>
+                <td>@r.Status</td>
+                <td>@(r.SentAt?.ToString("yyyy/MM/dd HH:mm") ?? "-")</td>
+                <td>@r.Error</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h4>日誌（近期 200 筆）</h4>
+<table class="table table-sm">
+    <thead>
+        <tr><th>時間</th><th>收件者</th><th>主旨</th><th>狀態</th><th>錯誤</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var l in (IEnumerable<BookLoop.Models.MailSendLog>)ViewBag.Logs)
+        {
+            <tr>
+                <td>@l.SentAt:yyyy/MM/dd HH:mm</td>
+                <td>@l.Recipient</td>
+                <td>@l.Subject</td>
+                <td>@l.Status</td>
+                <td>@l.Error</td>
+            </tr>
         }
     </tbody>
 </table>

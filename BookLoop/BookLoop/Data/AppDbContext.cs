@@ -26,8 +26,9 @@ namespace BookLoop.Data
 		//public DbSet<MailTemplate> MailTemplates { get; set; }
 		public DbSet<Template> Templates => Set<Template>();
 		public DbSet<TemplateVersion> TemplateVersions => Set<TemplateVersion>();
-        public DbSet<MailSendLog> MailSendLogs { get; set; }
+        public DbSet<MailSendLog> MailSendLogs => Set<MailSendLog>();
         public DbSet<MailJob> MailJobs => Set<MailJob>();
+        public DbSet<MailJobRecipient> MailJobRecipients => Set<MailJobRecipient>();
 
 
 
@@ -140,26 +141,64 @@ namespace BookLoop.Data
 
             modelBuilder.Entity<MailJob>(e =>
             {
+                e.ToTable("MailJob");
                 e.HasKey(x => x.JobId);
 
                 e.Property(x => x.TemplateKey).HasMaxLength(100).IsRequired();
                 e.Property(x => x.CampaignName).HasMaxLength(200).IsRequired();
                 e.Property(x => x.Description).HasMaxLength(1000);
+
+                // 狀態預設
                 e.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("Scheduled");
 
-                e.HasIndex(x => x.SendAt);
+                // 進度欄位預設
+                e.Property(x => x.TotalRecipients).HasDefaultValue(0);
+                e.Property(x => x.SentCount).HasDefaultValue(0);
+
+                // 常用查詢索引
+                e.HasIndex(x => x.SendAt);        // 預定時間
                 e.HasIndex(x => x.TemplateKey);
                 e.HasIndex(x => x.Status);
+
+                // 讓排程佇列常用的條件更快（狀態＋時間）
+                e.HasIndex(x => new { x.Status, x.SendAt })
+                 .HasDatabaseName("IX_MailJob_Status_SendAt");
             });
 
-            //b.Entity<PermissionFeature>(e =>
-            //{
-            //	e.ToTable("PERMISSION_FEATURES"); // ← 與 DB 一致
-            //	e.HasKey(x => new { x.PermissionID, x.FeatureID });
-            //	e.HasOne(x => x.Permission).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.PermissionID);
-            //	e.HasOne(x => x.Feature).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.FeatureID);
-            //});
+            // MailJobRecipient（名單明細）— 一封信＝一筆
+            modelBuilder.Entity<MailJobRecipient>(e =>
+            {
+                e.ToTable("MailJobRecipient");
+                e.HasKey(x => x.MailJobRecipientId);
 
+                e.Property(x => x.RecipientEmail).HasMaxLength(320).IsRequired();
+                e.Property(x => x.RecipientName).HasMaxLength(200);
+                e.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("Pending");
+                e.Property(x => x.Error).HasMaxLength(1000);
+
+                e.HasIndex(x => new { x.MailJobId, x.Status });
+                e.HasIndex(x => x.RecipientEmail);
+
+                e.HasOne(x => x.MailJob)
+                 .WithMany(j => j.Recipients)
+                 .HasForeignKey(x => x.MailJobId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // MailSendLog（日誌）— 讓日誌 1:1 對到名單明細
+            modelBuilder.Entity<MailSendLog>(e =>
+            {
+                e.ToTable("MailSendLog");
+
+                // 索引到 JobRecipientId，細看單一收件者的日誌會更快
+                e.HasIndex(x => x.JobRecipientId);
+
+                // 若你要加強關聯（等舊資料處理完再開啟）
+                // e.HasOne<MailJobRecipient>()
+                //   .WithMany()
+                //   .HasForeignKey(x => x.JobRecipientId)
+                //   .OnDelete(DeleteBehavior.SetNull);
+            });
         }
     }
 }

@@ -56,7 +56,7 @@ namespace BookLoop.Services.Mail
             => SendAsync(
                 to, subject, body,
                 attachmentName, attachmentBytes, contentType,
-                templateId: null, templateKey: null, templateVersionId: null, mailJobId: null,
+                templateId: null, templateKey: null, templateVersionId: null, mailJobId: null, jobRecipientId: null,
                 category: "System",
                 cancellationToken);
 
@@ -75,6 +75,7 @@ namespace BookLoop.Services.Mail
             string? templateKey,
             int? templateVersionId,
             long? mailJobId,
+            long? jobRecipientId,
             string category,
             CancellationToken cancellationToken = default)
         {
@@ -126,6 +127,7 @@ namespace BookLoop.Services.Mail
                 TemplateKey = templateKey ?? "",
                 TemplateVersionId = templateVersionId,
                 MailJobId = mailJobId,
+                JobRecipientId = jobRecipientId,
                 Recipient = to,
                 Subject = subject ?? "",
                 Status = "Pending",

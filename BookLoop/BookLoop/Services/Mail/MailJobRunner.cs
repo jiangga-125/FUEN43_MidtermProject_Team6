@@ -15,7 +15,7 @@ namespace BookLoop.Services.Mail
     /// 執行一次 MailJob（群發或排程，取決於建立 Job 時的 SendAt）。
     /// 流程：讀取模板版本 → 解析名單 → 逐筆渲染 → 寄送 → 更新狀態。
     /// </summary>
-    public class MailJobRunner
+    public class MailJobRunner : IMailJobRunner
     {
         private readonly AppDbContext _db;
         private readonly IMailService _mail;
@@ -40,72 +40,106 @@ namespace BookLoop.Services.Mail
         public async Task RunAsync(long jobId, CancellationToken ct = default)
         {
             var job = await _db.MailJobs.FirstOrDefaultAsync(x => x.JobId == jobId, ct);
-            if (job == null)
-            {
-                _logger.LogWarning("MailJob {JobId} not found.", jobId);
-                return;
-            }
+            if (job == null) { _logger.LogWarning("MailJob {JobId} not found.", jobId); return; }
 
-            // 若已完成或取消就不再執行
-            if (job.Status is "Done" or "Cancelled")
+            // 已完成/取消就跳過
+            if (job.Status is "Completed" or "Canceled")
             {
                 _logger.LogInformation("MailJob {JobId} status is {Status}, skip.", jobId, job.Status);
                 return;
             }
 
-            job.Status = "Running";
+            // 起始
+            job.Status = "Sending";                     // ← 改你的狀態字串
+            job.StartedAt = DateTime.Now;
             await _db.SaveChangesAsync(ct);
 
             try
             {
-                // 1) 讀取模板 & 指定版本（你目前的模型 TemplateVersionId 是必填 int）
+                // 讀模板版本（沿用你原本的渲染邏輯）
                 var version = await _db.TemplateVersions
+                    .Include(v => v.Template)
                     .AsNoTracking()
                     .FirstOrDefaultAsync(v =>
                         v.TemplateId == job.TemplateId &&
                         v.TemplateVersionId == job.TemplateVersionId, ct);
-
                 if (version == null)
                     throw new InvalidOperationException($"找不到 TemplateVersion (TemplateId={job.TemplateId}, TemplateVersionId={job.TemplateVersionId})");
 
-                // 2) 解析名單（MVP：SegmentQuery = CSV，每行：email[,name]）
-                var recipients = ParseCsvRecipients(job.SegmentQuery);
-                if (recipients.Count == 0)
-                    throw new InvalidOperationException("SegmentQuery 解析後沒有任何收件者。");
+                // 取名單：只跑 Pending（你可自行換成 Pending+Failed 做重送）
+                var recipients = await _db.MailJobRecipients
+                    .Where(r => r.MailJobId == job.JobId && r.Status == "Pending")
+                    .OrderBy(r => r.MailJobRecipientId)
+                    .ToListAsync(ct);
 
-                // 3) 逐筆渲染 + 寄送
-                foreach (var (email, name) in recipients)
+                if (recipients.Count == 0)
+                    throw new InvalidOperationException("沒有可處理的收件名單（Pending）。");
+
+                var fail = 0;
+
+                foreach (var r in recipients)
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    // 簡單 tokens（之後要加更多欄位很容易）
+                    // 置換 tokens（你原本就用 SimpleTemplateRenderer）
                     var tokens = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                     {
-                        ["Recipient"] = email,
-                        ["Name"] = name ?? "",
+                        ["Recipient"] = r.RecipientEmail,
+                        ["Name"] = r.RecipientName ?? "",
                         ["Campaign"] = job.CampaignName ?? "",
                         ["TemplateKey"] = job.TemplateKey ?? ""
                     };
+                    var subject = _renderer.Render(version.Subject ?? "", tokens);
+                    var body = _renderer.Render(version.BodyHtml ?? "", tokens);
 
-                    var subject = _renderer.Render(version.Subject ?? string.Empty, tokens);
-                    var body = _renderer.Render(version.BodyHtml ?? string.Empty, tokens);
+                    try
+                    {
+                        // 寄送：把 JobRecipientId 帶進去，日誌就能 1:1 對到這位名單
+                        await _mail.SendAsync(
+                            to: r.RecipientEmail,
+                            subject: subject,
+                            body: body,
+                            attachmentName: null,
+                            attachmentBytes: null,
+                            contentType: "text/html",
+                            templateId: version.TemplateId,
+                            templateKey: version.Template?.TemplateKey,
+                            templateVersionId: version.TemplateVersionId,
+                            mailJobId: job.JobId,
+                            jobRecipientId: r.MailJobRecipientId,      // ← 關鍵
+                            category: "Bulk",
+                            cancellationToken: ct);
 
-                    // 你的 MailService 會寫 MailSendLog（若要把 JobId 帶進 Log，之後可擴充 MailService 的多載）
-                    await _mail.SendAsync(email, subject, body, ct);
+                        r.Status = "Sent";
+                        r.SentAt = DateTime.Now;
+                        job.SentCount++;
+                        await _db.SaveChangesAsync(ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        r.Status = "Failed";
+                        r.Error = ex.Message;
+                        fail++;
+                        await _db.SaveChangesAsync(ct);
+                        _logger.LogError(ex, "Job {JobId} 收件者 {Email} 寄送失敗", job.JobId, r.RecipientEmail);
+                    }
 
-                    // MVP 簡單節流，避免打爆供應商速率（之後可改設定）
+                    // 節流（維持你原本概念，可抽到設定）
                     await Task.Delay(150, ct);
                 }
 
-                job.Status = "Done";
+                job.FinishedAt = DateTime.Now;
+                job.Status = /* 你可以選擇嚴格或寬鬆 */ "Completed";
                 await _db.SaveChangesAsync(ct);
-                _logger.LogInformation("MailJob {JobId} succeeded. Sent {Count} mails.", jobId, recipients.Count);
+
+                _logger.LogInformation("MailJob {JobId} done. Sent {Ok}/{Total}, Failed={Fail}.",
+                    job.JobId, job.SentCount, job.TotalRecipients, fail);
             }
             catch (OperationCanceledException)
             {
-                job.Status = "Cancelled";
+                job.Status = "Canceled";
                 await _db.SaveChangesAsync(CancellationToken.None);
-                _logger.LogWarning("MailJob {JobId} cancelled.", jobId);
+                _logger.LogWarning("MailJob {JobId} cancelled.", job.JobId);
                 throw;
             }
             catch (Exception ex)
@@ -113,11 +147,10 @@ namespace BookLoop.Services.Mail
                 job.Status = "Failed";
                 job.Description = (job.Description ?? string.Empty) + $" | Error: {ex.Message}";
                 await _db.SaveChangesAsync(ct);
-                _logger.LogError(ex, "MailJob {JobId} failed.", jobId);
+                _logger.LogError(ex, "MailJob {JobId} failed.", job.JobId);
                 throw;
             }
         }
-
         /// <summary>
         /// 解析 CSV 名單（每行：email[,name]），忽略空白行。
         /// </summary>

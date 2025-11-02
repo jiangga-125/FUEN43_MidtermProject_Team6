@@ -29,11 +29,14 @@ namespace BookLoop.Models
         public int? TemplateVersionId { get; set; }
 
         /// <summary>
-        /// 群發批次 Id（僅群發時有；先不加外鍵，未來做 MailJob 再補 FK）
+        /// 群發批次 Id
         /// </summary>
         public long? MailJobId { get; set; }
 
         public string Recipient { get; set; } = string.Empty;
+        // 與名單明細關聯（讓日誌能 1:1 對到那位收件人）
+        public long? JobRecipientId { get; set; } // FK → MailJobRecipient.MailJobRecipientId
+
         public string Subject { get; set; } = string.Empty;
 
         /// <summary>

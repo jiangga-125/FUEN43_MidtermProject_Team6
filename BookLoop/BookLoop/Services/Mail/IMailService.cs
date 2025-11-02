@@ -43,6 +43,7 @@ namespace BookLoop.Services.Mail
             string? templateKey,
             int? templateVersionId,
             long? mailJobId,
+            long? jobRecipientId,
             string category,
             CancellationToken cancellationToken = default);
 

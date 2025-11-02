@@ -101,31 +101,55 @@ namespace BookLoop.Areas.Mail.Controllers
                 return View(m);
             }
 
-            // 正規化 SendAt：若是未指定 Kind 的本地時間，視為台北時間轉 UTC 儲存；若是 UTC 則原樣。
-            // （若你的欄位就是用本地時間保存，可移除此轉換）
-            var sendAt = NormalizeToUtc(m.SendAt);
-
-            m.SendAt = sendAt;                 // 以 UTC 保存
+            // 1) 先存批次
             m.Status = "Scheduled";
-            m.CreatedAt = DateTime.UtcNow;
+            m.CreatedAt = DateTime.Now;                // 本地時間
             m.CreatedBy = User?.Identity?.Name ?? "system";
-            // 建議把 TemplateKey/CampaignName 也一起帶上（若 View 有提供）
             m.TemplateKey = m.TemplateKey?.Trim() ?? "";
             m.CampaignName = m.CampaignName?.Trim();
-
             _db.MailJobs.Add(m);
+            await _db.SaveChangesAsync();              // 拿到 m.JobId
+
+            // 2) 展開名單 → MailJobRecipient
+            var recipients = m.SegmentQuery?
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(line =>
+                {
+                    var parts = line.Split(',', 2, StringSplitOptions.TrimEntries);
+                    var email = parts[0];
+                    var name = parts.Length > 1 ? parts[1] : null;
+                    return string.IsNullOrWhiteSpace(email) ? null : new MailJobRecipient
+                    {
+                        MailJobId = m.JobId,
+                        RecipientEmail = email,
+                        RecipientName = name,
+                        Status = "Pending"
+                    };
+                })
+                .Where(x => x != null)! // 過濾空行
+                .ToList() ?? new List<MailJobRecipient>();
+
+            if (recipients.Count == 0)
+            {
+                ModelState.AddModelError(nameof(m.SegmentQuery), "名單為空或格式不正確");
+                // 重新載入版本下拉… return View(m);
+            }
+
+            await _db.MailJobRecipients.AddRangeAsync(recipients);
+            m.TotalRecipients = recipients.Count;
             await _db.SaveChangesAsync();
 
-            // 若時間在 30 秒內 → 立即執行；否則排到指定時間
-            if (sendAt <= DateTime.UtcNow.AddSeconds(30))
+            // 3) 依 SendAt 排程或立即執行（用本地時間）
+            if (m.SendAt <= DateTime.Now.AddSeconds(30))
             {
-                _bg.Enqueue<MailJobRunner>(r => r.RunAsync(m.JobId, CancellationToken.None));
+                BackgroundJob.Enqueue<IMailJobRunner>(r => r.RunAsync(m.JobId, CancellationToken.None));
                 TempData["ok"] = $"已建立 Job #{m.JobId} 並立即開始執行。";
             }
             else
             {
-                BackgroundJob.Schedule<MailJobRunner>(r => r.RunAsync(m.JobId, CancellationToken.None), sendAt);
-                TempData["ok"] = $"已建立排程 Job #{m.JobId}，將於 {sendAt:u} (UTC) 執行。";
+                var delay = m.SendAt - DateTime.Now;
+                BackgroundJob.Schedule<IMailJobRunner>(r => r.RunAsync(m.JobId, CancellationToken.None), delay);
+                TempData["ok"] = $"已建立排程 Job #{m.JobId}，將於 {m.SendAt:yyyy/MM/dd HH:mm} 執行。";
             }
 
             return RedirectToAction(nameof(Details), new { id = m.JobId });
@@ -135,9 +159,25 @@ namespace BookLoop.Areas.Mail.Controllers
         [HttpGet]
         public async Task<IActionResult> Details(long id)
         {
-            var m = await _db.MailJobs.AsNoTracking().FirstOrDefaultAsync(x => x.JobId == id);
-            if (m == null) return NotFound();
-            return View(m); // 你可在 View 顯示 Job 基本資訊、狀態、錯誤、Segment 前 10 筆等
+            var job = await _db.MailJobs.AsNoTracking().FirstOrDefaultAsync(x => x.JobId == id);
+            if (job == null) return NotFound();
+
+            var recipients = await _db.MailJobRecipients.AsNoTracking()
+                .Where(x => x.MailJobId == id)
+                .OrderBy(x => x.MailJobRecipientId)
+                .Take(500)
+                .ToListAsync();
+
+            var logs = await _db.MailSendLogs.AsNoTracking()
+                .Where(x => x.MailJobId == id && x.JobRecipientId != null)
+                .OrderByDescending(x => x.LogId)
+                .Take(200)
+                .ToListAsync();
+
+            ViewBag.Recipients = recipients;
+            ViewBag.Logs = logs;
+            ViewBag.Progress = $"{job.SentCount} / {job.TotalRecipients}";
+            return View(job);
         }
 
         // POST: /Mail/MailJobs/Cancel/123
@@ -149,11 +189,11 @@ namespace BookLoop.Areas.Mail.Controllers
             var m = await _db.MailJobs.FirstOrDefaultAsync(x => x.JobId == id);
             if (m == null) return NotFound();
 
-            if (m.Status is "Running" or "Scheduled")
+            if (m.Status is "Sending" or "Scheduled")
             {
-                m.Status = "Cancelled";
+                m.Status = "Canceled";
                 await _db.SaveChangesAsync();
-                TempData["ok"] = $"Job #{id} 已設為 Cancelled。";
+                TempData["ok"] = $"Job #{id} 已取消。";
             }
             return RedirectToAction(nameof(Details), new { id });
         }
