@@ -320,10 +320,12 @@ namespace BookLoop
             builder.Services.AddHangfire(cfg => cfg.UseMemoryStorage());
             builder.Services.AddHangfireServer();
 
-            // ------------------------------
-            // 應用程式管線
-            // ------------------------------
-            var app = builder.Build();
+			#endregion
+
+			// ------------------------------
+			// 應用程式管線
+			// ------------------------------
+			var app = builder.Build();
 
 			if (app.Environment.IsDevelopment())
 			{
@@ -369,7 +371,7 @@ namespace BookLoop
 
 			app.UseHttpsRedirection();
 
-			// ✅ 放行 /images/ads 下的所有圖片，不需登入
+			// 放行 /images/ads 下的所有圖片，不需登入
 			app.UseWhen(ctx => ctx.Request.Path.StartsWithSegments("/images/ads"), branch =>
 			{
 				branch.UseStaticFiles(new StaticFileOptions
