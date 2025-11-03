@@ -138,6 +138,9 @@ namespace BookLoop.Areas.Borrows.Controllers
             };
 
 
+            // 若為 AJAX（載入 modal），回傳 Partial；否則仍可回傳一般 View (可選)
+            bool isAjax = Request.Headers["X-Requested-With"] == "XMLHttpRequest";
+            if (isAjax) return PartialView("_Create", brvm);
             return View(brvm);
         }
 
@@ -178,6 +181,8 @@ namespace BookLoop.Areas.Borrows.Controllers
                 vm.BorrowDate = borrowAt;
                 vm.DueDate = dueAt;
 
+                bool isAjaxInvalid = Request.Headers["X-Requested-With"] == "XMLHttpRequest";
+                if (isAjaxInvalid) return PartialView("_Create", vm);
                 return View(vm);
             }
 
@@ -203,6 +208,15 @@ namespace BookLoop.Areas.Borrows.Controllers
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
             TempData["Success"] = "借閱成功";
+            bool isAjax = Request.Headers["X-Requested-With"] == "XMLHttpRequest";
+            if (isAjax)
+            {
+                return Json(new
+                {
+                    ok = true,
+                    redirectUrl = Url.Action("Index", "BorrowRecords")
+                });
+            }
             return RedirectToAction("Index", "BorrowRecords");
         }
 
