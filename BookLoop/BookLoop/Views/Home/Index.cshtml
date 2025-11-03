@@ -79,7 +79,6 @@
 
               const list = document.getElementById('latestOrdersList');
               list.innerHTML = '';
-              @* ADDED: 使用 Url.Action 產生包含 area 的路徑範本，避免相對路徑導向錯誤 *@
               const orderDetailsTemplate = '@Url.Action("OrderDetails", "Orders", new { area = "Orders", id = "__id__" })';
               (json.latestOrders || []).forEach(o => {
                 const id = o.Id || o.id || o.OrderId || o.orderId;
