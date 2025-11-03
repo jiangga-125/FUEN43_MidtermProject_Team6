@@ -2,60 +2,93 @@
 @{
     ViewData["Title"] = "後台帳號清單";
 }
-
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <h2 class="mb-0">後台帳號清單</h2>
-    @if (User.HasClaim("perm", "Accounts.Edit"))
-    {
-        <a class="btn btn-primary" asp-action="Create">新增帳號</a>
-    }
-</div>
+<h2 class="mb-3 page-title">👥 後台帳號列表</h2>
 
 @await Html.PartialAsync("_Alerts")
 
-<form id="filter-form" method="get" class="row g-2 mb-3">
-    <div class="col-sm-4">
-        <input name="keyword" class="form-control" placeholder="關鍵字（Email / Phone）" value="@Model.Keyword" />
-    </div>
-    <div class="col-sm-3">
-        @await Html.PartialAsync("_StatusSelect",
-        viewData: new ViewDataDictionary(ViewData)
-        {
-            ["selected"] = Model.Status,
-            ["includeAll"] = true,
-            ["allText"] = "全部狀態",
-            ["name"] = "status",
-            ["class"] = "form-select js-auto-submit"
-        })
-    </div>
-    <div class="col-sm-2">
-        @await Html.PartialAsync("_PageSizeSelect",
-                viewData: new ViewDataDictionary(ViewData)
-                {
-                    ["selected"] = Model.PageSize,
-                    ["name"] = "pageSize",
-                    ["class"] = "form-select js-auto-submit",
-                    ["sizes"] = new[] { 10, 20, 50 }
-                })
-    </div>
-    <div class="col-sm-3">
-        <button class="btn btn-outline-secondary">搜尋</button>
-        <a class="btn btn-outline-dark ms-1" asp-action="Index">重置</a>
-    </div>
-</form>
+<div class="list-shell">
+    @* 共用篩選列（插槽式） *@
+    @await Html.PartialAsync("_ListFilterBar", viewData: new ViewDataDictionary(ViewData) {
+        ["keywordName"]  = "keyword",
+        ["keywordValue"] = Model.Keyword ?? "",
 
-<div id="list-container">
-    @await Html.PartialAsync("_UsersList", Model)
+        // 狀態下拉
+        ["statusPartial"] = await Html.PartialAsync("_StatusSelect",
+            viewData: new ViewDataDictionary(ViewData) {
+                ["selected"]   = Model.Status,
+                ["includeAll"] = true,
+                ["allText"]    = "全部狀態",
+                ["name"]       = "status",
+                ["class"]      = "form-select js-auto-submit"
+        }),
+
+        // 每頁筆數
+        ["pageSizePartial"] = await Html.PartialAsync("_PageSizeSelect",
+            viewData: new ViewDataDictionary(ViewData) {
+                ["selected"] = Model.PageSize,
+                ["name"]     = "pageSize",
+                ["class"]    = "form-select js-auto-submit",
+                ["sizes"]    = new[] { 10, 20, 50 }
+        }),
+
+        // 右上角「新增」需新版權限：Users.Create
+        ["newButton"]    = true,
+        ["newText"]      = "新增帳號",
+        ["newPolicy"]    = "Users.Create",
+        ["newAction"]    = "Create",
+        ["newController"]= "Users",
+        ["newArea"]      = "Account"
+    })
+
+    <div id="list-container">
+        @* 首次 SSR，後續由 AJAX 局部刷新 *@
+        @await Html.PartialAsync("_UsersList", Model)
+    </div>
 </div>
 
+@* 刪除用 Modal（置中） *@
+<authorize policy="Users.Delete">
+    <div class="modal fade" id="delModal" tabindex="-1" aria-labelledby="delLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow">
+                <form id="delForm" method="post" data-action="@Url.Action("Delete","Users", new { area="Account" })">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="del-id" />
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="delLabel">刪除確認</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning mb-0">
+                            你即將刪除下列帳號（此動作無法還原）：
+                            <div class="mt-2">
+                                <div><strong>名稱：</strong><span id="del-name">-</span></div>
+                                <div><strong>Email：</strong><span id="del-email">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-danger">確認刪除</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</authorize>
+
 @section Scripts {
-@await Html.PartialAsync("_ListAjaxScripts",
-viewData: new ViewDataDictionary(ViewData)
-{
-    ["controller"] = "Users",
-    ["listAction"] = "List",
-    ["indexAction"] = "Index",
-    ["formId"] = "filter-form",
-    ["containerId"] = "list-container"
-})
+<script>
+  // 啟用共用列表腳本
+  listPageBoot({
+    listUrl:  '@Url.Action("List",  "Users", new { area = "Account" })',
+    indexUrl: '@Url.Action("Index", "Users", new { area = "Account" })',
+    onAfterRender: () => {},
+    del: {
+      formId:  'delForm',
+      modalId: 'delModal',
+      postUrl: '@Url.Action("Delete","Users", new { area="Account" })'
+    }
+  });
+</script>
 }

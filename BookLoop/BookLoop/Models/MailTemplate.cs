@@ -23,9 +23,10 @@ namespace BookLoop.Models
 
         [Required]
         [Display(Name = "郵件內容 (HTML)")]
-        public string BodyHtml { get; set; } = string.Empty;
+        public string BodyHtml { get; set; } = string.Empty;// 作為寄送用 HTML
+		public string? DesignJson { get; set; }  // Unlayer 設計 JSON（新欄位）
 
-        [StringLength(500)]
+		[StringLength(500)]
         [Display(Name = "範本說明")]
         public string? Description { get; set; }
 

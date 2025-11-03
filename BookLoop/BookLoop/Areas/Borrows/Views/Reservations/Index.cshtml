@@ -4,83 +4,77 @@
 @{
     ViewData["Title"] = "Index";
 }
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        @TempData["Success"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css" />
 }
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
+<table id="reservationsTable" class="table">
     <thead>
         <tr>
-            <th>
-                書籍
-            </th>            
-            <th>
-                預借人
-            </th>
-            <th>
-                書籍現況
-            </th>
-            <th>
-                預約型態
-            </th>
-            <th>
-                逾期日
-            </th>                                                     
+            <th>書籍</th>
+            <th>預約人</th>
+            <th>書籍現況</th>
+            <th>預約型態</th>
+            <th>逾期日</th>
             <th>操作欄位</th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-           <td>
-               @Html.DisplayFor(modelItem => item.BookTitle)
-           </td>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@Html.DisplayFor(modelItem => item.BookTitle)</td>
+                <td>@Html.DisplayFor(modelItem => item.MemberName)</td>
                 <td>
-                    @Html.DisplayFor(modelItem =>item.MemberName)
+                    @{
+                        // 你目前的兩種狀態：Normal / Waitlist
+                        var (text, css) = item.ReservationStatus switch
+                        {
+                        ReservationStatus.Wait => ("等待取書", "badge bg-warning"),
+                        ReservationStatus.Reserved => ("預約中", "badge bg-primary"),
+                        ReservationStatus.AutoExpired => ("逾期取消", "badge bg-danger"),
+                        ReservationStatus.Cancelled => ("手動取消", "badge bg-danger-outline"),
+                        ReservationStatus.Complete => ("借閱完成", "badge bg-success"),
+                            _ => (item.ReservationType.ToString(), "badge bg-secondary")
+                        };
+                    }
+                    <span class="@css fs-6">@text </span>
+                
+                </td>
+                <td>
+                    @{
+                        // 你目前的兩種狀態：Normal / Waitlist
+                        var (text2, css2) = item.ReservationType switch
+                        {
+                            ReservationType.Normal => ("一般預約", "badge bg-primary"),
+                            ReservationType.Waitlist => ("候補預約", "badge bg-warning text-dark"),
+                            _ => (item.ReservationType.ToString(), "badge bg-secondary")
+                        };
+                    }
+                    <span class="@css2 fs-6">@text2 </span>
                 </td>
 
-				<td>
-                    @Html.DisplayFor(modelItem => item.ReservationStatus)
-				</td>
-                <td>
-                    @Html.DisplayFor(modelItem => item.ReservationType)
+                @* 建議同時提供排序用的 data-order (yyyy-MM-dd)，並以較友善格式顯示 *@
+                <td data-order="@item.ExpiresDay?.ToString("yyyy-MM-dd")">
+                    @item.ExpiresDay?.ToString("yyyy/MM/dd")
                 </td>
+
                 <td>
-                    @Html.DisplayFor(modelItem => item.ExpiresDay)
-                </td>
-            
-            
-                        
-            <td>
+                    @* 狀態=Wait 且 預約型態=Normal → 顯示「借閱」 *@
                     @if (item.ReservationStatus == ReservationStatus.Wait && item.ReservationType == ReservationType.Normal)
-                    //如果狀態是取書預約而且是等待取書情況下,借閱不會出現
-                {
-                        <a class="btn btn-primary" href="@(Url.Action("Create", "BorrowRecords",
-                           new { listingId = item.ListingID, memberId = item.MemberID, reservationId = item.ReservationID }))">
+                    {
+                        <a class="btn btn-primary"
+                           href="@(Url.Action("Create", "BorrowRecords",
+                                                   new { listingId = item.ListingID, memberId = item.MemberID, reservationId = item.ReservationID }))">
                     借閱
                 </a>
-                
-                    }
+                                }
 
-                <td>
-                    @* 僅當狀態為「預約中」時才顯示取消按鈕 *@
-                    @if (item.ReservationStatus == (byte)ReservationStatus.Reserved)
+                    @* 狀態=Reserved → 顯示「取消」(Modal) *@
+                    @if ((byte)item.ReservationStatus == (byte)ReservationStatus.Reserved)
                     {
-                        @* <form asp-action="Cancel" method="post" class="d-inline">
-                            <input type="hidden" name="id" value="@item.ReservationID" />
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-danger btn-sm"
-                                    onclick="return confirm('確定要取消這筆預約嗎？');">
-                                取消
-                            </button>
-                        </form> *@
-                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#CancelReservationModal-@item.ReservationID">
+                        <button type="button" class="btn btn-danger"
+                                data-bs-toggle="modal"
+                                data-bs-target="#CancelReservationModal-@item.ReservationID">
                             取消
                         </button>
                         <div class="modal fade" id="CancelReservationModal-@item.ReservationID" tabindex="-1" aria-hidden="true">
@@ -90,9 +84,7 @@
                                         <h5 class="modal-title">系統確認</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                     </div>
-                                    <div class="modal-body">
-                                        確定要取消這筆預約嗎？
-                                    </div>
+                                    <div class="modal-body">確定要取消這筆預約嗎？</div>
                                     <div class="modal-footer">
                                         <form asp-action="Cancel" method="post" class="d-inline">
                                             <input type="hidden" name="id" value="@item.ReservationID" />
@@ -105,13 +97,15 @@
                             </div>
                         </div>
                     }
-                    @* 當狀態為 Wait 時 → 顯示可借出 *@
-                    @if (item.ReservationStatus == ReservationStatus.Wait &&item.ReservationType ==ReservationType.Waitlist)
+
+                    @* 狀態=Wait 且 預約型態=Waitlist → 顯示「待取書可借出」(Modal) *@
+                    @if (item.ReservationStatus == ReservationStatus.Wait && item.ReservationType == ReservationType.Waitlist)
                     {
-                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#borrowConfirmModal-@item.ReservationID">
+                        <button type="button" class="btn btn-success btn-sm"
+                                data-bs-toggle="modal"
+                                data-bs-target="#borrowConfirmModal-@item.ReservationID">
                             待取書可借出
                         </button>
-                        <!-- Modal -->
                         <div class="modal fade" id="borrowConfirmModal-@item.ReservationID" tabindex="-1" aria-hidden="true">
                             <div class="modal-dialog modal-dialog-centered">
                                 <div class="modal-content">
@@ -119,9 +113,7 @@
                                         <h5 class="modal-title">系統確認</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                     </div>
-                                    <div class="modal-body">
-                                        確定要將此書借出給預約者嗎？
-                                    </div>
+                                    <div class="modal-body">確定要將此書借出給預約者嗎？</div>
                                     <div class="modal-footer">
                                         <form asp-action="AdminBorrowFromReservation" method="post" class="d-inline">
                                             <input type="hidden" name="reservationId" value="@item.ReservationID" />
@@ -135,10 +127,28 @@
                         </div>
                     }
                 </td>
-                
-               
-            
-        </tr>
-}
+            </tr>
+        }
     </tbody>
 </table>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>>
+    <script>
+        $(function(){
+          $('#reservationsTable').DataTable({
+            language: {
+              search: '搜尋：',
+              searchPlaceholder: '輸入預約人',
+              lengthMenu: '每頁顯示 _MENU_ 筆',
+              info: '顯示第 _START_–_END_ 筆，共 _TOTAL_ 筆',
+              infoEmpty: '沒有資料',
+              zeroRecords: '查無符合結果',
+              paginate: { first:'第一頁', last:'最後一頁', next:'下一頁', previous:'上一頁' }
+            },
+            columnDefs: [{ targets: 5, orderable: false }],
+             order: [[4, 'desc']] // 逾期日（索引 4）預設排序：新→舊
+          });
+        });    </script>
+}

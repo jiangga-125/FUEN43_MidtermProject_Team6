@@ -23,14 +23,13 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Listings" asp-action="Indexfront">二手書前台模擬</a>
+                            <a class="nav-link text-dark" asp-controller="Listings" asp-action="ListingFrontVue">前台首頁</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="BorrowRecords" asp-action="_userdata">前台使用者資料</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-dark"  asp-controller="Listings" asp-action="Index">二手書後台</a>
-                        </li>
-                        
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="PenaltyRules" asp-action="Index">罰金規則</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="Reservations" asp-action="Index">預借</a>
@@ -38,7 +37,12 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-controller="BorrowRecords" asp-action="Index">借閱紀錄後台</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="PenaltyTransactions" asp-action="Index">罰款紀錄後台</a>
+                        </li>
+                        
                        
+                    @*     <li class="nav-item">
                             <a class="btn btn-outline-secondary"
                                asp-area="Books"
                                asp-controller="Branches"
@@ -48,7 +52,47 @@
                             </a>
                         </li>
                     </ul>
-                    @* <partial name="_LoginPartial" /> *@
+                    @* 右上角帳號區 *@
+                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                        @if (User?.Identity?.IsAuthenticated ?? false)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="accountMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    @User.Identity.Name
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="accountMenu">
+                                    <li>
+                                        <a class="dropdown-item"
+                                           asp-controller="Account" asp-action="ChangePassword">
+                                            修改密碼
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li>
+                                        <form class="px-3" method="post" asp-controller="Auth" asp-action="Logout">
+                                            @Html.AntiForgeryToken()
+                                            <button class="btn btn-link p-0">登出</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item me-2">
+                                <a class="btn btn-outline-light"
+                                   asp-controller="Auth" asp-action="Login">
+                                    登入
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="btn btn-warning"
+                                   asp-area="Account" asp-controller="Account" asp-action="Register">
+                                    註冊
+                                </a>
+                            </li>
+                        }
+                    </ul>
                 </div>
             </div>
         </nav>

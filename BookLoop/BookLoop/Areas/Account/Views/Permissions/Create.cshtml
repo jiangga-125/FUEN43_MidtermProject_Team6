@@ -1,0 +1,46 @@
+﻿@model Account.Controllers.PermissionsController.PermissionFormVm
+@{
+    ViewData["Title"] = "新增權限";
+    string key = Model?.Key ?? "";
+    string initials = !string.IsNullOrWhiteSpace(key) ? key.Trim().Substring(0, Math.Min(1, key.Trim().Length)).ToUpper() : "P";
+}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:44px;height:44px;font-weight:700;">
+            @initials
+        </div>
+        <div>
+            <h3 class="mb-0">新增權限</h3>
+            <div class="text-muted small">建立新的權限集合</div>
+        </div>
+    </div>
+    <div>
+        <a class="btn btn-outline-secondary" asp-action="Index">返回列表</a>
+    </div>
+</div>
+
+@await Html.PartialAsync("_Alerts")
+
+<form method="post" class="card shadow-sm">
+    @Html.AntiForgeryToken()
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <div class="mb-2">
+                    <label class="form-label">名稱（Key）</label>
+                    <input asp-for="Key" class="form-control" placeholder="例如：ADMIN / VENDOR / SALES / CUSTOM_SALES" />
+                    <span class="text-danger small" asp-validation-for="Key"></span>
+                    <div class="form-text">不可包含「.」，建立後仍可在編輯頁重新命名。</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer d-flex justify-content-end gap-2">
+        <a class="btn btn-outline-secondary" asp-action="Index">取消</a>
+        <button class="btn btn-primary">建立</button>
+    </div>
+</form>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

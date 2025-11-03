@@ -29,21 +29,21 @@ namespace BookLoop.Areas.Reviews
 
 		public async Task<(bool ok, string? message, AutoDecision decision)> AutoModerateAndPersistAsync(int reviewId)
 		{
-			var review = await _db.Reviews.FirstOrDefaultAsync(x => x.ReviewId == reviewId);
+			var review = await _db.Reviews.FirstOrDefaultAsync(x => x.ReviewID == reviewId);
 			if (review == null) return (false, "找不到評論", AutoDecision.Rejected);
 
 			// 準備上下文（這裡可查會員信用分、24h 貼文數等）
 			var ctx = new ReviewContext
 			{
-				MemberID = review.MemberId,
+				MemberID = review.MemberID,
 				TargetType = review.TargetType,
-				TargetID = review.TargetId,
+				TargetID = review.TargetID,
 				Rating = review.Rating,
 				Content = review.Content,
 				ImageUrls = review.ImageUrls,
 				MemberReputation = 0, // TODO: 查你的會員分數
 				MemberReviewCountLast24h = await _db.Reviews
-					.CountAsync(r => r.MemberId == review.MemberId &&
+					.CountAsync(r => r.MemberID == review.MemberID &&
 									 r.CreatedAt >= DateTime.UtcNow.AddHours(-24))
 			};
 
@@ -53,7 +53,7 @@ namespace BookLoop.Areas.Reviews
 			var reasons = string.Join(" | ", pr.Findings.Select(f => $"[{f.Severity}] {f.RuleName}: {f.Message}"));
 			_db.ReviewModerations.Add(new ReviewModeration
 			{
-				ReviewId = review.ReviewId,
+				ReviewID = review.ReviewID,
 				Decision = (byte)pr.Decision,
 				Reasons = reasons,
 				ReviewedBy = null, // 自動審核
@@ -82,14 +82,14 @@ namespace BookLoop.Areas.Reviews
 
 		public async Task<(bool ok, string? message)> AdminApproveAsync(int reviewId, int adminId, string? reason = null)
 		{
-			var review = await _db.Reviews.FirstOrDefaultAsync(x => x.ReviewId == reviewId);
+			var review = await _db.Reviews.FirstOrDefaultAsync(x => x.ReviewID == reviewId);
 			if (review == null) return (false, "找不到評論");
 			review.Status = 1; // Approved
 			review.UpdatedAt = DateTime.UtcNow;
 
 			_db.ReviewModerations.Add(new ReviewModeration
 			{
-				ReviewId = reviewId,
+				ReviewID = reviewId,
 				Decision = 3, // ApprovedByAdmin
 				Reasons = reason,
 				ReviewedBy = adminId,
@@ -103,14 +103,14 @@ namespace BookLoop.Areas.Reviews
 
 		public async Task<(bool ok, string? message)> AdminRejectAsync(int reviewId, int adminId, string reason)
 		{
-			var review = await _db.Reviews.FirstOrDefaultAsync(x => x.ReviewId == reviewId);
+			var review = await _db.Reviews.FirstOrDefaultAsync(x => x.ReviewID == reviewId);
 			if (review == null) return (false, "找不到評論");
 			review.Status = 2; // Rejected
 			review.UpdatedAt = DateTime.UtcNow;
 
 			_db.ReviewModerations.Add(new ReviewModeration
 			{
-				ReviewId = reviewId,
+				ReviewID = reviewId,
 				Decision = 4, // RejectedByAdmin
 				Reasons = reason,
 				ReviewedBy = adminId,

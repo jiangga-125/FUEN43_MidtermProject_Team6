@@ -1,0 +1,109 @@
+﻿@model Account.Controllers.PermissionsController.IndexVM
+
+@{
+    // 與 Users 一樣，從 ViewBag 取排序方向
+    string sort = (ViewBag.Sort as string) ?? "id";
+    string dir = (ViewBag.Dir as string) ?? "asc";
+
+    bool Is(string key) => sort.Equals(key, System.StringComparison.OrdinalIgnoreCase);
+    string NextDir(string k) => (Is(k) && dir == "asc") ? "desc" : "asc";
+    string Arrow(string k) => Is(k) ? (dir == "asc" ? "↑" : "↓") : "";
+}
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover table-sm align-middle list-table">
+        <thead>
+            <tr>
+                <th style="width:100px;">
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List"
+                       asp-route-keyword="@Model.Keyword"
+                       asp-route-page="@Model.Page"
+                       asp-route-pageSize="@Model.PageSize"
+                       asp-route-sort="id"
+                       asp-route-dir="@NextDir("id")"># @Arrow("id")</a>
+                </th>
+                <th>
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List"
+                       asp-route-keyword="@Model.Keyword"
+                       asp-route-page="@Model.Page"
+                       asp-route-pageSize="@Model.PageSize"
+                       asp-route-sort="name"
+                       asp-route-dir="@NextDir("name")">名稱 @Arrow("name")</a>
+                </th>
+                <th class="text-center" style="width:140px;">
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List"
+                       asp-route-keyword="@Model.Keyword"
+                       asp-route-page="@Model.Page"
+                       asp-route-pageSize="@Model.PageSize"
+                       asp-route-sort="users"
+                       asp-route-dir="@NextDir("users")">帳號數 @Arrow("users")</a>
+                </th>
+                <th class="text-center" style="width:140px;">
+                    <a class="text-dark text-decoration-none ajax-link"
+                       asp-action="List"
+                       asp-route-keyword="@Model.Keyword"
+                       asp-route-page="@Model.Page"
+                       asp-route-pageSize="@Model.PageSize"
+                       asp-route-sort="features"
+                       asp-route-dir="@NextDir("features")">功能數 @Arrow("features")</a>
+                </th>
+                <th class="text-center" style="width:380px;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Items?.Count > 0)
+            {
+                foreach (var x in Model.Items)
+                {
+                    <tr>
+                        <td>@x.PermissionID</td>
+                        <td>@x.Name</td>
+                        <td class="text-center"><span class="badge bg-info">@x.GrantedUserCount</span></td>
+                        <td class="text-center"><span class="badge bg-secondary">@x.FeatureCount</span></td>
+                        <td class="text-center">
+                            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                                <authorize policy="Permissions.Edit">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            data-rename-id="@x.PermissionID"
+                                            data-rename-name="@x.Name">
+                                        重新命名
+                                    </button>
+                                </authorize>
+
+                                <authorize policy="Permissions.Assign">
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       asp-area="Account" asp-controller="Permissions" asp-action="Assign"
+                                       asp-route-id="@x.PermissionID">適用帳號</a>
+                                </authorize>
+
+                                <authorize policy="Permissions.Features">
+                                    <a class="btn btn-sm btn-outline-success"
+                                       asp-area="Account" asp-controller="Permissions" asp-action="Features"
+                                       asp-route-id="@x.PermissionID">功能設定</a>
+                                </authorize>
+
+                                <authorize policy="Permissions.Delete">
+                                    <button type="button" class="btn btn-sm btn-outline-danger js-del"
+                                            data-id="@x.PermissionID"
+                                            data-name="@x.Name">
+                                        刪除
+                                    </button>
+                                </authorize>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr><td colspan="5" class="text-center text-muted">查無資料</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@* 共用 Pager（沒有 status，傳 null） *@
+@await Html.PartialAsync("_Pager", (Model.Page, Model.PageSize, Model.Total, sort, dir, Model.Keyword, (int?)null))

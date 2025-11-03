@@ -3,9 +3,10 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using BookLoop.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookLoop.Models;
+namespace BookLoop.Data;
 
 public partial class BorrowContext : DbContext
 {
