@@ -1,0 +1,225 @@
+﻿@model BookLoop.Models.MailJob
+@{
+    ViewData["Title"] = $"活動明細 #{Model.JobId}";
+
+    string DT(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy/MM/dd HH:mm") : "-";
+    string Pct(int sent, int total) => total <= 0 ? "0%" : $"{Math.Round(100.0 * sent / Math.Max(1, total)):0}%";
+    string N(int v) => v.ToString("#,0");
+
+    Func<string, string> statusClass = s => s switch
+    {
+        "Scheduled" => "badge text-bg-secondary",
+        "Sending" => "badge text-bg-info text-dark",
+        "Completed" => "badge text-bg-success",
+        "Failed" => "badge text-bg-danger",
+        "Canceled" => "badge text-bg-dark",
+        _ => "badge text-bg-light text-dark"
+    };
+
+    var total = Math.Max(0, Model.TotalRecipients);
+    var sent = Math.Min(Model.SentCount, total);
+    var pct = total == 0 ? 0 : (int)Math.Round(100.0 * sent / total);
+
+    var recipients = (IEnumerable<BookLoop.Models.MailJobRecipient>)(ViewBag.Recipients ?? Enumerable.Empty<BookLoop.Models.MailJobRecipient>());
+    var logs = (IEnumerable<BookLoop.Models.MailSendLog>)(ViewBag.Logs ?? Enumerable.Empty<BookLoop.Models.MailSendLog>());
+}
+@functions {
+    string StatusText(string? s) => s switch
+    {
+        "Scheduled" => "已排程",
+        "Sending" => "發送中",
+        "Completed" => "完成",
+        "Failed" => "失敗",
+        "Canceled" => "取消",
+        "Pending" => "待寄送",
+        "Sent" => "已寄出",
+        _ => s ?? "未知"
+    };
+}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+    <div>
+        <h2 class="mb-1">@Model.CampaignName</h2>
+        <div class="text-muted">
+            <span class="me-3">活動編號：#@Model.JobId</span>
+            <span class="me-3">模板鍵：<span class="text-monospace">@Model.TemplateKey</span></span>
+            <span class="me-3">版本：@Model.TemplateVersionId</span>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-area="Mail" asp-controller="MailJobs" asp-action="Index">返回列表</a>
+        <form asp-area="Mail" asp-controller="MailJobs" asp-action="Cancel"
+              method="post" class="d-inline"
+              onsubmit="return confirm('確定要取消這個批次嗎？');">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.JobId" />
+            <button type="submit"
+                    class="btn btn-outline-danger"
+                    @(Model.Status is "Scheduled" or "Sending" ? "" : "disabled")>
+                取消
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- 狀態說明 -->
+<div class="small text-muted d-flex flex-wrap gap-2 align-items-center my-2" aria-label="狀態說明">
+    <span>狀態說明：</span>
+    <span class="badge text-bg-secondary">⏲ 已排程</span>
+    <span class="badge text-bg-info text-dark">📤 發送中</span>
+    <span class="badge text-bg-success">✔ 完成</span>
+    <span class="badge text-bg-danger">✖ 失敗</span>
+    <span class="badge text-bg-dark">🛑 取消</span>
+</div>
+
+<div class="row g-3 mb-3" aria-label="活動摘要">
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">目前狀態</div>
+                <div class="fs-5 mt-1"><span class="@statusClass(Model.Status ?? "")">@StatusText(Model.Status)</span></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">預定發送</div>
+                <div class="fs-5 mt-1">@DT(Model.SendAt)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">實際時間</div>
+                <div class="fs-6 mt-1">@DT(Model.StartedAt) <span class="text-muted">~</span> @DT(Model.FinishedAt)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">發送進度</div>
+                <div class="d-flex align-items-center gap-2 mt-1">
+                    <div class="progress flex-grow-1" style="height:10px" role="progressbar"
+                         aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100" aria-label="發送進度">
+                        <div class="progress-bar" style="width:@pct%"></div>
+                    </div>
+                    <div class="small text-nowrap">@N(sent) / @N(total)</div>
+                </div>
+                <div class="small text-muted">@Pct(sent, total)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Description))
+{
+    <div class="alert alert-secondary">
+        <div class="small text-muted">說明</div>
+        <div>@Model.Description</div>
+    </div>
+}
+
+<div class="row g-3">
+    <!-- 名單 -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="fw-semibold">名單（前 500 筆）</div>
+                <div class="text-muted small">Pending / Sent / Failed 快速檢視</div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 56px;">#</th>
+                                <th>Email</th>
+                                <th style="width: 110px;">姓名</th>
+                                <th style="width: 110px;">狀態</th>
+                                <th style="width: 160px;">寄出時間</th>
+                                <th>錯誤原因</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!recipients.Any())
+                            {
+                                <tr><td colspan="6" class="text-center text-muted py-4">尚無名單</td></tr>
+                            }
+                            else
+                            {
+                                foreach (var r in recipients)
+                                {
+                                    <tr class="@(r.Status == "Failed" ? "table-danger" : r.Status == "Pending" ? "table-warning" : "")">
+                                        <td class="text-muted">@r.MailJobRecipientId</td>
+                                        <td class="text-break text-monospace">@r.RecipientEmail</td>
+                                        <td class="text-truncate">@r.RecipientName</td>
+                                        <td>
+                                            <span class="badge @(r.Status == "Sent" ? "text-bg-success" : r.Status == "Failed" ? "text-bg-danger" : r.Status == "Pending" ? "text-bg-warning text-dark" : "text-bg-secondary")">
+                                                @StatusText(r.Status)
+                                            </span>
+                                        </td>
+                                        <td>@DT(r.SentAt)</td>
+                                        <td class="small"><pre class="m-0" style="white-space: pre-wrap;">@r.Error</pre></td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日誌 -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="fw-semibold">日誌（近期 200 筆）</div>
+                <div class="text-muted small">僅顯示本批次且具 JobRecipientId 的紀錄</div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 56px;">#</th>
+                                <th style="width: 160px;">時間</th>
+                                <th>收件者</th>
+                                <th style="width: 110px;">狀態</th>
+                                <th>主旨</th>
+                                <th>錯誤</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!logs.Any())
+                            {
+                                <tr><td colspan="6" class="text-center text-muted py-4">尚無日誌</td></tr>
+                            }
+                            else
+                            {
+                                foreach (var l in logs)
+                                {
+                                    <tr class="@(l.Status == "Failed" ? "table-danger" : "")">
+                                        <td class="text-muted">@l.LogId</td>
+                                        <td>@l.SentAt.ToString("yyyy/MM/dd HH:mm")</td>
+                                        <td class="text-break text-monospace">@l.Recipient</td>
+                                        <td>
+                                            <span class="badge @(l.Status == "Sent" ? "text-bg-success" : l.Status == "Failed" ? "text-bg-danger" : "text-bg-secondary")">
+                                                @StatusText(l.Status)
+                                            </span>
+                                        </td>
+                                        <td class="text-truncate" style="max-width: 260px;" title="@l.Subject">@l.Subject</td>
+                                        <td class="small"><pre class="m-0" style="white-space: pre-wrap;">@l.Error</pre></td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

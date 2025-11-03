@@ -13,42 +13,43 @@ using BookLoop.Services.Pricing;
 using BookLoop.Services.Reports;
 using BookLoop.Services.Rules;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using System.IO;
+using Hangfire;
+using Hangfire.MemoryStorage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using BookLoop.Services.Storage;
+using Microsoft.Extensions.FileProviders;           // [KEEP]
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using OfficeOpenXml;
 using System;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace BookLoop
 {
-
 	public class Program
 	{
-
 		public static async Task Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
-      ExcelPackage.License.SetNonCommercialOrganization("FUEN43 Team6");
+			ExcelPackage.License.SetNonCommercialOrganization("FUEN43 Team6");
 
 			#region context 統一共用 bookloopstr連線字串
 			var bookloopStr = builder.Configuration.GetConnectionString("BookLoop")
 			  ?? throw new InvalidOperationException("ConnectionStrings:BookLoop 未設定");
 
-			builder.Services.AddDbContext<ApplicationDbContext>(options =>                
+			builder.Services.AddDbContext<ApplicationDbContext>(options =>
 				options.UseSqlServer(bookloopStr));
 
-			builder.Services.AddDbContext<OrdersysContext>(options =>                
+			builder.Services.AddDbContext<OrdersysContext>(options =>
 				options.UseSqlServer(bookloopStr));
 
-			builder.Services.AddDbContext<BookSystemContext>(options =>                
+			builder.Services.AddDbContext<BookSystemContext>(options =>
 				options.UseSqlServer(bookloopStr));
 
 			builder.Services.AddDbContext<BorrowContext>(options =>
@@ -244,6 +245,12 @@ namespace BookLoop
 				options.FallbackPolicy = new AuthorizationPolicyBuilder()
 					.RequireAuthenticatedUser()
 					.Build();
+
+				// 保留你先前新增的可匿名 Policy（目前未直接套用到中介層，但保留不動）
+				options.AddPolicy("AllowAnonymousAccess", policy =>
+				{
+					policy.RequireAssertion(_ => true);
+				});
 			});
 
 			// 動態 Policy Provider + 處理器（關鍵）
@@ -268,8 +275,10 @@ namespace BookLoop
 			builder.Services.AddScoped<IMailService, MailService>();
 			builder.Services.AddSingleton<ITemplateRenderer, SimpleTemplateRenderer>();
 			builder.Services.AddScoped<ITemplateMailer, TemplateMailer>();
+            builder.Services.AddSingleton<IFileStorage, R2StorageService>();
+            builder.Services.AddScoped<IMailJobRunner, MailJobRunner>();
 
-			builder.Services.AddScoped<ICouponService, CouponService>();
+            builder.Services.AddScoped<ICouponService, CouponService>();
 			builder.Services.AddScoped<IPointsService, PointsService>();
 			builder.Services.AddScoped<IPricingEngine, PricingEngine>();
 			builder.Services.AddScoped<IOrderService, OrderService>();
@@ -307,10 +316,10 @@ namespace BookLoop
 			builder.Services.AddControllersWithViews();
 			builder.Services.AddRazorPages();
 
-			//借閱service
-            builder.Services.AddScoped<ReservationExpiryService>();
-            builder.Services.AddHostedService<ReservationExpiryWorker>();
-            builder.Services.AddScoped<ReservationQueueService>();
+            // Hangfire（開發期先用記憶體儲存；正式環境可改 SQL Storage）
+            builder.Services.AddHangfire(cfg => cfg.UseMemoryStorage());
+            builder.Services.AddHangfireServer();
+
 			#endregion
 
 			// ------------------------------
@@ -318,24 +327,38 @@ namespace BookLoop
 			// ------------------------------
 			var app = builder.Build();
 
-			// 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
-			//using (var scope = app.Services.CreateScope())
-			//{
-			//	var appdb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-			//	var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(appdb.Database.GetConnectionString());
-			//	Console.WriteLine($"[AppDbContext] Server={csb.DataSource}, Database={csb.InitialCatalog}");
-
-			//	var memdb = scope.ServiceProvider.GetRequiredService<MemberContext>();
-			//	var csb2 = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(memdb.Database.GetConnectionString());
-			//	Console.WriteLine($"[MemberContext] Server={csb2.DataSource}, Database={csb2.InitialCatalog}");
-
-			//	// 啟動時資料初始化
-			//	var init = scope.ServiceProvider.GetRequiredService<DbInitializer>();
-			//	await init.EnsureAdminPasswordAsync("admin@bookstore.local", "Admin@12345!");
-			//	await init.EnsurePermissionAndFeatureSeedAsync("admin@bookstore.local");
-			//}
-
 			if (app.Environment.IsDevelopment())
+			{
+				app.UseDeveloperExceptionPage();
+				app.UseMigrationsEndPoint();
+
+				// 開發中觀察排程與工作狀態
+				app.UseHangfireDashboard("/hangfire");
+			}
+			else
+			{
+				app.UseExceptionHandler("/Home/Error");
+				app.UseHsts();
+			}
+
+                // 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
+                //using (var scope = app.Services.CreateScope())
+                //{
+                //	var appdb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                //	var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(appdb.Database.GetConnectionString());
+                //	Console.WriteLine($"[AppDbContext] Server={csb.DataSource}, Database={csb.InitialCatalog}");
+
+                //	var memdb = scope.ServiceProvider.GetRequiredService<MemberContext>();
+                //	var csb2 = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(memdb.Database.GetConnectionString());
+                //	Console.WriteLine($"[MemberContext] Server={csb2.DataSource}, Database={csb2.InitialCatalog}");
+
+                //	// 啟動時資料初始化
+                //	var init = scope.ServiceProvider.GetRequiredService<DbInitializer>();
+                //	await init.EnsureAdminPasswordAsync("admin@bookstore.local", "Admin@12345!");
+                //	await init.EnsurePermissionAndFeatureSeedAsync("admin@bookstore.local");
+                //}
+
+                if (app.Environment.IsDevelopment())
 			{
 				app.UseDeveloperExceptionPage();
 				app.UseMigrationsEndPoint();
@@ -346,21 +369,50 @@ namespace BookLoop
 				app.UseHsts();
 			}
 
-
 			app.UseHttpsRedirection();
+
+			// 放行 /images/ads 下的所有圖片，不需登入
+			app.UseWhen(ctx => ctx.Request.Path.StartsWithSegments("/images/ads"), branch =>
+			{
+				branch.UseStaticFiles(new StaticFileOptions
+				{
+					FileProvider = new PhysicalFileProvider(
+						Path.Combine(app.Environment.WebRootPath, "images", "ads")),
+					RequestPath = "/images/ads",
+					ServeUnknownFileTypes = true
+				});
+			});
+
+
+
+
+
+			// ================================
+			// 靜態檔案（順序極重要）
+			// ================================
+
+			// 1️⃣ 先放行廣告圖片：不需登入即可讀取
+			//    這段會讓 /images/ads/* 優先被 StaticFileMiddleware 處理
+			//    不會再被授權系統攔下導向 /Login?ReturnUrl=...
+			app.UseStaticFiles(new StaticFileOptions
+			{
+				FileProvider = new PhysicalFileProvider(
+					Path.Combine(app.Environment.WebRootPath, "images", "ads")),
+				RequestPath = "/images/ads",
+				ServeUnknownFileTypes = true // 支援 webp / jfif / bmp 等副檔名
+			});
+
+			// 2️⃣ 再開啟一般靜態資源服務（wwwroot 下的 CSS、JS、其他圖片）
 			app.UseStaticFiles();
 
 			app.UseRouting();
 
 			app.UseCors("DevCors");
 			app.UseAuthentication();
-			app.UseAuthorization();
-			// 順序：UseCors -> Authentication -> Authorization
+			app.UseAuthorization(); // 順序：UseCors -> Authentication -> Authorization
 
-			//app.UseStaticFiles();                  // 服務 wwwroot 靜態檔
 			app.MapControllers(); // 讓路由的 /api/* 運作
-			//app.MapFallbackToFile("index.html"); // 正式上線時 SPA 前端路由回傳 index.html
-
+								  //app.MapFallbackToFile("index.html"); // 正式上線時 SPA 前端路由回傳 index.html
 
 			app.MapControllerRoute(
 				name: "areas",

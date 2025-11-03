@@ -2,6 +2,15 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { getBanners } from '@/api/catalog'
 
+function fixUrl(url: string) {
+  if (!url) return '/placeholder.png' // 沒有圖片時顯示預設圖
+  // ✅ 若後端已經是完整網址，就不要再補前綴
+  if (url.startsWith('http') || url.includes('/images/ads/')) return url
+  return `https://localhost:7176/images/ads/${url}`
+}
+
+
+
 const items = ref<Array<{ id: number; imageUrl: string; link?: string }>>([])
 const i = ref(0)
 let timer: number | null = null
@@ -12,8 +21,8 @@ async function load() {
   } catch {
     // 後端尚未提供時，用暫存資料
     items.value = [
-      { id: 1, imageUrl: '/banner1.jpg' },
-      { id: 2, imageUrl: '/banner1.jpg' },
+      { id: 1, imageUrl: '1.jpg' },
+      { id: 2, imageUrl: '2.jpg' },
     ]
   }
 }
@@ -46,7 +55,8 @@ onUnmounted(stop)
 <template>
   <div class="wrap container">
     <div class="viewport">
-      <img v-if="items.length" :src="items[i].imageUrl" alt="" />
+      <img v-if="items.length" :src="fixUrl(items[i].imageUrl)" alt="廣告圖片" />
+
     </div>
     <button class="nav prev" @click="prev">‹</button>
     <button class="nav next" @click="next">›</button>
