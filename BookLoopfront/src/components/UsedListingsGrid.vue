@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 
 // ---- API ----
-import { getFrontListings, type Listing } from '@/api/listings'
+import { getFrontListings, type Listing } from '@/api/Listings'
 import {
   prepareReservation,
   createReservation,
@@ -254,6 +254,7 @@ onMounted(async () => {
 .text-truncate-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
