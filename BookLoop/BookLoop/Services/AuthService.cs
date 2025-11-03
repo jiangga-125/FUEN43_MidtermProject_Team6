@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
+using BookLoop.Helpers;   // RefreshTokenHelper
+using BookLoop.Models;    // RefreshToken & User
 
 namespace BookLoop.Services;
 
@@ -13,11 +18,13 @@ public class AuthService
 {
 	private readonly AppDbContext _db;
 	private readonly IHttpContextAccessor _http;
+	private readonly IConfiguration _cfg; // 新增chg欄位
 
-	public AuthService(AppDbContext db, IHttpContextAccessor http)
+	public AuthService(AppDbContext db, IHttpContextAccessor http, IConfiguration cfg)
 	{
 		_db = db;
 		_http = http;
+		_cfg = cfg;
 	}
 
 	public Task<User?> FindByEmailAsync(string email)
@@ -144,4 +151,103 @@ public class AuthService
 
 	public Task RecordLoginAsync(int userId, bool success, string? ip, string? ua, string? reason = null)
 		=> Task.CompletedTask;
+
+	// 新增 FindByIdAsync / CreateAccessToken / CreateAndStoreRefreshTokenAsync / RevokeRefreshTokenByRawAsync
+
+	#region FindByIdAsync方法
+	// 根據字串 id 找 user int UserID）Controller 呼叫 auth.FindByIdAsync(existing.UserID.ToString())
+	public async Task<User?> FindByIdAsync(int id)
+	{
+		return await _db.Users.FirstOrDefaultAsync(u => u.UserID == id);
+	}
+	#endregion
+
+	#region CreateAccessToken方法
+	// 產生 JWT access token
+	public string CreateAccessToken(User user)
+	{
+		var jwtSection = _cfg.GetSection("Jwt");
+		var keyStr = jwtSection["Key"] ?? throw new InvalidOperationException("Jwt:Key 未設定");
+		var issuer = jwtSection["Issuer"];
+		var audience = jwtSection["Audience"];
+		var accessMinutes = int.Parse(jwtSection["AccessTokenMinutes"] ?? "15");
+
+		SymmetricSecurityKey signingKey;
+		try
+		{
+			var keyBytes = Convert.FromBase64String(keyStr);
+			signingKey = new SymmetricSecurityKey(keyBytes);
+		}
+		catch
+		{
+			var keyBytes = Encoding.UTF8.GetBytes(keyStr);
+			signingKey = new SymmetricSecurityKey(keyBytes);
+		}
+
+		// claims：依User 類別調整屬性名稱（我用常見欄位）
+		string uid = user?.UserID.ToString() ?? user?.GetType().GetProperty("Id")?.GetValue(user)?.ToString() ?? "";
+		string email = user?.Email ?? user?.GetType().GetProperty("Email")?.GetValue(user)?.ToString() ?? "";
+		string name = user?.GetType().GetProperty("UserName")?.GetValue(user)?.ToString() ?? email;
+
+		var claims = new List<Claim>
+	{
+		new Claim(JwtRegisteredClaimNames.Sub, email),
+		new Claim("uid", uid),
+		new Claim(ClaimTypes.Email, email),
+		new Claim(ClaimTypes.Name, name),
+		new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+	};
+
+		var creds = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
+		var now = DateTime.UtcNow;
+		var jwt = new JwtSecurityToken(
+			issuer: issuer,
+			audience: audience,
+			claims: claims,
+			notBefore: now,
+			expires: now.AddMinutes(accessMinutes),
+			signingCredentials: creds
+		);
+
+		return new JwtSecurityTokenHandler().WriteToken(jwt);
+	}
+	#endregion
+
+	#region CreateAndStoreRefreshTokenAsync方法
+	// 產生 raw refresh token、把 hash 存 DB，回傳 raw token 與 entity（SaveChanges）
+	public async Task<(string raw, RefreshToken entity)> CreateAndStoreRefreshTokenAsync(User user, int days = 30)
+	{
+		var raw = RefreshTokenHelper.GenerateRefreshTokenRaw();
+		var hash = RefreshTokenHelper.HashRefreshToken(raw);
+
+		int userId = user.UserID;
+		var rt = new RefreshToken
+		{
+			UserID = userId,
+			TokenHash = hash,
+			CreatedAt = DateTime.UtcNow,
+			ExpiresAt = DateTime.UtcNow.AddDays(days),
+			IsRevoked = false
+		};
+
+		_db.RefreshTokens.Add(rt);
+		await _db.SaveChangesAsync();
+
+		return (raw, rt);
+	}
+	#endregion
+
+	#region RevokeRefreshTokenByRawAsync方法
+	//以 raw token 撤銷 refresh token（會 SaveChanges）
+	public async Task RevokeRefreshTokenByRawAsync(string raw)
+	{
+		var hash = RefreshTokenHelper.HashRefreshToken(raw);
+		var rt = await _db.RefreshTokens.FirstOrDefaultAsync(r => r.TokenHash == hash && !r.IsRevoked);
+		if (rt != null)
+		{
+			rt.IsRevoked = true;
+			await _db.SaveChangesAsync();
+		}
+	}
+	#endregion
 }

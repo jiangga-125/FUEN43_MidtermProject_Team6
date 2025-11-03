@@ -75,14 +75,14 @@
             </td>
             
             <td>
-                @if (item.ConditionName == "借出") // 假設書已借出才可以歸還
+                @if (item.ConditionName == "借出" || item.ConditionName =="逾期") // 假設書已借出才可以歸還
                     {
                         <button type="button" class="btn btn-success"
                                 onclick="openReturnModal(@item.RecordID)">
                             還書
                         </button>
                     }
-                    @if ((byte?)item.ReturnCondition is 1 or 2)
+                    @if ((byte?)item.ReturnCondition is 1 or 2 || item.ConditionName == "逾期")
                     {
 
                         <a class="btn btn-danger" asp-area="Borrows" asp-controller="PenaltyTransactions" 
@@ -104,7 +104,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="returnModalBody">
-                <!-- AJAX 載入 _ReturnConfirm.cshtml -->
+                
             </div>
         </div>
     </div>

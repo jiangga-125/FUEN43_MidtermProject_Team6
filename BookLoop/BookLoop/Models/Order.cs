@@ -53,7 +53,6 @@ public partial class Order
 	public decimal CouponDiscountAmount { get; set; }
 
 	[Display(Name = "客戶ID號碼")]
-
 	
 	[ValidateNever]
 	public virtual Customer? Customer { get; set; }

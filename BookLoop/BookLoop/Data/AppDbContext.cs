@@ -23,6 +23,7 @@ namespace BookLoop.Data
 		public DbSet<PermissionFeature> PermissionFeatures => Set<PermissionFeature>();
 		public DbSet<Blacklist> Blacklists => Set<Blacklist>();
 		public DbSet<Member> Members => Set<Member>();
+
 		//public DbSet<MailTemplate> MailTemplates { get; set; }
 		public DbSet<Template> Templates => Set<Template>();
 		public DbSet<TemplateVersion> TemplateVersions => Set<TemplateVersion>();
@@ -31,12 +32,14 @@ namespace BookLoop.Data
         public DbSet<MailJobRecipient> MailJobRecipients => Set<MailJobRecipient>();
 
 
+		public DbSet<RefreshToken> RefreshTokens { get; set; } = null!; // æ–°å¢JWT RefreshTokens
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+
+		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			base.OnModelCreating(modelBuilder);
 
-			// ===== 1) ¥Õ¦W³æ¡G¥u«O¯d¥» DbContext «Å§iªº DbSet<> =====
+			// ===== 1) ç™½åå–®ï¼šåªä¿ç•™æœ¬ DbContext å®£å‘Šçš„ DbSet<> =====
 			//var allowedTypes = this.GetType()
 			//	.GetProperties(BindingFlags.Public | BindingFlags.Instance)
 			//	.Where(p => p.PropertyType.IsGenericType &&
@@ -134,10 +137,19 @@ namespace BookLoop.Data
             modelBuilder.Entity<TemplateVersion>()
 				.HasIndex(v => new { v.TemplateId, v.TemplateName }).IsUnique();
 
-            modelBuilder.Entity<TemplateVersion>() // ¿z¿ï°ß¤@¡G¨C­Ó Template ¥u¯à 1 ­Ó¹w³]ª©
+            modelBuilder.Entity<TemplateVersion>() // ç¯©é¸å”¯ä¸€ï¼šæ¯å€‹ Template åªèƒ½ 1 å€‹é è¨­ç‰ˆ
 				.HasIndex(v => new { v.TemplateId, v.IsDefault })
 				.HasFilter("[IsDefault] = 1")
 				.IsUnique();
+
+			//b.Entity<PermissionFeature>(e =>
+			//{
+			//	e.ToTable("PERMISSION_FEATURES"); // â† èˆ‡ DB ä¸€è‡´
+			//	e.HasKey(x => new { x.PermissionID, x.FeatureID });
+			//	e.HasOne(x => x.Permission).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.PermissionID);
+			//	e.HasOne(x => x.Feature).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.FeatureID);
+			//});
+
 
             modelBuilder.Entity<MailJob>(e =>
             {
@@ -148,24 +160,24 @@ namespace BookLoop.Data
                 e.Property(x => x.CampaignName).HasMaxLength(200).IsRequired();
                 e.Property(x => x.Description).HasMaxLength(1000);
 
-                // ª¬ºA¹w³]
+                // ï¿½ï¿½ï¿½Aï¿½wï¿½]
                 e.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("Scheduled");
 
-                // ¶i«×Äæ¦ì¹w³]
+                // ï¿½iï¿½ï¿½ï¿½ï¿½ï¿½wï¿½]
                 e.Property(x => x.TotalRecipients).HasDefaultValue(0);
                 e.Property(x => x.SentCount).HasDefaultValue(0);
 
-                // ±`¥Î¬d¸ß¯Á¤Ş
-                e.HasIndex(x => x.SendAt);        // ¹w©w®É¶¡
+                // ï¿½`ï¿½Î¬dï¿½ß¯ï¿½ï¿½ï¿½
+                e.HasIndex(x => x.SendAt);        // ï¿½wï¿½wï¿½É¶ï¿½
                 e.HasIndex(x => x.TemplateKey);
                 e.HasIndex(x => x.Status);
 
-                // Åı±Æµ{¦î¦C±`¥Îªº±ø¥ó§ó§Ö¡]ª¬ºA¡Ï®É¶¡¡^
+                // ï¿½ï¿½ï¿½Æµ{ï¿½ï¿½Cï¿½`ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¡]ï¿½ï¿½ï¿½Aï¿½Ï®É¶ï¿½ï¿½^
                 e.HasIndex(x => new { x.Status, x.SendAt })
                  .HasDatabaseName("IX_MailJob_Status_SendAt");
             });
 
-            // MailJobRecipient¡]¦W³æ©ú²Ó¡^¡X ¤@«Ê«H¡×¤@µ§
+            // MailJobRecipientï¿½]ï¿½Wï¿½ï¿½ï¿½ï¿½Ó¡^ï¿½X ï¿½@ï¿½Ê«Hï¿½×¤@ï¿½ï¿½
             modelBuilder.Entity<MailJobRecipient>(e =>
             {
                 e.ToTable("MailJobRecipient");
@@ -185,15 +197,15 @@ namespace BookLoop.Data
                  .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // MailSendLog¡]¤é»x¡^¡X Åı¤é»x 1:1 ¹ï¨ì¦W³æ©ú²Ó
+            // MailSendLogï¿½]ï¿½ï¿½xï¿½^ï¿½X ï¿½ï¿½ï¿½ï¿½x 1:1 ï¿½ï¿½ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½
             modelBuilder.Entity<MailSendLog>(e =>
             {
                 e.ToTable("MailSendLog");
 
-                // ¯Á¤Ş¨ì JobRecipientId¡A²Ó¬İ³æ¤@¦¬¥óªÌªº¤é»x·|§ó§Ö
+                // ï¿½ï¿½ï¿½Ş¨ï¿½ JobRecipientIdï¿½Aï¿½Ó¬İ³ï¿½@ï¿½ï¿½ï¿½ï¿½Ìªï¿½ï¿½ï¿½xï¿½|ï¿½ï¿½ï¿½
                 e.HasIndex(x => x.JobRecipientId);
 
-                // ­Y§A­n¥[±jÃöÁp¡]µ¥ÂÂ¸ê®Æ³B²z§¹¦A¶}±Ò¡^
+                // ï¿½Yï¿½Aï¿½nï¿½[ï¿½jï¿½ï¿½ï¿½pï¿½]ï¿½ï¿½ï¿½Â¸ï¿½Æ³Bï¿½zï¿½ï¿½ï¿½Aï¿½}ï¿½Ò¡^
                 // e.HasOne<MailJobRecipient>()
                 //   .WithMany()
                 //   .HasForeignKey(x => x.JobRecipientId)

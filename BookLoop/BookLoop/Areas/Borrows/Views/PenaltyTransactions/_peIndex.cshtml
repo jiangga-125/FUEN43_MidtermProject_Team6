@@ -1,0 +1,78 @@
+﻿@model IEnumerable<BookLoop.ViewModels.PenaltyTransactionsViewModel>
+
+@{
+    Layout = null;
+}
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-info my-3">目前沒有罰金紀錄。</div>
+}
+else
+{
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                借閱人
+            </th>
+            <th>
+                罰金規則
+            </th>
+            <th>
+                罰金單位
+            </th>
+            <th>
+                數量
+            </th>
+            <th>
+                總價
+            </th>
+            <th>
+                結清時間
+            </th>
+            <th>繳費顯示</th>  
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.MemberName)
+                </td>
+
+                <td>
+                    @Html.DisplayFor(modelItem => item.ReasonCode)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.ChargeType)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Quantity)
+
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.totalMoney)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.PaidAt)
+                </td>
+                <td>
+                    @if (item.PaidAt == null)
+                    {
+                        <span class="text-danger fw-bold">未繳</span>
+                    }
+                    else
+                    {
+                        <span class="text-success fw-bold">已繳費</span>
+                    }
+
+                </td>
+               
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+}
