@@ -49,17 +49,21 @@ public class DbReviewRuleProvider : IReviewRuleProvider
 		// 4) 禁自評（只在評會員時檢查）
 		if (s.BlockSelfReview) yield return new NoSelfReviewRule(s.TargetTypeForMember);
 
-		// 5) 敏感詞
-		var list = (s.ForbiddenKeywords ?? "")
-				   .Split(new[] { ',', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
-				   .Select(x => x.Trim())
-				   .Where(x => x.Length > 0)
-				   .ToArray();
-
-		if (!string.IsNullOrWhiteSpace(s.ForbiddenKeywords))
-			yield return new ForbiddenKeywordsRule(s.ForbiddenKeywords);
+		// 5) 敏感詞（從資料庫 ReviewForbiddenKeyword 讀取）
+		var hasDbKeywords = _db.ReviewForbiddenKeyword.Any(k => k.IsActive);
+		if (hasDbKeywords)
+		{
+			yield return new ForbiddenKeywordsRule(_db); // ✅ 使用新版規則（從資料庫撈）
+		}
+		else if (!string.IsNullOrWhiteSpace(s.ForbiddenKeywords))
+		{
+			yield return new ForbiddenKeywordsRule(s.ForbiddenKeywords); // ✅ 備用：從設定表載入
+		}
 		else
-			yield return new ForbiddenKeywordsRule(); // 沒填時用預設
+		{
+			yield return new ForbiddenKeywordsRule(); // ✅ 備用：用預設字詞
+		}
+
 
 
 		// 6) 重複偵測（Warn 或 Block 由設定決定）
@@ -69,7 +73,7 @@ public class DbReviewRuleProvider : IReviewRuleProvider
 			yield return new RepeatedContentRule(
 			check: (authorId, content) =>
 				_db.Reviews.Any(r =>
-					r.MemberId == authorId &&
+					r.MemberID == authorId &&
 					r.Content == content.Trim() &&
 					r.CreatedAt >= DateTime.UtcNow.AddHours(-s.DuplicateWindowHours)),
 			severity: s.DuplicatePolicy == 2 ? RuleSeverity.Block : RuleSeverity.Warn

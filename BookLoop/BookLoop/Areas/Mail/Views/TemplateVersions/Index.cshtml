@@ -1,0 +1,53 @@
+﻿@model BookLoop.Models.Template
+@{
+    ViewData["Title"] = $"模板「{Model.TemplateKey}」的版本";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="h4 mb-0">@ViewData["Title"]</h1>
+        <a class="btn btn-primary"
+           asp-area="Mail"
+           asp-controller="TemplateVersions"
+           asp-action="Create"
+           asp-route-templateId="@Model.TemplateId">
+            新增版本
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>版本名稱</th>
+                    <th>主旨</th>
+                    <th>預設</th>
+                    <th>啟用</th>
+                    <th>更新時間</th>
+                    <th style="width:160px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var v in Model.Versions.OrderByDescending(x => x.IsDefault).ThenByDescending(x => x.UpdatedAt))
+                {
+                    <tr>
+                        <td>@v.TemplateName</td>
+                        <td class="text-truncate" style="max-width:420px">@v.Subject</td>
+                        <td>@(v.IsDefault ? "✔" : "")</td>
+                        <td>@(v.IsActive ? "✔" : "")</td>
+                        <td>@v.UpdatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-secondary"
+                               asp-area="Mail" asp-controller="TemplateVersions" asp-action="Edit"
+                               asp-route-id="@v.TemplateVersionId">編輯</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-3">
+        <a asp-area="Mail" asp-controller="Templates" asp-action="Index">← 返回模板清單</a>
+    </div>
+</div>

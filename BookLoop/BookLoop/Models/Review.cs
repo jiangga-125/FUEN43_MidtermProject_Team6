@@ -5,13 +5,13 @@ namespace BookLoop.Models;
 
 public partial class Review
 {
-    public int ReviewId { get; set; }
+    public int ReviewID { get; set; }
 
-    public int MemberId { get; set; }
+    public int MemberID { get; set; }
 
     public byte TargetType { get; set; }
 
-    public int TargetId { get; set; }
+    public int TargetID { get; set; }
 
     public byte Rating { get; set; }
 

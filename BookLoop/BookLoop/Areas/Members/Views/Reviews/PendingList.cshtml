@@ -1,7 +1,7 @@
-﻿@model IEnumerable<BookLoop.Models.Review>
+﻿@model IEnumerable<BookLoop.Models.ViewModels.ReviewModerationUnifiedVM>
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @{
-    ViewData["Title"] = "待審評論";
+    ViewData["Title"] = "評論審核與檢舉清單";
 }
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -10,23 +10,38 @@
     <title>@ViewData["Title"] - BookLoop</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" />
     <style>
         body {
-            background-color: #f8f9fa; /* 淺灰背景 */
+            background-color: #f8f9fa;
         }
 
         main {
-            min-height: 70vh; /* 保持頁面高度，不會太擠 */
-            padding: 20px; /* 加點內距讓內容不貼邊 */
+            padding: 20px;
+            min-height: 70vh;
         }
 
         footer {
             margin-top: 50px;
             padding: 20px 0;
-            background-color: #212529; /* 深灰底 */
+            background-color: #212529;
             color: #f8f9fa;
             text-align: center;
+        }
+
+        .source-badge {
+            font-size: 0.9rem;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        .source-system {
+            background-color: #0d6efd;
+            color: white;
+        }
+
+        .source-user {
+            background-color: #ffc107;
+            color: black;
         }
     </style>
 </head>
@@ -44,56 +59,49 @@
     }
 
     <main class="container">
-        <table class="table table-striped">
-            <thead>
+        <table class="table table-hover table-striped align-middle">
+            <thead class="table-dark">
                 <tr>
-                    <th>ReviewID</th>
-                    <th>會員</th>
-                    <th>目標</th>
-                    <th>評分</th>
-                    <th style="width:420px">內容</th>
+                    <th>來源</th>
+                    <th>評論內容</th>
+                    <th>檢舉人</th>
+                    <th>原因</th>
                     <th>建立時間</th>
-                    <th>操作</th>
+                    <th style="width:180px;">操作</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var r in Model)
                 {
                     <tr>
-                        <td>@r.ReviewId</td>
-                        <td>@r.MemberId</td>
                         <td>
-                            @if (r.TargetType == 1)
+                            @if (r.Source == "系統審核")
                             {
-                                <span>書本：@r.ImageUrls</span>
-                            }
-                            else if (r.TargetType == 2)
-                            {
-                                <span>會員：@r.ImageUrls</span>
+                                <span class="source-badge source-system">@r.Source</span>
                             }
                             else
                             {
-                                <span>其他</span>
+                                <span class="source-badge source-user">@r.Source</span>
                             }
                         </td>
-
-                        <td>@r.Rating</td>
                         <td>@r.Content</td>
+                        <td>@r.ReporterName</td>
+                        <td>@r.Reason</td>
                         <td>@r.CreatedAt.ToLocalTime()</td>
                         <td class="text-nowrap">
                             <form asp-area="Members" asp-controller="Reviews" asp-action="Approve" method="post" class="d-inline">
                                 @Html.AntiForgeryToken()
-                                <input type="hidden" name="reviewId" value="@r.ReviewId" />
+                                <input type="hidden" name="reviewId" value="@r.ReviewID" />
                                 <input type="hidden" name="adminId" value="1" />
                                 <button type="submit" class="btn btn-sm btn-success">通過</button>
                             </form>
 
-                            <form method="post" asp-area="Members" asp-controller="Reviews" asp-action="Reject" class="d-inline">
+                            <form asp-area="Members" asp-controller="Reviews" asp-action="Reject" method="post" class="d-inline">
                                 @Html.AntiForgeryToken()
-                                <input type="hidden" name="reviewId" value="@r.ReviewId" />
+                                <input type="hidden" name="reviewId" value="@r.ReviewID" />
                                 <input type="hidden" name="adminId" value="1" />
                                 <input type="hidden" name="reason" value="不符合規範" />
-                                <button class="btn btn-sm btn-danger">拒絕</button>
+                                <button type="submit" class="btn btn-sm btn-danger">駁回</button>
                             </form>
                         </td>
                     </tr>

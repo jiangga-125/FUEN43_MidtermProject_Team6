@@ -3,10 +3,14 @@ using MailKit.Security;
 using MimeKit;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 
-namespace BookLoop.Services
+namespace BookLoop.Services.Mail
 {
-	public class MailService
+	/// <summary>
+	/// MailService 寄信服務：實作 IMailService 介面。
+	/// </summary>
+	public class MailService : IMailService
 	{
 		private readonly IConfiguration _config;
 		public MailService(IConfiguration config) => _config = config;
@@ -14,18 +18,22 @@ namespace BookLoop.Services
 		/// <summary>
 		/// 寄送一般通知（無附件）
 		/// </summary>
-		public Task SendReportAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
+		public Task SendAsync(string to, string subject, string body, CancellationToken cancellationToken = default)
 		{
-			return SendReportAsync(to, subject, body, null, null, cancellationToken: cancellationToken);
+			return SendAsync(to, subject, body, null, null, cancellationToken: cancellationToken);
 		}
 
 		/// <summary>
-		/// 寄送郵件，可附加 Excel 等附件
+		/// 寄送郵件，可附加附件（Excel、PDF 等）
 		/// </summary>
-		public async Task SendReportAsync(string to, string subject, string body,
-											   string? attachmentName, byte[]? attachmentBytes,
-											   string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-											   CancellationToken cancellationToken = default)
+		public async Task SendAsync(
+			string to,
+			string subject,
+			string body,
+			string? attachmentName,
+			byte[]? attachmentBytes,
+			string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+			CancellationToken cancellationToken = default)
 		{
 			var smtp = _config.GetSection("Smtp");
 
@@ -57,7 +65,7 @@ namespace BookLoop.Services
 
 			using var client = new SmtpClient();
 
-			var options = (port == 465) ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
+			var options = port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
 			await client.ConnectAsync(host, port, options, cancellationToken);
 
 			// 防止 MailKit 嘗試 XOAUTH2 → Brevo 不支援

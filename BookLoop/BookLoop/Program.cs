@@ -1,10 +1,12 @@
 using BookLoop.Areas.Reviews;
+using BookLoop.Authorization;
 using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services;
 using BookLoop.Services.Coupons;
 using BookLoop.Services.Export;
 using BookLoop.Services.Import;
+using BookLoop.Services.Mail;
 using BookLoop.Services.Orders;
 using BookLoop.Services.Points;
 using BookLoop.Services.Pricing;
@@ -12,17 +14,18 @@ using BookLoop.Services.Reports;
 using BookLoop.Services.Rules;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using System.Threading.Tasks;
-using BookLoop.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.IO;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using OfficeOpenXml;
 using System;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace BookLoop
 {
@@ -33,6 +36,7 @@ namespace BookLoop
 		public static async Task Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
+      ExcelPackage.License.SetNonCommercialOrganization("FUEN43 Team6");
 
 			#region context 統一共用 bookloopstr連線字串
 			var bookloopStr = builder.Configuration.GetConnectionString("BookLoop")
@@ -260,8 +264,10 @@ namespace BookLoop
 
 			builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
 			builder.Services.AddScoped<ReportQueryBuilder>();
-			builder.Services.AddSingleton<IExcelExporter, ClosedXmlExcelExporter>();
-			builder.Services.AddScoped<MailService>();
+			builder.Services.AddSingleton<IExcelExporter, EpplusExcelExporter>();
+			builder.Services.AddScoped<IMailService, MailService>();
+			builder.Services.AddSingleton<ITemplateRenderer, SimpleTemplateRenderer>();
+			builder.Services.AddScoped<ITemplateMailer, TemplateMailer>();
 
 			builder.Services.AddScoped<ICouponService, CouponService>();
 			builder.Services.AddScoped<IPointsService, PointsService>();
@@ -270,7 +276,7 @@ namespace BookLoop
 
 			builder.Services.AddScoped<IReviewRulePipeline, ReviewRulePipeline>();
 			builder.Services.AddScoped<IReviewModerationService, ReviewModerationService>();
-			builder.Services.AddScoped<IReviewRule, ForbiddenKeywordsRule>();
+			//builder.Services.AddScoped<IReviewRule, ForbiddenKeywordsRule>();
 			builder.Services.AddScoped<IReviewRuleProvider, DbReviewRuleProvider>();
 			builder.Services.AddScoped<IReviewRule>(sp =>
 			{
@@ -280,7 +286,7 @@ namespace BookLoop
 					var nowUtc = DateTime.UtcNow;
 					var text = comment.Trim();
 					return db.Reviews.Any(r =>
-						r.MemberId == authorMemberId &&
+						r.MemberID == authorMemberId &&
 						r.Content == text &&
 						r.CreatedAt >= nowUtc.AddHours(-24));
 				});
