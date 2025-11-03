@@ -284,7 +284,7 @@ string Provider)
 			if (amountToPay <= 0) amountToPay = 1;
 
 			string merchantTradeNo = $"B{DateTime.Now:yyMMddHHmmssfff}{order.OrderID}";
-			string website = "http://localhost:5059/Orders/Orders";
+			string website = "http://localhost:7176/Orders/Orders";
 			// ⚠️ 改成你的實際網域（或 localhost 測試）
 
 			var ecpayRequest = new ECPayRequest
