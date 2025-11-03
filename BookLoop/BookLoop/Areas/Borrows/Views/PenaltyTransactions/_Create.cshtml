@@ -1,12 +1,11 @@
 ﻿@model BookLoop.ViewModels.PenaltyTransactionsViewModel
 @{
-    ViewData["Title"] = "Create";
+    Layout = null;
 }
-
-<h4>設定罰金紀錄</h4>
+@* 重要：Partial 不要帶 Layout *@
 <div class="container">
     <div class="row justify-content-center">
-    <div class="col-md-4">
+
         <form asp-action="Create" method="post">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
@@ -27,7 +26,11 @@
 
             <div class="form-group mb-3 d-flex gap-2 align-items-center">
                 <label asp-for="RuleID" class="form-label text-nowrap text-center">規則</label>
-                <select asp-for="RuleID" class="form-control w-50 text-center" asp-items="ViewBag.RuleID">
+                <select asp-for="RuleID"
+                        class="form-control w-50 text-center"
+                        asp-items="ViewBag.RuleID"
+                        id="@Html.IdFor(m => m.RuleID)"
+                        data-prices='@Html.Raw(System.Text.Json.JsonSerializer.Serialize((object)ViewBag.UnitAmount))'>
                     <option value="">-- 請選擇 --</option>
                 </select>
                 <span asp-validation-for="RuleID" class="text-danger"></span>
@@ -52,12 +55,10 @@
 
             <div class="d-flex gap-2">
                 <input type="submit" value="設定罰金紀錄" class="btn btn-primary" />
-                <a class="btn btn-danger" asp-controller="BorrowRecords" asp-action="Index">
-                    <i class="fa-solid fa-arrow-rotate-left"></i>回借閱紀錄</a>
             </div>
         </form>
     </div>
-</div>
+
 </div>
 
 @section Scripts {
@@ -65,23 +66,5 @@
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
 
-    <script>
-        // 以 Dictionary<int, decimal> 或 <int,int> 序列化成 { "1": 50, "2": 80, ... }
-        const prices = @Html.Raw(System.Text.Json.JsonSerializer.Serialize((object)ViewBag.UnitAmount));
-
-        const sel = document.getElementById('@Html.IdFor(m => m.RuleID)');
-        const unitHidden = document.getElementById('@Html.IdFor(m => m.UnitAmount)');
-        const unitDisplay = document.getElementById('UnitAmountDisplay');
-
-        function updatePrice() {
-          const id = sel?.value;
-          const val = (id && prices && prices[id] != null) ? prices[id] : '';
-          // 顯示與提交都同步
-          if (unitDisplay) unitDisplay.value = val;
-          if (unitHidden) unitHidden.value = val;
-        }
-
-        document.addEventListener('DOMContentLoaded', updatePrice);
-        sel?.addEventListener('change', updatePrice);
-    </script>
+    
 }
