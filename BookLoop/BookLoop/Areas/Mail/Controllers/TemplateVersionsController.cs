@@ -62,7 +62,24 @@ namespace BookLoop.Areas.Mail.Controllers
 				TemplateId = templateId,
 				IsActive = true
 			};
-			return View(vm);
+            // ★ 依 TemplateKey 給預設主旨
+            switch (template.TemplateKey)
+            {
+                case "system.account.welcome":
+                    vm.Subject = "{{BrandName}}｜歡迎加入！"; break;
+                case "system.order.placed":
+                    vm.Subject = "訂單成立通知｜編號 {{OrderNo}}"; break;
+                case "system.order.shipped":
+                    vm.Subject = "出貨通知｜編號 {{OrderNo}}"; break;
+                case "system.order.arrived":
+                    vm.Subject = "到貨通知｜編號 {{OrderNo}}"; break;
+                case "system.reserve.arrived":
+                    vm.Subject = "預約書籍到店通知｜《{{BookTitle}}》"; break;
+                case "system.reserve.overdue":
+                    vm.Subject = "逾期提醒｜《{{BookTitle}}》"; break;
+            }
+            ViewBag.TemplateKey = template.TemplateKey;
+            return View(vm);
 		}
 
 		// POST: /Mail/TemplateVersions/Create
@@ -277,6 +294,18 @@ namespace BookLoop.Areas.Mail.Controllers
                 // 之後要加更多測試變數可在這裡擴充
             };
 
+            // 把 dto.Vars 解析為字典後合併
+            if (!string.IsNullOrWhiteSpace(dto.Vars))
+            {
+                try
+                {
+                    var extra = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(dto.Vars)
+                               ?? new Dictionary<string, string>();
+                    foreach (var kv in extra)
+                        tokens[kv.Key] = kv.Value ?? "";
+                }
+                catch { /* JSON 不合法就略過 */ }
+            }
             var rawSubject = !string.IsNullOrWhiteSpace(dto.Subject) ? dto.Subject : (version?.Subject ?? "(無主旨)");
             var rawBody = !string.IsNullOrWhiteSpace(dto.BodyHtml) ? dto.BodyHtml : (version?.BodyHtml ?? string.Empty);
 
@@ -317,6 +346,7 @@ namespace BookLoop.Areas.Mail.Controllers
 			public string? BodyHtml { get; set; }
 			public string? Name { get; set; }
             public int? TemplateVersionId { get; set; }
+            public string? Vars { get; set; }
         }
 		// POST: /Mail/TemplateVersions/Upload?templateId=xx
 		// Unlayer 圖片上傳端點

@@ -25,6 +25,77 @@
         }
     </style>
 }
+@* ★ 新增：依 TemplateKey 輸出可插入變數清單，給 Unlayer 的 mergeTags 使用 *@
+@{
+    var tkey = ViewBag.TemplateKey as string ?? "";
+    var tags = new List<object>();
+
+    switch (tkey)
+    {
+        case "system.account.welcome":
+            tags = new() {
+                new { name = "品牌名稱", value = "{{BrandName}}" },
+                // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
+                // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
+            }; break;
+
+        case "system.order.placed":
+            tags = new() {
+                new { name = "訂單編號",   value = "{{OrderNo}}" },
+                new { name = "下單時間",   value = "{{OrderDate}}" },
+                new { name = "訂單金額",   value = "{{Total}}" },
+                // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
+                // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
+            }; break;
+
+        case "system.order.shipped":
+            tags = new() {
+                new { name = "訂單編號",   value = "{{OrderNo}}" },
+                new { name = "物流商",     value = "{{Carrier}}" },
+                new { name = "託運單號",   value = "{{TrackingNo}}" },
+                new { name = "查詢連結",   value = "{{TrackingUrl}}" },
+                // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
+                // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
+            }; break;
+
+        case "system.order.arrived":
+            tags = new() {
+                new { name = "訂單編號",   value = "{{OrderNo}}" },
+                new { name = "門市名稱",   value = "{{StoreName}}" },
+                new { name = "保管期限",   value = "{{HoldUntilDate}}" },
+                // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
+                // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
+            }; break;
+
+        case "system.reserve.arrived":
+            tags = new() {
+                new { name = "書名",       value = "{{BookTitle}}" },
+                new { name = "門市名稱",   value = "{{StoreName}}" },
+                new { name = "保管期限",   value = "{{HoldUntilDate}}" },
+                // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
+                // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
+            }; break;
+
+        case "system.reserve.overdue":
+            tags = new() {
+                new { name = "書名",       value = "{{BookTitle}}" },
+                new { name = "到期日",     value = "{{DueDate}}" },
+                new { name = "逾期天數",   value = "{{DaysOverdue}}" },
+                new { name = "處理連結",   value = "{{PrimaryActionUrl}}" }
+            }; break;
+    }
+    // 通用 tags：所有模板都會多這些
+    var common = new List<object> {
+        new { name = "使用者姓名", value = "{{Name}}" }
+    };
+
+    // 合併（只加不減）
+    tags.AddRange(common);
+
+    var tagsJson = System.Text.Json.JsonSerializer.Serialize(tags);
+}
+<script type="application/json" id="merge-tags-json">@Html.Raw(tagsJson)</script>
+
 
 <div class="container-fluid mt-4">
     <h1 class="mb-3">@ViewData["Title"]</h1>
@@ -52,6 +123,17 @@
                         <input asp-for="Subject" class="form-control" name="Subject" />
                         <span asp-validation-for="Subject" class="text-danger"></span>
                     </div>
+                    @* 主旨的「插入變數」下拉（不改動原本 input） *@
+                    <div class="mt-1">
+                        <div class="dropdown d-inline-block">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" type="button">
+                                插入變數
+                            </button>
+                            <ul class="dropdown-menu" id="subject-tag-menu"></ul>
+                        </div>
+                        <div class="form-text">點選變數會插入到主旨游標位置。</div>
+                    </div>
+
                     <div class="col-12 d-flex align-items-center gap-3">
                         <div class="form-check">
                             <input class="form-check-input" asp-for="IsActive" id="IsActive" />
@@ -90,6 +172,19 @@
                     <input id="pv-name" class="form-control form-control-sm" placeholder="Name" />
                 </div>
             </div>
+            @* 測試變數（JSON），預覽與試寄會自動套用 *@
+            <div class="mt-2">
+                <label class="form-label">測試變數</label>
+                <div id="var-form" class="vstack gap-2">
+                    @* 這裡由 JS 依 merge-tags-json 自動產生欄位 *@
+                </div>
+                <div class="side-note">這些值只影響預覽／試寄，不會儲存到資料庫。</div>
+            </div>
+
+            @* 保留原本 VarsJson，但改為隱藏，讓 unlayer-mail.js 照常讀取 *@
+<textarea id="VarsJson" class="form-control form-control-sm d-none" rows="5"></textarea>
+
+
 
             <div class="d-flex align-items-center justify-content-between mt-3">
                 <h6 class="mb-0">預覽</h6>
@@ -135,4 +230,142 @@
             antiForgery: document.querySelector('#form-basic input[name="__RequestVerificationToken"]').value
         });
     </script>
+    <script>
+        (function(){
+          // 主旨欄位的插入變數行為
+          const menu = document.getElementById('subject-tag-menu');
+          const input = document.querySelector('[name="Subject"]');
+          if (!menu || !input) return;
+
+          try {
+            const raw = document.getElementById('merge-tags-json')?.textContent || '[]';
+            const list = JSON.parse(raw) || [];
+            menu.innerHTML = list.length
+              ? list.map(t => `<li><a href="#" class="dropdown-item" data-val="${t.value}">${t.name}</a></li>`).join('')
+              : '<li><span class="dropdown-item-text text-muted">此模板沒有變數</span></li>';
+
+            menu.addEventListener('click', function(e){
+              const a = e.target.closest('a[data-val]'); if (!a) return;
+              e.preventDefault();
+              const token = a.getAttribute('data-val') || '';
+              const start = input.selectionStart, end = input.selectionEnd, v = input.value || '';
+              input.value = v.slice(0, start) + token + v.slice(end);
+              const pos = start + token.length;
+              input.setSelectionRange(pos, pos);
+              input.focus();
+            });
+          } catch (err) {
+            console.warn('merge-tags for Subject failed:', err);
+            menu.innerHTML = '<li><span class="dropdown-item-text text-muted">讀取變數失敗</span></li>';
+          }
+        })();
+    </script>
+    <script>
+        (function(){
+          // 讀取 merge tags（[{ name, value:"{{Token}}" }, ...]）
+          function getMergeTags(){
+            try{
+              const raw = document.getElementById('merge-tags-json')?.textContent || '[]';
+              return JSON.parse(raw) || [];
+            }catch{ return []; }
+          }
+
+          // 從 "{{Token}}" 取出 "Token"
+          function tokenKeyFrom(value){
+            return (value || '').replace(/^\s*\{\{\s*/, '').replace(/\s*\}\}\s*$/, '');
+          }
+
+          // 讀/寫 VarsJson（物件 <-> textarea）
+          const varsTa = document.getElementById('VarsJson');
+          function readVars(){
+            try{ return JSON.parse(varsTa.value || '{}') || {}; }catch{ return {}; }
+          }
+          function writeVars(obj){
+            varsTa.value = JSON.stringify(obj);
+            // 觸發現有 unlayer-mail.js 的預覽更新（它有監聽 VarsJson 的 input/change）
+            varsTa.dispatchEvent(new Event('input', { bubbles:true }));
+          }
+
+          // 產生欄位
+          function buildVarForm(){
+            const form = document.getElementById('var-form');
+            if(!form) return;
+            const tags = getMergeTags();               // 依 TemplateKey 由後端產出的清單
+            const current = readVars();
+
+            // 先清空
+            form.innerHTML = '';
+
+            if(!tags.length){
+              form.innerHTML = '<div class="text-muted small">此模板沒有可用變數</div>';
+              return;
+            }
+
+            tags.forEach(t=>{
+              const key = tokenKeyFrom(t.value);       // 例如 "{{OrderNo}}" -> "OrderNo"
+              const id  = 'var-' + key;
+
+              const group = document.createElement('div');
+              group.className = 'input-group input-group-sm';
+
+              const label = document.createElement('span');
+              label.className = 'input-group-text';
+              label.textContent = t.name;              // 使用清單裡的中文名稱
+
+              const inp = document.createElement('input');
+              inp.type = 'text';
+              inp.className = 'form-control';
+              inp.id = id;
+              inp.placeholder = key;
+              inp.value = (current[key] ?? '');
+
+              // 輸入時同步到 VarsJson
+              inp.addEventListener('input', () => {
+                const v = readVars();
+                v[key] = inp.value;
+                writeVars(v);
+              });
+
+              group.appendChild(label);
+              group.appendChild(inp);
+              form.appendChild(group);
+            });
+
+            // 補一排快速操作（重設 / 從主旨帶入常見欄位）
+            const tools = document.createElement('div');
+            tools.className = 'd-flex gap-2 mt-1';
+            tools.innerHTML = `
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-vars-reset">重設</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-vars-from-subject">從主旨猜值</button>
+            `;
+            form.appendChild(tools);
+
+            // 重設：清空欄位 & VarsJson
+            form.querySelector('#btn-vars-reset').addEventListener('click', ()=>{
+              const v = {};
+              form.querySelectorAll('input.form-control').forEach(i=> i.value = '');
+              writeVars(v);
+            });
+
+            // 從主旨猜值（可選）：把 Name=右側姓名、Subject=主旨；其餘保留
+            form.querySelector('#btn-vars-from-subject').addEventListener('click', ()=>{
+              const subj = document.querySelector('[name="Subject"]')?.value || '';
+              const name = document.getElementById('pv-name')?.value || '';
+              const v = readVars();
+              if('Subject' in v || tags.some(t=>tokenKeyFrom(t.value)==='Subject')) v.Subject = subj;
+              if('Name' in v     || tags.some(t=>tokenKeyFrom(t.value)==='Name'))    v.Name    = name;
+              writeVars(v);
+              // 也把欄位畫面同步
+              form.querySelectorAll('input.form-control').forEach(i=>{
+                const k = i.id.replace(/^var-/, '');
+                if(k in v) i.value = v[k] ?? '';
+              });
+            });
+          }
+
+          // 初始化：載入一次（會把空物件寫回 VarsJson，觸發預覽）
+          buildVarForm();
+        })();
+    </script>
+
 }
