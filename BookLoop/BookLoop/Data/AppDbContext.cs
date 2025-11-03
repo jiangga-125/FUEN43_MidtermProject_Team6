@@ -27,6 +27,10 @@ namespace BookLoop.Data
 		//public DbSet<MailTemplate> MailTemplates { get; set; }
 		public DbSet<Template> Templates => Set<Template>();
 		public DbSet<TemplateVersion> TemplateVersions => Set<TemplateVersion>();
+        public DbSet<MailSendLog> MailSendLogs => Set<MailSendLog>();
+        public DbSet<MailJob> MailJobs => Set<MailJob>();
+        public DbSet<MailJobRecipient> MailJobRecipients => Set<MailJobRecipient>();
+
 
 		public DbSet<RefreshToken> RefreshTokens { get; set; } = null!; // 新增JWT RefreshTokens
 
@@ -137,6 +141,7 @@ namespace BookLoop.Data
 				.HasIndex(v => new { v.TemplateId, v.IsDefault })
 				.HasFilter("[IsDefault] = 1")
 				.IsUnique();
+
 			//b.Entity<PermissionFeature>(e =>
 			//{
 			//	e.ToTable("PERMISSION_FEATURES"); // ← 與 DB 一致
@@ -145,6 +150,67 @@ namespace BookLoop.Data
 			//	e.HasOne(x => x.Feature).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.FeatureID);
 			//});
 
-		}
-	}
+
+            modelBuilder.Entity<MailJob>(e =>
+            {
+                e.ToTable("MailJob");
+                e.HasKey(x => x.JobId);
+
+                e.Property(x => x.TemplateKey).HasMaxLength(100).IsRequired();
+                e.Property(x => x.CampaignName).HasMaxLength(200).IsRequired();
+                e.Property(x => x.Description).HasMaxLength(1000);
+
+                // ���A�w�]
+                e.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("Scheduled");
+
+                // �i�����w�]
+                e.Property(x => x.TotalRecipients).HasDefaultValue(0);
+                e.Property(x => x.SentCount).HasDefaultValue(0);
+
+                // �`�άd�߯���
+                e.HasIndex(x => x.SendAt);        // �w�w�ɶ�
+                e.HasIndex(x => x.TemplateKey);
+                e.HasIndex(x => x.Status);
+
+                // ���Ƶ{��C�`�Ϊ������֡]���A�Ϯɶ��^
+                e.HasIndex(x => new { x.Status, x.SendAt })
+                 .HasDatabaseName("IX_MailJob_Status_SendAt");
+            });
+
+            // MailJobRecipient�]�W����ӡ^�X �@�ʫH�פ@��
+            modelBuilder.Entity<MailJobRecipient>(e =>
+            {
+                e.ToTable("MailJobRecipient");
+                e.HasKey(x => x.MailJobRecipientId);
+
+                e.Property(x => x.RecipientEmail).HasMaxLength(320).IsRequired();
+                e.Property(x => x.RecipientName).HasMaxLength(200);
+                e.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("Pending");
+                e.Property(x => x.Error).HasMaxLength(1000);
+
+                e.HasIndex(x => new { x.MailJobId, x.Status });
+                e.HasIndex(x => x.RecipientEmail);
+
+                e.HasOne(x => x.MailJob)
+                 .WithMany(j => j.Recipients)
+                 .HasForeignKey(x => x.MailJobId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // MailSendLog�]��x�^�X ����x 1:1 ���W�����
+            modelBuilder.Entity<MailSendLog>(e =>
+            {
+                e.ToTable("MailSendLog");
+
+                // ���ި� JobRecipientId�A�Ӭݳ�@����̪���x�|���
+                e.HasIndex(x => x.JobRecipientId);
+
+                // �Y�A�n�[�j���p�]���¸�ƳB�z���A�}�ҡ^
+                // e.HasOne<MailJobRecipient>()
+                //   .WithMany()
+                //   .HasForeignKey(x => x.JobRecipientId)
+                //   .OnDelete(DeleteBehavior.SetNull);
+            });
+        }
+    }
 }
