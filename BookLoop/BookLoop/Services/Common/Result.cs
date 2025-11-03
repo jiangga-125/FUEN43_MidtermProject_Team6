@@ -1,17 +1,55 @@
-﻿// /Services/Common/Result.cs
-namespace BookLoop.Services.Common
+﻿namespace BookLoop.Services.Common
 {
-	// 泛型結果：統一回傳成功/失敗與訊息
+	/// <summary>
+	/// 通用泛型結果封裝類別，與舊版本完全相容 (支援 Ok 屬性、Ok 方法、ErrorMessage、Data)
+	/// </summary>
 	public class Result<T>
 	{
-		public bool Ok { get; private set; }                  // 是否成功
-		public string? Message { get; private set; }          // 失敗或提示訊息
-		public T? Data { get; private set; }                  // 成功時的資料載體
+		// === 狀態屬性 ===
+		public bool IsSuccess { get; private set; }
+		public bool Ok => IsSuccess;              // ✅ 提供給 if (!result.Ok) 使用
+		public string? Message { get; private set; }
+		public string? ErrorMessage { get; private set; }
 
-		public static Result<T> Success(T data, string? msg = null)
-			=> new Result<T> { Ok = true, Data = data, Message = msg };
+		// === 資料內容 ===
+		public T? Value { get; private set; }
+		public T? Data => Value;                  // ✅ 舊程式中用 result.Data 的別名
 
-		public static Result<T> Fail(string msg)
-			=> new Result<T> { Ok = false, Message = msg };
+		private Result() { }
+
+		// === 成功方法 ===
+		public static Result<T> Success(T value, string? message = null)
+		{
+			return new Result<T>
+			{
+				IsSuccess = true,
+				Value = value,
+				Message = message,
+				ErrorMessage = message
+			};
+		}
+
+		// ✅ 舊專案用法：Result.Ok(value)
+		public static Result<T> OkResult(T value, string? message = null)
+		{
+			return Success(value, message);
+		}
+
+		// === 失敗方法 ===
+		public static Result<T> Fail(string message)
+		{
+			return new Result<T>
+			{
+				IsSuccess = false,
+				Message = message,
+				ErrorMessage = message
+			};
+		}
+
+		// ✅ 舊專案用法：Result.Error("錯誤訊息")
+		public static Result<T> Error(string message)
+		{
+			return Fail(message);
+		}
 	}
 }
