@@ -25,10 +25,12 @@
     <div class="mb-3">
         <label asp-for="Position" class="form-label">顯示位置</label>
         <select asp-for="Position" class="form-select">
-            <option>HomeBanner</option>
-            <option>EventPage</option>
-            <option>Sidebar</option>
+            <option value="HomeBanner">首頁橫幅（頂部）</option>
+            <option value="Carousel">首頁輪播</option>
+            <option value="EventPage">彈出視窗</option>
+            <option value="Sidebar">側邊廣告</option>
         </select>
+
     </div>
 
     <div class="mb-3">

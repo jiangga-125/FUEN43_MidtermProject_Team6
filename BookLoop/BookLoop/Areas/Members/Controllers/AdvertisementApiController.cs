@@ -37,7 +37,9 @@ namespace BookLoop.Controllers.Api
 	? a.ImageUrl
 	: $"{Request.Scheme}://{Request.Host}{(a.ImageUrl.StartsWith("/") ? "" : "/")}{a.ImageUrl}",
 
-					linkUrl = a.LinkUrl
+					linkUrl = a.LinkUrl,
+					position = a.Position
+
 				})
 				.ToList();
 
