@@ -1,0 +1,128 @@
+﻿@model IEnumerable<BookLoop.Models.MailJob>
+@{
+    ViewData["Title"] = "群發活動列表";
+
+    string DT(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy/MM/dd HH:mm") : "-";
+    string Pct(int sent, int total) => total <= 0 ? "0%" : $"{Math.Round(100.0 * sent / Math.Max(1, total)):0}%";
+    string N(int v) => v.ToString("#,0");
+
+    Func<string, string> statusClass = s => s switch
+    {
+        "Scheduled" => "badge text-bg-secondary",
+        "Sending" => "badge text-bg-info text-dark",
+        "Completed" => "badge text-bg-success",
+        "Failed" => "badge text-bg-danger",
+        "Canceled" => "badge text-bg-dark",
+        _ => "badge text-bg-light text-dark"
+    };
+}
+@functions {
+    // 狀態文字（中文）
+    string StatusText(string? s) => s switch
+    {
+        "Scheduled" => "已排程",
+        "Sending" => "發送中",
+        "Completed" => "完成",
+        "Failed" => "失敗",
+        "Canceled" => "取消",
+        _ => s ?? "未知"
+    };
+}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+    <h2 class="mb-0">@ViewData["Title"]</h2>
+    <div class="d-flex gap-2">
+        <a class="btn btn-primary" asp-area="Mail" asp-controller="MailJobs" asp-action="Create">新增活動</a>
+    </div>
+</div>
+
+<!-- 狀態說明 -->
+<div class="small text-muted d-flex flex-wrap gap-2 align-items-center my-2" aria-label="狀態說明">
+    <span>狀態說明：</span>
+    <span class="badge text-bg-secondary">⏲ 已排程</span>
+    <span class="badge text-bg-info text-dark">📤 發送中</span>
+    <span class="badge text-bg-success">✔ 完成</span>
+    <span class="badge text-bg-danger">✖ 失敗</span>
+    <span class="badge text-bg-dark">🛑 取消</span>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 80px;">#</th>
+                        <th>活動名稱</th>
+                        <th>模板鍵</th>
+                        <th style="width: 160px;">預定時間</th>
+                        <th style="width: 110px;">狀態</th>
+                        <th style="width: 220px;">進度</th>
+                        <th style="width: 180px;">建立</th>
+                        <th style="width: 240px;" class="text-end">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr><td colspan="8" class="text-center text-muted py-4">目前沒有群發活動</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.OrderByDescending(x => x.JobId))
+                        {
+                            var total = Math.Max(0, item.TotalRecipients);
+                            var sent = Math.Min(item.SentCount, total);
+                            var pct = total == 0 ? 0 : (int)Math.Round(100.0 * sent / total);
+
+                            <tr>
+                                <td class="text-muted">#@item.JobId</td>
+                                <td class="text-truncate" style="max-width: 300px;">
+                                    <div class="fw-semibold">@item.CampaignName</div>
+                                    @if (!string.IsNullOrWhiteSpace(item.Description))
+                                    {
+                                        <div class="small text-muted">@item.Description</div>
+                                    }
+                                </td>
+                                <td class="text-monospace">@item.TemplateKey</td>
+                                <td>@DT(item.SendAt)</td>
+                                <td><span class="@statusClass(item.Status ?? "")">@StatusText(item.Status)</span></td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height:10px" role="progressbar"
+                                             aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100" aria-label="發送進度">
+                                            <div class="progress-bar" style="width:@pct%"></div>
+                                        </div>
+                                        <span class="small text-nowrap" title="已寄 / 總名單">@N(sent) / @N(total)</span>
+                                    </div>
+                                    <div class="small text-muted">@Pct(sent, total)</div>
+                                </td>
+                                <td>
+                                    <div>@DT(item.CreatedAt)</div>
+                                    <div class="small text-muted">@item.CreatedBy</div>
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    <a class="btn btn-sm btn-secondary" title="查看詳細進度與名單"
+                                       asp-area="Mail" asp-controller="MailJobs" asp-action="Details"
+                                       asp-route-id="@item.JobId">查看</a>
+
+                                    <form asp-area="Mail" asp-controller="MailJobs" asp-action="Cancel"
+                                          method="post" class="d-inline"
+                                          onsubmit="return confirm('取消後不可復原。確定要取消這個批次嗎？');" aria-label="取消批次">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@item.JobId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                @(item.Status is "Scheduled" or "Sending" ? "" : "disabled")
+                                                title="將狀態改為已取消（不會強制中止已送出的信件）">
+                                            取消
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

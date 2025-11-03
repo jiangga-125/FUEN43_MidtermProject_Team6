@@ -1,0 +1,206 @@
+﻿@model BookLoop.Models.MailJob
+@{
+    ViewData["Title"] = "建立群發活動";
+    string DTLocal(DateTime? dt) => (dt == null || dt == default)
+        ? DateTime.Now.AddMinutes(10).ToString("yyyy-MM-ddTHH:mm")
+        : dt.Value.ToString("yyyy-MM-ddTHH:mm");
+}
+
+<h2 class="mb-3">@ViewData["Title"]</h2>
+
+<div class="row">
+    <div class="col-lg-8 col-md-10">
+        <form asp-action="Create" method="post" id="jobForm" novalidate>
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+            <!-- Template -->
+            <div class="mb-3">
+                <label asp-for="TemplateId" class="form-label">模板群組</label>
+                <select asp-for="TemplateId"
+                        asp-items="@(ViewBag.TemplateId ?? Enumerable.Empty<SelectListItem>())"
+                        class="form-select" id="TemplateId">
+                    <option value="">-- 請選擇模板 --</option>
+                </select>
+                <span class="form-text">先選擇模板群組，再選擇下方的模板版本。</span>
+                <span asp-validation-for="TemplateId" class="text-danger"></span>
+            </div>
+
+            <!-- Template Version -->
+            <div class="mb-3">
+                <label asp-for="TemplateVersionId" class="form-label">模板版本</label>
+                <select asp-for="TemplateVersionId"
+                        asp-items="@(ViewBag.TemplateVersionId ?? Enumerable.Empty<SelectListItem>())"
+                        class="form-select" id="TemplateVersionId">
+                    <option value="">-- 請先選擇上方模板 --</option>
+                </select>
+                <span class="form-text">★ 代表預設版本。切換模板後會自動載入可選版本。</span>
+                <span asp-validation-for="TemplateVersionId" class="text-danger"></span>
+            </div>
+
+            <!-- Campaign Name -->
+            <div class="mb-3">
+                <label asp-for="CampaignName" class="form-label">活動名稱</label>
+                <input asp-for="CampaignName" class="form-control" placeholder="例如：11 月會員促銷 A 檔" />
+                <span asp-validation-for="CampaignName" class="text-danger"></span>
+            </div>
+
+            <!-- SendAt -->
+            <div class="mb-3">
+                <label asp-for="SendAt" class="form-label">預定發送時間</label>
+                <input asp-for="SendAt" class="form-control" type="datetime-local" value="@DTLocal(Model.SendAt)" />
+                <span class="form-text">時間以本地時區為準。</span>
+                <span asp-validation-for="SendAt" class="text-danger"></span>
+            </div>
+
+            <!-- Import Members -->
+            <div class="mb-3">
+                <label class="form-label">從會員匯入名單</label>
+                <div class="input-group">
+                    <select id="MemberRoleSelect"
+                            class="form-select"
+                            asp-items="@(ViewBag.MemberRoles ?? Enumerable.Empty<SelectListItem>())">
+                        <option value="">-- 請選擇會員角色 --</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" type="button" id="ImportMembersBtn">
+                        <i class="fas fa-download me-1"></i> 匯入
+                    </button>
+                </div>
+                <div class="form-text">點選「匯入」會 <b>覆蓋</b> 下方名單欄位。</div>
+            </div>
+
+            <!-- Segment Query -->
+            <div class="mb-3">
+                <label asp-for="SegmentQuery" class="form-label">名單（每行一筆）</label>
+                <textarea asp-for="SegmentQuery" class="form-control" rows="8"
+                          placeholder="a@ex.com,Alice&#10;b@ex.com,Bob"></textarea>
+                <div class="form-text">
+                    格式：<code>email</code> 或 <code>email,姓名</code>。例：<code>alice@example.com,Alice</code>、<code>bob@example.com</code>
+                </div>
+                <span asp-validation-for="SegmentQuery" class="text-danger"></span>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">建立</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">返回</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+          // ---- Template / Version 連動 ----
+          const tplSel = document.getElementById("TemplateId");
+          const verSel = document.getElementById("TemplateVersionId");
+          const emptyOption = '<option value="">-- 請先選擇上方模板 --</option>';
+
+          function lockVersionSelect(locked, text) {
+            verSel.disabled = locked;
+            verSel.innerHTML = `<option value="">${text}</option>`;
+          }
+
+          async function refreshVersions(templateId, selectedValue) {
+            if (!templateId) { lockVersionSelect(true, "請先選擇上方模板"); return; }
+            lockVersionSelect(true, "載入中…");
+            try {
+              const url = '@Url.Action("GetVersions", "MailJobs", new { area = "Mail" })' + `?templateId=${templateId}`;
+              const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              const data = await res.json();
+
+              verSel.innerHTML = '<option value="">-- 請選擇版本 --</option>';
+              data.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.id;
+                opt.textContent = v.text; // 可能含「★ 預設」
+                if (selectedValue && String(selectedValue) === String(v.id)) opt.selected = true;
+                verSel.appendChild(opt);
+              });
+              verSel.disabled = false;
+            } catch (e) {
+              console.error(e);
+              lockVersionSelect(true, "載入失敗，請重試");
+            }
+          }
+
+          tplSel.addEventListener('change', () => refreshVersions(tplSel.value, null));
+
+          document.addEventListener('DOMContentLoaded', () => {
+            const initTemplateId = tplSel.value;
+            const initVersionId = verSel.value;
+            if (!initTemplateId) {
+              lockVersionSelect(true, "請先選擇上方模板");
+            } else if (!verSel.options || verSel.options.length <= 1) {
+              // 回填狀況：重新載入版本並選回
+              refreshVersions(initTemplateId, initVersionId);
+            }
+          });
+
+          // ---- 匯入會員名單（覆蓋 textarea）----
+          const roleSel = document.getElementById("MemberRoleSelect");
+          const importBtn = document.getElementById("ImportMembersBtn");
+          const segmentQueryTa = document.getElementById("SegmentQuery"); // asp-for 會生成此 id
+
+          importBtn?.addEventListener('click', async () => {
+            const selectedRole = roleSel?.value || "";
+            if (!selectedRole) {
+              alert('請先選擇一個會員角色。');
+              roleSel?.focus();
+              return;
+            }
+
+            importBtn.disabled = true;
+            importBtn.innerHTML = '匯入中…';
+
+            try {
+              const url = '@Url.Action("GetMembersByRole", "MailJobs", new { area = "Mail" })' + `?role=${encodeURIComponent(selectedRole)}`;
+              const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+              if (!res.ok) throw new Error(`伺服器錯誤: ${res.status}`);
+
+              const members = await res.json();
+              if (!Array.isArray(members) || members.length === 0) {
+                alert('找不到該角色的會員，或沒有可用 Email。');
+                segmentQueryTa.value = '';
+                return;
+              }
+
+              // 去除空白、過濾掉無效 email
+              const lines = members
+                .map(m => ({
+                  email: (m.email || '').trim(),
+                  name: (m.username || m.name || '').trim()
+                }))
+                .filter(m => m.email)                // 沒 email 不要
+                .map(m => m.name ? `${m.email},${m.name}` : m.email);
+
+              segmentQueryTa.value = lines.join('\n');
+              alert(`成功匯入 ${lines.length} 筆會員資料。`);
+            } catch (err) {
+              console.error('Failed to import members:', err);
+              alert('匯入失敗，請稍後再試或檢查主控台。');
+            } finally {
+              importBtn.disabled = false;
+              importBtn.innerHTML = '<i class="fas fa-download me-1"></i> 匯入';
+            }
+          });
+
+          // ---- 送出前防呆（必選模板與版本）----
+          document.getElementById('jobForm').addEventListener('submit', (e) => {
+            if (!tplSel.value) {
+              e.preventDefault();
+              alert('請先選擇「模板群組」。');
+              tplSel.focus();
+              return;
+            }
+            if (!verSel.value) {
+              e.preventDefault();
+              alert('請先選擇「模板版本」。');
+              verSel.focus();
+              return;
+            }
+          });
+        })();
+    </script>
+}
