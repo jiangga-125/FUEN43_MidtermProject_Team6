@@ -27,9 +27,9 @@ function onPickCategory(id: number | null) {
 
 
   <!-- 首頁專屬區塊：只有在 '/' 才會渲染 -->
-  <template v-if="isHome">    
+  <template v-if="isHome">  
+    <HeaderBar /> 
     <AdPopupAndTopBar />
-    <HeaderBar />
     <BannerCarousel />
     <main class="container layout">
       <!-- 左：分類清單，點擊後更新 selectedCategoryId -->
