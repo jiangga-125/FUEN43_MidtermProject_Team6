@@ -23,23 +23,24 @@ namespace BookLoop.Controllers
             _env = env;
         }
 
-        // GET: Listings
-        public  IActionResult Index()
+        //前台畫面顯示
+        public IActionResult ListingFrontVue()
         {
             return View();
         }
-        public async Task <IActionResult> IndexFront()
-        {
-            var bookLoopContext = _context.Listings.Include(l => l.Category).Include(l => l.Publisher);
-            return View(await bookLoopContext.ToListAsync());
-            
+
+        // GET: Listings
+        public  IActionResult Index()
+        {                           
+            return View();
         }
-        //
+        
         [HttpGet]
         public async Task<IActionResult> GetBooks()
         {
             var books = await _context.Listings       
                 .AsNoTracking()
+                .OrderByDescending(l => l.Category)
                 .Select(l => new
             {
                     l.ListingID,
@@ -219,7 +220,7 @@ namespace BookLoop.Controllers
 
                 await _context.SaveChangesAsync();
                 await tx.CommitAsync();
-
+                TempData["ShowResultModal"] = true;
                 return RedirectToAction(nameof(Index));
             }
             catch

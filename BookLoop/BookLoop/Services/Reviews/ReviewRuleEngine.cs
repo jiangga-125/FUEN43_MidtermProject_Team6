@@ -40,7 +40,7 @@ namespace BookLoop.Services.Reviews
 				findings.Add(new Finding { Code = "RATING_RANGE", Message = $"評分需介於 {set.RatingMin}~{set.RatingMax}。", Block = true });
 
 			// 3) 禁止自評（當 TargetTypeForMember 命中時）
-			if (set.BlockSelfReview && review.TargetType == set.TargetTypeForMember && review.MemberId == review.TargetId)
+			if (set.BlockSelfReview && review.TargetType == set.TargetTypeForMember && review.TargetID == review.TargetID)
 				findings.Add(new Finding { Code = "SELF_REVIEW", Message = "禁止對自己評論。", Block = true });
 
 			// 4) 禁止 URL
@@ -65,9 +65,9 @@ namespace BookLoop.Services.Reviews
 			{
 				var from = DateTime.UtcNow.AddHours(-set.DuplicateWindowHours);
 				var dup = await _db.Reviews.AnyAsync(r =>
-					r.MemberId == review.MemberId &&
+					r.MemberID == review.MemberID &&
 					r.TargetType == review.TargetType &&
-					r.TargetId == review.TargetId &&
+					r.TargetID == review.TargetID &&
 					r.CreatedAt >= from &&
 					r.Content == review.Content
 				);

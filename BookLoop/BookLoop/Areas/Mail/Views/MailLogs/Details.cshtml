@@ -1,0 +1,123 @@
+﻿@model BookLoop.Models.MailSendLog
+@{
+    ViewData["Title"] = "寄送明細";
+    var hasCid = (Model?.BodySnapshot ?? "").IndexOf("cid:", StringComparison.OrdinalIgnoreCase) >= 0;
+
+    string DT(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy/MM/dd HH:mm") : "-";
+    Func<string?, string> statusBadge = s => s switch
+    {
+        "pending" => "badge bg-secondary",
+        "Sent" => "badge text-bg-success",
+        "Failed" => "badge text-bg-danger",
+        _ => "badge text-bg-secondary"
+    };
+    string StatusText(string? s) => s switch
+    {
+        "pending" => "待寄送",
+        "Sent" => "已寄出",
+        "Failed" => "失敗",
+        _ => s ?? "未知"
+    };
+}
+
+<div class="container mt-4">
+    <h1 class="mb-3">寄送明細</h1>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header">基本資訊</div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-4">LogId</dt>
+                        <dd class="col-8">@Model.LogId</dd>
+                        <dt class="col-4">時間</dt>
+                        <dd class="col-8">@Model.SentAt</dd>
+                        <dt class="col-4">收件者</dt>
+                        <dd class="col-8">@Model.Recipient</dd>
+                        <dt class="col-4">主旨</dt>
+                        <dd class="col-8">@Model.Subject</dd>
+                        <dt class="col-4">狀態</dt>
+                        <dd class="col-8">
+                            <span class="@statusBadge(Model.Status)">@StatusText(Model.Status)</span>
+                        </dd>
+                        @if (!string.IsNullOrWhiteSpace(Model.Error))
+                        {
+                            <dt class="col-4 text-danger">錯誤</dt>
+                            <dd class="col-8 text-danger">@Model.Error</dd>
+                        }
+                        <dt class="col-4">TemplateId</dt>
+                        <dd class="col-8">@Model.TemplateId</dd>
+                        <dt class="col-4">TemplateKey</dt>
+                        <dd class="col-8">@Model.TemplateKey</dd>
+                        <dt class="col-4">TemplateVersionId</dt>
+                        <dd class="col-8">@Model.TemplateVersionId</dd>
+                        <dt class="col-4">ProviderMsgId</dt>
+                        <dd class="col-8">@Model.ProviderMsgId</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+
+
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h5 class="mb-0">實際預覽</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary" id="btnReload">重新載入</button>
+                </div>
+            </div>
+
+            <iframe id="previewFrame" class="w-100 border rounded" style="height:650px;background:#fff"></iframe>
+
+            <textarea id="__snapshot" hidden>@Html.Raw(Model?.BodySnapshot ?? "")</textarea>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .card-header {
+            font-weight: 600;
+        }
+
+        iframe#previewFrame {
+            box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,.06);
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        (function(){
+          const $frame = document.getElementById('previewFrame');
+          const $raw = document.getElementById('__snapshot');
+          const $btnReload = document.getElementById('btnReload');
+          const $btnToggleRaw = document.getElementById('btnToggleRaw');
+
+          function writeHtml(html){
+            const doc = $frame.contentDocument || $frame.contentWindow.document;
+            doc.open();
+            doc.write('<!doctype html><html><head><meta charset="utf-8"></head><body>');
+            doc.write(html || '');
+            doc.write('</body></html>');
+            doc.close();
+          }
+
+          // 預設載入 BodySnapshot（注意：含 cid: 時，圖片不會顯示）
+          writeHtml($raw.value || '');
+
+          $btnReload?.addEventListener('click', ()=> writeHtml($raw.value || ''));
+
+          // 有 cid: 時提供一鍵「看原始字串」的降級（方便你確認 HTML 本體）
+          $btnToggleRaw?.addEventListener('click', ()=>{
+            const doc = $frame.contentDocument || $frame.contentWindow.document;
+            const encoded = ($raw.value || '').replace(/[&<>]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[s]));
+            doc.open();
+            doc.write('<!doctype html><html><head><meta charset="utf-8"></head><body><pre style="white-space:pre-wrap">'+ encoded +'</pre></body></html>');
+            doc.close();
+          });
+        })();
+    </script>
+}

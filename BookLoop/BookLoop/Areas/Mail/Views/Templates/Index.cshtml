@@ -1,0 +1,66 @@
+﻿@model IEnumerable<BookLoop.Models.Template>
+
+@{
+    ViewData["Title"] = "範本群組";
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h1 class="h4 mb-0">@ViewData["Title"]</h1>
+        <a class="btn btn-primary"
+           asp-area="Mail"
+           asp-controller="Templates"
+           asp-action="Create">
+            新增模板
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th style="width:220px;">TemplateKey</th>
+                    <th>說明</th>
+                    <th class="text-center" style="width:120px;">版本數</th>
+                    <th style="width:220px;">預設版本</th>
+                    <th style="width:200px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var t in Model)
+                    {
+                        var defaultName = t.Versions?.FirstOrDefault(v => v.IsDefault)?.TemplateName ?? "";
+                        <tr>
+                            <td class="fw-semibold">@t.TemplateKey</td>
+                            <td class="text-muted text-truncate" style="max-width:420px">@t.Description</td>
+                            <td class="text-center">@((t.Versions?.Count) ?? 0)</td>
+                            <td>@defaultName</td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary"
+                                   asp-area="Mail"
+                                   asp-controller="TemplateVersions"
+                                   asp-action="Index"
+                                   asp-route-templateId="@t.TemplateId">
+                                    管理版本
+                                </a>
+                                <a class="btn btn-sm btn-outline-primary"
+                                   asp-area="Mail"
+                                   asp-controller="TemplateVersions"
+                                   asp-action="Create"
+                                   asp-route-templateId="@t.TemplateId">
+                                    新增版本
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="5" class="text-center text-muted">目前尚無範本群組，請先建立。</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

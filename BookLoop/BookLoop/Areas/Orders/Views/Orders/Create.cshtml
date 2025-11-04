@@ -82,6 +82,15 @@
                 <input asp-for="CouponDiscountAmount" class="form-control" type="number" step="0.01" />
                 <span asp-validation-for="CouponDiscountAmount" class="text-danger"></span>
             </div>
+            <div class="col-md-6">
+                <label class="form-label">物流公司</label>
+                <select name="Provider" class="form-select" required>
+                    <option value="">請選擇物流公司</option>
+                    <option value="黑貓宅急便">黑貓宅急便</option>
+                    <option value="宅配通">宅配通</option>
+                    <option value="新竹物流">新竹物流</option>
+                </select>
+            </div>
             <div class="form-group">
                 <input type="submit" value="Create" class="btn btn-primary mb-2 mt-3" />
             </div>

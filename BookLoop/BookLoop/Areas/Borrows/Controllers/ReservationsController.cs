@@ -78,8 +78,9 @@ namespace BookLoop.Areas.Borrows.Controllers
                 RequestedPickupDate = DateTime.Today.AddDays(1),       //只帶「明天」日期做預設
                 RequestedPickupTime = new TimeSpan(17, 30, 0),         //設定最晚取書時間欄位:17:30
 
-            };           
-            return View(vm);
+            };
+            // 回傳局部檢視
+            return PartialView("_BeforeReservation", vm);
         }
 
         //預約借書建立
@@ -113,7 +114,8 @@ namespace BookLoop.Areas.Borrows.Controllers
                     })
                     .ToListAsync();
                 vm.BookTitle = listing.Title;
-                return View(vm);
+                Response.StatusCode = 400;
+                return PartialView("_BeforeReservation", vm);
             }
             var pickupAt = vm.RequestedPickupDate.Date + vm.RequestedPickupTime;
             var dayCutoff = vm.RequestedPickupDate.Date + new TimeSpan(17, 30, 0);
@@ -135,10 +137,24 @@ namespace BookLoop.Areas.Borrows.Controllers
                                    
             _context.Reservations.Add(reservation);
             await _context.SaveChangesAsync();
-
+            // ★ 新增：偵測 AJAX，決定回傳型態
+            var isAjax = Request.Headers["X-Requested-With"] == "XMLHttpRequest"; // ★ 新增
+            if (isAjax)
+            {
+                // ★ 新增：成功時回 JSON（前端自行關 modal、更新畫面）
+                return Json(new
+                {
+                    ok = true,
+                    message = "預借成功，書籍保留中，請於設定時間前往借閱，否則自動取消。",
+                    listingId = vm.ListingID,
+                    readyAt = readyat,
+                    expiresAt = dayCutoff,
+                    newStatus = 1
+                });
+            }
             // 成功後導向（例如導回清單或詳細頁）
             TempData["Success"] = "預借成功,書籍保留中,請於設定時間前往借閱,否則自動取消。";
-            return RedirectToAction("Indexfront", "Listings", new { id = vm.ListingID });
+            return RedirectToAction("ListingFrontVue", "Listings", new { id = vm.ListingID });
         }
 
 
@@ -337,8 +353,8 @@ namespace BookLoop.Areas.Borrows.Controllers
 
                 await _context.SaveChangesAsync();
                 await tx.CommitAsync();
-
-                TempData["SuccessMessage"] = "預約已取消。";
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+                TempData["reSuccessMessage"] = "預約已取消。";
                 return RedirectToAction("Index", "Reservations");
             }
             catch
@@ -347,6 +363,25 @@ namespace BookLoop.Areas.Borrows.Controllers
                 throw;
             }
         }
-     
+
+        public async Task<IActionResult> ReIndexPartial()
+        {
+            const int fixedMemberId = 17;
+            var rows = await _context.Reservations.AsNoTracking().
+                Where(b => b.MemberID == fixedMemberId).Select(r => new ReservationsViewModel
+            {
+                ReservationID = r.ReservationID,
+                ListingID = r.ListingID,
+                BookTitle = r.Listing.Title,
+                MemberID = r.MemberID,
+                MemberName = r.Member.Username,
+                ExpiresDay = r.ExpiresAt,
+                ReservationStatus = (ReservationStatus)r.Status,
+                ReservationType = (ReservationType)r.ReservationType,
+
+            }).ToListAsync();
+            return PartialView("_reIndex", rows);
+        }
+
     }
 }

@@ -93,6 +93,17 @@ namespace BookLoop.Services.Coupons
 			return Result<bool>.Success(true);
 		}
 
+		// 取得目前可用的優惠券清單
+		public IEnumerable<Coupon> GetAvailableCoupons(int memberId)
+		{
+			// 這裡你可以根據實際的資料庫關聯邏輯修改
+			// 暫時用簡單的查詢（例如：只抓 IsActive = true 的優惠券）
+			return _db.Coupons
+				.Where(c => c.IsActive && c.StartAt <= DateTime.Now && c.EndAt >= DateTime.Now)
+				.AsNoTracking()
+				.ToList();
+		}
+
 
 	}
 }
