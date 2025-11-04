@@ -1,16 +1,18 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using BookLoop.Data;    // 若你的 Data namespace 不同請改
+using BookLoop.Models;  // 若你的 Models namespace 不同請改
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
-using BookLoop.Data;    // 若你的 Data namespace 不同請改
-using BookLoop.Models;  // 若你的 Models namespace 不同請改
+using System.Linq;
+using System.Threading.Tasks;
 
-namespace BookLoop.Controllers
+namespace BookLoop.Controllers.api
 {
 	[Route("api/dashboard")]
 	[ApiController]
+	[AllowAnonymous]
 	public class DashboardController : ControllerBase
 	{
 		private readonly ShopDbContext _shop;         // 訂單/商店資料（Orders）
@@ -35,12 +37,12 @@ namespace BookLoop.Controllers
 
 			// 今日營收（排除已取消 Status == 4）
 			var todayRevenue = await _shop.Set<Order>()
-				.Where(o => o.OrderDate >= today && o.OrderDate < tomorrow && o.Status != (byte)4)
+				.Where(o => o.OrderDate >= today && o.OrderDate < tomorrow && o.Status != 4)
 				.SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
 
 			// 未出貨（定義為 Status == 0 或 1）
 			var unshippedCount = await _shop.Set<Order>()
-				.Where(o => o.Status == (byte)0 || o.Status == (byte)1)
+				.Where(o => o.Status == 0 || o.Status == 1)
 				.CountAsync();
 
 			// 先把最新的原始欄位拉回記憶體（最多 5 筆）
@@ -60,15 +62,15 @@ namespace BookLoop.Controllers
 			var latestOrders = latestOrdersRaw.Select(o => new {
 				Id = o.OrderID,
 				MemberId = o.MemberID,
-				TotalAmount = o.TotalAmount,
-				Status = o.Status,
+				o.TotalAmount,
+				o.Status,
 				StatusText = o.Status == 0 ? "待付款"
 						   : o.Status == 1 ? "已下訂"
 						   : o.Status == 2 ? "已出貨"
 						   : o.Status == 3 ? "完成訂單"
 						   : o.Status == 4 ? "已取消"
 						   : "未知狀態",
-				CreatedAt = o.CreatedAt
+				o.CreatedAt
 			}).ToList();
 
 			// 若沒有資料，latestOrders 會是空 list（前端會處理友善提示）
@@ -77,7 +79,7 @@ namespace BookLoop.Controllers
 			try
 			{
 				inventoryAlerts = await _bookSys.Set<BookInventory>()
-					.Where(b => (b.OnHand - b.Reserved) <= 5)
+					.Where(b => b.OnHand - b.Reserved <= 5)
 					.CountAsync();
 			}
 			catch
@@ -103,7 +105,7 @@ namespace BookLoop.Controllers
 			var start = end.AddDays(-13);
 
 			var sales = await _shop.Set<Order>()
-				.Where(o => o.OrderDate >= start && o.OrderDate < end.AddDays(1) && o.Status != (byte)4)
+				.Where(o => o.OrderDate >= start && o.OrderDate < end.AddDays(1) && o.Status != 4)
 				.GroupBy(o => o.OrderDate.Date)
 				.Select(g => new { Date = g.Key, Sum = g.Sum(x => (decimal?)x.TotalAmount) ?? 0m })
 				.ToListAsync();
