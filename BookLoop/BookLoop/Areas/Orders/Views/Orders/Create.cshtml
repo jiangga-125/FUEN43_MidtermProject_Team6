@@ -67,7 +67,7 @@
             </div> *@
             <div class="form-group">
                 <label asp-for="CouponTypeSnap" class="control-label"></label>
-                <input id="couponTypeText" class="form-control" readonly />
+                <input id="couponTypeSnap" class="form-control" readonly />
                 <input asp-for="CouponTypeSnap" id="couponTypeInput" type="hidden" />
                 <span asp-validation-for="CouponTypeSnap" class="text-danger"></span>
             </div>
@@ -109,31 +109,26 @@
 </div>
 
 @section Scripts {
-    @await Html.PartialAsync("_ValidationScriptsPartial")
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            console.log("✅ Create page script loaded");
-
-        const codeInput = document.getElementById("discountCodeInput");
-        const typeInput = document.getElementById("couponTypeInput"); // 隱藏欄位 (int)
-        const typeText = document.getElementById("couponTypeText");   // 顯示文字欄位
-        const nameInput = document.querySelector("input[name='CouponNameSnap']");
-        const valueInput = document.querySelector("input[name='CouponDiscountAmount']");
-        const totalInput = document.querySelector("input[name='TotalAmount']");
-        const hint = document.getElementById("couponHint");
-
-            if (!codeInput) {
-                console.error("❌ 找不到 #discountCodeInput 欄位");
-                return;
-            }
+               document.addEventListener("DOMContentLoaded", function () {
+            const codeInput = document.getElementById("discountCodeInput");
+            const typeDisplay = document.getElementById("couponTypeSnap"); // 顯示文字的欄位
+            const typeInput = document.getElementById("couponTypeInput");  // 實際送出用 hidden 欄位
+            const nameInput = document.querySelector("input[name='CouponNameSnap']");
+            const valueInput = document.querySelector("input[name='CouponDiscountAmount']");
+            const totalInput = document.querySelector("input[name='TotalAmount']");
+            const hint = document.getElementById("couponHint");
 
             codeInput.addEventListener("change", async function () {
                 const code = this.value.trim();
                 const total = parseFloat(totalInput?.value || 0);
-                console.log("🔍 查詢優惠代碼：", code, "總金額：", total);
 
                 if (!code) {
+                    typeDisplay.value = "";
                     typeInput.value = "";
                     nameInput.value = "";
                     valueInput.value = "";
@@ -143,20 +138,12 @@
 
                 try {
                     const res = await fetch(`/api/Store/CouponsApi/GetByCode?code=${encodeURIComponent(code)}&amount=${total}`);
-
-                    // 若伺服器錯誤或404
-                    if (!res.ok) {
-                        const txt = await res.text();
-                        console.error("❌ HTTP錯誤:", res.status, txt);
-                        hint.innerHTML = `<span class="text-danger">查詢失敗（HTTP ${res.status}）</span>`;
-                        return;
-                    }
-
                     const json = await res.json();
                     console.log("📦 API 回傳：", json);
 
                     if (!json.success) {
                         hint.innerHTML = `<span class="text-danger">⚠️ ${json.message || "找不到優惠券代碼"}</span>`;
+                        typeDisplay.value = "";
                         typeInput.value = "";
                         nameInput.value = "";
                         valueInput.value = "";
@@ -165,15 +152,17 @@
 
                     const c = json.data;
 
-                    // ✅ 自動帶入資料
+                    // ✅ 寫入顯示用 + 提交用欄位
+                    const discountTypeText = c.discountTypeText || ((c.discountType == 0) ? "金額折抵" : "百分比折扣");
+                    typeDisplay.value = discountTypeText; // 顯示用
+                    typeInput.value = discountTypeText;   // 隱藏欄位（會被送到後端）
                     nameInput.value = c.name || "";
-                    typeInput.value = c.discountType === 0 ? "金額折抵" : "百分比折扣";
                     valueInput.value = c.discountValue || 0;
 
                     // ✅ 顯示提示
                     hint.innerHTML = `
                         <span class="text-success">
-                            ✅ 已套用優惠券「${c.name}」（${c.discountType === 0 ? "金額折抵" : "百分比折扣"}）
+                            ✅ 已套用優惠券「${c.name}」（${discountTypeText}）
                         </span>`;
                 } catch (err) {
                     console.error("🚨 發生錯誤：", err);
@@ -181,6 +170,8 @@
                 }
             });
         });
+
     </script>
 }
+
 
