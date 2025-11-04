@@ -34,25 +34,38 @@ namespace BookLoop.Areas.Members.Controllers
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> Create(Advertisement ad, IFormFile imageFile)
 		{
-			if (imageFile != null)
+			if (imageFile != null && imageFile.Length > 0)
 			{
-				string fileName = $"{Guid.NewGuid()}_{imageFile.FileName}";
-				string path = Path.Combine(_env.WebRootPath, "images/ads", fileName);
+				// 確保資料夾存在
+				string folder = Path.Combine(_env.WebRootPath, "images", "ads");
+				if (!Directory.Exists(folder))
+					Directory.CreateDirectory(folder);
+
+				// 取副檔名並建立純英文檔名
+				string ext = Path.GetExtension(imageFile.FileName);
+				string fileName = $"{Guid.NewGuid()}{ext}";
+				string path = Path.Combine(folder, fileName);
+
+				// 儲存圖片
 				using (var stream = new FileStream(path, FileMode.Create))
 				{
 					await imageFile.CopyToAsync(stream);
 				}
+
+				// 存入相對路徑
 				ad.ImageUrl = $"/images/ads/{fileName}";
 			}
 
 			ad.CreatedAt = DateTime.Now;
 			ad.UpdatedAt = DateTime.Now;
+
 			_db.Advertisements.Add(ad);
 			await _db.SaveChangesAsync();
 
-			TempData["Msg"] = "廣告新增成功！";
+			TempData["Msg"] = "✅ 廣告新增成功！";
 			return RedirectToAction(nameof(Index));
 		}
+
 
 		// 編輯
 		public async Task<IActionResult> Edit(int id)
@@ -70,9 +83,9 @@ namespace BookLoop.Areas.Members.Controllers
 			var dbAd = await _db.Advertisements.FindAsync(ad.AdvertisementID);
 			if (dbAd == null) return NotFound();
 
-			if (imageFile != null)
+			if (imageFile != null && imageFile.Length > 0)
 			{
-				// 驗證圖片檔案
+				// 驗證檔案類型
 				var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif" };
 				if (!allowedTypes.Contains(imageFile.ContentType))
 				{
@@ -80,23 +93,44 @@ namespace BookLoop.Areas.Members.Controllers
 					return RedirectToAction(nameof(Edit), new { id = ad.AdvertisementID });
 				}
 
-				if (imageFile.Length > 5 * 1024 * 1024) // 5MB 限制
+				// 驗證大小
+				if (imageFile.Length > 5 * 1024 * 1024)
 				{
 					TempData["Msg"] = "❌ 圖片太大，請上傳小於 5MB 的檔案。";
 					return RedirectToAction(nameof(Edit), new { id = ad.AdvertisementID });
 				}
 
-				// 儲存圖片
-				string fileName = $"{Guid.NewGuid()}_{imageFile.FileName}";
-				string path = Path.Combine(_env.WebRootPath, "images/ads", fileName);
+				// 📌 刪除舊圖片檔案（若存在）
+				if (!string.IsNullOrEmpty(dbAd.ImageUrl))
+				{
+					string oldPath = Path.Combine(_env.WebRootPath, dbAd.ImageUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+					if (System.IO.File.Exists(oldPath))
+					{
+						System.IO.File.Delete(oldPath);
+					}
+				}
+
+				// 📁 確保資料夾存在
+				string folder = Path.Combine(_env.WebRootPath, "images", "ads");
+				if (!Directory.Exists(folder))
+					Directory.CreateDirectory(folder);
+
+				// 🔤 新檔名：純英文 GUID + 副檔名
+				string ext = Path.GetExtension(imageFile.FileName);
+				string fileName = $"{Guid.NewGuid()}{ext}";
+				string path = Path.Combine(folder, fileName);
+
+				// 💾 寫入新圖片
 				using (var stream = new FileStream(path, FileMode.Create))
 				{
 					await imageFile.CopyToAsync(stream);
 				}
+
+				// 更新圖片路徑
 				dbAd.ImageUrl = $"/images/ads/{fileName}";
 			}
 
-			// 更新其他欄位
+			// 📝 更新其他欄位
 			dbAd.Title = ad.Title;
 			dbAd.LinkUrl = ad.LinkUrl;
 			dbAd.Position = ad.Position;
@@ -106,12 +140,13 @@ namespace BookLoop.Areas.Members.Controllers
 
 			await _db.SaveChangesAsync();
 
-			TempData["Msg"] = "✅ 廣告已成功更新！";
+			TempData["Msg"] = "✅ 廣告已更新（並自動刪除舊圖片）。";
 			return RedirectToAction(nameof(Edit), new { id = ad.AdvertisementID });
 		}
 
 
 		// ✅ 刪除
+		// ✅ 刪除廣告（同時刪除圖片檔案）
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> Delete(int id)
@@ -123,11 +158,35 @@ namespace BookLoop.Areas.Members.Controllers
 				return RedirectToAction(nameof(Index));
 			}
 
+			// 📁 1️⃣ 嘗試刪除實體圖片檔案
+			if (!string.IsNullOrEmpty(ad.ImageUrl))
+			{
+				string filePath = Path.Combine(
+					_env.WebRootPath,
+					ad.ImageUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar)
+				);
+
+				if (System.IO.File.Exists(filePath))
+				{
+					try
+					{
+						System.IO.File.Delete(filePath);
+					}
+					catch (Exception ex)
+					{
+						TempData["Msg"] = $"⚠️ 廣告已刪除，但刪除圖片失敗：{ex.Message}";
+					}
+				}
+			}
+
+			// 📄 2️⃣ 刪除資料庫紀錄
 			_db.Advertisements.Remove(ad);
 			await _db.SaveChangesAsync();
-			TempData["Msg"] = "🗑 廣告已刪除。";
+
+			TempData["Msg"] = "🗑 廣告與圖片已成功刪除。";
 			return RedirectToAction(nameof(Index));
 		}
+
 
 		// ✅ 狀態切換（啟用 / 停用）
 		[HttpPost]

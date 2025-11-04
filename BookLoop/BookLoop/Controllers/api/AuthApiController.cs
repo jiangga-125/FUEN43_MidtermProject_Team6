@@ -1,113 +1,89 @@
+using BookLoop;
 using BookLoop.Data;
 using BookLoop.Helpers;
 using BookLoop.Models;
-using BookLoop.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
-using System;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace BookLoop.Controllers.Api
 {
 	[ApiController]
 	[Route("api/auth")]
+	[Produces("application/json")]
 	public class AuthApiController : ControllerBase
 	{
+		private readonly AppDbContext _db;
+		private readonly IConfiguration _cfg;
+		private readonly IMemoryCache _cache;
+		private readonly IWebHostEnvironment _env;
+
+		public AuthApiController(AppDbContext db, IConfiguration cfg, IMemoryCache cache, IWebHostEnvironment env)
+		{
+			_db = db;
+			_cfg = cfg;
+			_cache = cache;
+			_env = env;
+		}
+
+		// ==== DTOs ====
 		public record LoginDto(string Account, string Password);
 
-		#region Login方法
-		[HttpPost("login")]
-		[AllowAnonymous]
-		public async Task<IActionResult> Login(
-			[FromBody] LoginDto dto,
-			[FromServices] AuthService auth
-		)
+		// Email OTP（共用）
+		public record EmailOtpDto(string Account, string Code);
+		public record EmailSendDto(string Account, string? Purpose);
+
+		// 註冊
+		public record RegisterSimpleDto(string Email, string Password, string? Username);
+		public record RegisterWithCodeDto(string Account, string Name, string Password, string Code);
+
+		// 忘記/重設
+		public record ForgotDto(string Email);
+		public record ResetDto(string Email, string Code, string NewPassword);
+		public record ResetConfirmDto(string Account, string Code, string Password);
+
+		// TOTP
+		public record TotpBindDto(string Account);
+		public record TotpVerifyDto(string Account, string Code);
+
+		// ==== 密碼雜湊（PBKDF2） ====
+		private static string HashPasswordPbkdf2(string password, int iterations = 100_000, int saltSize = 16, int keySize = 32)
 		{
-			var user = await auth.FindByEmailAsync(dto.Account);
-			if (user == null)
-				return Unauthorized(new { message = "帳號不存在" });
+			if (string.IsNullOrEmpty(password))
+				throw new ArgumentException("password is required", nameof(password));
 
-			if (!auth.VerifyPassword(user, dto.Password))
-				return Unauthorized(new { message = "帳號或密碼錯誤" });
-
-			await auth.SignInAsync(user, isPersistent: true); // 發與 MVC 相同的 Cookie
-			return Ok(new { message = "OK" });
+			var salt = RandomNumberGenerator.GetBytes(saltSize);
+			using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256);
+			var key = pbkdf2.GetBytes(keySize);
+			return $"PBKDF2${iterations}${Convert.ToBase64String(salt)}${Convert.ToBase64String(key)}";
 		}
-		#endregion
 
-		#region jwt token
-		[HttpPost("token")]
-		[AllowAnonymous]
-		// [FromServices] AppDbContext db 參數，用來存 Refresh Token
-		public async Task<IActionResult> Token([FromBody] LoginDto dto, [FromServices] AuthService auth, [FromServices] AppDbContext db, [FromServices] IConfiguration cfg)
+		// ==== JWT / Claims 共用 ====
+		private SymmetricSecurityKey BuildSigningKey()
 		{
-			// 驗證帳密
-			var user = await auth.FindByEmailAsync(dto.Account);
-			if (user == null)
-				return Unauthorized(new { message = "帳號或密碼錯誤" });
+			var keyStr = _cfg.GetSection("Jwt")["Key"]
+				?? throw new InvalidOperationException("Jwt:Key 未設定");
+			try { return new SymmetricSecurityKey(Convert.FromBase64String(keyStr)); }
+			catch { return new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr)); }
+		}
 
-			if (!auth.VerifyPassword(user, dto.Password))
-				return Unauthorized(new { message = "帳號或密碼錯誤" });
-
-			// 讀取 jwt 設定
-			var jwtSection = cfg.GetSection("Jwt");
-			var keyStr = jwtSection["Key"] ?? throw new Exception("Jwt:Key 未設定");
+		private (string token, DateTime expiresUtc) IssueAccessToken(IEnumerable<Claim> claims)
+		{
+			var jwtSection = _cfg.GetSection("Jwt");
 			var issuer = jwtSection["Issuer"];
 			var audience = jwtSection["Audience"];
 			var accessMinutes = int.Parse(jwtSection["AccessTokenMinutes"] ?? "15");
 
-			// 建 signing key（支援 Base64 或 UTF8）
-			SymmetricSecurityKey signingKey;
-			try
-			{
-				var keyBytes = Convert.FromBase64String(keyStr);
-				signingKey = new SymmetricSecurityKey(keyBytes);
-			}
-			catch
-			{
-				var keyBytes = Encoding.UTF8.GetBytes(keyStr);
-				signingKey = new SymmetricSecurityKey(keyBytes);
-			}
-
-			// 取得 user 資料（直接使用明確欄位）
-			string uid = user.UserID.ToString();          // 用 UserID (int) 直接轉 string
-			string email = user.Email ?? dto.Account;
-			string name = (user.GetType().GetProperty("UserName")?.GetValue(user)?.ToString()
-						   ?? user.GetType().GetProperty("Name")?.GetValue(user)?.ToString()
-						   ?? email);
-
-			// claims（按需擴充）
-			var claims = new List<Claim>
-			{
-			new Claim(JwtRegisteredClaimNames.Sub, dto.Account),
-			new Claim("uid", uid),
-			new Claim(ClaimTypes.Email, email),
-			new Claim(ClaimTypes.Name, name),
-			new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-			};
-
-			// 如果 AuthService 支援取得 roles / permissions，用以下程式碼加入 claims
-
-			/*
-			var roles = await auth.GetRolesAsync(user); // 若有此方法
-			foreach (var r in roles) claims.Add(new Claim(ClaimTypes.Role, r));
-
-			var perms = await auth.GetPermissionsAsync(user); // 若有此方法
-			foreach (var p in perms) claims.Add(new Claim("perm", p));
-			*/
-
-			var creds = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
+			var creds = new SigningCredentials(BuildSigningKey(), SecurityAlgorithms.HmacSha256);
 			var now = DateTime.UtcNow;
 			var jwt = new JwtSecurityToken(
 				issuer: issuer,
@@ -117,190 +93,499 @@ namespace BookLoop.Controllers.Api
 				expires: now.AddMinutes(accessMinutes),
 				signingCredentials: creds
 			);
+			return (new JwtSecurityTokenHandler().WriteToken(jwt), jwt.ValidTo);
+		}
 
-			var tokenStr = new JwtSecurityTokenHandler().WriteToken(jwt);
+		private static List<Claim> BuildMemberClaims(Member m) => new()
+		{
+			new Claim(JwtRegisteredClaimNames.Sub, m.Email ?? m.Username),
+			new Claim("mid", m.MemberID.ToString()),
+			new Claim(ClaimTypes.Email, m.Email ?? string.Empty),
+			new Claim(ClaimTypes.Name, m.Username),
+			new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+		};
 
-			// Refresh Token 產生、存DB、設 HttpOnly Cookie 的流程
-			// 產生 raw refresh token 並 hash 存 DB
+		private static bool VerifyPassword(Member member, string password)
+		{
+			var stored = member.PasswordHash ?? string.Empty;
+			if (string.IsNullOrEmpty(stored)) return false;
+
+			// BCrypt
+			if (stored.StartsWith("$2"))
+			{ try { return BCrypt.Net.BCrypt.Verify(password, stored); } catch { } }
+
+			// PBKDF2: PBKDF2$<iter>$<saltBase64>$<hashBase64>
+			if (stored.StartsWith("PBKDF2$", StringComparison.OrdinalIgnoreCase))
+			{
+				try
+				{
+					var parts = stored.Split('$');
+					int iterations = int.Parse(parts[1]);
+					var salt = Convert.FromBase64String(parts[2]);
+					var hash = Convert.FromBase64String(parts[3]);
+					using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256);
+					var test = pbkdf2.GetBytes(hash.Length);
+					return CryptographicOperations.FixedTimeEquals(hash, test);
+				}
+				catch { }
+			}
+
+			// SHA256 hex
+			if (stored.Length == 64 && stored.All(c => "0123456789abcdefABCDEF".Contains(c)))
+			{
+				var sha = SHA256.HashData(Encoding.UTF8.GetBytes(password));
+				var hex = string.Concat(sha.Select(b => b.ToString("x2")));
+				return string.Equals(stored, hex, StringComparison.OrdinalIgnoreCase);
+			}
+
+			// 退場機制：明碼（僅開發）
+			return stored == password;
+		}
+
+		private static string NormalizeEmail(string? email)
+			=> string.IsNullOrWhiteSpace(email) ? string.Empty : email.Trim().ToUpperInvariant();
+
+		private async Task SetRefreshCookieAsync(int memberId)
+		{
 			var rawRefresh = RefreshTokenHelper.GenerateRefreshTokenRaw();
 			var tokenHash = RefreshTokenHelper.HashRefreshToken(rawRefresh);
+			var days = int.Parse(_cfg["Jwt:RefreshTokenDays"] ?? "30");
 
-			// 取得 user id
-			int.TryParse(uid, out int userIdInt); // 若無法 parse，請改成對應型別處理
-			var rt = new RefreshToken
+			_db.MemberRefreshTokens.Add(new MemberRefreshToken
 			{
-				UserID = user.UserID,
+				MemberId = memberId,
 				TokenHash = tokenHash,
 				CreatedAt = DateTime.UtcNow,
-				ExpiresAt = DateTime.UtcNow.AddDays(30),
+				ExpiresAt = DateTime.UtcNow.AddDays(days),
 				IsRevoked = false
-			};
-			db.RefreshTokens.Add(rt);
-			await db.SaveChangesAsync();
+			});
+			await _db.SaveChangesAsync();
 
-			// 設 HttpOnly cookie（跨域 dev: SameSite=None, Secure=true）
-			var cookieOptions = new CookieOptions
+			Response.Cookies.Append("refreshToken", rawRefresh, new CookieOptions
 			{
 				HttpOnly = true,
 				Secure = true,
 				SameSite = SameSiteMode.None,
-				Expires = rt.ExpiresAt,
-				Path = "/"
-			};
-			Response.Cookies.Append("refreshToken", rawRefresh, cookieOptions);
-
-			return Ok(new { token = tokenStr, expires = jwt.ValidTo });
+				Path = "/",
+				Expires = DateTime.UtcNow.AddDays(days)
+			});
 		}
-		#endregion
 
-		#region me方法
+		// ==================== 1) 帳密登入 ====================
+		[HttpPost("token")]
+		[AllowAnonymous]
+		public async Task<IActionResult> Token([FromBody] LoginDto dto)
+		{
+			if (dto is null || string.IsNullOrWhiteSpace(dto.Account) || string.IsNullOrWhiteSpace(dto.Password))
+				return BadRequest(new { message = "缺少帳號或密碼" });
+
+			var accountNorm = NormalizeEmail(dto.Account);
+			var member = await _db.Members.FirstOrDefaultAsync(m => m.EmailNormalized == accountNorm || m.Username == dto.Account);
+			if (member == null || !VerifyPassword(member, dto.Password))
+				return Unauthorized(new { message = "帳號或密碼錯誤" });
+
+			var (tokenStr, expiresUtc) = IssueAccessToken(BuildMemberClaims(member));
+			await SetRefreshCookieAsync(member.MemberID);
+
+			return Ok(new
+			{
+				token = tokenStr,
+				expires = expiresUtc,
+				member = new { memberId = member.MemberID, name = member.Username, email = member.Email }
+			});
+		}
+
+		// ==================== 2) 我是誰（JWT） ====================
 		[HttpGet("me")]
-		[Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme + "," + JwtBearerDefaults.AuthenticationScheme)] // 同時接受Cookie 與 JWT
+		[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 		public IActionResult Me()
 		{
 			if (!(User?.Identity?.IsAuthenticated ?? false))
 				return Unauthorized(new { message = "未登入" });
 
-			var userId = User.FindFirst("uid")?.Value
-						 ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			var memberId = User.FindFirst("mid")?.Value;
 			var email = User.FindFirst(ClaimTypes.Email)?.Value;
-			var name = User.Identity?.Name
-					   ?? User.FindFirst(ClaimTypes.GivenName)?.Value
-					   ?? User.FindFirst(ClaimTypes.Name)?.Value;
+			var name = User.Identity?.Name ?? User.FindFirst(ClaimTypes.Name)?.Value;
 
-			var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-			var permissions = User.FindAll("perm").Select(c => c.Value).ToList();
-
-			return Ok(new { user = new { userId, name, email }, roles, permissions });
+			return Ok(new { member = new { memberId, name, email } });
 		}
-		#endregion
 
-		#region refresh 方法
-		// refresh endpoint，使用 HttpOnly cookie 裡的 refreshToken 換新 access token
+		// ==================== 3) Refresh（匿名） ====================
 		[HttpPost("refresh")]
 		[AllowAnonymous]
-		public async Task<IActionResult> Refresh([FromServices] AppDbContext db, [FromServices] AuthService auth, [FromServices] IConfiguration cfg)
+		public async Task<IActionResult> Refresh()
 		{
-			// 取 cookie
 			if (!Request.Cookies.TryGetValue("refreshToken", out var rawToken))
 				return Unauthorized(new { message = "refreshToken cookie not found" });
 
-			// 計算 hash 並查 DB
 			var hash = RefreshTokenHelper.HashRefreshToken(rawToken);
-			var existing = await db.RefreshTokens.FirstOrDefaultAsync(r => r.TokenHash == hash && !r.IsRevoked);
+			var existing = await _db.MemberRefreshTokens
+				.FirstOrDefaultAsync(r => r.TokenHash == hash && !r.IsRevoked);
+
 			if (existing == null || existing.ExpiresAt < DateTime.UtcNow)
 				return Unauthorized(new { message = "invalid or expired refresh token" });
 
-			// revoke old
 			existing.IsRevoked = true;
+			await _db.SaveChangesAsync();
 
-			// rotate -> 新增一筆 refresh token
-			var newRaw = RefreshTokenHelper.GenerateRefreshTokenRaw();
-			var newHash = RefreshTokenHelper.HashRefreshToken(newRaw);
-			var newRt = new RefreshToken
-			{
-				UserID = existing.UserID,
-				TokenHash = newHash,
-				CreatedAt = DateTime.UtcNow,
-				ExpiresAt = DateTime.UtcNow.AddDays(30),
-				IsRevoked = false
-			};
-			db.RefreshTokens.Add(newRt);
-			await db.SaveChangesAsync();
+			await SetRefreshCookieAsync(existing.MemberId);
 
-			// 設新的 HttpOnly cookie（覆蓋）
-			Response.Cookies.Append("refreshToken", newRaw, new CookieOptions
-			{
-				HttpOnly = true,
-				Secure = true,
-				SameSite = SameSiteMode.None,
-				Expires = newRt.ExpiresAt,
-				Path = "/"
-			});
+			var member = await _db.Members.FirstOrDefaultAsync(m => m.MemberID == existing.MemberId);
+			if (member == null) return Unauthorized(new { message = "member not found" });
 
-			// 產生新 access token（找 user -> 用原本的 token 產生邏輯）
-			var user = await auth.FindByIdAsync(existing.UserID); 
-			if (user == null) return Unauthorized(new { message = "user not found" });
-
-			// 產生 access token（複製 token 產生邏輯）
-			var jwtSection = cfg.GetSection("Jwt");
-			var keyStr = jwtSection["Key"] ?? throw new Exception("Jwt:Key 未設定");
-			var issuer = jwtSection["Issuer"];
-			var audience = jwtSection["Audience"];
-			var accessMinutes = int.Parse(jwtSection["AccessTokenMinutes"] ?? "15");
-
-			SymmetricSecurityKey signingKey;
-			try
-			{
-				var keyBytes = Convert.FromBase64String(keyStr);
-				signingKey = new SymmetricSecurityKey(keyBytes);
-			}
-			catch
-			{
-				var keyBytes = Encoding.UTF8.GetBytes(keyStr);
-				signingKey = new SymmetricSecurityKey(keyBytes);
-			}
-
-			string uid = user?.GetType().GetProperty("UserId")?.GetValue(user)?.ToString()
-				?? user?.GetType().GetProperty("Id")?.GetValue(user)?.ToString() ?? "";
-			string email = user?.GetType().GetProperty("Email")?.GetValue(user)?.ToString() ?? "";
-			string name = user?.GetType().GetProperty("UserName")?.GetValue(user)?.ToString() ?? email;
-
-			var claims = new List<Claim>
-			{
-				new Claim(JwtRegisteredClaimNames.Sub, email),
-				new Claim("uid", uid),
-				new Claim(ClaimTypes.Email, email),
-				new Claim(ClaimTypes.Name, name),
-				new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-			};
-
-			var creds = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
-			var now = DateTime.UtcNow;
-			var jwt = new JwtSecurityToken(
-				issuer: issuer,
-				audience: audience,
-				claims: claims,
-				notBefore: now,
-				expires: now.AddMinutes(accessMinutes),
-				signingCredentials: creds
-			);
-
-			var tokenStr = new JwtSecurityTokenHandler().WriteToken(jwt);
-			// 回傳新 access token
-			return Ok(new { token = tokenStr, expires = jwt.ValidTo });
+			var (tokenStr, expiresUtc) = IssueAccessToken(BuildMemberClaims(member));
+			return Ok(new { token = tokenStr, expires = expiresUtc });
 		}
-		#endregion
 
-		#region logout方法
+		// ==================== 4) 登出 ====================
 		[HttpPost("logout")]
-		public async Task<IActionResult> Logout([FromServices] AppDbContext db)
+		[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+		public async Task<IActionResult> Logout()
 		{
-			// 撤銷 refreshToken（若有）
 			if (Request.Cookies.TryGetValue("refreshToken", out var rawToken))
 			{
 				var hash = RefreshTokenHelper.HashRefreshToken(rawToken);
-				var rt = await db.RefreshTokens.FirstOrDefaultAsync(t => t.TokenHash == hash && !t.IsRevoked);
+				var rt = await _db.MemberRefreshTokens
+					.FirstOrDefaultAsync(t => t.TokenHash == hash && !t.IsRevoked);
 				if (rt != null)
 				{
 					rt.IsRevoked = true;
-					await db.SaveChangesAsync();
+					await _db.SaveChangesAsync();
 				}
 			}
-
-			// 刪除 cookie
 			Response.Cookies.Delete("refreshToken", new CookieOptions
-			{
-				HttpOnly = true,
-				Secure = true,
-				SameSite = SameSiteMode.None,
-				Path = "/"
-			});
+			{ HttpOnly = true, Secure = true, SameSite = SameSiteMode.None, Path = "/" });
 
-			// signout cookie 行為保留
 			await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 			return Ok(new { message = "signed out" });
 		}
-		#endregion
+
+		// ==================== 5) Email OTP：寄送 / 驗證 ====================
+
+		// 統一寄送端點（Purpose: Register / ResetPassword）
+		[HttpPost("email/send")]
+		[AllowAnonymous]
+		public async Task<IActionResult> EmailSend([FromBody] EmailSendDto dto)
+		{
+			if (dto == null || string.IsNullOrWhiteSpace(dto.Account))
+				return BadRequest(new { message = "缺少帳號" });
+
+			var email = dto.Account.Trim();
+			if (!email.Contains("@") || !email.Contains("."))
+				return BadRequest(new { message = "Email 格式不正確" });
+
+			var norm = NormalizeEmail(email);
+			var purpose = (dto.Purpose ?? "Register").Trim();
+
+			// ResetPassword 需確認帳號存在；Register 不檢查
+			if (purpose.Equals("ResetPassword", StringComparison.OrdinalIgnoreCase))
+			{
+				var exists = await _db.Members.AnyAsync(m => m.EmailNormalized == norm);
+				if (!exists) return NotFound(new { message = "帳號不存在" });
+			}
+
+			var code = Random.Shared.Next(100000, 999999).ToString();
+			_cache.Set($"emailotp:{email}", code, TimeSpan.FromMinutes(10));
+
+			if (_env.IsDevelopment()) return Ok(new { message = "OTP 已寄出", devCode = code });
+			return Ok(new { message = "OTP 已寄出" });
+		}
+
+		// 舊路徑相容：/2fa/email/send → 轉呼叫新版 email/send（Purpose=Register）
+		[HttpPost("2fa/email/send")]
+		[AllowAnonymous]
+		public Task<IActionResult> SendEmailOtp([FromBody] TotpBindDto dto)
+			=> EmailSend(new EmailSendDto(dto?.Account ?? "", "Register"));
+
+		// 用「Email OTP」直接登入（既有會員）
+		[HttpPost("2fa/email/verify")]
+		[AllowAnonymous]
+		public async Task<IActionResult> VerifyEmailOtp([FromBody] EmailOtpDto dto)
+		{
+			if (dto == null || string.IsNullOrWhiteSpace(dto.Account) || string.IsNullOrWhiteSpace(dto.Code))
+				return BadRequest(new { message = "缺少帳號或驗證碼" });
+
+			if (!_cache.TryGetValue<string>($"emailotp:{dto.Account}", out var cached) || cached != dto.Code)
+				return Unauthorized(new { message = "驗證碼錯誤或已過期" });
+
+			var norm = NormalizeEmail(dto.Account);
+			var member = await _db.Members.FirstOrDefaultAsync(m => m.EmailNormalized == norm);
+			if (member == null) return NotFound(new { message = "帳號不存在" });
+
+			var (tokenStr, expiresUtc) = IssueAccessToken(BuildMemberClaims(member));
+			await SetRefreshCookieAsync(member.MemberID);
+
+			_cache.Remove($"emailotp:{dto.Account}");
+			return Ok(new
+			{
+				token = tokenStr,
+				expires = expiresUtc,
+				member = new { memberId = member.MemberID, name = member.Username, email = member.Email }
+			});
+		}
+
+		// ==================== 6) TOTP 綁定 / 驗證 ====================
+		[HttpPost("2fa/totp/bind")]
+		[AllowAnonymous]
+		public async Task<IActionResult> TotpBind([FromBody] TotpBindDto dto)
+		{
+			if (dto == null || string.IsNullOrWhiteSpace(dto.Account))
+				return BadRequest(new { message = "缺少帳號" });
+
+			var norm = NormalizeEmail(dto.Account);
+			var member = await _db.Members.FirstOrDefaultAsync(m => m.EmailNormalized == norm);
+			if (member == null) return NotFound(new { message = "帳號不存在" });
+
+			var secretBase32 = TotpHelper.GenerateSecretBase32();
+			var issuer = "BookLoop";
+			var otpauth = TotpHelper.GetOtpAuthUri(issuer, dto.Account, secretBase32);
+
+			member.AuthenticatorKey = Encoding.UTF8.GetBytes(secretBase32);
+			member.UpdatedAt = DateTime.UtcNow;
+			await _db.SaveChangesAsync();
+
+			return Ok(new { secret = secretBase32, otpauth });
+		}
+
+		[HttpPost("2fa/totp/verify")]
+		[AllowAnonymous]
+		public async Task<IActionResult> TotpVerify([FromBody] TotpVerifyDto dto)
+		{
+			if (dto == null || string.IsNullOrWhiteSpace(dto.Account) || string.IsNullOrWhiteSpace(dto.Code))
+				return BadRequest(new { message = "缺少帳號或驗證碼" });
+
+			var norm = NormalizeEmail(dto.Account);
+			var member = await _db.Members.FirstOrDefaultAsync(m => m.EmailNormalized == norm);
+			if (member == null) return NotFound(new { message = "帳號不存在" });
+
+			if (member.AuthenticatorKey == null)
+				return BadRequest(new { message = "尚未產生密鑰" });
+
+			var secret = Encoding.UTF8.GetString(member.AuthenticatorKey);
+			if (!TotpHelper.VerifyCode(secret, dto.Code, step: 30, window: 1))
+				return Unauthorized(new { message = "TOTP 驗證失敗" });
+
+			member.TwoFactorEnabled = true;
+			member.UpdatedAt = DateTime.UtcNow;
+			await _db.SaveChangesAsync();
+
+			return Ok(new { ok = true });
+		}
+
+		// ==================== 7) 註冊（兩種流派都支援） ====================
+
+		// A) 簡單註冊（不驗碼）
+		[HttpPost("register")]
+		[AllowAnonymous]
+		public async Task<IActionResult> RegisterSimple([FromBody] RegisterSimpleDto dto)
+		{
+			if (dto == null || string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+				return BadRequest(new { message = "缺少 Email 或密碼" });
+
+			var norm = NormalizeEmail(dto.Email);
+			var exists = await _db.Members.AnyAsync(m => m.EmailNormalized == norm);
+			if (exists) return Conflict(new { message = "Email 已存在" });
+
+			var now = DateTime.UtcNow;
+			var m = new Member
+			{
+				Username = string.IsNullOrWhiteSpace(dto.Username) ? dto.Email : dto.Username!.Trim(),
+				Email = dto.Email,
+				EmailNormalized = norm,
+				EmailConfirmed = true,
+				PasswordHash = HashPasswordPbkdf2(dto.Password),
+				Role = 0,
+				Status = 1,
+				CreatedAt = now,
+				UpdatedAt = now,
+				SecurityStamp = Guid.NewGuid().ToString("N"),
+				TwoFactorEnabled = false,
+				AccessFailedCount = 0,
+				LockoutEnabled = true
+			};
+			_db.Members.Add(m);
+			await _db.SaveChangesAsync();
+
+			var (tokenStr, expiresUtc) = IssueAccessToken(BuildMemberClaims(m));
+			await SetRefreshCookieAsync(m.MemberID);
+
+			return Ok(new
+			{
+				token = tokenStr,
+				expires = expiresUtc,
+				member = new { memberId = m.MemberID, name = m.Username, email = m.Email }
+			});
+		}
+
+		// B) 驗證碼註冊（需先 /api/auth/email/send Purpose=Register）
+		[HttpPost("register/confirm")]
+		[AllowAnonymous]
+		public async Task<IActionResult> RegisterWithCode([FromBody] RegisterWithCodeDto dto)
+		{
+			if (dto == null) return BadRequest(new { message = "bad request" });
+			var email = dto.Account?.Trim();
+			if (string.IsNullOrWhiteSpace(email)) return BadRequest(new { message = "缺少 Email" });
+
+			if (!_cache.TryGetValue<string>($"emailotp:{email}", out var cached) || cached != dto.Code)
+				return BadRequest(new { message = "Email 驗證碼錯誤或已過期" });
+
+			var norm = NormalizeEmail(email);
+			var exists = await _db.Members.AnyAsync(x => x.EmailNormalized == norm);
+			if (exists) return Conflict(new { message = "Email 已存在" });
+
+			var now = DateTime.UtcNow;
+			var m = new Member
+			{
+				Username = string.IsNullOrWhiteSpace(dto.Name) ? email! : dto.Name.Trim(),
+				Email = email,
+				EmailNormalized = norm,
+				EmailConfirmed = true,
+				PasswordHash = HashPasswordPbkdf2(dto.Password),
+				Role = 0,
+				Status = 1,
+				CreatedAt = now,
+				UpdatedAt = now,
+				SecurityStamp = Guid.NewGuid().ToString("N"),
+				TwoFactorEnabled = false,
+				AccessFailedCount = 0,
+				LockoutEnabled = true
+			};
+			_db.Members.Add(m);
+			await _db.SaveChangesAsync();
+
+			_cache.Remove($"emailotp:{email}");
+
+			var (tokenStr, expiresUtc) = IssueAccessToken(BuildMemberClaims(m));
+			await SetRefreshCookieAsync(m.MemberID);
+			return Ok(new
+			{
+				token = tokenStr,
+				expires = expiresUtc,
+				member = new { memberId = m.MemberID, name = m.Username, email = m.Email }
+			});
+		}
+
+		// ==================== 8) 忘記 / 重設密碼（同 /email/send + /reset/confirm 模式） ====================
+		[HttpPost("forgot")]
+		[AllowAnonymous]
+		public async Task<IActionResult> Forgot([FromBody] ForgotDto dto)
+		{
+			// 這支你可保留（與 email/send(Purpose=ResetPassword) 作用等價）
+			if (dto == null || string.IsNullOrWhiteSpace(dto.Email)) return BadRequest(new { message = "缺少 Email" });
+
+			var norm = NormalizeEmail(dto.Email);
+			var member = await _db.Members.FirstOrDefaultAsync(m => m.EmailNormalized == norm);
+			if (member == null) return NotFound(new { message = "帳號不存在" });
+
+			var code = Random.Shared.Next(100000, 999999).ToString();
+			_cache.Set($"reset:{dto.Email}", code, TimeSpan.FromMinutes(10));
+			if (_env.IsDevelopment()) return Ok(new { message = "重設碼已寄出", devCode = code });
+			return Ok(new { message = "重設碼已寄出" });
+		}
+
+		[HttpPost("reset")]
+		[AllowAnonymous]
+		public async Task<IActionResult> Reset([FromBody] ResetDto dto)
+		{
+			// 舊相容：用 reset:email 的碼
+			if (dto == null ||
+				string.IsNullOrWhiteSpace(dto.Email) ||
+				string.IsNullOrWhiteSpace(dto.Code) ||
+				string.IsNullOrWhiteSpace(dto.NewPassword))
+				return BadRequest(new { message = "參數不完整" });
+
+			if (!_cache.TryGetValue<string>($"reset:{dto.Email}", out var cached) || cached != dto.Code)
+				return BadRequest(new { message = "重設碼錯誤或已過期" });
+
+			var norm = NormalizeEmail(dto.Email);
+			var m = await _db.Members.FirstOrDefaultAsync(x => x.EmailNormalized == norm);
+			if (m == null) return BadRequest(new { message = "帳號不存在" });
+
+			m.PasswordHash = HashPasswordPbkdf2(dto.NewPassword);
+			m.UpdatedAt = DateTime.UtcNow;
+			await _db.SaveChangesAsync();
+
+			_cache.Remove($"reset:{dto.Email}");
+			return Ok(new { ok = true });
+		}
+
+		// 對齊新流程：/email/send(Purpose=ResetPassword) + /reset/confirm
+		[HttpPost("reset/confirm")]
+		[AllowAnonymous]
+		public async Task<IActionResult> ResetConfirm([FromBody] ResetConfirmDto dto)
+		{
+			if (dto == null) return BadRequest(new { message = "bad request" });
+			var email = dto.Account?.Trim();
+			if (string.IsNullOrWhiteSpace(email)) return BadRequest(new { message = "缺少 Email" });
+
+			if (!_cache.TryGetValue<string>($"emailotp:{email}", out var cached) || cached != dto.Code)
+				return BadRequest(new { message = "驗證碼錯誤或已過期" });
+
+			var norm = NormalizeEmail(email);
+			var m = await _db.Members.FirstOrDefaultAsync(x => x.EmailNormalized == norm);
+			if (m == null) return BadRequest(new { message = "帳號不存在" });
+
+			m.PasswordHash = HashPasswordPbkdf2(dto.Password);
+			m.UpdatedAt = DateTime.UtcNow;
+			await _db.SaveChangesAsync();
+
+			_cache.Remove($"emailotp:{email}");
+			return Ok(new { ok = true });
+		}
+
+		// ==================== 9) 外部登入 ====================
+		[HttpGet("external/{provider}")]
+		[AllowAnonymous]
+		public IActionResult ExternalChallenge([FromRoute] string provider, [FromQuery] string? returnUrl = null)
+		{
+			var props = new AuthenticationProperties
+			{
+				RedirectUri = Url.Action(nameof(ExternalCallback), new { provider, returnUrl })
+			};
+			return Challenge(props, provider);
+		}
+
+		[HttpGet("external/{provider}/callback")]
+		[AllowAnonymous]
+		public async Task<IActionResult> ExternalCallback([FromRoute] string provider, [FromQuery] string? returnUrl = null)
+		{
+			var result = await HttpContext.AuthenticateAsync(Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme);
+			if (!result.Succeeded) return Unauthorized(new { message = "外部登入失敗" });
+
+			var extId = result.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			var email = result.Principal?.FindFirst(ClaimTypes.Email)?.Value;
+			var name = result.Principal?.Identity?.Name ?? email ?? extId ?? "member";
+
+			var accountKey = !string.IsNullOrEmpty(email) ? NormalizeEmail(email) : $"{provider}:{extId}".ToUpperInvariant();
+
+			var member = await _db.Members.FirstOrDefaultAsync(m => m.EmailNormalized == accountKey);
+			if (member == null)
+			{
+				var now = DateTime.UtcNow;
+				member = new Member
+				{
+					Username = email ?? $"{provider}_{extId}",
+					Email = email,
+					EmailNormalized = accountKey,
+					EmailConfirmed = !string.IsNullOrEmpty(email),
+					Role = 0,
+					Status = 1,
+					CreatedAt = now,
+					UpdatedAt = now,
+					SecurityStamp = Guid.NewGuid().ToString("N"),
+					TwoFactorEnabled = false,
+					AccessFailedCount = 0,
+					LockoutEnabled = true
+				};
+				_db.Members.Add(member);
+				await _db.SaveChangesAsync();
+			}
+
+			var (tokenStr, expiresUtc) = IssueAccessToken(BuildMemberClaims(member));
+			await SetRefreshCookieAsync(member.MemberID);
+
+			var dest = (returnUrl ?? "/") + $"#access_token={tokenStr}&expires={Uri.EscapeDataString(expiresUtc.ToString("o"))}";
+			return Redirect(dest);
+		}
 	}
 }

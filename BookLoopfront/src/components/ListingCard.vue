@@ -1,8 +1,8 @@
 <!-- src/components/ListingCard.vue -->
 <template>
   <div class="card listing-card h-100">
-    <router-link :to="detailUrl" class="card-img-top-link">
-      <img :src="listing.coverUrl || placeholder" class="card-img-top" alt="cover" />
+      <router-link :to="detailUrl" class="card-img-top-link">
+      <img :src="coverSrc" class="card-img-top" alt="cover" />
     </router-link>
 
     <div class="card-body d-flex flex-column">
@@ -25,10 +25,16 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart' // <-- 引入購物車 store
 import type { Listing } from '@/api/Listings'
+import Listings from '@/views/Listings.vue';
 import type { Book } from '@/api/catalog'
-
+  
 const props = defineProps<{ listing: Listing }>()
-const placeholder = '../assets/ad.png'
+const placeholder = '../assets/ad.png' // 再改路徑(佔位圖)
+const coverSrc = computed(() => (props.listing as any).coverUrl || (props.listing as any).cover?.url || placeholder)
+
+
+
+
 const router = useRouter()
 const cartStore = useCartStore() // <-- 取得購物車 store
 

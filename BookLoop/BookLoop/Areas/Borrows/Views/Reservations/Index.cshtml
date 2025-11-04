@@ -62,9 +62,9 @@
                     @* 狀態=Wait 且 預約型態=Normal → 顯示「借閱」 *@
                     @if (item.ReservationStatus == ReservationStatus.Wait && item.ReservationType == ReservationType.Normal)
                     {
-                        <a class="btn btn-primary"
+                        <a class="btn btn-primary btn-borrow"
                            href="@(Url.Action("Create", "BorrowRecords",
-                                                   new { listingId = item.ListingID, memberId = item.MemberID, reservationId = item.ReservationID }))">
+                                  new { listingId = item.ListingID, memberId = item.MemberID, reservationId = item.ReservationID }))">
                     借閱
                 </a>
                                 }
@@ -131,10 +131,22 @@
         }
     </tbody>
 </table>
-
+<div class="modal fade" id="borrowModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success">
+                <h5 class="modal-title">借閱確認</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="borrowModalBody">
+                <!-- 這裡用 JS 塞入 Partial 的 HTML -->
+            </div>
+        </div>
+    </div>
+</div>
 @section Scripts {
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>>
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
     <script>
         $(function(){
           $('#reservationsTable').DataTable({
@@ -151,4 +163,58 @@
              order: [[4, 'desc']] // 逾期日（索引 4）預設排序：新→舊
           });
         });    </script>
+    <script>
+        document.addEventListener('click', async function (e) {
+            const a = e.target.closest('.btn-borrow');
+            if (!a) return;
+
+            e.preventDefault();
+            const href = a.getAttribute('href');
+
+            // 取得 Partial（GET）
+            const resp = await fetch(href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const html = await resp.text();
+
+            // 塞到 modal
+            const modalBody = document.getElementById('borrowModalBody');
+            modalBody.innerHTML = html;
+
+            // 顯示 modal
+            const modal = new bootstrap.Modal(document.getElementById('borrowModal'));
+            modal.show();
+        });
+
+        // 監聽 modal 內表單送出（POST）
+        document.getElementById('borrowModalBody').addEventListener('submit', async function (e) {
+            const form = e.target.closest('form');
+            if (!form) return;
+
+            e.preventDefault();
+
+            const formData = new FormData(form); // 內含 __RequestVerificationToken
+            const resp = await fetch(form.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            });
+
+            const contentType = resp.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const data = await resp.json();
+                if (data.ok) {
+                    // 成功：關 modal 並導頁或刷新
+                    const modalEl = document.getElementById('borrowModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                    // 你可以選擇導頁或只刷新部分區塊
+                    window.location.href = data.redirectUrl;
+                }
+            } else {
+                // 驗證失敗：把回傳的局部 HTML 替換到 modal 內，顯示錯誤
+                const html = await resp.text();
+                document.getElementById('borrowModalBody').innerHTML = html;
+            }
+        });
+    </script>
+
 }

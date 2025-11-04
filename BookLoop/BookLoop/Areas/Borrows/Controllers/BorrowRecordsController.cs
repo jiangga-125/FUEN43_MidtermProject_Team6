@@ -27,42 +27,110 @@ namespace BookLoop.Areas.Borrows.Controllers
             _queueService = queueService;
         }
 
-        // GET: Borrows/BorrowRecords
-        public async Task<IActionResult> Index()
+        //// GET: Borrows/BorrowRecords
+        //public async Task<IActionResult> Index()
+        //{
+        //    var items = await _context.BorrowRecords
+        //        .AsNoTracking()
+        //        .Include(b => b.Listing)
+        //        .Include(b => b.Member)
+        //        .Select(b => new BorrowRecordsViewModel
+        //        {
+        //            ListingID = b.ListingID,
+        //            RecordID = b.RecordID,
+        //            BookTitle = b.Listing.Title,
+        //            MemberID = b.MemberID,//為了罰金補上
+        //            MemberName = b.Member.Username,
+        //            BorrowDate = b.BorrowDate,
+        //            ReturnDate = b.ReturnDate,
+        //            ReservationID = b.ReservationID,
+        //            DueDate = b.DueDate,
+        //            StatusCode = b.StatusCode,
+        //            CreatedAt = b.CreatedAt,
+        //            ReturnCondition = (ReturnConditionEnum)b.ReturnCondition,
+        //            //    // 只用 ReservationID 關聯；Complete 一律回傳 null
+        //            //ReservationStatus = _context.Reservations
+        //            //.Where(r => r.ReservationID == b.ReservationID
+        //            //         && r.Status != (byte)ReservationStatus.Complete)   // ← 過濾掉 Complete
+        //            //.Select(r => (ReservationStatus?)(byte?)r.Status)
+        //            //.FirstOrDefault()
+        //            //// 相關子查詢：同一支 SQL 由資料庫端完成，不拉回記憶體
+        //            ReservationStatus = _context.Reservations
+        //                .Where(r =>
+        //                    // 三種匹配情境，任何一個成立就納入候選
+        //                    (b.ReservationID != null && r.ReservationID == b.ReservationID) ||
+        //                    (r.ListingID == b.ListingID && r.MemberID == b.MemberID) ||
+        //                    (r.ListingID == b.ListingID)
+        //                )
+        //                // 排序：先依匹配優先度排序，再依“時間新舊”排序
+        //                .OrderByDescending(r =>
+        //                    b.ReservationID != null && r.ReservationID == b.ReservationID ? 3 :
+        //                    (r.ListingID == b.ListingID && r.MemberID == b.MemberID) ? 2 :
+        //                    (r.ListingID == b.ListingID) ? 1 : 0
+        //                )
+        //                .ThenByDescending(r => r.ReservationID)
+        //                .ThenByDescending(r => r.ReservationAt)
+        //                .ThenByDescending(r => r.CreatedAt)
+        //                .Select(r => (ReservationStatus?)(byte?)r.Status)
+        //                .FirstOrDefault()
+        //        })
+        //        .ToListAsync();
+
+        //    return View(items);
+        //}
+
+        // GET: Borrows/BorrowRecords/Details/5
+
+        // 1) View 頁：保留，不查資料（由前端 DataTables 透過 AJAX 叫 List）
+        public IActionResult Index()
         {
-            var items = await _context.BorrowRecords
+            return View(); // 不帶 model
+        }
+
+        // 2) DataTables 用的 JSON 端點：新增這個
+        [HttpGet]
+        public async Task<IActionResult> List()
+        {
+            var items = await BaseQuery().ToListAsync();
+            return Json(new { data = items });
+        }
+
+        // 抽共用投影，等同你原本 Select 的內容（可依你的 Enum/字典調整）
+        private IQueryable<object> BaseQuery()
+        {
+            return _context.BorrowRecords
                 .AsNoTracking()
                 .Include(b => b.Listing)
                 .Include(b => b.Member)
-                .Select(b => new BorrowRecordsViewModel
+                .Select(b => new
                 {
-                    ListingID = b.ListingID,
-                    RecordID = b.RecordID,
-                    BookTitle = b.Listing.Title,
-                    MemberID = b.MemberID,//為了罰金補上
-                    MemberName = b.Member.Username,
-                    BorrowDate = b.BorrowDate,
-                    ReturnDate = b.ReturnDate,
-                    ReservationID = b.ReservationID,
-                    DueDate = b.DueDate,
-                    StatusCode = b.StatusCode,
-                    CreatedAt = b.CreatedAt,
-                    ReturnCondition = (ReturnConditionEnum)b.ReturnCondition,
-                    //    // 只用 ReservationID 關聯；Complete 一律回傳 null
-                    //ReservationStatus = _context.Reservations
-                    //.Where(r => r.ReservationID == b.ReservationID
-                    //         && r.Status != (byte)ReservationStatus.Complete)   // ← 過濾掉 Complete
-                    //.Select(r => (ReservationStatus?)(byte?)r.Status)
-                    //.FirstOrDefault()
-                    //// 相關子查詢：同一支 SQL 由資料庫端完成，不拉回記憶體
-                    ReservationStatus = _context.Reservations
+                    listingID = b.ListingID,
+                    recordID = b.RecordID,
+                    bookTitle = b.Listing.Title,
+                    memberID = b.MemberID,
+                    memberName = b.Member.Username,
+                    borrowDate = b.BorrowDate,
+                    returnDate = b.ReturnDate,
+                    dueDate = b.DueDate,
+                    statusCode = b.StatusCode,
+                    conditionName =
+                        b.StatusCode == 0 ? "逾期" :
+                        b.StatusCode == 1 ? "借出" :
+                        b.StatusCode == 2 ? "歸還" : "",
+                    returnCondition = (byte?)b.ReturnCondition,
+                    // 若需要顯示文字，可一起回傳
+                    returnConditionText = b.ReturnCondition == null ? null :
+                        b.ReturnCondition == (byte)ReturnConditionEnum.Normal ? "正常" :
+                        b.ReturnCondition == (byte)ReturnConditionEnum.Damaged ? "毀損" :
+                        b.ReturnCondition == (byte)ReturnConditionEnum.Lost ? "遺失" : "其他",
+                    reservationID = b.ReservationID,
+                    createdAt = b.CreatedAt,
+                    reservationStatus = _context.Reservations
                         .Where(r =>
-                            // 三種匹配情境，任何一個成立就納入候選
                             (b.ReservationID != null && r.ReservationID == b.ReservationID) ||
                             (r.ListingID == b.ListingID && r.MemberID == b.MemberID) ||
                             (r.ListingID == b.ListingID)
                         )
-                        // 排序：先依匹配優先度排序，再依“時間新舊”排序
                         .OrderByDescending(r =>
                             b.ReservationID != null && r.ReservationID == b.ReservationID ? 3 :
                             (r.ListingID == b.ListingID && r.MemberID == b.MemberID) ? 2 :
@@ -71,15 +139,12 @@ namespace BookLoop.Areas.Borrows.Controllers
                         .ThenByDescending(r => r.ReservationID)
                         .ThenByDescending(r => r.ReservationAt)
                         .ThenByDescending(r => r.CreatedAt)
-                        .Select(r => (ReservationStatus?)(byte?)r.Status)
+                        .Select(r => (byte?)r.Status)
                         .FirstOrDefault()
-                })
-                .ToListAsync();
-
-            return View(items);
+                });
         }
 
-        // GET: Borrows/BorrowRecords/Details/5
+
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -138,6 +203,9 @@ namespace BookLoop.Areas.Borrows.Controllers
             };
 
 
+            // 若為 AJAX（載入 modal），回傳 Partial；否則仍可回傳一般 View (可選)
+            bool isAjax = Request.Headers["X-Requested-With"] == "XMLHttpRequest";
+            if (isAjax) return PartialView("_Create", brvm);
             return View(brvm);
         }
 
@@ -178,6 +246,8 @@ namespace BookLoop.Areas.Borrows.Controllers
                 vm.BorrowDate = borrowAt;
                 vm.DueDate = dueAt;
 
+                bool isAjaxInvalid = Request.Headers["X-Requested-With"] == "XMLHttpRequest";
+                if (isAjaxInvalid) return PartialView("_Create", vm);
                 return View(vm);
             }
 
@@ -203,6 +273,15 @@ namespace BookLoop.Areas.Borrows.Controllers
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
             TempData["Success"] = "借閱成功";
+            bool isAjax = Request.Headers["X-Requested-With"] == "XMLHttpRequest";
+            if (isAjax)
+            {
+                return Json(new
+                {
+                    ok = true,
+                    redirectUrl = Url.Action("Index", "BorrowRecords")
+                });
+            }
             return RedirectToAction("Index", "BorrowRecords");
         }
 

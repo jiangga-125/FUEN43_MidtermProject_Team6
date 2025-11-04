@@ -1,5 +1,6 @@
 <!-- src/components/ListingCard.vue -->
 <script setup lang="ts">
+import UsedListingsGrid from '@/components/UsedListingsGrid.vue'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart' // 引入購物車 store
@@ -33,3 +34,7 @@ function toggleFavorite() {
   alert(`已加入收藏：${props.listing.title}`)
 }
 </script>
+
+<template>
+  <UsedListingsGrid />
+</template>
