@@ -1,32 +1,43 @@
 <!-- src/components/CartDrawer.vue -->
 <template>
-  <div class="cart-drawer" v-show="visible">
-    <div class="drawer-backdrop" @click="close"></div>
+  <div v-if="visible" class="cart-modal">
+    <div class="modal-backdrop" @click="close"></div>
 
-    <div class="drawer-content">
-      <div class="drawer-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">購物車</h5>
-        <button class="btn-close" @click="close"></button>
+    <div class="modal-content animate-slide-up">
+      <div class="modal-header">
+        <h1 class="mb-0 fw-bold">🛒 我的購物車</h1>
+        <button class="btn-close" @click="close">✕</button>
       </div>
 
-      <div class="drawer-body">
-        <div v-if="cartItems.length === 0" class="text-center py-4">
+      <div class="modal-body">
+        <div v-if="cartItems.length === 0" class="text-center py-5 text-muted fs-5">
           購物車是空的
         </div>
 
         <div v-else>
-          <ul class="list-group mb-3">
-            <li v-for="item in cartItems" :key="item.book.bookId" class="list-group-item d-flex justify-content-between align-items-center">
-              <div class="flex-grow-1">
-                <strong>{{ item.book.title }}</strong>
-                <div class="text-muted small">NT$ {{ item.book.salePrice || 0 }}</div>
+          <div class="cart-list mb-4">
+            <div
+              v-for="item in cartItems"
+              :key="item.book.bookId"
+              class="cart-item d-flex justify-content-between align-items-center border-bottom py-3"
+            >
+              <div class="d-flex align-items-center gap-3 flex-grow-1">
+                <img
+                  :src="item.book.imageUrl || 'https://via.placeholder.com/60x80?text=Book'"
+                  alt="Book Cover"
+                  class="rounded shadow-sm"
+                  style="width: 60px; height: 80px; object-fit: cover;"
+                />
+                <div>
+                  <strong class="fs-6">{{ item.book.title }}</strong>
+                  <div class="text-muted small">NT$ {{ item.book.salePrice || 0 }}</div>
+                </div>
               </div>
-
               <div class="d-flex align-items-center gap-2">
                 <input
                   type="number"
-                  class="form-control form-control-sm"
-                  style="width: 60px"
+                  class="form-control form-control-sm text-center"
+                  style="width: 70px"
                   min="1"
                   v-model.number="item.quantity"
                   @change="updateItem(item.book.bookId, item.quantity)"
@@ -35,19 +46,23 @@
                   ✕
                 </button>
               </div>
-            </li>
-          </ul>
-
-          <div class="d-flex justify-content-between mb-3">
-            <strong>總數量：</strong> {{ totalItems }}
-          </div>
-          <div class="d-flex justify-content-between mb-3">
-            <strong>總金額：</strong> NT$ {{ totalPrice }}
+            </div>
           </div>
 
-          <div class="d-flex justify-content-end gap-2">
-            <button class="btn btn-secondary" @click="clearCart">清空購物車</button>
-            <button class="btn btn-primary" @click="checkoutCart">結帳</button>
+          <div class="summary-box mb-4">
+            <div class="d-flex justify-content-between fs-5 mb-2">
+              <span>🧺 總數量：</span>
+              <strong>{{ totalItems }}</strong>
+            </div>
+            <div class="d-flex justify-content-between fs-5">
+              <span>💰 總金額：</span>
+              <strong class="text-danger fs-4">NT$ {{ totalPrice }}</strong>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-3">
+            <button class="btn btn-outline-secondary px-4" @click="clearCart">清空購物車</button>
+            <button class="btn btn-primary px-4" @click="checkoutCart">前往結帳</button>
           </div>
         </div>
       </div>
@@ -61,11 +76,9 @@ import { useCartStore } from '@/stores/cart'
 
 const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{ (e: 'update:visible', value: boolean): void }>()
-
 const close = () => emit('update:visible', false)
 
 const cartStore = useCartStore()
-
 const cartItems = computed(() => cartStore.items)
 const totalItems = computed(() => cartStore.totalItems)
 const totalPrice = computed(() => cartStore.totalPrice)
@@ -74,26 +87,15 @@ function updateItem(bookId: number, qty: number) {
   if (qty <= 0) cartStore.removeItem(bookId)
   else cartStore.updateItem(bookId, qty)
 }
+function removeItem(bookId: number) { cartStore.removeItem(bookId) }
+function clearCart() { cartStore.clearCart() }
 
-function removeItem(bookId: number) {
-  cartStore.removeItem(bookId)
-}
-
-function clearCart() {
-  cartStore.clearCart()
-}
-
-// 結帳
 async function checkoutCart() {
   try {
-    // 假設會員ID固定 1，如果有登入系統可替換成真實會員ID
     const memberId = 1
     const res = await cartStore.checkout(memberId)
-    
-    // 解構出小寫 orderId
     const { OrderID: orderId } = res
     alert('訂單建立成功！訂單編號：' + orderId)
-    
     close()
   } catch (err: any) {
     alert(err.message || '結帳失敗')
@@ -101,59 +103,74 @@ async function checkoutCart() {
 }
 </script>
 
-<script lang="ts">
-export default {}
-</script>
-
-
-
 <style scoped>
-.cart-drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 350px;
-  height: 100%;
-  z-index: 1200;
-  display: flex;
-  flex-direction: column;
-  transform: translateX(100%);
-  transition: transform 0.3s ease;
-}
-
-.cart-drawer[v-show="true"] {
-  transform: translateX(0);
-}
-
-.drawer-backdrop {
+.cart-modal {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 1100;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.drawer-content {
-  background: white;
-  height: 100%;
-  box-shadow: -2px 0 8px rgba(0,0,0,0.2);
+/* 背景半透明＋模糊 */
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+/* 主視窗 */
+.modal-content {
+  position: relative;
+  z-index: 2100;
+  background: #fff;
+  width: 900px;
+  height:  900px;
+  max-width: 95%;
+  max-height: 95%;
+  padding: 2.5rem;
+  border-radius: 22px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-.drawer-header {
-  padding: 1rem;
-  border-bottom: 1px solid #ddd;
-}
-
-.drawer-body {
-  padding: 1rem;
+/* 商品滾動區 */
+.cart-list {
   overflow-y: auto;
-  flex-grow: 1;
+  max-height: 600px;
 }
 
+/* 關閉按鈕 */
 .btn-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 1.6rem;
   background: none;
   border: none;
-  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.btn-close:hover { opacity: 1; }
+
+/* 彈出動畫 */
+@keyframes slideUp {
+  from { transform: translateY(50px) scale(0.95); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+.animate-slide-up { animation: slideUp 0.35s ease-out; }
+
+/* 商品 hover */
+.cart-item:hover { background: #f9fafc; transition: background 0.2s; }
+
+/* 手機適應 */
+@media (max-width: 576px) {
+  .modal-content { width: 95%; max-height: 90%; padding: 1rem; }
+  .cart-list { max-height: 300px; }
 }
 </style>
