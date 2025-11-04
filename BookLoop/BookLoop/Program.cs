@@ -74,6 +74,7 @@ namespace BookLoop
 				options.UseSqlServer(bookloopStr));
 			#endregion
 
+			#region 服務註冊
 			builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 			// DataProtection（避免回收/重啟導致登出）
@@ -244,7 +245,6 @@ namespace BookLoop
 				};
 			});
 
-			#region 服務註冊
 			// 授權：預設要求已登入（API -> JWT；MVC -> Cookie）
 			builder.Services.AddAuthorization(options =>
 			{
