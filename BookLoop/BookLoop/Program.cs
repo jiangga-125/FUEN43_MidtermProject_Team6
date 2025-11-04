@@ -259,7 +259,10 @@ namespace BookLoop
 				});
 			});
 
-			// 你的其他服務（原樣保留）
+			builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+			builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+			builder.Services.AddScoped<BookLoop.Services.PermissionService>();
+
 			builder.Services.Configure<BookLoop.Services.ImageValidationOptions>(opts =>
 			{
 				opts.MaxFileBytes = 5 * 1024 * 1024;
