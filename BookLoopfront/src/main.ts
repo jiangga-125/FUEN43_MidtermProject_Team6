@@ -2,14 +2,16 @@ import './styles/theme.css'
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import { initAuth } from '@/stores/auth'
 import { createPinia } from 'pinia'
+import { useAuth } from '@/stores/auth' // <-- 先 import store
 
-import { initAuth } from '@/stores/auth'
 const app = createApp(App)
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
 app.use(router)
 
-useAuth().tryLoadSession().finally(() => {
-app.mount('#app')
+// 這裡要在 pinia 註冊後呼叫 store
+const auth = useAuth()
+auth.tryLoadSession().finally(() => {
+  app.mount('#app')
 })

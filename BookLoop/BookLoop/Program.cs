@@ -34,6 +34,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 
 namespace BookLoop
 {

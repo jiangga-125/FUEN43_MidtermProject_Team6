@@ -30,7 +30,7 @@
   </header>
 
   <!-- 購物車彈窗 / 側邊欄 -->
-  <CartDrawer v-model:visible="showCart" />
+  <!-- <CartDrawer v-model:visible="showCart" /> -->
 </template>
 
 <script setup lang="ts">
@@ -64,14 +64,17 @@ function submitSearch() {
 
   router.push({
     path: basePath,
-    query: { q, page: '1' }
+    query: { q, page: '1' },
   })
 }
 
 // 當 route.query.q 變動時同步 input
-watch(() => route.query.q, val => {
-  searchText.value = String(val || '')
-})
+watch(
+  () => route.query.q,
+  (val) => {
+    searchText.value = String(val || '')
+  },
+)
 </script>
 
 <style scoped>

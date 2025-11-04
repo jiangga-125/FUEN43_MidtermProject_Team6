@@ -1,4 +1,58 @@
 <!-- src/components/CartDrawer.vue -->
+<script setup lang="ts">
+import { computed, defineProps, defineEmits, onMounted } from 'vue'
+import { useCartStore } from '@/stores/cart'
+
+const props = defineProps<{ visible: boolean; memberId: number }>()
+const emit = defineEmits<{ (e: 'update:visible', value: boolean): void }>()
+const close = () => emit('update:visible', false)
+
+const cartStore = useCartStore()
+const cartItems = computed(() => cartStore.items)
+const totalItems = computed(() => cartStore.totalItems)
+const totalPrice = computed(() => cartStore.totalPrice)
+
+// 新增：打開購物車時初始化
+onMounted(async () => {
+  if (props.memberId) {
+    await cartStore.initCart(props.memberId)
+  }
+})
+
+function updateItem(bookId: number, qty: number) {
+  if (qty <= 0) cartStore.removeItem(bookId)
+  else cartStore.updateItem(bookId, qty)
+}
+function removeItem(bookId: number) {
+  cartStore.removeItem(bookId)
+}
+function clearCart() {
+  cartStore.clearCart()
+}
+
+async function checkoutCart() {
+  try {
+    // ✅ 使用 store 裡的 memberId
+    const memberId = cartStore.memberId
+    if (!memberId) {
+      alert('請先登入會員')
+      return
+    }
+
+    // ✅ 新增：呼叫 store 裡的 checkout 方法
+    const res = await cartStore.checkout(memberId)
+
+    // 假設後端回傳 { OrderID: 123 }
+    const orderId = res.OrderID || res.orderId || '未知'
+    alert('訂單建立成功！訂單編號：' + orderId)
+
+    close()
+  } catch (err: any) {
+    alert(err.message || '結帳失敗')
+  }
+}
+</script>
+
 <template>
   <div v-if="visible" class="cart-modal">
     <div class="modal-backdrop" @click="close"></div>
@@ -18,15 +72,15 @@
           <div class="cart-list mb-4">
             <div
               v-for="item in cartItems"
-              :key="item.book.bookId"
+              :key="item.book.id"
               class="cart-item d-flex justify-content-between align-items-center border-bottom py-3"
             >
               <div class="d-flex align-items-center gap-3 flex-grow-1">
                 <img
-                  :src="item.book.imageUrl || 'https://via.placeholder.com/60x80?text=Book'"
+                  :src="item.book.coverUrl || 'https://via.placeholder.com/60x80?text=Book'"
                   alt="Book Cover"
                   class="rounded shadow-sm"
-                  style="width: 60px; height: 80px; object-fit: cover;"
+                  style="width: 60px; height: 80px; object-fit: cover"
                 />
                 <div>
                   <strong class="fs-6">{{ item.book.title }}</strong>
@@ -40,9 +94,9 @@
                   style="width: 70px"
                   min="1"
                   v-model.number="item.quantity"
-                  @change="updateItem(item.book.bookId, item.quantity)"
+                  @change="updateItem(item.book.id, item.quantity)"
                 />
-                <button class="btn btn-sm btn-outline-danger" @click="removeItem(item.book.bookId)">
+                <button class="btn btn-sm btn-outline-danger" @click="removeItem(item.book.id)">
                   ✕
                 </button>
               </div>
@@ -70,39 +124,6 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { computed, defineProps, defineEmits } from 'vue'
-import { useCartStore } from '@/stores/cart'
-
-const props = defineProps<{ visible: boolean }>()
-const emit = defineEmits<{ (e: 'update:visible', value: boolean): void }>()
-const close = () => emit('update:visible', false)
-
-const cartStore = useCartStore()
-const cartItems = computed(() => cartStore.items)
-const totalItems = computed(() => cartStore.totalItems)
-const totalPrice = computed(() => cartStore.totalPrice)
-
-function updateItem(bookId: number, qty: number) {
-  if (qty <= 0) cartStore.removeItem(bookId)
-  else cartStore.updateItem(bookId, qty)
-}
-function removeItem(bookId: number) { cartStore.removeItem(bookId) }
-function clearCart() { cartStore.clearCart() }
-
-async function checkoutCart() {
-  try {
-    const memberId = 1
-    const res = await cartStore.checkout(memberId)
-    const { OrderID: orderId } = res
-    alert('訂單建立成功！訂單編號：' + orderId)
-    close()
-  } catch (err: any) {
-    alert(err.message || '結帳失敗')
-  }
-}
-</script>
-
 <style scoped>
 .cart-modal {
   position: fixed;
@@ -127,7 +148,7 @@ async function checkoutCart() {
   z-index: 2100;
   background: #fff;
   width: 900px;
-  height:  900px;
+  height: 900px;
   max-width: 95%;
   max-height: 95%;
   padding: 2.5rem;
@@ -156,21 +177,40 @@ async function checkoutCart() {
   opacity: 0.7;
   transition: opacity 0.2s;
 }
-.btn-close:hover { opacity: 1; }
+.btn-close:hover {
+  opacity: 1;
+}
 
 /* 彈出動畫 */
 @keyframes slideUp {
-  from { transform: translateY(50px) scale(0.95); opacity: 0; }
-  to { transform: translateY(0) scale(1); opacity: 1; }
+  from {
+    transform: translateY(50px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
-.animate-slide-up { animation: slideUp 0.35s ease-out; }
+.animate-slide-up {
+  animation: slideUp 0.35s ease-out;
+}
 
 /* 商品 hover */
-.cart-item:hover { background: #f9fafc; transition: background 0.2s; }
+.cart-item:hover {
+  background: #f9fafc;
+  transition: background 0.2s;
+}
 
 /* 手機適應 */
 @media (max-width: 576px) {
-  .modal-content { width: 95%; max-height: 90%; padding: 1rem; }
-  .cart-list { max-height: 300px; }
+  .modal-content {
+    width: 95%;
+    max-height: 90%;
+    padding: 1rem;
+  }
+  .cart-list {
+    max-height: 300px;
+  }
 }
 </style>

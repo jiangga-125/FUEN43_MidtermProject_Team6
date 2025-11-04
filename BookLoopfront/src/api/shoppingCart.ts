@@ -1,8 +1,10 @@
 import http from './http'
 
 export type CartItem = {
-  bookId: number
-  quantity: number
+  MemberID: number
+  BookID: number
+  Quantity: number
+  UnitPrice: number
 }
 
 // -------------------------
@@ -17,7 +19,7 @@ export async function getCart() {
 // 新增商品到購物車
 // -------------------------
 export async function addToCart(item: CartItem) {
-  const { data } = await http.post('/shoppingcart/add', item)
+  const { data } = await http.post('/shoppingcart/add', item, { withCredentials: true })
   return data
 }
 

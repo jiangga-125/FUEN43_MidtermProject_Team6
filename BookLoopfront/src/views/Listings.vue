@@ -1,11 +1,11 @@
-<!-- src/components/ListingCard.vue -->
+<!-- src/components/Listing.vue -->
 <script setup lang="ts">
 import UsedListingsGrid from '@/components/UsedListingsGrid.vue'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart' // 引入購物車 store
 import type { Listing } from '@/api/Listings'
-import type { Book } from '@/api/catalog'
+import type { Book } from '@/api/book'
 
 const props = defineProps<{ listing: Listing }>()
 const placeholder = '/img/placeholder.png'
@@ -20,13 +20,13 @@ const detailUrl = computed(() => ({
 function addToCart() {
   // 將 Listing 轉為 Book 型別
   const book: Book = {
-    bookId: props.listing.listingId,
+    id: props.listing.listingId,
     title: props.listing.title,
     salePrice: 0, // 如果 Listing 沒有價格，先給 0
-    coverUrl: props.listing.coverUrl || '',
+    coverUrl: (props.listing as any).coverUrl || '',
   }
 
-  cartStore.addItem(book, 1)  // 加入購物車
+  cartStore.addItem(book, 1) // 加入購物車
   alert(`已加入購物車：${book.title}`)
 }
 
