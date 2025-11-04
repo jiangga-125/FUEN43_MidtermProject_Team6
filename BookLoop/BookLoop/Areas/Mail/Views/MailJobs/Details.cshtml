@@ -126,46 +126,73 @@
 }
 
 <div class="row g-3 mb-3">
-    <!-- 開信率 KPI -->
-    <div class="col-12 col-lg-3">
-        <div class="card h-100 shadow-sm">
-            <div class="card-body d-flex flex-column justify-content-center text-center">
-                <div class="text-muted">開信率</div>
-                <div class="display-6 fw-bold my-2">@openRate%</div>
-                <div class="small text-muted">@uniqueOpens / @total</div>
+    <!-- 左欄：卡片+圓餅(上) / 開信折線(中) / 點擊折線(下) -->
+    <div class="col-12 col-xl-8">
+        <!-- 上：卡片｜圓餅 -->
+        <div class="row g-3">
+            <!-- 開信率 KPI -->
+            <div class="col-12 col-md-6">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column justify-content-center text-center">
+                        <div class="text-muted">開信率</div>
+                        <div class="display-6 fw-bold my-2">@openRate%</div>
+                        <div class="small text-muted">@uniqueOpens / @total</div>
+                    </div>
+                </div>
+            </div>
+            <!-- 點擊率 圓餅 -->
+            <div class="col-12 col-md-6">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header">點擊率</div>
+                    <div class="card-body"><canvas id="chartClickRate" height="160"></canvas></div>
+                    <div class="card-footer text-center text-muted small">
+                        點擊率 @clickRate%（@uniqueClicks / @total）
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- 開信數 折線+長條 -->
-    <div class="col-12 col-lg-9">
-        <div class="card h-100 shadow-sm">
-            <div class="card-header">開信數（自適應：分 / 時 / 日）</div>
-            <div class="card-body"><canvas id="chartOpensMixed" height="110"></canvas></div>
+        <!-- 中：開信數 折線（獨佔一列） -->
+        <div class="row g-3 mt-0">
+            <div class="col-12">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header">開信數（自適應：分 / 時 / 日）</div>
+                    <div class="card-body"><canvas id="chartOpensLine" height="130"></canvas></div>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- 點擊率 圓餅 -->
-    <div class="col-12 col-lg-3">
-        <div class="card h-100 shadow-sm">
-            <div class="card-header">點擊率</div>
-            <div class="card-body">
-                <canvas id="chartClickRate" height="180"></canvas>
-                <div class="mt-2 text-center text-muted small">
-                    點擊率 @clickRate%（@uniqueClicks / @total）
+        <!-- 下：點擊數 折線（獨佔一列） -->
+        <div class="row g-3 mt-0">
+            <div class="col-12">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header">點擊數（自適應：分 / 時 / 日）</div>
+                    <div class="card-body"><canvas id="chartClicksLine" height="130"></canvas></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 點擊數 折線+長條 -->
-    <div class="col-12 col-lg-9">
+    <!-- 右欄：寄出信件快照 -->
+    <div class="col-12 col-xl-4">
         <div class="card h-100 shadow-sm">
-            <div class="card-header">點擊數（自適應：分 / 時 / 日）</div>
-            <div class="card-body"><canvas id="chartClicksMixed" height="110"></canvas></div>
+            <div class="card-header">寄出信件快照</div>
+            <div class="card-body p-0">
+                @if (!string.IsNullOrEmpty((string?)ViewBag.SampleHtml))
+                {
+                    <iframe class="w-100 border-0" style="height:680px" sandbox=""
+                            srcdoc='@Html.Raw(ViewBag.SampleHtml)'></iframe>
+                }
+                else
+                {
+                    <div class="p-4 text-muted">沒有可用的快照。</div>
+                }
+            </div>
         </div>
     </div>
 </div>
+
+
 
 
 @if (!string.IsNullOrWhiteSpace(Model.Job.Description))
@@ -281,55 +308,46 @@
     (function(){
       const jobId = @Model.Job.JobId;
 
-      let opensChart, clicksChart, clickRateChart;
+      let opensLine, clicksLine, clickRateChart;
 
-      // 從 Controller 的 MetricsAdaptive 取回自適應時間軸資料
+      // 從 Controller 取自適應資料（已去重＝每收件者只算一次）
       async function loadAdaptive(){
         const r = await fetch(`@Url.Action("MetricsAdaptive", "MailJobs", new { area = "Mail" })?jobId=${jobId}`);
         const js = await r.json();
-
-        drawMixed('chartOpensMixed', '開信數', js.labels, js.opens);
-        drawMixed('chartClicksMixed','點擊數', js.labels, js.clicks);
+        drawLine('chartOpensLine',  '開信數', js.labels, js.opens,  (c)=>opensLine  = c);
+        drawLine('chartClicksLine', '點擊數', js.labels, js.clicks, (c)=>clicksLine = c);
       }
 
-      // 折線 + 長條（同資料兩種視覺）
-      function drawMixed(canvasId, label, labels, values){
+      // 純折線圖
+      function drawLine(canvasId, label, labels, values, setRef){
         const ctx = document.getElementById(canvasId).getContext('2d');
-        const old = (canvasId === 'chartOpensMixed') ? opensChart : clicksChart;
-        if (old) old.destroy();
-
+        if (setRef && setRef.destroy) setRef.destroy();
         const chart = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels,
-            datasets: [
-              { type:'bar',  label: label + '(柱)', data: values },
-              { type:'line', label: label + '(線)', data: values, tension:.3 }
-            ]
-          },
+          type: 'line',
+          data: { labels, datasets: [{ label, data: values, tension:.3, pointRadius:2 }] },
           options: {
-            responsive:true,
-            interaction:{ mode:'index', intersect:false },
-            scales:{ y:{ beginAtZero:true } },
-            plugins:{ legend:{ position:'bottom' } }
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            scales: { y: { beginAtZero: true } },
+            plugins: { legend: { position: 'bottom' } }
           }
         });
-        if (canvasId === 'chartOpensMixed') opensChart = chart; else clicksChart = chart;
+        if (typeof setRef === 'function') setRef(chart);
       }
 
       // 點擊率圓餅（唯一點擊 vs 未點擊）
       function drawClickRatePie(clicked, total){
         const yes = clicked, no = Math.max(total - clicked, 0);
-        if(clickRateChart) clickRateChart.destroy();
+        if (clickRateChart) clickRateChart.destroy();
         clickRateChart = new Chart(document.getElementById('chartClickRate').getContext('2d'), {
-          type:'pie',
-          data:{ labels:['已點擊','未點擊'], datasets:[{ data:[yes, no] }] },
-          options:{ responsive:true, plugins:{ legend:{ position:'bottom' } } }
+          type: 'pie',
+          data: { labels: ['已點擊','未點擊'], datasets: [{ data: [yes, no] }] },
+          options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
         });
       }
 
       // 初始載入
-      loadAdaptive(); // 兩張自適應混合圖
-      drawClickRatePie(@Model.UniqueClicks, @Model.TotalRecipients); // 圓餅圖
+      loadAdaptive(); // 兩張折線
+      drawClickRatePie(@Model.UniqueClicks, @Model.TotalRecipients); // 圓餅
     })();
 </script>

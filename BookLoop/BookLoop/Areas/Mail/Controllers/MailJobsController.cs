@@ -216,7 +216,20 @@ namespace BookLoop.Areas.Mail.Controllers
 
 			ViewBag.Progress = $"{job.SentCount} / {job.TotalRecipients}";
 
-			// 5) ✅ 關鍵：回傳 VM，而不是 job
+			//寄信快照
+			var sampleHtml = (ViewBag.Logs as List<BookLoop.Models.MailSendLog>)?
+	.FirstOrDefault(l => !string.IsNullOrEmpty(l.BodySnapshot))?.BodySnapshot;
+
+			if (string.IsNullOrEmpty(sampleHtml) && vm.Job.TemplateVersionId != null)
+			{
+				sampleHtml = await _db.TemplateVersions.AsNoTracking()
+					.Where(v => v.TemplateVersionId == vm.Job.TemplateVersionId)
+					.Select(v => v.BodyHtml) 
+					.FirstOrDefaultAsync();
+			}
+			ViewBag.SampleHtml = sampleHtml;
+
+			// 5) 回傳 VM
 			return View(vm);
 		}
 
