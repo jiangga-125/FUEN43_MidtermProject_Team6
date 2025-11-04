@@ -1,42 +1,33 @@
+<!-- src/views/MemberCenter.vue -->
 <template>
-  <div class="wrap">
-    <h3>會員中心</h3>
-    <p>歡迎，{{ user?.name }}</p>
-    <div class="links">
-      <a href="/">回首頁</a>
-      <button @click="signout">登出</button>
+  <div class="member-center">
+    <h2>會員中心（舊檔保留）</h2>
+    <div v-if="member">
+      <p><b>名稱：</b>{{ member.name || '-' }}</p>
+      <p><b>Email：</b>{{ member.email }}</p>
+      <button @click="logout">登出</button>
+    </div>
+    <div v-else>
+      <p>尚未登入，請先 <a href="/login">登入</a>。</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { authState } from '@/stores/auth'
-import { logout } from '@/api/auth'
 import { computed } from 'vue'
+import { useAuth } from '@/stores/auth'
+import { useRouter } from 'vue-router'
 
-const user = computed(() => authState.user)
-async function signout() {
-  await logout()
-  location.href = '/login'
+const auth = useAuth()
+const router = useRouter()
+
+const member = computed(() => auth.member)
+
+async function logout() {
+  try { await auth.logout() } finally { router.push('/login') }
 }
 </script>
 
 <style scoped>
-.wrap {
-  max-width: 720px;
-  margin: 24px auto;
-  padding: 12px;
-}
-.links {
-  display: flex;
-  gap: 12px;
-  margin-top: 12px;
-}
-button {
-  background: #eee;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-}
+.member-center { max-width: 720px; margin: 24px auto; padding: 0 16px; }
 </style>
