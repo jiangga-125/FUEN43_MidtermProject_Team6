@@ -1,7 +1,7 @@
 <!-- src/components/ListingCard.vue -->
 <template>
   <div class="card listing-card h-100">
-    <router-link :to="detailUrl" class="card-img-top-link">
+      <router-link :to="detailUrl" class="card-img-top-link">
       <img :src="coverSrc" class="card-img-top" alt="cover" />
     </router-link>
 
@@ -23,16 +23,20 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCartStore } from '@/stores/cart'
+import { useCartStore } from '@/stores/cart' // <-- 引入購物車 store
 import type { Listing } from '@/api/Listings'
+import Listings from '@/views/Listings.vue';
 import type { Book } from '@/api/catalog'
-
+  
 const props = defineProps<{ listing: Listing }>()
-const placeholder = '/img/placeholder.png'
-const coverSrc = computed(() => props.listing.coverUrl || placeholder)
+const placeholder = '../assets/ad.png' // 再改路徑(佔位圖)
+const coverSrc = computed(() => (props.listing as any).coverUrl || (props.listing as any).cover?.url || placeholder)
+
+
+
 
 const router = useRouter()
-const cartStore = useCartStore()
+const cartStore = useCartStore() // <-- 取得購物車 store
 
 const detailUrl = computed(() => ({
   name: 'ListingDetail',
@@ -41,22 +45,19 @@ const detailUrl = computed(() => ({
 
 function addToCart() {
   const book: Book = {
-    bookId: props.listing.listingId,
+    bookId: props.listing.listingId,        // 對應 bookId
     title: props.listing.title,
-    salePrice: 0,
+    salePrice: 0,                            // 如果 Listing 沒有價格，先用 0
     coverUrl: props.listing.coverUrl || ''
   }
 
-  cartStore.addItem(book, 1)
+  cartStore.addItem(book, 1)                // 加入購物車
   alert(`已加入購物車：${book.title}`)
 }
-
 function toggleFavorite() {
   alert(`已加入收藏：${props.listing.title}`)
 }
 </script>
-
-
 <style scoped>
 .listing-card {
   border-radius: 10px;

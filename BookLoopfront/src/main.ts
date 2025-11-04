@@ -1,13 +1,15 @@
-import './styles/theme.css'
+// src/main.ts
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import { useAuth } from '@/stores/auth'
+
 import { initAuth } from '@/stores/auth'
-import { createPinia } from 'pinia'
+const app = createApp(App)
+app.use(createPinia())
+app.use(router)
 
-const app = createApp(App) // 先建立 app
-const pinia = createPinia()
-app.use(pinia) // 再掛載 Pinia
-
-await initAuth() // 你的初始化 auth
-app.use(router).mount('#app') // 最後掛載 router 並 mount
+useAuth().tryLoadSession().finally(() => {
+app.mount('#app')
+})
