@@ -1,16 +1,18 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using BookLoop.Data;    // 若你的 Data namespace 不同請改
+using BookLoop.Models;  // 若你的 Models namespace 不同請改
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
-using BookLoop.Data;    // 若你的 Data namespace 不同請改
-using BookLoop.Models;  // 若你的 Models namespace 不同請改
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace BookLoop.Controllers
 {
 	[Route("api/dashboard")]
 	[ApiController]
+	[AllowAnonymous]
 	public class DashboardController : ControllerBase
 	{
 		private readonly ShopDbContext _shop;         // 訂單/商店資料（Orders）
