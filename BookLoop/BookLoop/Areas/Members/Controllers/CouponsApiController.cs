@@ -1,10 +1,12 @@
 ﻿using BookLoop.Services;
 using BookLoop.Services.Coupons;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BookLoop.Areas.Store.Controllers
 {
-	[Area("Store")]
+	[AllowAnonymous]
+	[Area("Members")]
 	[Route("api/[area]/[controller]/[action]")]
 	[ApiController]
 	public class CouponsApiController : ControllerBase
