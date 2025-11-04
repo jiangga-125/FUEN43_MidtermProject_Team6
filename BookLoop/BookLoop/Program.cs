@@ -125,8 +125,9 @@ namespace BookLoop
 			builder.Services.AddScoped<ITemplateMailer, TemplateMailer>();
             builder.Services.AddSingleton<IFileStorage, R2StorageService>();
             builder.Services.AddScoped<IMailJobRunner, MailJobRunner>();
+			builder.Services.AddHostedService<BrevoEventPoller>();
 
-            builder.Services.AddScoped<ICouponService, CouponService>();
+			builder.Services.AddScoped<ICouponService, CouponService>();
 			builder.Services.AddScoped<IPointsService, PointsService>();
 			builder.Services.AddScoped<IPricingEngine, PricingEngine>();
 			builder.Services.AddScoped<IOrderService, OrderService>();

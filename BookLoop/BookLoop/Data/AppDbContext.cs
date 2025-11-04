@@ -29,10 +29,12 @@ namespace BookLoop.Data
         public DbSet<MailSendLog> MailSendLogs => Set<MailSendLog>();
         public DbSet<MailJob> MailJobs => Set<MailJob>();
         public DbSet<MailJobRecipient> MailJobRecipients => Set<MailJobRecipient>();
+		public DbSet<MailEvent> MailEvents { get; set; } = null!;
+		public DbSet<IntegrationCursor> IntegrationCursors { get; set; } = null!;
 
 
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			base.OnModelCreating(modelBuilder);
 
