@@ -1,6 +1,6 @@
-﻿@model BookLoop.Models.MailJob
+﻿@model BookLoop.Areas.Mail.ViewModels.MailJobDetailsVM
 @{
-    ViewData["Title"] = $"活動明細 #{Model.JobId}";
+    ViewData["Title"] = $"活動明細 #{Model.Job.JobId}";
 
     string DT(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy/MM/dd HH:mm") : "-";
     string Pct(int sent, int total) => total <= 0 ? "0%" : $"{Math.Round(100.0 * sent / Math.Max(1, total)):0}%";
@@ -39,11 +39,11 @@
 
 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
     <div>
-        <h2 class="mb-1">@Model.CampaignName</h2>
+        <h2 class="mb-1">@Model.Job.CampaignName</h2>
         <div class="text-muted">
-            <span class="me-3">活動編號：#@Model.JobId</span>
-            <span class="me-3">模板鍵：<span class="text-monospace">@Model.TemplateKey</span></span>
-            <span class="me-3">版本：@Model.TemplateVersionId</span>
+            <span class="me-3">活動編號：#@Model.Job.JobId</span>
+            <span class="me-3">模板鍵：<span class="text-monospace">@Model.Job.TemplateKey</span></span>
+            <span class="me-3">版本：@Model.Job.TemplateVersionId</span>
         </div>
     </div>
     <div class="d-flex gap-2">
@@ -52,10 +52,10 @@
               method="post" class="d-inline"
               onsubmit="return confirm('確定要取消這個批次嗎？');">
             @Html.AntiForgeryToken()
-            <input type="hidden" name="id" value="@Model.JobId" />
+            <input type="hidden" name="id" value="@Model.Job.JobId" />
             <button type="submit"
                     class="btn btn-outline-danger"
-                    @(Model.Status is "Scheduled" or "Sending" ? "" : "disabled")>
+                    @(Model.Job.Status is "Scheduled" or "Sending" ? "" : "disabled")>
                 取消
             </button>
         </form>
@@ -77,7 +77,7 @@
         <div class="card h-100">
             <div class="card-body">
                 <div class="text-muted small">目前狀態</div>
-                <div class="fs-5 mt-1"><span class="@statusClass(Model.Status ?? "")">@StatusText(Model.Status)</span></div>
+                <div class="fs-5 mt-1"><span class="@statusClass(Model.Job.Status ?? "")">@StatusText(Model.Job.Status)</span></div>
             </div>
         </div>
     </div>
@@ -85,7 +85,7 @@
         <div class="card h-100">
             <div class="card-body">
                 <div class="text-muted small">預定發送</div>
-                <div class="fs-5 mt-1">@DT(Model.SendAt)</div>
+                <div class="fs-5 mt-1">@DT(Model.Job.SendAt)</div>
             </div>
         </div>
     </div>
@@ -93,7 +93,7 @@
         <div class="card h-100">
             <div class="card-body">
                 <div class="text-muted small">實際時間</div>
-                <div class="fs-6 mt-1">@DT(Model.StartedAt) <span class="text-muted">~</span> @DT(Model.FinishedAt)</div>
+                <div class="fs-6 mt-1">@DT(Model.Job.StartedAt) <span class="text-muted">~</span> @DT(Model.Job.FinishedAt)</div>
             </div>
         </div>
     </div>
@@ -114,11 +114,65 @@
     </div>
 </div>
 
-@if (!string.IsNullOrWhiteSpace(Model.Description))
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+@{
+    // 供 KPI / 圓餅用（唯一統計，來自 VM）
+    var uniqueOpens = Model.UniqueOpens;
+    var uniqueClicks = Model.UniqueClicks;
+    var openRate = total == 0 ? 0 : Math.Round(100.0 * uniqueOpens / (double)total, 2);
+    var clickRate = total == 0 ? 0 : Math.Round(100.0 * uniqueClicks / (double)total, 2);
+}
+
+<div class="row g-3 mb-3">
+    <!-- 開信率 KPI -->
+    <div class="col-12 col-lg-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex flex-column justify-content-center text-center">
+                <div class="text-muted">開信率</div>
+                <div class="display-6 fw-bold my-2">@openRate%</div>
+                <div class="small text-muted">@uniqueOpens / @total</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 開信數 折線+長條 -->
+    <div class="col-12 col-lg-9">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header">開信數（自適應：分 / 時 / 日）</div>
+            <div class="card-body"><canvas id="chartOpensMixed" height="110"></canvas></div>
+        </div>
+    </div>
+
+    <!-- 點擊率 圓餅 -->
+    <div class="col-12 col-lg-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header">點擊率</div>
+            <div class="card-body">
+                <canvas id="chartClickRate" height="180"></canvas>
+                <div class="mt-2 text-center text-muted small">
+                    點擊率 @clickRate%（@uniqueClicks / @total）
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 點擊數 折線+長條 -->
+    <div class="col-12 col-lg-9">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header">點擊數（自適應：分 / 時 / 日）</div>
+            <div class="card-body"><canvas id="chartClicksMixed" height="110"></canvas></div>
+        </div>
+    </div>
+</div>
+
+
+@if (!string.IsNullOrWhiteSpace(Model.Job.Description))
 {
     <div class="alert alert-secondary">
         <div class="small text-muted">說明</div>
-        <div>@Model.Description</div>
+        <div>@Model.Job.Description</div>
     </div>
 }
 
@@ -223,3 +277,59 @@
         </div>
     </div>
 </div>
+<script>
+    (function(){
+      const jobId = @Model.Job.JobId;
+
+      let opensChart, clicksChart, clickRateChart;
+
+      // 從 Controller 的 MetricsAdaptive 取回自適應時間軸資料
+      async function loadAdaptive(){
+        const r = await fetch(`@Url.Action("MetricsAdaptive", "MailJobs", new { area = "Mail" })?jobId=${jobId}`);
+        const js = await r.json();
+
+        drawMixed('chartOpensMixed', '開信數', js.labels, js.opens);
+        drawMixed('chartClicksMixed','點擊數', js.labels, js.clicks);
+      }
+
+      // 折線 + 長條（同資料兩種視覺）
+      function drawMixed(canvasId, label, labels, values){
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        const old = (canvasId === 'chartOpensMixed') ? opensChart : clicksChart;
+        if (old) old.destroy();
+
+        const chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { type:'bar',  label: label + '(柱)', data: values },
+              { type:'line', label: label + '(線)', data: values, tension:.3 }
+            ]
+          },
+          options: {
+            responsive:true,
+            interaction:{ mode:'index', intersect:false },
+            scales:{ y:{ beginAtZero:true } },
+            plugins:{ legend:{ position:'bottom' } }
+          }
+        });
+        if (canvasId === 'chartOpensMixed') opensChart = chart; else clicksChart = chart;
+      }
+
+      // 點擊率圓餅（唯一點擊 vs 未點擊）
+      function drawClickRatePie(clicked, total){
+        const yes = clicked, no = Math.max(total - clicked, 0);
+        if(clickRateChart) clickRateChart.destroy();
+        clickRateChart = new Chart(document.getElementById('chartClickRate').getContext('2d'), {
+          type:'pie',
+          data:{ labels:['已點擊','未點擊'], datasets:[{ data:[yes, no] }] },
+          options:{ responsive:true, plugins:{ legend:{ position:'bottom' } } }
+        });
+      }
+
+      // 初始載入
+      loadAdaptive(); // 兩張自適應混合圖
+      drawClickRatePie(@Model.UniqueClicks, @Model.TotalRecipients); // 圓餅圖
+    })();
+</script>
