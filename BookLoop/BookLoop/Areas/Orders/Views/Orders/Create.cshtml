@@ -114,10 +114,10 @@
     }
 
     <script>
-               document.addEventListener("DOMContentLoaded", function () {
+                     document.addEventListener("DOMContentLoaded", function () {
             const codeInput = document.getElementById("discountCodeInput");
-            const typeDisplay = document.getElementById("couponTypeSnap"); // 顯示文字的欄位
-            const typeInput = document.getElementById("couponTypeInput");  // 實際送出用 hidden 欄位
+            const typeDisplay = document.getElementById("couponTypeSnap"); // 顯示給使用者看的欄位
+            const typeInput = document.getElementById("couponTypeInput");  // 實際送後端的 hidden 欄位
             const nameInput = document.querySelector("input[name='CouponNameSnap']");
             const valueInput = document.querySelector("input[name='CouponDiscountAmount']");
             const totalInput = document.querySelector("input[name='TotalAmount']");
@@ -152,17 +152,18 @@
 
                     const c = json.data;
 
-                    // ✅ 寫入顯示用 + 提交用欄位
-                    const discountTypeText = c.discountTypeText || ((c.discountType == 0) ? "金額折抵" : "百分比折扣");
-                    typeDisplay.value = discountTypeText; // 顯示用
-                    typeInput.value = discountTypeText;   // 隱藏欄位（會被送到後端）
+                    // ✅ 用數字存後端用（0 / 1）
+                    typeInput.value = c.discountType;
+
+                    // ✅ 顯示給使用者看的中文
+                    typeDisplay.value = c.discountTypeText || (c.discountType == 0 ? "金額折抵" : "百分比折扣");
                     nameInput.value = c.name || "";
                     valueInput.value = c.discountValue || 0;
 
-                    // ✅ 顯示提示
+                    // ✅ 提示
                     hint.innerHTML = `
                         <span class="text-success">
-                            ✅ 已套用優惠券「${c.name}」（${discountTypeText}）
+                            ✅ 已套用優惠券「${c.name}」（${typeDisplay.value}）
                         </span>`;
                 } catch (err) {
                     console.error("🚨 發生錯誤：", err);
@@ -170,6 +171,7 @@
                 }
             });
         });
+
 
     </script>
 }
