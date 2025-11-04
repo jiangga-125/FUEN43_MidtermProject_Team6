@@ -11,5 +11,5 @@ app.use(createPinia())
 app.use(router)
 
 useAuth().tryLoadSession().finally(() => {
-    app.mount('#app')
+app.mount('#app')
 })

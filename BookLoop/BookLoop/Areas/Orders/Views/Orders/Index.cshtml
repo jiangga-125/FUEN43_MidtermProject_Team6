@@ -250,16 +250,27 @@
                             </button>
                         </td>
 
-                        
+
                         <td>
                             @if (item.Status == 0)
                             {
-                                <form id="paymentForm_@item.OrderID" asp-action="GoToPayment" asp-controller="Orders" method="post" target="_blank">
-                                    <input type="hidden" name="orderId" value="@item.OrderID" />
-                                    <button type="button" class="btn btn-success btn-action" onclick="document.getElementById('paymentForm_@item.OrderID').submit();">
-                                        前往付款
+                                if (item.TotalAmount > 0)
+                                {
+                                    <form id="paymentForm_@item.OrderID" asp-action="GoToPayment" asp-controller="Orders" method="post" target="_blank">
+                                        <input type="hidden" name="orderId" value="@item.OrderID" />
+                                        <button type="button" class="btn btn-success btn-action"
+                                                onclick="document.getElementById('paymentForm_@item.OrderID').submit();">
+                                            前往付款
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-secondary btn-action" disabled title="金額為 0 元，無法付款">
+                                        無需付款
                                     </button>
-                                </form>
+                                 
+                                }
                             }
                             else
                             {
