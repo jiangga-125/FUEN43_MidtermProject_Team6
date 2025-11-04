@@ -13,17 +13,17 @@
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
-                <label asp-for="ReasonCode" class="control-label"></label>
+                <label asp-for="ReasonCode" class="control-label">原因</label>
                 <input asp-for="ReasonCode" class="form-control" />
                 <span asp-validation-for="ReasonCode" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="ChargeType" class="control-label"></label>
+                <label asp-for="ChargeType" class="control-label">計價方式</label>
                 <input asp-for="ChargeType" class="form-control" />
                 <span asp-validation-for="ChargeType" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="UnitAmount" class="control-label"></label>
+                <label asp-for="UnitAmount" class="control-label">單價</label>
                 <input type="number" step="1" asp-for="UnitAmount" class="form-control" />
                 <span asp-validation-for="UnitAmount" class="text-danger"></span>
             </div>
@@ -31,14 +31,14 @@
             
            
             <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
+                <input type="submit" value="新增" class="btn btn-primary" />
             </div>
         </form>
     </div>
 </div>
 
 <div>
-    <a asp-action="Index">Back to List</a>
+    <a asp-action="Index">返回</a>
 </div>
 
 @section Scripts {

@@ -17,83 +17,25 @@
         @TempData["Debug"]
     </div>
 }
-<table class="table">
+@section Styles{
+    
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css" />
+   
+}
+<table id="borrowTable" class="table table-striped table-bordered nowrap" style="width:100%;">
     <thead>
         <tr>
-            <th>
-                書籍
-            </th>
-            <th>
-                借閱人
-            </th>
-            <th>
-                借閱日
-            </th>
-            <th>
-                歸還日
-            </th>
-            <th>
-                逾期日
-            </th>
-            <th>
-                借閱情況
-            </th>
-                      
-            <th>
-                歸還狀況
-            </th>
-            
+            <th>書籍</th>
+            <th>借閱人</th>
+            <th>借閱日</th>
+            <th>歸還日</th>
+            <th>逾期日</th>
+            <th>借閱情況</th>
+            <th>歸還狀況</th>
             <th>操作欄位</th>
         </tr>
     </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                    @Html.DisplayFor(modelItem => item.BookTitle)
-            </td>
-            <td>
-                    @Html.DisplayFor(modelItem => item.MemberName)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.BorrowDate)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.ReturnDate)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.DueDate)
-            </td>
-                <td class="fw-bold fs-6 @(item.ConditionName == "借出" ? "text-primary"
-                                                        : item.ConditionName == "逾期" ? "text-danger"
-                                                        : item.ConditionName == "歸還" ? "text-success"
-                                                        : "")">
-                @Html.DisplayFor(modelItem => item.ConditionName)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.ReturnCondition)
-            </td>
-            
-            <td>
-                @if (item.ConditionName == "借出") // 假設書已借出才可以歸還
-                    {
-                        <button type="button" class="btn btn-success"
-                                onclick="openReturnModal(@item.RecordID)">
-                            還書
-                        </button>
-                    }
-                    @if ((byte?)item.ReturnCondition is 1 or 2)
-                    {
-
-                        <a class="btn btn-danger" asp-area="Borrows" asp-controller="PenaltyTransactions" 
-                        asp-route-memberID="@item.MemberID" asp-route-recordID="@item.RecordID" asp-action="Create">還書罰金</a>
-                       
-                    }
-
-            </td>
-        </tr>
-}
-    </tbody>
+    <tbody></tbody>
 </table>
 <!--  Modal 殼，還書確認 -->
 <div class="modal fade" id="returnModal" tabindex="-1" aria-hidden="true">
@@ -104,12 +46,124 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="returnModalBody">
-                <!-- AJAX 載入 _ReturnConfirm.cshtml -->
+                
             </div>
         </div>
     </div>
 </div>
+<!--  Modal 殼，罰金 -->
+<div class="modal fade" id="penaltyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-success">
+                <h5 class="modal-title">還書罰金</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body"><!-- 這裡用 AJAX 塞 Partial --></div>
+        </div>
+    </div>
+</div>
 @section Scripts {
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <!--  datatable用 -->
+    <script>
+        // 日期格式化（可改成 dayjs/moment）
+        function fmtDate(val) {
+            if (!val) return '';
+            // 後端是 ISO 字串或 /Date()/ 都能吃，保守做法：
+            const d = new Date(val);
+            if (isNaN(d)) return '';
+            return d.toLocaleDateString();
+        }
+
+        function conditionClass(name) {
+            if (name === "借出") return "text-primary";
+            if (name === "逾期") return "text-danger";
+            if (name === "歸還") return "text-success";
+            return "";
+        }
+
+        $(function () {
+            const table = $('#borrowTable').DataTable({
+                language: { url: 'https://cdn.datatables.net/plug-ins/2.0.8/i18n/zh-HANT.json' },
+                processing: true,
+                responsive: true,
+                // 如果要中文介面，可載入語系檔：
+                // language: { url: "https://cdn.datatables.net/plug-ins/1.13.8/i18n/zh-HANT.json" },
+                ajax: {
+                    // 根據你的路由調整（含 Area 的話就 /Borrows/BorrowRecords/List）
+                    url: '@Url.Action("List", "BorrowRecords", new { area = "Borrows" })',
+                    type: 'GET',
+                    dataSrc: 'data'
+                },
+                columns: [
+                    { data: 'bookTitle', title: '書籍' },
+                    { data: 'memberName', title: '借閱人' },
+                    {
+                        data: 'borrowDate',
+                        title: '借閱日',
+                        render: function (data) { return fmtDate(data); }
+                    },
+                    {
+                        data: 'returnDate',
+                        title: '歸還日',
+                        render: function (data) { return fmtDate(data); }
+                    },
+                    {
+                        data: 'dueDate',
+                        title: '逾期日',
+                        render: function (data) { return fmtDate(data); }
+                    },
+                    {
+                        data: 'conditionName',
+                        title: '借閱情況',
+                        render: function (data) {
+                            const cls = conditionClass(data);
+                            return `<span class="fw-bold fs-6 ${cls}">${data ?? ""}</span>`;
+                        }
+                    },
+                    {
+                        data: 'returnConditionText',
+                        title: '歸還狀況',
+                        defaultContent: ''
+                    },
+                    {
+                        data: null,
+                        title: '操作欄位',
+                        orderable: false,
+                        searchable: false,
+                        render: function (data, type, row) {
+                            const canReturn =
+                                (row.conditionName === "借出" || row.conditionName === "逾期") &&
+                                (row.returnCondition == null);
+
+                            const canPenalty =
+                                (row.returnCondition === 1 || row.returnCondition === 2 ||
+                                row.conditionName === "逾期")
+
+                            let html = '';
+                            if (canReturn) {
+                                html += `<button type="button" class="btn btn-success me-2"
+                                              onclick="openReturnModal(${row.recordID})">
+                                             還書
+                                         </button>`;
+                            }
+                            if (canPenalty) {
+                                const url = '@Url.Action("Create", "PenaltyTransactions", new { area = "Borrows" })'
+                                          + `?memberID=${row.memberID}&recordID=${row.recordID}`;
+                                html += `<a class="btn btn-danger btn-penalty" href="${url}">還書罰金</a>`;
+                            }
+                            return html || '-';
+                        }
+                    }
+                ],
+                // 想要預設排序的話（例如依借閱日新→舊）
+                order: [[2, 'desc']]
+            });
+        });
+    </script>
     <script>
         function openReturnModal(recordId) {
           const url = '/Borrows/BorrowRecords/Return/' + recordId;
@@ -128,4 +182,155 @@
           }
         });
     </script>
+    <script>
+        // 點擊「還書罰金」=> AJAX 載入 Partial 到 Modal
+        document.addEventListener('click', function (e) {
+            const a = e.target.closest('a.btn-penalty'); // 給按鈕一個 class 以便綁定
+            if (!a) return;
+
+            e.preventDefault();
+
+            const url = a.getAttribute('href');
+            const modalEl = document.getElementById('penaltyModal');
+            const bodyEl = modalEl.querySelector('.modal-body');
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(r => r.text())
+                .then(html => {
+                    bodyEl.innerHTML = html;
+
+                    // 重新 parse jQuery unobtrusive 驗證
+                    if (window.jQuery && $.validator && $.validator.unobtrusive) {
+                        $.validator.unobtrusive.parse(bodyEl);
+                    }
+
+                    new bootstrap.Modal(modalEl).show();
+                })
+                .catch(err => console.error(err));
+        });
+
+        // 在 Modal 內用 AJAX 送出表單
+        document.addEventListener('submit', function (e) {
+            const form = e.target.closest('#penaltyForm');
+            if (!form) return;
+
+            e.preventDefault();
+            const modalEl = document.getElementById('penaltyModal');
+            const bodyEl = modalEl.querySelector('.modal-body');
+
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams(new FormData(form))
+            })
+            .then(async (r) => {
+                if (r.ok) {
+                    // 成功：關閉 modal 並刷新（或你可改為只刷新某個區塊）
+                    const bsModal = bootstrap.Modal.getInstance(modalEl);
+                    bsModal?.hide();
+                    location.reload();
+                } else {
+                    // 失敗（例如驗證錯）：伺服器回傳 Partial（含錯誤訊息）
+                    const html = await r.text();
+                    bodyEl.innerHTML = html;
+                    if (window.jQuery && $.validator && $.validator.unobtrusive) {
+                        $.validator.unobtrusive.parse(bodyEl);
+                    }
+                }
+            })
+            .catch(err => console.error(err));
+        });
+    </script>
+    <script>
+        const modalEl = document.getElementById('penaltyModal');
+        const bodyEl  = modalEl.querySelector('.modal-body');
+
+        // 只用「同一個」實例
+        const penaltyModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+        // 開啟 modal：載入 partial 後 show
+        document.addEventListener('click', async (e) => {
+          const el = e.target.closest('.btn-penalty');
+          if (!el) return;
+          e.preventDefault();
+
+          const url = el.tagName === 'A' ? el.href : el.dataset.url;
+          try {
+            const r = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const html = await r.text();
+            bodyEl.innerHTML = html;
+
+            // 重新啟用 MVC 驗證（若有）
+            if (window.jQuery && $.validator && $.validator.unobtrusive) {
+              $.validator.unobtrusive.parse(bodyEl);
+            }
+
+            // 你的初始化（如價格綁定）
+            setupPenaltyForm(bodyEl);
+
+            penaltyModal.show(); // 用同一個實例
+          } catch (err) {
+            console.error(err);
+          }
+        });
+
+        // 關閉後清理殘留（保險做法）
+        modalEl.addEventListener('hidden.bs.modal', () => {
+          bodyEl.innerHTML = '';
+          // 移除任何殘留的 backdrop 與樣式（若有重複實例時很有用）
+          document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+          document.body.classList.remove('modal-open');
+          document.body.style.removeProperty('padding-right');
+        });
+
+        // 表單送出成功時關閉（如果你用 AJAX 提交）
+        document.addEventListener('submit', async (e) => {
+          const form = e.target.closest('#penaltyForm');
+          if (!form) return;
+          e.preventDefault();
+
+          const res = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams(new FormData(form))
+          });
+
+          if (res.ok) {
+            penaltyModal.hide();   // 用同一個實例來關閉
+            location.reload();     // 或局部刷新
+          } else {
+            bodyEl.innerHTML = await res.text();
+            if (window.jQuery && $.validator && $.validator.unobtrusive) {
+              $.validator.unobtrusive.parse(bodyEl);
+            }
+            setupPenaltyForm(bodyEl);
+          }
+        });
+
+        function setupPenaltyForm(root) {
+          const sel         = root.querySelector('[name="RuleID"]');
+          const unitHidden  = root.querySelector('[name="UnitAmount"]');
+          const unitDisplay = root.querySelector('#UnitAmountDisplay');
+          if (!sel) return;
+          let prices = {};
+          try { prices = JSON.parse(sel.dataset.prices || '{}'); } catch {}
+          const updatePrice = () => {
+            const id = sel.value;
+            const val = (id && prices && prices[id] != null) ? prices[id] : '';
+            if (unitHidden)  unitHidden.value  = val;
+            if (unitDisplay) unitDisplay.value = val;
+          };
+          sel.addEventListener('change', updatePrice, { once:false });
+          updatePrice();
+        }
+    </script>
+
+
 }

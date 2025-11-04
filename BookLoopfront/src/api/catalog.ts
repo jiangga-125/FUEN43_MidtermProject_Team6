@@ -40,7 +40,13 @@ export async function searchBooks(q: string, page = 1, pageSize = 12) {
 }
 
 export async function getBanners() {
-  // 後端：GET /api/banners 回傳 { id, imageUrl, link? }[]
-  const { data } = await http.get<Array<{ id:number; imageUrl:string; link?:string }>>('/banners')
-  return data
+  try {
+    const { data } = await http.get('AdvertisementsApi')
+    console.log('✅ 成功載入廣告資料', data)
+    return data
+  } catch (err) {
+    console.error('❌ 無法讀取廣告資料', err)
+    return []
+  }
 }
+

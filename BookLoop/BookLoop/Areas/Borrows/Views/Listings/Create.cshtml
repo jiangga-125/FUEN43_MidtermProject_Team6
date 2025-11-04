@@ -1,40 +1,40 @@
 ﻿@model BookLoop.ViewModels.ListingsViewModel
 
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "新增書籍頁面";
 }
-
-<div class="row">
-    <div class="col-md-4">
+<div class="container">
+    <div class="row justify-content-center ">
+        <div class="col-12 col-md-6 col-lg-4">
         <form asp-action="Create" method="post" enctype="multipart/form-data">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
                 <label asp-for="Title" class="control-label">書名</label>
-                <input asp-for="Title" class="form-control" />
+                <input asp-for="Title" class="form-control" id="title" />
                 <span asp-validation-for="Title" class="text-danger"></span>
             </div>
             <div class="form-group">
                 <label asp-for="AuthorName" class="control-label">作者</label>
-                <input asp-for="AuthorName" class="form-control" />
+                <input asp-for="AuthorName" class="form-control" id="authorName" />
                 <span asp-validation-for="AuthorName" class="text-danger"></span>
             </div>
             <div class="form-group">
                 <label asp-for="CategoryId" class="control-label">種類</label>
-                <select asp-for="CategoryId" class ="form-control" asp-items="ViewBag.CategoryID"></select>
+                <select asp-for="CategoryId" class ="form-select" asp-items="ViewBag.CategoryID"></select>
             </div>
             <div class="form-group">
                 <label asp-for="PublisherId" class="control-label">出版社</label>
-                <select asp-for="PublisherId" class="form-control" asp-items="ViewBag.PublisherID"></select>
+                <select asp-for="PublisherId" class="form-select" asp-items="ViewBag.PublisherID"></select>
             </div>
            
             <div class="form-group">
                 <label asp-for="ISBN" class="control-label">ISBN</label>
-                <input asp-for="ISBN" class="form-control" />
+                <input asp-for="ISBN" class="form-control" id="Isbn" />
                 <span asp-validation-for="ISBN" class="text-danger"></span>
             </div>
             <div class="form-group">
                 <label asp-for="Condition" class="control-label">書況</label>
-                <input asp-for="Condition" class="form-control" />
+                <input asp-for="Condition" class="form-control" id="condition" />
             </div>
            
 
@@ -59,7 +59,7 @@
             <!-- 格 1：雲端網址 -->
             <div id="cloudBox" class="mb-3">
                 <label asp-for="CloudImageUrl" class="form-label">圖片網址</label>
-                <input asp-for="CloudImageUrl" class="form-control" placeholder="https://...">
+                <input asp-for="CloudImageUrl" class="form-control" placeholder="https://..." id="cloudImageUrl">
                 <span asp-validation-for="CloudImageUrl" class="text-danger"></span>
                 <div class="form-text">貼上外部圖檔 URL。</div>
             </div>
@@ -80,16 +80,31 @@
                      style="max-width:220px;max-height:220px;object-fit:contain;border:1px solid #ddd;border-radius:6px;padding:4px;">
             </div>
 
-            <div class="mt-3">
-                <button type="submit" class="btn btn-primary">建立</button>
-                <a asp-action="Index" class="btn btn-secondary">返回列表</a>
+                <div class="mt-3 d-flex flex-nowrap align-items-center gap-2">
+                    <button type="submit" class="btn btn-primary text-nowrap"><i class="fa-solid fa-folder-plus"></i>建立</button>
+                    <button type="button" class="btn btn-info text-nowrap" id="addbtn">一鍵新增</button>
+                    <button type="button" class="btn btn-danger text-nowrap" id="clrbtn"><i class="fa-solid fa-broom"></i>一鍵清除</button>
+                    <a asp-action="Index" class="btn btn-secondary text-nowrap"><i class="fa-solid fa-rotate-left"></i>返回列表</a>
+
             </div>
         </form>
     </div>
 </div>
-
+</div>
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+       //一鍵清除
+		const clrbtn= document.getElementById("clrbtn");
+        clrbtn.addEventListener("click", function(){
+            document.getElementById("title").value = "";
+            document.getElementById("authorName").value = "";
+            document.getElementById("condition").value = "";
+			document.getElementById("Isbn").value = "";
+			 document.getElementById("cloudImageUrl").value = "";
+		});
+
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
           const srcCloud = document.getElementById('srcCloud');
@@ -97,55 +112,73 @@
           const srcNone  = document.getElementById('srcNone');
           const cloudBox = document.getElementById('cloudBox');
           const localBox = document.getElementById('localBox');
-          const preview  = document.getElementById('previewImg'); // ← 可能為 null
-          const cloudInput = cloudBox?.querySelector('input[name="CloudImageUrl"]');
-          const localInput = document.getElementById('localImageInput');
-          const defaultSrc = '@Url.Content("~/images/borrow/noimage.jpeg")'; // 依你的實際路徑
+          const preview  = document.getElementById('previewImg');
 
-          // 任何一個關鍵元素抓不到，就不要繼續（避免在別頁報錯）
-          if (!srcCloud || !srcLocal || !srcNone || !cloudBox || !localBox || !preview) {
-            return;
-          }
+          // ✅ 同時支援 id 與 name，避免抓不到
+          const cloudInput = document.getElementById('cloudImageUrl')
+                          || cloudBox?.querySelector('[name="CloudImageUrl"]');
+
+          const localInput = document.getElementById('localImageInput');
+          const clrbtn     = document.getElementById('clrbtn');
+
+          const defaultSrc = '@Url.Content("~/images/borrow/noimage.jpeg")';
+
+          if (!srcCloud || !srcLocal || !srcNone || !cloudBox || !localBox || !preview) return;
 
           let objectUrl = null;
+          let currentRequestId = 0;
+
+          function revokeObjectUrlIfAny() {
+            if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+          }
 
           function showDefault() {
-            if (!preview) return;
-            if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+            revokeObjectUrlIfAny();
             preview.onerror = null;
-            preview.src = defaultSrc;
+            preview.src = '';            // 先清空，確保重載
+            preview.src = defaultSrc;    // 回 noimage
           }
 
-          function previewCloud(url) {
-            if (!preview) return;
-            if (!url) { showDefault(); return; }
+          function safeSetPreviewByUrl(url) {
+            const myReq = ++currentRequestId;
+            if (!url || !url.trim()) { showDefault(); return; }
             if (location.protocol === 'https:' && /^http:\/\//i.test(url)) { showDefault(); return; }
-            if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
-            preview.onerror = () => { preview.onerror = null; showDefault(); };
-            preview.src = url;
+
+            revokeObjectUrlIfAny();
+
+            const img = new Image();
+            img.onload = () => {
+              if (myReq !== currentRequestId) return;
+              preview.onerror = () => { preview.onerror = null; showDefault(); };
+              preview.src = '';
+              preview.src = url;
+            };
+            img.onerror = () => { if (myReq === currentRequestId) showDefault(); };
+            img.src = url;
           }
+
+          function previewCloud(url) { safeSetPreviewByUrl(url); }
 
           function previewLocal(file) {
-            if (!preview) return;
             if (!file || !file.type?.startsWith('image/')) { showDefault(); return; }
-            if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+            revokeObjectUrlIfAny();
             objectUrl = URL.createObjectURL(file);
             preview.onerror = () => { preview.onerror = null; showDefault(); };
+            preview.src = '';
             preview.src = objectUrl;
           }
 
           function toggleBox() {
-            // 先切換 UI 區塊
             if (srcCloud.checked) {
               cloudBox.style.display = '';
               localBox.style.display = 'none';
-              const hasCloud = cloudInput && cloudInput.value.trim().length > 0;
-              if (!hasCloud) showDefault();
+              const url = cloudInput?.value?.trim() ?? '';
+              url ? previewCloud(url) : showDefault();
             } else if (srcLocal.checked) {
               cloudBox.style.display = 'none';
               localBox.style.display = '';
-              const hasLocal = localInput && localInput.files && localInput.files.length > 0;
-              if (!hasLocal) showDefault();
+              const f = localInput?.files?.[0];
+              f ? previewLocal(f) : showDefault();
             } else {
               cloudBox.style.display = 'none';
               localBox.style.display = 'none';
@@ -153,16 +186,160 @@
             }
           }
 
-          // 綁事件（先綁 input/change，再綁切換）
-          cloudInput?.addEventListener('input', () => previewCloud(cloudInput.value.trim()));
-          localInput?.addEventListener('change', () => previewLocal(localInput.files?.[0]));
-
+          // 綁事件
+          cloudInput?.addEventListener('input',  () => previewCloud(cloudInput.value.trim()));
+          cloudInput?.addEventListener('change', () => previewCloud(cloudInput.value.trim()));
+          localInput?.addEventListener('change', () => {
+            const f = localInput.files?.[0];
+            f ? previewLocal(f) : showDefault();
+          });
           srcCloud.addEventListener('change', toggleBox);
           srcLocal.addEventListener('change', toggleBox);
           srcNone .addEventListener('change', toggleBox);
 
-          // 初始化（此時 DOM 已就緒）
+          // ✅ 一鍵清除：清欄位＋重設預覽
+          clrbtn?.addEventListener('click', function () {
+            document.getElementById('title').value = '';
+            document.getElementById('authorName').value = '';
+            document.getElementById('condition').value = '';
+            document.getElementById('Isbn').value = '';
+
+            // 清雲端網址欄位並觸發預覽邏輯
+            if (cloudInput) {
+              cloudInput.value = '';
+              cloudInput.dispatchEvent(new Event('input',  { bubbles: true }));  // 立即回 noimage
+              cloudInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            // 清本機檔（有些瀏覽器需手動觸發 change）
+            if (localInput) {
+              localInput.value = '';
+              localInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            // 將來源切到「無」並統一刷新 UI
+            if (srcNone) srcNone.checked = true;
+            toggleBox();    // 會呼叫 showDefault()
+          });
+
+          // 初始化
           toggleBox();
         });
     </script>
+
+
+    <script>
+        //先填Isbn後一鍵新增
+        document.addEventListener('DOMContentLoaded', () => {
+          const $ = (s) => document.querySelector(s);
+
+          const el = {
+            addBtn:    $('#addbtn'),
+            title:     $('#title'),
+            author:    $('#authorName'),
+            isbn:      $('#Isbn'),
+            condition: $('#condition'),
+            // 圖片相關
+            srcCloud:  $('#srcCloud'),
+            srcLocal:  $('#srcLocal'),
+            srcNone:   $('#srcNone'),
+            cloudUrl:  document.getElementById('CloudImageUrl') || $('input[name="CloudImageUrl"]'),
+            preview:   $('#previewImg'),
+            cloudBox:  $('#cloudBox'),
+            localBox:  $('#localBox'),
+          };
+
+          const NOIMG = (typeof previewImgPath !== 'undefined')
+            ? previewImgPath
+            : (el.preview ? el.preview.src : '');
+
+          function normalizeIsbn(input) {
+            return (input || '').replace(/[^0-9Xx]/g, '').toUpperCase();
+          }
+
+          async function fetchOpenLibraryByIsbn(isbnRaw) {
+            const isbn = normalizeIsbn(isbnRaw);
+            if (!isbn) throw new Error('請輸入有效的 ISBN');
+
+            // edition
+            const edRes = await fetch(`https://openlibrary.org/isbn/${isbn}.json`);
+            if (!edRes.ok) throw new Error('Open Library 找不到此 ISBN');
+            const edition = await edRes.json();
+
+            // 單一作者（只取第一位）
+            let firstAuthor = '';
+            if (Array.isArray(edition.authors) && edition.authors.length) {
+              const aKey = edition.authors[0]?.key;
+              if (aKey) {
+                const aRes = await fetch(`https://openlibrary.org${aKey}.json`);
+                if (aRes.ok) {
+                  const aData = await aRes.json();
+                  firstAuthor = aData?.name || '';
+                }
+              }
+            }
+
+            // 封面網址（L/M/S 可選，這裡用 L）
+            const coverUrl = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+
+            return { isbn, title: edition.title || '', author: firstAuthor, coverUrl };
+          }
+
+          const CONDITION_POOL = ['全新', '近新', '良好', '可', '差'];
+          const randomCondition = () =>
+            CONDITION_POOL[Math.floor(Math.random() * CONDITION_POOL.length)];
+
+          function switchToCloudAndPreview(url) {
+            if (el.srcCloud) el.srcCloud.checked = true;
+            if (el.cloudBox) el.cloudBox.style.display = '';
+            if (el.localBox) el.localBox.style.display = 'none';
+            if (el.cloudUrl) el.cloudUrl.value = url || '';
+            if (el.preview)  el.preview.src  = url || NOIMG;
+          }
+
+          el.addBtn?.addEventListener('click', async () => {
+            // 僅在四欄（書名／作者／ISBN／書況）皆空白時才動作
+            const isAllEmpty =
+              (!el.title?.value || el.title.value.trim() === '') &&
+              (!el.author?.value || el.author.value.trim() === '') &&
+              (!el.isbn?.value || el.isbn.value.trim() === '') &&
+              (!el.condition?.value || el.condition.value.trim() === '');
+
+            if (!isAllEmpty) return; // 符合你的規則：什麼也不做
+
+            try {
+              el.addBtn.disabled = true;
+
+              // 先用欄位的 ISBN；若沒填就 prompt 一次
+              let rawIsbn = el.isbn?.value?.trim();
+              if (!rawIsbn) {
+                const input = prompt('請輸入 ISBN（可含破折號）：');
+                if (!input) return; // 取消或空白 → 不做事
+                rawIsbn = input.trim();
+              }
+
+              const data = await fetchOpenLibraryByIsbn(rawIsbn);
+
+              // 填入三欄 + 隨機書況
+              if (el.title)     el.title.value     = data.title || '';
+              if (el.author)    el.author.value    = data.author || '';
+              if (el.isbn)      el.isbn.value      = data.isbn   || '';
+              if (el.condition) el.condition.value = randomCondition();
+
+              // 連同圖片網址一起帶入（切到雲端網址、填 URL、更新預覽）
+              if (el.cloudUrl || el.preview || el.srcCloud) {
+                switchToCloudAndPreview(data.coverUrl);
+              }
+
+            } catch (err) {
+              console.error(err); // 依你的規則保持靜默（不 alert）
+            } finally {
+              el.addBtn.disabled = false;
+            }
+          });
+        });
+    </script>
+
+
+
 }

@@ -23,12 +23,46 @@ namespace BookLoop.Controllers
 		[HttpGet]
 		public async Task<IActionResult> PendingList()
 		{
-			var items = await _db.Reviews
+			// 系統審核清單
+			var autoList = await _db.ReviewModerations
+	.Join(_db.Reviews,
+		mod => mod.ReviewID,
+		rev => rev.ReviewID,
+		(mod, rev) => new { mod, rev })  // ✅ 建立匿名物件
+	.Where(x => x.mod.Decision == 0)     // ✅ 用 x.mod
+	.Select(x => new ReviewModerationUnifiedVM
+	{
+		ReviewID = x.rev.ReviewID,
+		Content = x.rev.Content,
+		Reason = x.mod.Reasons,
+		Source = "系統審核",
+		CreatedAt = x.rev.CreatedAt
+	})
+	.ToListAsync();
+
+
+			// 會員檢舉清單
+			var reportList = await _db.ReviewReports
+				.Include(r => r.Review)
+				.Include(r => r.Reporter)
 				.Where(r => r.Status == 0)
-				.OrderByDescending(r => r.CreatedAt)
-				.ToListAsync();
-			return View(items);
+				.Select(r => new ReviewModerationUnifiedVM
+				{
+					ReviewID = r.ReviewID,
+					Content = r.Review.Content,
+					Reason = r.Reason,
+					ReporterName = r.Reporter.Username,
+					Source = "會員檢舉",
+					CreatedAt = r.CreatedAt
+				}).ToListAsync();
+
+			var all = autoList.Concat(reportList)
+				.OrderByDescending(x => x.CreatedAt)
+				.ToList();
+
+			return View(all); // ✅ 傳給 View 的是 ReviewModerationUnifiedVM
 		}
+
 
 		[HttpGet]
 		public IActionResult Create() => View(); // 對應 Create.cshtml
@@ -45,9 +79,9 @@ namespace BookLoop.Controllers
 			// Step 1️⃣ 先建立 Review 並儲存（還沒審核）
 			var review = new Review
 			{
-				MemberId = vm.MemberID,
+				MemberID = vm.MemberID,
 				TargetType = vm.TargetType,
-				TargetId = 0,
+				TargetID = 0,
 				Rating = vm.Rating,
 				Content = vm.Content,
 				Status = 0, // 0 = 待審
@@ -60,7 +94,7 @@ namespace BookLoop.Controllers
 			await _db.SaveChangesAsync();
 
 			// Step 2️⃣ 呼叫自動審核服務（這裡會跑 ForbiddenKeywordsRule 等所有規則）
-			var (ok, message, decision) = await _mod.AutoModerateAndPersistAsync(review.ReviewId);
+			var (ok, message, decision) = await _mod.AutoModerateAndPersistAsync(review.ReviewID);
 
 			// Step 3️⃣ 根據審核結果決定顯示內容
 			if (!ok)
@@ -130,5 +164,43 @@ namespace BookLoop.Controllers
 			TempData["Msg"] = $"評論 {reviewId} 已被刪除！理由：{reason}";
 			return RedirectToAction("PendingList");
 		}
+
+		[HttpGet]
+		public IActionResult Report(int reviewId)
+		{
+			ViewBag.ReviewId = reviewId;
+			return View();
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> Report(ReviewReport report)
+		{
+			if (!ModelState.IsValid)
+				return View(report);
+
+			// 模擬目前登入會員（正式版本請改成登入系統抓ID）
+			int currentMemberId = 1;
+			report.ReporterID = currentMemberId;
+
+			// 檢查是否已經檢舉過這則評論
+			bool exists = await _db.ReviewReports
+				.AnyAsync(r => r.ReviewID == report.ReviewID && r.ReporterID == currentMemberId);
+
+			if (exists)
+			{
+				TempData["Msg"] = "您已經檢舉過這則評論。";
+				return RedirectToAction("PendingList");
+			}
+
+			report.CreatedAt = DateTime.Now;
+			_db.ReviewReports.Add(report);
+			await _db.SaveChangesAsync();
+
+			TempData["Msg"] = "檢舉已送出，等待管理者審核。";
+			return RedirectToAction("PendingList");
+		}
+
+
 	}
 }

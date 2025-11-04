@@ -1,8 +1,10 @@
 ﻿// Services/Reviews/Rules/BuiltinRules.cs
+using BookLoop.Data;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Collections.Generic;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookLoop.Services.Rules
 {
@@ -50,18 +52,28 @@ namespace BookLoop.Services.Rules
 		public string Name => "ForbiddenKeywordsRule";
 		private readonly string[] _badWords;
 
-		// ① 無參數：使用預設清單
+		// ✅ 新增這個建構子：讓 DbReviewRuleProvider 可以傳入 _db
+		public ForbiddenKeywordsRule(MemberContext db)
+		{
+			_badWords = db.ReviewForbiddenKeyword
+				.AsNoTracking()
+				.Where(k => k.IsActive)
+				.Select(k => k.Keyword)
+				.ToArray();
+		}
+
+		// ① 預設：使用內建清單
 		public ForbiddenKeywordsRule()
 			: this(new[] { "幹", "媽的", "白癡", "智障" }) { }
 
-		// ② 接受一條字串：逗號或換行分隔
+		// ② 接受字串清單
 		public ForbiddenKeywordsRule(string keywordsCsv)
 			: this((keywordsCsv ?? "")
 					.Split(new[] { ',', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
 					.Select(s => s.Trim()))
 		{ }
 
-		// ③ 接受清單：已經拆好的就用這個
+		// ③ 接受 IEnumerable<string>
 		public ForbiddenKeywordsRule(IEnumerable<string> keywords)
 		{
 			_badWords = (keywords ?? Array.Empty<string>())
@@ -75,13 +87,16 @@ namespace BookLoop.Services.Rules
 		{
 			var r = new RuleResult();
 			var text = ctx.Content ?? string.Empty;
+
 			var hit = _badWords.FirstOrDefault(w =>
 				text.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
+
 			if (hit != null)
 			{
 				r.IsPass = false;
-				r.Findings.Add(new RuleFinding(Name, RuleSeverity.Block, $"包含不雅字詞：{hit}"));
+				r.Findings.Add(new RuleFinding(Name, RuleSeverity.Block, $"包含禁用詞：{hit}"));
 			}
+
 			return r;
 		}
 	}

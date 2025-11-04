@@ -28,9 +28,9 @@ else
                 <tr>
                     <td>@detail.ProductName</td>
                     <td>@detail.Quantity</td>
-                    <td>@detail.UnitPrice</td>
-                    <td>@detail.ProductDiscountAmount</td>
-                    <td>@detail.CreatedAt</td>
+                    <td>@String.Format("{0:N0}", detail.UnitPrice)</td>
+                    <td>@String.Format("{0:N0}", detail.ProductDiscountAmount)</td>
+                    <td>@detail.CreatedAt.ToString("yyyy/MM/dd")</td>
                 </tr>
             }
         </tbody>

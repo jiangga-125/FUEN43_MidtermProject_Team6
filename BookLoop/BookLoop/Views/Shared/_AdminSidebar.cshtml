@@ -34,8 +34,7 @@
             <a class="nav-link" asp-area="Borrows" asp-controller="Listings" asp-action="Index">二手書清單</a>
             <a class="nav-link" asp-area="Borrows" asp-controller="Reservations" asp-action="Index">預約</a>
             <a class="nav-link" asp-area="Borrows" asp-controller="BorrowRecords" asp-action="Index">借出/歸還</a>
-            <a class="nav-link" asp-area="Borrows" asp-controller="PenaltyRules" asp-action="Index">罰金規則</a>
-            <a class="nav-link" asp-area="Borrows" asp-controller="PenaltyTransactions" asp-action="Index">罰金???</a>
+            <a class="nav-link" asp-area="Borrows" asp-controller="PenaltyTransactions" asp-action="Index">罰金</a>
         </div>
 
         <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-orders" href="javascript:void(0)">
@@ -43,6 +42,8 @@
         </a>
         <div id="m-orders" class="submenu ps-4">
             <a class="nav-link" asp-area="Orders" asp-controller="Orders" asp-action="Index">訂單</a>
+            <a class="nav-link" asp-area="Orders" asp-controller=Returns" asp-action="Index">退貨</a>
+            <a class="nav-link" asp-area="Orders" asp-controller="OrderDetails" asp-action="Index">訂單明細查詢</a>
             @* <a class="nav-link" asp-area="XXX" asp-controller="XXX" asp-action="Index">XXX</a> 要加什麼自己加*@
         </div>
 
@@ -50,15 +51,61 @@
             <i class="bi bi-megaphone"></i><span class="ms-2 text">行銷管理</span><i class="bi bi-caret-down ms-auto"></i>
         </a>
         <div id="m-mkt" class="submenu ps-4">
+            <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-coupon" href="javascript:void(0)">
+                <i class="bi bi-ticket-perforated"></i><span class="ms-2">優惠券管理</span><i class="bi bi-caret-down ms-auto"></i>
+            </a>
+            <div id="m-coupon" class="submenu ps-4">
+                <a class="nav-link" asp-area="Members" asp-controller="Coupons" asp-action="Index">
+                    <i class="bi bi-list-ul"></i><span class="ms-2">優惠券清單</span>
+                </a>
+                <a class="nav-link" asp-area="Members" asp-controller="Coupons" asp-action="Create">
+                    <i class="bi bi-plus-circle"></i><span class="ms-2">新增優惠券</span>
+                </a>
+            </div>
+            <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-ads" href="javascript:void(0)">
+                <i class="bi bi-image"></i><span class="ms-2">廣告管理</span><i class="bi bi-caret-down ms-auto"></i>
+            </a>
+            <div id="m-ads" class="submenu ps-4">
+                <a class="nav-link" asp-area="Members" asp-controller="Ads" asp-action="Index">
+                    <i class="bi bi-list-ul"></i><span class="ms-2">廣告清單</span>
+                </a>
+                <a class="nav-link" asp-area="Members" asp-controller="Ads" asp-action="Create">
+                    <i class="bi bi-plus-circle"></i><span class="ms-2">新增廣告</span>
+                </a>
+            </div>
+        </div>
+        <div id="m-mkt" class="submenu ps-4">
             @* <a class="nav-link" asp-area="XXX" asp-controller="XXX" asp-action="Index">XXX</a> 要加什麼自己加*@
         </div>
 
+        <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-reviews" href="javascript:void(0)">
+            <i class="bi bi-chat-dots"></i><span class="ms-2 text">評論管理</span><i class="bi bi-caret-down ms-auto"></i>
+        </a>
+        <div id="m-reviews" class="submenu ps-4">
+            <a class="nav-link" asp-area="Members" asp-controller="Reviews" asp-action="PendingList">
+                <i class="bi bi-hourglass-split"></i><span class="ms-2">待審清單</span>
+            </a>
+            <a class="nav-link" asp-area="Members" asp-controller="ForbiddenKeywords" asp-action="Index">
+                <i class="bi bi-sliders"></i><span class="ms-2">禁用詞規則</span>
+            </a>
+        </div>
+
+
         <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-noti" href="javascript:void(0)">
             <i class="bi bi-bell"></i><span class="ms-2 text">通知管理</span><i class="bi bi-caret-down ms-auto"></i>
-        </a>
+        </a> 
         <div id="m-noti" class="submenu ps-4">
             <a class="nav-link" asp-area="Notifications" asp-controller="System" asp-action="Index">系統通知</a>
-            @* <a class="nav-link" asp-area="XXX" asp-controller="XXX" asp-action="Index">XXX</a> 要加什麼自己加*@
+
+            <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-mail" href="javascript:void(0)">
+                <span class="ms-2 text">郵件管理</span><i class="bi bi-caret-down ms-auto"></i>
+            </a>
+            <div id="m-mail" class="submenu ps-4">
+                <a class="nav-link" asp-area="Mail" asp-controller="Templates" asp-action="Index">郵件範本</a>
+                <a class="nav-link" asp-area="Mail" asp-controller="MailJobs" asp-action="Index">郵件排程</a>
+                <a class="nav-link" asp-area="Mail" asp-controller="MailLogs" asp-action="Index">郵件日誌</a>
+            </div>
+            @* <a clas@* s="nav-link" asp-area="XXX" asp-controller="XXX" asp-action="Index">XXX</a> 要加什麼自己加 *@
         </div>
 
         <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-branch" href="javascript:void(0)">
@@ -73,7 +120,7 @@
             <i class="bi bi-bar-chart"></i><span class="ms-2 text">報表管理</span><i class="bi bi-caret-down ms-auto"></i>
         </a>
         <div id="m-report" class="submenu ps-4">
-            <a class="nav-link" asp-area="ReportMail" asp-controller="Reports" asp-action="Index">銷售報表</a>
+            <a class="nav-link" asp-area="ReportMail" asp-controller="Reports" asp-action="Index">自訂報表</a>
             @* <a class="nav-link" asp-area="XXX" asp-controller="XXX" asp-action="Index">XXX</a> 要加什麼自己加*@
         </div>
 
@@ -84,5 +131,6 @@
             <a class="nav-link" asp-area="Account" asp-controller="Users" asp-action="Index">角色與權限</a>
             @* <a class="nav-link" asp-area="XXX" asp-controller="XXX" asp-action="Index">XXX</a> 要加什麼自己加*@
         </div>
+       
     </nav>
 </div>

@@ -6,8 +6,8 @@
     var hasImage = !string.IsNullOrWhiteSpace(Model.ImageUrl);
     var currentImg = hasImage ? Url.Content(Model.ImageUrl) : Url.Content("~/images/borrow/noimage.jpeg");
 }
-
-<div id="viewArea">
+<div class="d-flex justify-content-center">
+    <div id="viewArea" class="container mx-auto">
 <div class="mb-2">
     <strong><i class="bi bi-journal-text me-1"></i> 書名：</strong>
     <span class="text-dark">@Model.Title</span>
@@ -61,8 +61,9 @@
              onerror="this.onerror=null;this.src='@Url.Content("~/images/borrow/noimage.jpeg")';" />
 </div>
     <div class="text-end mt-2">
-        <button type="button" class="btn btn-primary" id="btnEdit">編輯</button>
+        <button type="button" class="btn btn-primary" id="btnEdit"><i class="fa-solid fa-pen-to-square"></i>編輯</button>
     </div>
+</div>
 </div>
 <div id="editArea" class="d-none">
     <form id="editForm" asp-action="EditInline" asp-controller="Listings" method="post" enctype="multipart/form-data">
@@ -136,8 +137,8 @@
              style="max-width:160px;max-height:200px;object-fit:contain;border:1px solid #ddd;border-radius:6px;padding:4px;">
 
         <div class="text-end mt-2 d-flex gap-2 justify-content-end">
-			<button type="submit" class="btn btn-success">儲存</button>
-            <button type="button" class="btn btn-danger" id="btnCancel">回上頁</button>
+            <button type="submit" class="btn btn-success"><i class="fa-solid fa-floppy-disk"></i>儲存</button>
+            <button type="button" class="btn btn-danger" id="btnCancel"><i class="fa-solid fa-arrow-rotate-left"></i>回上頁</button>
             
         </div>
     </form>

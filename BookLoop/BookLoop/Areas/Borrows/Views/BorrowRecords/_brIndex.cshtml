@@ -1,0 +1,47 @@
+﻿@model IEnumerable<BookLoop.ViewModels.BorrowRecordsViewModel>
+
+@{
+    ViewData["Title"] = "Index";
+}
+@{
+    Layout = null;
+}
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-info my-3">目前沒有借閱紀錄。</div>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>書籍</th>
+                <th>借閱人</th>
+                <th>借閱日</th>
+                <th>歸還日</th>
+                <th>逾期日</th>
+                <th>借閱情況</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@Html.DisplayFor(_ => item.BookTitle)</td>
+                    <td>@Html.DisplayFor(_ => item.MemberName)</td>
+                    <td>@(item.BorrowDate.ToString("yyyy-MM-dd"))</td>
+                    <td>@(item.ReturnDate?.ToString("yyyy-MM-dd") ?? "—")</td>
+                    <td>@(item.DueDate.ToString("yyyy-MM-dd") ?? "—")</td>
+                    <td class="fw-bold fs-6 @(item.ConditionName == "借出" ? "text-primary"
+                                                                 : item.ConditionName == "逾期" ? "text-danger"
+                                                                 : item.ConditionName == "歸還" ? "text-success"
+                                                                 : "")">
+                @item.ConditionName
+            </td>
+        </tr>
+                }
+        </tbody>
+    </table>
+}
+
