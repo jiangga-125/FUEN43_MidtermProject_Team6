@@ -1,6 +1,7 @@
 ﻿using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Models.Dto;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,8 @@ namespace BookLoop.Areas.Borrows.Controllers
 {
     [Route("api/listings")]
     [ApiController]
-    public class ListingsFrontController : ControllerBase
+	[AllowAnonymous]
+	public class ListingsFrontController : ControllerBase
     {
         private readonly BorrowContext _context;
         public ListingsFrontController(BorrowContext context)
