@@ -63,7 +63,7 @@ function statusBadgeClass(s:number){ return ({0:'bg-success',1:'bg-primary',2:'b
 
 function onImgError(e: Event) {
   const img = e.target as HTMLImageElement | null
-  if (img) { img.onerror = null; img.src = '/images/borrow/noimage.jpeg' }
+  if (img) { img.onerror = null; img.src = '/noimage.jpeg' }
 }
 const reserving = ref(false)
 const showDialog = ref(false)
@@ -160,7 +160,7 @@ onMounted(async () => {
       <div class="col" v-for="item in pagedItems" :key="item.listingId">
         <div class="card h-100 shadow-sm card-compact">
           <img
-            :src="(item.imageUrl || '').trim() || '/images/borrow/noimage.jpeg'"
+            :src="(item.imageUrl || '').trim() || '/noimage.jpeg'"
             :alt="item.title"
             :title="item.title"
             class="card-img-top cover"
