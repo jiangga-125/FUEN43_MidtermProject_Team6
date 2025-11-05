@@ -43,7 +43,7 @@ function computeOriginalSrc(b: Book | null) {                         // <-- ADD
         :src="coverSrc"
         :alt="book?.title || 'cover'"
         :data-orig="originalSrc"
-        @error="onImgError"
+        error="onImgError"
         loading="lazy"
       />
       />
