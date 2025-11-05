@@ -23,9 +23,9 @@ public class ReviewsApiController : ControllerBase
 
 		var e = new Review
 		{
-			MemberId = vm.MemberID,
+			MemberID = vm.MemberID,
 			TargetType = vm.TargetType,
-			TargetId = 0,
+			TargetID = 0,
 			Rating = vm.Rating,
 			Content = vm.Content,
 			ImageUrls = vm.TargetBookName,
@@ -38,20 +38,20 @@ public class ReviewsApiController : ControllerBase
 		await _db.SaveChangesAsync(); // 先存得到 ReviewID
 
 		// ★ 跑自動審核 + 寫 Moderations + 更新 Reviews.Status
-		var (ok, msg, decision) = await _mod.AutoModerateAndPersistAsync(e.ReviewId);
+		var (ok, msg, decision) = await _mod.AutoModerateAndPersistAsync(e.ReviewID);
 		if (!ok) return BadRequest(new { ok, message = msg });
 
 		// ★ 取出最新的審核紀錄（拿 Note 當作理由）
 		var mod = await _db.ReviewModerations
-			.Where(m => m.ReviewId == e.ReviewId)
-			.OrderByDescending(m => m.ModerationId)
+			.Where(m => m.ReviewID == e.ReviewID)
+			.OrderByDescending(m => m.ModerationID)
 			.Select(m => new { m.Decision, m.Reasons, m.ReviewedAt })
 			.FirstOrDefaultAsync();
 
 		return Ok(new
 		{
 			ok = true,
-			reviewId = e.ReviewId,
+			reviewId = e.ReviewID,
 			decision = decision.ToString(), // AutoPass / NeedsManual / Rejected
 			status = e.Status,              // 1=Approved,0=Pending,2=Rejected
 			reason = mod?.Reasons              // 例如：包含禁用字詞：白癡

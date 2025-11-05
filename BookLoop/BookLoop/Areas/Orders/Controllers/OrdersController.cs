@@ -3,6 +3,7 @@ using BookLoop.Helpers;
 using BookLoop.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.DotNet.Scaffolding.Shared;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System;
@@ -11,6 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq;
 using System.Threading.Tasks;
+using static System.Net.WebRequestMethods;
 
 namespace BookLoop.Ordersys.Controllers
 {
@@ -110,7 +112,8 @@ namespace BookLoop.Ordersys.Controllers
 
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public async Task<IActionResult> Create([Bind("OrderID,MemberID,OrderDate,TotalAmount,Status,DiscountAmount,DiscountCode,MemberCouponID,CouponTypeSnap,CouponValueSnap,CouponNameSnap,CouponDiscountAmount")] Order order)
+		public async Task<IActionResult> Create([Bind("OrderID,MemberID,OrderDate,TotalAmount,Status,DiscountAmount,DiscountCode,MemberCouponID,CouponTypeSnap,CouponValueSnap,CouponNameSnap,CouponDiscountAmount")] Order order,
+string Provider)
 		{
 			if (ModelState.IsValid)
 			{
@@ -119,6 +122,24 @@ namespace BookLoop.Ordersys.Controllers
 				order.CreatedAt = DateTime.UtcNow;
 				_context.Add(order);
 				await _context.SaveChangesAsync();
+
+				// 新增物流
+				if (!string.IsNullOrEmpty(Provider))
+				{
+					var shipment = new Shipment
+					{
+						OrderID = order.OrderID,
+						Provider = Provider,
+						TrackingNumber = $"TN{DateTime.Now:yyyyMMddHHmmss}{order.OrderID}", // 自動生成運單號
+						Status = 0, // 預設未出貨
+						CreatedAt = DateTime.UtcNow,
+						UpdatedAt = DateTime.UtcNow
+					};
+					_context.Shipments.Add(shipment);
+					await _context.SaveChangesAsync();
+				}
+
+
 				TempData["Success"] = "訂單已建立";
 				return RedirectToAction(nameof(Index));
 			}
@@ -142,7 +163,8 @@ namespace BookLoop.Ordersys.Controllers
 
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public async Task<IActionResult> Edit(int id, [Bind("OrderDate,TotalAmount,Status,DiscountAmount,DiscountCode,MemberCouponID,CouponTypeSnap,CouponValueSnap,CouponNameSnap,CouponDiscountAmount,MemberID")] Order orderInput)
+		public async Task<IActionResult> Edit(int id, [Bind("OrderDate,TotalAmount,Status,DiscountAmount,DiscountCode,MemberCouponID,CouponTypeSnap,CouponValueSnap,CouponNameSnap,CouponDiscountAmount,MemberID")] Order orderInput,
+	string Provider, byte? ShipmentStatus)
 		{
 			if (!ModelState.IsValid)
 			{
@@ -166,6 +188,25 @@ namespace BookLoop.Ordersys.Controllers
 			order.CouponNameSnap = orderInput.CouponNameSnap;
 			order.CouponDiscountAmount = orderInput.CouponDiscountAmount;
 
+			// 新增物流
+			var shipment = order.Shipments.FirstOrDefault();
+			if (!string.IsNullOrEmpty(Provider))
+			{
+				if (shipment == null)
+				{
+					shipment = new Shipment
+					{
+						OrderID = order.OrderID,
+						TrackingNumber = $"TN{DateTime.Now:yyyyMMddHHmmss}{order.OrderID}",
+						CreatedAt = DateTime.UtcNow
+					};
+					_context.Shipments.Add(shipment);
+				}
+
+				shipment.Provider = Provider;
+				shipment.Status = ShipmentStatus ?? 0;
+				shipment.UpdatedAt = DateTime.UtcNow;
+			}
 			try
 			{
 				await _context.SaveChangesAsync();
@@ -227,39 +268,65 @@ namespace BookLoop.Ordersys.Controllers
 		[HttpPost]
 		public IActionResult GoToPayment(int orderId)
 		{
-			var order = _context.Orders.FirstOrDefault(o => o.OrderID == orderId);
-			if (order == null) return NotFound();
+			// 先抓訂單並 Include OrderDetails
+			var order = _context.Orders
+				.Include(o => o.OrderDetails)
+				.FirstOrDefault(o => o.OrderID == orderId);
 
-			// 商店訂單編號 (確保唯一)
-			string merchantTradeNo = $"B{DateTime.Now:yyMMddHHmm}{order.OrderID}";
+			if (order == null)
+				return NotFound();
 
-			var ecpay = new ECPayRequest
+
+
+			// 重新計算總金額
+			decimal totalAmount = order.OrderDetails.Sum(od => od.UnitPrice * od.Quantity);
+			int amountToPay = (int)Math.Round(totalAmount, MidpointRounding.AwayFromZero);
+			if (amountToPay <= 0) amountToPay = 1;
+
+			string merchantTradeNo = $"B{DateTime.Now:yyMMddHHmmssfff}{order.OrderID}";
+			string website = "http://localhost:5059/Orders/Orders";
+			// ⚠️ 改成你的實際網域（或 localhost 測試）
+
+			var ecpayRequest = new ECPayRequest
 			{
-				MerchantID = "3002607",  // 測試商店代號
+				MerchantID = "3002607",
 				MerchantTradeNo = merchantTradeNo,
 				MerchantTradeDate = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"),
-				TotalAmount = Math.Max(1, (int)Math.Ceiling(order.TotalAmount)),
+				PaymentType = "aio",
+				TotalAmount = amountToPay,
 				TradeDesc = "BookLoop 書籍付款",
-				ItemName = "書籍或租借",
-				ReturnURL = "https://yourdomain/api/ecpay/notify",         // Server 通知 URL
-				OrderResultURL = "https://yourdomain/Orders/PaymentResult", // 前端導回 URL
+				ItemName = string.Join("#", order.OrderDetails.Select(od => od.ProductName)), // 可顯示所有商品
+				ReturnURL = $"{website}/api/ecpay/notify",
+				OrderResultURL = $"{website}/PaymentResult?orderId={order.OrderID}",
 				ChoosePayment = "ALL",
 				EncryptType = "1"
 			};
 
-			string postForm = ECPayHelper.GeneratePostForm(ecpay);
+			// 生成 CheckMacValue
+			ecpayRequest.CheckMacValue = ECPayHelper.GenerateCheckMacValue(ecpayRequest);
 
-			Console.WriteLine($"[GoToPayment] called for orderId={orderId} at {DateTime.UtcNow}");
-			Console.WriteLine($"MerchantID: {ecpay.MerchantID}");
-			Console.WriteLine($"MerchantTradeNo: {ecpay.MerchantTradeNo}");
-			Console.WriteLine($"MerchantTradeDate: {ecpay.MerchantTradeDate}");
-			Console.WriteLine($"TotalAmount: {ecpay.TotalAmount}");
-			Console.WriteLine($"ReturnURL: {ecpay.ReturnURL}");
+			// 將資料轉成 Dictionary 給 View 自動送出表單
+			var orderDict = new Dictionary<string, string>
+	{
+		{ "MerchantID", ecpayRequest.MerchantID },
+		{ "MerchantTradeNo", ecpayRequest.MerchantTradeNo },
+		{ "MerchantTradeDate", ecpayRequest.MerchantTradeDate },
+		{ "PaymentType", ecpayRequest.PaymentType },
+		{ "TotalAmount", ecpayRequest.TotalAmount.ToString() },
+		{ "TradeDesc", ecpayRequest.TradeDesc },
+		{ "ItemName", ecpayRequest.ItemName },
+		{ "ReturnURL", ecpayRequest.ReturnURL },
+		{ "OrderResultURL", ecpayRequest.OrderResultURL },
+		{ "ChoosePayment", ecpayRequest.ChoosePayment },
+		{ "EncryptType", ecpayRequest.EncryptType },
+		{ "CheckMacValue", ecpayRequest.CheckMacValue }
+	};
 
-			return Content(postForm, "text/html");
+			return View("GoToPayment", orderDict);
 		}
-
-		// ✅ 綠界付款完成通知
+		//
+		// ✅ 綠界付款完成通知 (Server -> Server)
+		//
 		[HttpPost]
 		[Route("api/ecpay/notify")]
 		public IActionResult ECPayNotify([FromForm] ECPayRequest data)
@@ -270,7 +337,7 @@ namespace BookLoop.Ordersys.Controllers
 			if (!ECPayHelper.VerifyNotification(data))
 				return Content("0|ErrorCheckMacValue");
 
-			// 驗證成功 -> 更新訂單狀態
+			// === step 4 : 更新訂單狀態 ===
 			int orderId = -1;
 			var digits = new string(data.MerchantTradeNo.Reverse().TakeWhile(char.IsDigit).Reverse().ToArray());
 			if (int.TryParse(digits, out var parsedId))
@@ -281,21 +348,33 @@ namespace BookLoop.Ordersys.Controllers
 				var order = _context.Orders.FirstOrDefault(o => o.OrderID == orderId);
 				if (order != null)
 				{
-					order.Status = 1; // 訂單付款完成狀態
+					order.Status = 1; // ✅ 訂單付款完成狀態
 					_context.SaveChanges();
 				}
 			}
 
-			return Content("1|OK"); // 回覆綠界
+			return Content("1|OK"); // 回覆綠界「成功」
 		}
 
-		// ✅ 付款完成前端導回頁面
+		//
+		// ✅ 付款完成導回頁面
+		//
 		[HttpGet]
-		public IActionResult PaymentResult()
+		public IActionResult PaymentResult(int orderId)
 		{
+			var order = _context.Orders.FirstOrDefault(o => o.OrderID == orderId);
+			if (order != null && order.Status != 1)
+			{
+				order.Status = 1; // 強制設為已付款
+				_context.SaveChanges();
+			}
+
 			ViewBag.Message = "付款完成！感謝您的訂購。";
 			return View();
 		}
+
+
+
 
 	}
 }
