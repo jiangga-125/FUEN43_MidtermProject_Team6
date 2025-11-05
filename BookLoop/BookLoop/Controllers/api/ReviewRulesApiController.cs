@@ -4,7 +4,7 @@ using BookLoop.Models;
 using BookLoop.Data;
 
 [ApiController]
-[Route("api/review-rules")]                // 不會和現有 RulesController 衝突
+[Route("api/[controller]/[action]")]                // 不會和現有 RulesController 衝突
 public class ReviewRulesApiController : ControllerBase
 {
 	private readonly MemberContext _db;

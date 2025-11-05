@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import { getBanners } from '@/api/catalog'
+import '@fortawesome/fontawesome-free/css/all.css'
+
 
 // 🖼️ 圖片路徑修正
 function fixUrl(url: string) {
@@ -75,8 +77,13 @@ onUnmounted(stop)
     </div>
 
     <!-- ⬅️➡️ 導覽按鈕 -->
-    <button class="nav prev" @click="prev">‹</button>
-    <button class="nav next" @click="next">›</button>
+    <button class="nav prev" @click="prev">
+      <i class="fa-solid fa-chevron-left"></i>
+    </button>
+
+    <button class="nav next" @click="next">
+      <i class="fa-solid fa-chevron-right"></i>
+    </button>
 
     <!-- 🔵 圓點指示器 -->
     <div class="dots">
@@ -129,13 +136,19 @@ onUnmounted(stop)
   background: #fff;
   cursor: pointer;
   transition: background 0.3s, box-shadow 0.3s;
+  justify-content: center;
 }
 .nav:hover {
   background: #f1f1f1;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
 }
+
+.nav i {
+  transform: translate(2px, 7px); /* X 軸右移 1px，Y 軸上移 1px */
+}
+
 .prev {
-  left: 12px;
+  left: 10px;
 }
 .next {
   right: 12px;

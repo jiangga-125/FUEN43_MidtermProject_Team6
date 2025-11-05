@@ -71,7 +71,8 @@ public partial class OrdersysContext : DbContext
                 .HasForeignKey(d => d.CustomerID)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Orders_Customers");
-        });
+		
+		});
 
         modelBuilder.Entity<OrderAddress>(entity =>
         {

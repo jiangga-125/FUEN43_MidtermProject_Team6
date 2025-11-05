@@ -23,30 +23,41 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useCartStore } from '@/stores/cart' // <-- 引入購物車 store
 import type { Listing } from '@/api/Listings'
 import Listings from '@/views/Listings.vue';
-
+import type { Book } from '@/api/catalog'
+  
 const props = defineProps<{ listing: Listing }>()
 const placeholder = '../assets/ad.png' // 再改路徑(佔位圖)
 const coverSrc = computed(() => (props.listing as any).coverUrl || (props.listing as any).cover?.url || placeholder)
+
+
+
+
 const router = useRouter()
+const cartStore = useCartStore() // <-- 取得購物車 store
 
 const detailUrl = computed(() => ({
   name: 'ListingDetail',
   params: { id: props.listing.listingId },
-})) // 如果沒有 detail route，可改為 `/listings/${id}`
+}))
 
 function addToCart() {
-  // TODO: 呼叫 cart service 或 emit 事件。暫時示範 toast
-  // emit 或使用全域 store (Pinia/Vuex) 更好
-  alert(`加入購物車：${props.listing.title}`)
-}
+  const book: Book = {
+    bookId: props.listing.listingId,        // 對應 bookId
+    title: props.listing.title,
+    salePrice: 0,                            // 如果 Listing 沒有價格，先用 0
+    coverUrl: props.listing.coverUrl || ''
+  }
 
+  cartStore.addItem(book, 1)                // 加入購物車
+  alert(`已加入購物車：${book.title}`)
+}
 function toggleFavorite() {
   alert(`已加入收藏：${props.listing.title}`)
 }
 </script>
-
 <style scoped>
 .listing-card {
   border-radius: 10px;

@@ -3,10 +3,7 @@
     "target": "es2020",
     "module": "esnext",
     "moduleResolution": "bundler",
-    "lib": [
-      "es2020",
-      "DOM"
-    ],
+    "lib": ["es2020", "DOM"],
     "strict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -16,24 +13,11 @@
     "sourceMap": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ]
+      "@/*": ["src/*"]
     },
-    "types": [
-      "vite/client"
-    ],
+    "types": ["vite/client"],
     "allowJs": true
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.d.ts",
-    "src/**/*.tsx",
-    "src/**/*.vue",
-    "src/**/*.js"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "src/**/*.js"],
+  "exclude": ["node_modules", "dist"]
 }

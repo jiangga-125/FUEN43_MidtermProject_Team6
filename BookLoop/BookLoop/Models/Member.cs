@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using BookLoop.Models;
 
@@ -7,11 +8,12 @@ namespace BookLoop
 {
 	public class Member
 	{
+		[Key]
 		public int MemberID { get; set; }
 		public int? UserID { get; set; } // 舊欄位：保留但前台認證不再使用
 
-		[NotMapped]
-		public string? Account { get; set; } = null!;
+
+		//public string? Account { get; set; } = null!;
 
 		public string Username { get; set; } = null!;
 		public string? Email { get; set; }

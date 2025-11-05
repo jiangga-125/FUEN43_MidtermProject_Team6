@@ -38,6 +38,8 @@ public partial class OrderDetail
 	[ValidateNever]
 	public virtual Book Book { get; set; } = null!;
 
+	[Display(Name = "訂單編號")]
+
 	[ValidateNever]
 	public virtual Order Order { get; set; } = null!;
 }

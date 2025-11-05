@@ -24,6 +24,8 @@ namespace BookLoop.Controllers.api
 		[AllowAnonymous] // 公開給未登入前端
 		public async Task<IActionResult> GetAll(int page = 1, int pageSize = 20)
 		{
+			string tab = "new";   // new / hot
+			int? categoryId = null;  // 可選分類
 			if (page < 1) page = 1;
 			if (pageSize <= 0) pageSize = 20;
 
@@ -31,6 +33,29 @@ namespace BookLoop.Controllers.api
 				.AsNoTracking()
 				.Include(b => b.BookImages)
 				.OrderBy(b => b.Title);
+
+			// 篩選分類
+			if (categoryId.HasValue)
+			{
+				q = (IOrderedQueryable<Models.Book>)q.Where(b => b.CategoryID == categoryId.Value);
+			}
+
+			// 篩選 tab
+			switch (tab.ToLower())
+			{
+				case "new":
+					q = q.OrderByDescending(b => b.CreatedAt);
+					break;
+				case "hot":
+					// 這裡用 OrderDetails 數量當熱門依據
+					q = q
+						.Include(b => b.OrderDetails)
+						.OrderByDescending(b => b.OrderDetails.Count);
+					break;
+				default:
+					q = q.OrderBy(b => b.Title);
+					break;
+			}
 
 			var total = await q.CountAsync();
 			var items = await q

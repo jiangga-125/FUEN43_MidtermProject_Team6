@@ -174,6 +174,17 @@ public partial class ShopDbContext : DbContext
 				  .OnDelete(DeleteBehavior.Restrict);
 		});
 
+		//modelBuilder.Entity<Member>(entity =>
+		//{
+		//	entity.HasKey(e => e.MemberID);
+		//	entity.ToTable("Members");
+		//	entity.Property(e => e.Username).HasMaxLength(50);
+		//	entity.Property(e => e.Email).HasMaxLength(254);
+		//	entity.Property(e => e.Phone).HasMaxLength(20).IsUnicode(false);
+		//	entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysdatetime())");
+		//	entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysdatetime())");
+		//	// 其他必要設定可加上
+		//});
 
 		OnModelCreatingPartial(modelBuilder);
 	}
