@@ -30,11 +30,13 @@ const refreshClient = axios.create({
 
 // request interceptor：自動加 Authorization header（若有 token）
 http.interceptors.request.use((config) => {
-  if (accessToken) {
+  // ⚠️ 新增 localStorage 後援，避免重整後第一發沒帶 token
+  const token = accessToken ?? localStorage.getItem('token')
+
+  if (token) {
     config.headers = config.headers ?? {}
-    // 若 header 已有 Authorization 就不要覆蓋
     if (!('Authorization' in config.headers)) {
-      config.headers['Authorization'] = `Bearer ${accessToken}`
+      config.headers['Authorization'] = `Bearer ${token}`
     }
   }
   return config
@@ -98,6 +100,9 @@ http.interceptors.response.use(
 
       // 設新 token 並讓排隊的 request 重試
       setAccessToken(newToken)
+      // ✅ 讓刷新後的 token 可跨重整持久化
+      localStorage.setItem('token', newToken)
+
       processQueue(null, newToken)
 
       // 把 Authorization header 加回原請求並重試
@@ -108,6 +113,8 @@ http.interceptors.response.use(
       processQueue(err, null)
       // refresh 失敗（可能 cookie 過期或被撤銷） -> 清 token，讓前端導回登入
       clearAccessToken()
+      // ✅ 新增：清除掉持久化的 token，避免下一次仍帶壞掉的值
+      localStorage.removeItem('token')
       return Promise.reject(err)
     } finally {
       isRefreshing = false
