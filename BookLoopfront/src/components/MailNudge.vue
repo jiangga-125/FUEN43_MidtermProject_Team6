@@ -5,17 +5,16 @@
       class="mail-nudge"
       role="dialog"
       aria-live="polite"
-      mouseenter="expanded = true"
-      mouseleave="expanded = false"
+      @mouseenter="expanded = true"
+      @mouseleave="expanded = false"
     >
       <!-- 信封小圖示（預設顯示＋抖動） -->
       <button
         class="nudge-fab"
         aria-label="未讀信件"
         type="button"
-        click="expanded = !expanded"
+        @click="expanded = !expanded"
       >
-        <!-- 你也可以換成自己的 SVG/Icon -->
         <span class="nudge-envelope" aria-hidden="true">✉️</span>
       </button>
 
@@ -23,11 +22,11 @@
       <div class="nudge-panel" :class="{ 'is-open': expanded }">
         <div class="nudge-head">
           <span class="nudge-title">您有一封未讀的信件</span>
-          <button class="nudge-close" aria-label="關閉" click="closeX">✕</button>
+          <button class="nudge-close" aria-label="關閉" @click="closeX">✕</button>
         </div>
 
         <div class="nudge-body">
-          <div class="nudge-subject" :title="mail.subject">{{ mail.subject }}</div>
+          <div class="nudge-subject" :title="mail.subject">【主旨】{{ mail.subject }}</div>
           <div class="nudge-preview">{{ mail.preview }}</div>
         </div>
 
@@ -40,47 +39,50 @@
   </transition>
 </template>
 
-
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useMailNudge } from "@/composables/useMailNudge";
 import { markSeen, snoozed, setSnooze } from "@/utils/nudgeStore";
 
 const { item, fetchOnce } = useMailNudge();
+
 const show = ref(false);
 const mail = ref<any>(null);
 
+// ⬅️ 移到外層：控制展開/收合（預設收合）
+const expanded = ref(false);
+
 function refresh() {
-  if (snoozed()) {
-    show.value = false;
-    return;
-  }
+  if (snoozed()) { show.value = false; return; }
   fetchOnce().then(() => {
     mail.value = item.value;
     show.value = !!item.value;
+    expanded.value = false; // 初次顯示維持收合
   });
-  const expanded = ref(false);   /*預設收合狀態*/
+}
 
+// 小✕：暫停 8 小時並關閉
 function closeX() {
-  /*點小✕：只關閉視窗（不標記閱讀，暫停8小時）*/
   setSnooze(8 * 60 * 60 * 1000);
   expanded.value = false;
   show.value = false;
 }
 
-}
-
 function viewNow() {
-    console.log('[nudge] viewUrl =', mail.value?.viewUrl)
-  if (!mail.value) return;
+  console.log('[nudge] viewUrl =', mail.value?.viewUrl);
+  console.log('[nudge] item =', item.value);
+  if (!mail.value?.viewUrl) return;
   markSeen(mail.value.rid);
-  window.open(mail.value.viewUrl, "_blank", "noopener");
+  const w = window.open(mail.value.viewUrl, "_blank", "noopener,noreferrer");
+  if (!w) location.href = mail.value.viewUrl;
   show.value = false;
+  expanded.value = false;
 }
 
 function snooze() {
-  setSnooze(6 * 60 * 60 * 1000); // 暫停提醒6小時
+  setSnooze(1 * 60 * 60 * 1000); // 暫停提醒 1小時
   show.value = false;
+  expanded.value = false;
 }
 
 onMounted(refresh);
@@ -94,17 +96,16 @@ onMounted(refresh);
   top: calc(var(--header-h, 0px) + 150px + env(safe-area-inset-top));
   z-index: 2147483647;
   display: flex;
-  flex-direction: column;     /* 垂直展開 */
-  align-items: flex-end;      /* 對齊右側 */
+  flex-direction: column;     /* 垂直展開（面板往下） */
+  align-items: flex-end;      /* 右側對齊 */
   gap: 10px;
 }
-
 
 /* 小浮動按鈕（信封圖示） */
 .nudge-fab{
   appearance: none;
   border: none;
-  background: #0d6efd; /* Bootstrap 主色，可換 */
+  background: #0d6efd;
   color: #fff;
   width: 50px;
   height: 50px;
@@ -128,7 +129,6 @@ onMounted(refresh);
   border-radius: 12px;
   box-shadow: 0 10px 20px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.06);
   overflow: hidden;
-
   opacity: 0;
   transform: translateY(-6px);
   pointer-events: none;
@@ -161,8 +161,10 @@ onMounted(refresh);
 .nudge-close:hover{ color:#000; }
 
 .nudge-body{ padding: 12px; }
+
+/* 主旨／預覽（保留一次定義，避免重複選擇器衝突） */
 .nudge-subject{
-  font-weight: 600; font-size: 14px; color:#222;
+  font-weight: 600; font-size: 15px; color:#222;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .nudge-preview{
@@ -174,11 +176,11 @@ onMounted(refresh);
   display: flex; justify-content: flex-end; gap: .5rem; padding: 10px 12px 12px;
 }
 
-/* 小進出淡入 */
+/* 進出淡入 */
 .fade-enter-active, .fade-leave-active { transition: opacity .18s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
-/* 抖動動畫（可依喜好調） */
+/* 抖動動畫 */
 @keyframes wobble {
   0%   { transform: rotate(0deg)   }
   15%  { transform: rotate(-10deg) }

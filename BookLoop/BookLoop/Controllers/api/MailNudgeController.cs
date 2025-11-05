@@ -51,15 +51,54 @@ namespace BookLoop.Controllers.api
 			}
 			var token = Sign($"{r.MailJobRecipientId}", _cfg["Mail:ViewSecret"]);
 
-			// 4. 抓寄送快照
+			// 4) 主旨與快照摘要（多層回退）
 			var log = await _db.MailSendLogs.AsNoTracking()
-				.Where(l => l.JobRecipientId == r.MailJobRecipientId)
+				.Where(l => l.JobRecipientId == r.MailJobRecipientId && !string.IsNullOrWhiteSpace(l.Subject))
 				.OrderByDescending(l => l.LogId)
 				.Select(l => new { l.Subject, l.BodySnapshot })
 				.FirstOrDefaultAsync();
 
-			var subject = log?.Subject ?? "您有一封未讀的訊息";
-			var preview = MakePreview(log?.BodySnapshot);
+			// 回退到模板版本的 Subject
+			string? tplSubject = null;
+			if (log == null || string.IsNullOrWhiteSpace(log.Subject))
+			{
+				tplSubject = await _db.MailJobRecipients.AsNoTracking()
+					.Where(x => x.MailJobRecipientId == r.MailJobRecipientId)
+					.Join(_db.MailJobs.AsNoTracking(),
+						  x => x.MailJobId, j => j.JobId,
+						  (x, j) => j.TemplateVersionId)
+					.Join(_db.TemplateVersions.AsNoTracking(),
+						  tvid => tvid, tv => tv.TemplateVersionId,
+						  (tvid, tv) => tv.Subject)
+					.FirstOrDefaultAsync();
+			}
+
+			// 再退到活動名稱
+			var subject = !string.IsNullOrWhiteSpace(log?.Subject)
+				? log!.Subject!
+				: !string.IsNullOrWhiteSpace(tplSubject)
+					? tplSubject!
+					: (await _db.MailJobs.AsNoTracking()
+							.Where(j => j.JobId == r.MailJobId)
+							.Select(j => j.CampaignName)
+							.FirstOrDefaultAsync()) ?? "您有一封未讀的訊息";
+
+			// 摘要（優先用寄送快照；沒有就抓模板 Html 做文字預覽）
+			var snapshotHtml = log?.BodySnapshot;
+			if (string.IsNullOrWhiteSpace(snapshotHtml))
+			{
+				snapshotHtml = await _db.MailJobRecipients.AsNoTracking()
+					.Where(x => x.MailJobRecipientId == r.MailJobRecipientId)
+					.Join(_db.MailJobs.AsNoTracking(),
+						  x => x.MailJobId, j => j.JobId,
+						  (x, j) => j.TemplateVersionId)
+					.Join(_db.TemplateVersions.AsNoTracking(),
+						  tvid => tvid, tv => tv.TemplateVersionId,
+						  (tvid, tv) => tv.BodyHtml)
+					.FirstOrDefaultAsync();
+			}
+			var preview = MakePreview(snapshotHtml);
+
 
 			// 直接手動組，避免 Url.Action 在屬性路由下漏掉 query 參數
 			var viewUrl = $"{Request.Scheme}://{Request.Host}/api/mail/view/{r.MailJobRecipientId}?s={token}";
