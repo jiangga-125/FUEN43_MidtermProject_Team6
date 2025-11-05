@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -50,5 +51,34 @@ namespace BookLoop.Services.Mail
     category: "System",
     cancellationToken: ct);
         }
-	}
+
+        //供系統信使用
+        public async Task SendAsync(string templateKey, string to, object vars, CancellationToken ct = default)
+        {
+            var dict = ToDict(vars);
+            await SendAsync(templateKey, templateName: null, to: to, tokens: dict, ct);
+        }
+
+        private static IDictionary<string, string> ToDict(object? vars)
+        {
+            if (vars == null)
+                return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            if (vars is IDictionary<string, string> d1)
+                return new Dictionary<string, string>(d1, StringComparer.OrdinalIgnoreCase);
+
+            if (vars is IEnumerable<KeyValuePair<string, string>> kvs)
+                return kvs.ToDictionary(k => k.Key, k => k.Value ?? "", StringComparer.OrdinalIgnoreCase);
+
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var props = vars.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (var p in props)
+            {
+                if (!p.CanRead) continue;
+                var val = p.GetValue(vars);
+                map[p.Name] = val?.ToString() ?? "";
+            }
+            return map;
+        }
+    }
 }

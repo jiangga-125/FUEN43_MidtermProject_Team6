@@ -80,12 +80,34 @@ namespace BookLoop.Services.Mail
                 foreach (var r in recipients)
                 {
                     ct.ThrowIfCancellationRequested();
+                    // 姓名推導：RecipientName → Members.Nickname/Username → email 前綴 
 
+                    // 1) 先用名單上的 RecipientName（Create 頁匯入的 username 會被存到這裡）
+                    string name = r.RecipientName;
+
+                    // 2) 沒有的話，用 Email 去 Members 查 Username
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        var mem = await _db.Members
+                            .AsNoTracking()
+                            .Where(m => m.Email == r.RecipientEmail)
+                            .Select(m => new { m.Username })
+                            .FirstOrDefaultAsync(ct); // ← 如果你的方法內有 CancellationToken 變數就用它；沒有就拿掉 (ct)
+
+                        name = mem?.Username;
+                    }
+
+                    // 3) 還是沒有，就用 email 的 @ 前字串
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        var at = r.RecipientEmail?.IndexOf('@') ?? -1;
+                        name = at > 0 ? r.RecipientEmail.Substring(0, at) : (r.RecipientEmail ?? "");
+                    }
                     // 置換 tokens（你原本就用 SimpleTemplateRenderer）
                     var tokens = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                     {
                         ["Recipient"] = r.RecipientEmail,
-                        ["Name"] = r.RecipientName ?? "",
+                        ["Name"] = name,
                         ["Campaign"] = job.CampaignName ?? "",
                         ["TemplateKey"] = job.TemplateKey ?? ""
                     };
