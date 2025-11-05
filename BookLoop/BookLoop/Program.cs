@@ -316,12 +316,16 @@ namespace BookLoop
             builder.Services.AddHangfire(cfg => cfg.UseMemoryStorage());
             builder.Services.AddHangfireServer();
 
-			#endregion
+			//borrow
+            builder.Services.AddScoped<ReservationExpiryService>();
+            builder.Services.AddHostedService<ReservationExpiryWorker>();
+            builder.Services.AddScoped<ReservationQueueService>();
+            #endregion
 
-			// ------------------------------
-			// 應用程式管線
-			// ------------------------------
-			var app = builder.Build();
+            // ------------------------------
+            // 應用程式管線
+            // ------------------------------
+            var app = builder.Build();
 
 			if (app.Environment.IsDevelopment())
 			{
