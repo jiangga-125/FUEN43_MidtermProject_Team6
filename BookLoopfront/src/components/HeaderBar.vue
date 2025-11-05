@@ -68,7 +68,7 @@ watch(
 <style scoped>
 .headerbar {
   position: sticky;
-  top: 0;
+  top: 60px;
   z-index: 1050;
 }
 .input-group .form-control {

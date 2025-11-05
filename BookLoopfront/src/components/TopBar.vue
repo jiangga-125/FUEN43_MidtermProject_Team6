@@ -6,8 +6,6 @@ import { useAuth } from '@/stores/auth'
 
 const router = useRouter()
 const auth = useAuth()
-
-// 直接把 state/getters 變成 ref
 const { member, isMemberLoggedIn } = storeToRefs(auth)
 
 async function signout() {
@@ -17,11 +15,14 @@ async function signout() {
 
 <template>
   <div class="topbar">
-    <div class="container row">
-      <div class="left">
-        <RouterLink class="brand" to="/">簿錄書城</RouterLink>
-      </div>
+    <div class="container">
+      <!-- 🩵 左邊：Logo + 標題 -->
+      <RouterLink class="brand" to="/">
+        <img src="../assets/banner1窄框.png" alt="BookLoop Logo" class="logo" />
+        <span class="brand-text">簿錄書城</span>
+      </RouterLink>
 
+      <!-- 💙 右邊：登入註冊等按鈕 -->
       <div class="right">
         <template v-if="isMemberLoggedIn">
           <span class="hi">Hi, {{ member?.name || member?.email }}</span>
@@ -40,13 +41,92 @@ async function signout() {
 </template>
 
 <style scoped>
-.topbar { position: sticky; top: 0; z-index: 1000; background: #f8f9fa; border-bottom: 1px solid #e9ecef; }
-.container { max-width: 1200px; margin: 0 auto; padding: 8px 16px; }
-.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.brand { font-weight: 600; color: #222; text-decoration: none; }
-.right { display: flex; align-items: center; gap: 12px; }
-.link { color: #0d6efd; text-decoration: none; font-size: 14px; }
-.link:hover { text-decoration: underline; }
-.hi { color: #555; font-size: 14px; }
-.btn { background: none; border: none; padding: 0; cursor: pointer; }
+/* ====== 📌 整體固定在頂部 ====== */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  z-index: 1000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* ====== 📦 容器設定 ====== */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* ✅ 左右分佈 */
+}
+
+/* ====== 🩵 左側品牌區 ====== */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.logo {
+  width: 50px;        /* ✅ 調整 Logo 大小 */
+  height: 50px;
+  object-fit: contain;
+}
+
+.brand-text {
+  font-family: 'Noto Serif TC', 'Microsoft JhengHei', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #004e89;
+  letter-spacing: 2px;
+  transform: translateY(-3px); /* 微微上移對齊 logo */
+}
+
+/* ====== 💙 右側按鈕列 ====== */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.link {
+  color: #0d6efd;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.hi {
+  color: #555;
+  font-size: 14px;
+}
+
+.btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* ====== 📱 響應式（可選） ====== */
+@media (max-width: 768px) {
+  .logo {
+    width: 40px;
+    height: 40px;
+  }
+  .brand-text {
+    font-size: 18px;
+  }
+  .container {
+    padding: 6px 12px;
+  }
+}
 </style>
