@@ -161,25 +161,25 @@ namespace BookLoop.Data
                 e.Property(x => x.CampaignName).HasMaxLength(200).IsRequired();
                 e.Property(x => x.Description).HasMaxLength(1000);
 
-                // ���A�w�]
-                e.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("Scheduled");
+				// 狀態預設
+				e.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("Scheduled");
 
-                // �i�����w�]
-                e.Property(x => x.TotalRecipients).HasDefaultValue(0);
+				// 進度欄位預設
+				e.Property(x => x.TotalRecipients).HasDefaultValue(0);
                 e.Property(x => x.SentCount).HasDefaultValue(0);
 
-                // �`�άd�߯���
-                e.HasIndex(x => x.SendAt);        // �w�w�ɶ�
-                e.HasIndex(x => x.TemplateKey);
+				// 常用查詢索引
+				e.HasIndex(x => x.SendAt);        //預定時間
+				e.HasIndex(x => x.TemplateKey);
                 e.HasIndex(x => x.Status);
 
-                // ���Ƶ{��C�`�Ϊ������֡]���A�Ϯɶ��^
-                e.HasIndex(x => new { x.Status, x.SendAt })
+				// 讓排程佇列常用的條件更快（狀態＋時間）
+				e.HasIndex(x => new { x.Status, x.SendAt })
                  .HasDatabaseName("IX_MailJob_Status_SendAt");
             });
 
-            // MailJobRecipient�]�W����ӡ^�X �@�ʫH�פ@��
-            modelBuilder.Entity<MailJobRecipient>(e =>
+			// MailJobRecipient（名單明細）— 一封信＝一筆
+			modelBuilder.Entity<MailJobRecipient>(e =>
             {
                 e.ToTable("MailJobRecipient");
                 e.HasKey(x => x.MailJobRecipientId);
@@ -198,20 +198,20 @@ namespace BookLoop.Data
                  .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // MailSendLog�]��x�^�X ����x 1:1 ���W�����
-            modelBuilder.Entity<MailSendLog>(e =>
+			// MailSendLog（日誌）— 讓日誌 1:1 對到名單明細
+			modelBuilder.Entity<MailSendLog>(e =>
             {
                 e.ToTable("MailSendLog");
 
-                // ���ި� JobRecipientId�A�Ӭݳ�@����̪���x�|���
-                e.HasIndex(x => x.JobRecipientId);
+				// 索引到 JobRecipientId，細看單一收件者的日誌會更快
+				e.HasIndex(x => x.JobRecipientId);
 
-                // �Y�A�n�[�j���p�]���¸�ƳB�z���A�}�ҡ^
-                // e.HasOne<MailJobRecipient>()
-                //   .WithMany()
-                //   .HasForeignKey(x => x.JobRecipientId)
-                //   .OnDelete(DeleteBehavior.SetNull);
-            });
+				// 若你要加強關聯（等舊資料處理完再開啟）
+				// e.HasOne<MailJobRecipient>()
+				//   .WithMany()
+				//   .HasForeignKey(x => x.JobRecipientId)
+				//   .OnDelete(DeleteBehavior.SetNull);
+			});
         }
     }
 }

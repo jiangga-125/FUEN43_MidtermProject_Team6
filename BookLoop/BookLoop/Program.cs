@@ -320,11 +320,11 @@ namespace BookLoop
             // Hangfire（開發期先用記憶體儲存；正式環境可改 SQL Storage）
             builder.Services.AddHangfire(cfg => cfg.UseMemoryStorage());
             builder.Services.AddHangfireServer();
-
-            // ------------------------------
-            // 應用程式管線
-            // ------------------------------
-            var app = builder.Build();
+			#endregion
+			// ------------------------------
+			// 應用程式管線
+			// ------------------------------
+			var app = builder.Build();
 
 			if (app.Environment.IsDevelopment())
 			{
