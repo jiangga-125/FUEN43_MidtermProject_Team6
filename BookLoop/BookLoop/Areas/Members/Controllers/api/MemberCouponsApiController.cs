@@ -1,4 +1,23 @@
-﻿using BookLoop.Data;
+﻿
+// 功能說明：
+// 此控制器負責會員端優惠券相關 API，包括：
+//   ✅ 查詢會員已擁有的優惠券（List）
+//   ✅ 查詢可領取的優惠券（Available）
+//   ✅ 以按鈕或代碼領取優惠券（Claim / ClaimByCode）
+//
+// ⚠️ 開發注意事項（2025/11 狀態）
+// 目前「會員登入系統」尚未完成 Cookie 登入部分，
+// 因此無法從 User.Claims 取得真實的 MemberId。
+// 為了讓優惠券功能可以先開發與測試，暫時在程式中使用假會員 ID = 1。
+// 之後當登入機制完成（可從 Claims 取得 MemberId）後，
+// 請將 GetCurrentMemberId() 方法內的假 ID 移除，改為從登入資訊抓取即可。
+//
+// TODO: 等會員登入系統完成後，改成以下寫法
+// int currentMemberId = int.Parse(User.FindFirst("MemberId").Value);
+// 並刪除 fallback 假會員 ID 相關程式碼。
+
+
+using BookLoop.Data;
 using BookLoop.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -17,12 +36,11 @@ namespace BookLoop.Areas.Members.Controllers
 	{
 		public string Code { get; set; } = "";
 	}
-	[AllowAnonymous]
+
 	[Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme, Roles = "Member")]
 	[Area("Members")]
 	[Route("api/[area]/[controller]/[action]")]
 	[ApiController]
-
 	public class MemberCouponsApiController : ControllerBase
 	{
 		private readonly MemberContext _db;
@@ -32,35 +50,45 @@ namespace BookLoop.Areas.Members.Controllers
 			_db = db;
 		}
 
+		// 🔍 測試誰登入
 		[HttpGet("whoami")]
 		public IActionResult WhoAmI()
 		{
 			return Ok(new
 			{
+				isAuth = User.Identity?.IsAuthenticated,
 				user = User.Identity?.Name,
-				roles = User.Claims
-							.Where(c => c.Type == ClaimTypes.Role)
-							.Select(c => c.Value)
+				claims = User.Claims.Select(c => new { c.Type, c.Value })
 			});
 		}
 
-		// ✅ 統一安全取得登入會員ID
-		private int? GetMemberId()
+		// ✅ 統一安全取得登入會員ID（含開發測試用 fallback）
+		private int GetCurrentMemberId()
 		{
-			var idClaim = User?.FindFirst("MemberID")?.Value;
-			if (string.IsNullOrEmpty(idClaim))
-				return null;
-			return int.Parse(idClaim);
+			try
+			{
+				// 🎯 嘗試從登入資訊取得 MemberID
+				var idClaim = User?.FindFirst("MemberID")?.Value;
+				if (!string.IsNullOrEmpty(idClaim))
+					return int.Parse(idClaim);
+
+				// ⚠️ 若登入系統尚未完成，暫時使用假會員 ID 進行開發測試
+				int fakeMemberId = 1;
+				Console.WriteLine("⚠️ 尚未登入會員，使用假會員 ID = 1（開發測試用）");
+				return fakeMemberId;
+			}
+			catch
+			{
+				// 防呆保險：永不拋例外
+				return 1;
+			}
 		}
 
 		// ✅ 取得會員優惠券清單
 		[HttpGet]
 		public IActionResult List()
 		{
-			var memberId = GetMemberId();
-			if (memberId == null)
-				return Unauthorized(new { message = "尚未登入或找不到會員資訊" });
-
+			int memberId = GetCurrentMemberId();
 			var now = DateTime.Now;
 
 			var coupons = from mc in _db.MemberCoupons
@@ -79,19 +107,16 @@ namespace BookLoop.Areas.Members.Controllers
 
 			var all = coupons.ToList();
 
-			// 🟢 可使用
 			var usable = all
 				.Where(c => c.Status == 0 && c.StartAt <= now && c.EndAt >= now)
 				.OrderBy(c => c.EndAt)
 				.ToList();
 
-			// 🟡 已使用
 			var used = all
 				.Where(c => c.Status == 1)
 				.OrderByDescending(c => c.EndAt)
 				.ToList();
 
-			// 🔴 已過期
 			var expired = all
 				.Where(c => c.Status == 0 && c.EndAt < now)
 				.OrderByDescending(c => c.EndAt)
@@ -104,10 +129,7 @@ namespace BookLoop.Areas.Members.Controllers
 		[HttpGet]
 		public IActionResult Available()
 		{
-			var memberId = GetMemberId();
-			if (memberId == null)
-				return Unauthorized(new { message = "尚未登入或找不到會員資訊" });
-
+			int memberId = GetCurrentMemberId();
 			var now = DateTime.Now;
 
 			var claimedIds = _db.MemberCoupons
@@ -138,9 +160,7 @@ namespace BookLoop.Areas.Members.Controllers
 		[HttpPost]
 		public IActionResult Claim([FromBody] ClaimCouponRequest req)
 		{
-			var memberId = GetMemberId();
-			if (memberId == null)
-				return Unauthorized(new { message = "尚未登入或找不到會員資訊" });
+			int memberId = GetCurrentMemberId();
 
 			var coupon = _db.Coupons.FirstOrDefault(c => c.CouponId == req.CouponID);
 			if (coupon == null)
@@ -152,7 +172,7 @@ namespace BookLoop.Areas.Members.Controllers
 
 			_db.MemberCoupons.Add(new MemberCoupon
 			{
-				MemberId = memberId.Value,
+				MemberId = memberId,
 				CouponId = req.CouponID,
 				Status = 0,
 				AssignedAt = DateTime.Now
@@ -166,11 +186,9 @@ namespace BookLoop.Areas.Members.Controllers
 		[HttpPost]
 		public IActionResult ClaimByCode([FromBody] ClaimByCodeRequest req)
 		{
-			var memberId = GetMemberId();
-			if (memberId == null)
-				return Unauthorized(new { message = "尚未登入或找不到會員資訊" });
-
+			int memberId = GetCurrentMemberId();
 			var code = req.Code?.Trim();
+
 			if (string.IsNullOrWhiteSpace(code))
 				return BadRequest(new { message = "請輸入優惠代碼" });
 
@@ -190,7 +208,7 @@ namespace BookLoop.Areas.Members.Controllers
 
 			_db.MemberCoupons.Add(new MemberCoupon
 			{
-				MemberId = memberId.Value,
+				MemberId = memberId,
 				CouponId = coupon.CouponId,
 				Status = 0,
 				AssignedAt = now
