@@ -182,7 +182,7 @@
                                }).FirstOrDefault()
                             : null;
 
-                            string couponName = couponInfo?.Name ?? "未使用優惠券";
+                            string couponName = couponInfo?.Name ?? (string.IsNullOrEmpty(item.CouponNameSnap) ? "未使用優惠券" : item.CouponNameSnap);
                             string discountDisplay = "—";
                             if (couponInfo != null)
                             {
@@ -190,12 +190,17 @@
                                 ? $"{couponInfo.DiscountValue:N0} 元折抵"
                                 : $"{couponInfo.DiscountValue:N0}% 折扣";
                             }
+                            else if (item.CouponDiscountAmount > 0)
+                            {
+                                // 若沒有找回 couponInfo，但有快照折抵金額，顯示快照金額
+                                discountDisplay = $"{item.CouponDiscountAmount:N0} 元";
+                            }
                         }
 
                         <td>@couponName</td>
                         <td>@discountDisplay</td>
 
-                        <td>@item.Member?.Username</td>
+                        <td>@(item.Member?.Username ?? "無會員")</td>
 
                         <td>
                             <button type="button" class="btn btn-primary" data-bs-toggle="modal"
@@ -204,16 +209,27 @@
                             </button>
                         </td>
 
+
                         <td>
                             @if (item.Status == 0)
                             {
-                                <form id="paymentForm_@item.OrderID" asp-action="GoToPayment" asp-controller="Orders" method="post" target="_blank">
-                                    <input type="hidden" name="orderId" value="@item.OrderID" />
-                                    <button type="button" class="btn btn-success btn-action"
-                                            onclick="document.getElementById('paymentForm_@item.OrderID').submit();">
-                                        前往付款
+                                if (item.TotalAmount > 0)
+                                {
+                                    <form id="paymentForm_@item.OrderID" asp-action="GoToPayment" asp-controller="Orders" method="post" target="_blank">
+                                        <input type="hidden" name="orderId" value="@item.OrderID" />
+                                        <button type="button" class="btn btn-success btn-action"
+                                                onclick="document.getElementById('paymentForm_@item.OrderID').submit();">
+                                            前往付款
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-secondary btn-action" disabled title="金額為 0 元，無法付款">
+                                        無需付款
                                     </button>
-                                </form>
+                                 
+                                }
                             }
                             else
                             {
