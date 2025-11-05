@@ -7,7 +7,7 @@ namespace BookLoop.Data
 	{
 		public AppDbContext(DbContextOptions<AppDbContext> opt) : base(opt) { }
 
-		// ===== «á¥x¡]­ì¦³¡^ =====
+		// ===== ï¿½ï¿½xï¿½]ï¿½ì¦³ï¿½^ =====
 		public DbSet<User> Users => Set<User>();
 		public DbSet<Role> Roles => Set<Role>();
 		public DbSet<Permission> Permissions => Set<Permission>();
@@ -19,15 +19,15 @@ namespace BookLoop.Data
 		public DbSet<PermissionFeature> PermissionFeatures => Set<PermissionFeature>();
 		public DbSet<Blacklist> Blacklists => Set<Blacklist>();
 		public DbSet<MailTemplate> MailTemplates { get; set; } = null!;
-		public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;   // «á¥x Users ¥Î refresh
+		public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;   // ï¿½ï¿½x Users ï¿½ï¿½ refresh
 
-		// ===== «e¥x¡]·s¼W/±j¤Æ¡^ =====
+		// ===== ï¿½eï¿½xï¿½]ï¿½sï¿½W/ï¿½jï¿½Æ¡^ =====
 		public DbSet<Member> Members => Set<Member>();
 		public DbSet<MemberLogin> MemberLogins => Set<MemberLogin>();
 		public DbSet<MemberToken> MemberTokens => Set<MemberToken>();
 		public DbSet<MemberTrustedDevice> MemberTrustedDevices => Set<MemberTrustedDevice>();
 		public DbSet<MemberRecoveryCode> MemberRecoveryCodes => Set<MemberRecoveryCode>();
-		public DbSet<MemberRefreshToken> MemberRefreshTokens => Set<MemberRefreshToken>(); // «e¥x Members ¥Î refresh
+		public DbSet<MemberRefreshToken> MemberRefreshTokens => Set<MemberRefreshToken>(); // ï¿½eï¿½x Members ï¿½ï¿½ refresh
 
 		//public DbSet<MailTemplate> MailTemplates { get; set; }
 		public DbSet<Template> Templates => Set<Template>();
@@ -35,17 +35,19 @@ namespace BookLoop.Data
         public DbSet<MailSendLog> MailSendLogs => Set<MailSendLog>();
         public DbSet<MailJob> MailJobs => Set<MailJob>();
         public DbSet<MailJobRecipient> MailJobRecipients => Set<MailJobRecipient>();
+		public DbSet<MailEvent> MailEvents { get; set; } = null!;
+		public DbSet<IntegrationCursor> IntegrationCursors { get; set; } = null!;
 
 
-		//public DbSet<RefreshToken> RefreshTokens { get; set; } = null!; // ?°å?JWT RefreshTokens
+		//public DbSet<RefreshToken> RefreshTokens { get; set; } = null!; // ?ï¿½ï¿½?JWT RefreshTokens
 
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			base.OnModelCreating(modelBuilder);
 
-			// ­Y§A¦³¨ä¥L EF ³]©wÀÉ¡A«O¯d¡F¦ı¨ä¤¤­Y¦³ DisplayName/Ip/UserAgent/Purpose/Code ªº³]©w¥²¶·²¾°£
-			// ===== 1) ?½å??®ï??ªä??™æœ¬ DbContext å®????DbSet<> =====
+			// ï¿½Yï¿½Aï¿½ï¿½ï¿½ï¿½L EF ï¿½]ï¿½wï¿½É¡Aï¿½Oï¿½dï¿½Fï¿½ï¿½ï¿½ä¤¤ï¿½Yï¿½ï¿½ DisplayName/Ip/UserAgent/Purpose/Code ï¿½ï¿½ï¿½]ï¿½wï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+			// ===== 1) ?ï¿½ï¿½??ï¿½ï¿½??ï¿½ï¿½??ï¿½æœ¬ DbContext ï¿½????DbSet<> =====
 			//var allowedTypes = this.GetType()
 			//	.GetProperties(BindingFlags.Public | BindingFlags.Instance)
 			//	.Where(p => p.PropertyType.IsGenericType &&
@@ -62,14 +64,14 @@ namespace BookLoop.Data
 
 			modelBuilder.ApplyConfigurationsFromAssembly(typeof(PermissionFeatureConfiguration).Assembly);
 
-			// ===== «á¥x =====
+			// ===== ï¿½ï¿½x =====
 			modelBuilder.Entity<User>(e =>
 			{
 				e.ToTable("USERS");
 				e.HasKey(x => x.UserID);
 				e.Property(x => x.Email).IsRequired().HasMaxLength(254);
 				e.HasIndex(x => x.Email).IsUnique(false);
-				// ¡¹ ¤£­n³]©w e.Property(x => x.DisplayName)¡]¼Ò«¬¨S¦³¡^
+				// ï¿½ï¿½ ï¿½ï¿½ï¿½nï¿½]ï¿½w e.Property(x => x.DisplayName)ï¿½]ï¿½Ò«ï¿½ï¿½Sï¿½ï¿½ï¿½^
 			});
 
 			modelBuilder.Entity<Role>(e =>
@@ -100,7 +102,7 @@ namespace BookLoop.Data
 				e.HasIndex(x => x.Code).IsUnique();
 			});
 
-			// ===== «e¥x =====
+			// ===== ï¿½eï¿½x =====
 			modelBuilder.Entity<Member>(e =>
 			{
 				e.ToTable("Members");
@@ -135,7 +137,7 @@ namespace BookLoop.Data
 					.HasForeignKey(x => x.MemberID)
 					.OnDelete(DeleteBehavior.Cascade);
 
-				// ¡¹ ¥u«O¯d¦w¥ş¯Á¤Ş¡A¤£­n³]©w Purpose/Ip/UserAgent
+				// ï¿½ï¿½ ï¿½uï¿½Oï¿½dï¿½wï¿½ï¿½ï¿½ï¿½ï¿½Ş¡Aï¿½ï¿½ï¿½nï¿½]ï¿½w Purpose/Ip/UserAgent
 				e.HasIndex(x => new { x.MemberID, x.TokenType });
 				e.HasIndex(x => x.Token).IsUnique();
 			});
@@ -149,7 +151,7 @@ namespace BookLoop.Data
 					.HasForeignKey(x => x.MemberID)
 					.OnDelete(DeleteBehavior.Cascade);
 
-				// ¡¹ ¤£­n³]©w Ip¡F¥u°µ°ß¤@¯Á¤Ş
+				// ï¿½ï¿½ ï¿½ï¿½ï¿½nï¿½]ï¿½w Ipï¿½Fï¿½uï¿½ï¿½ï¿½ß¤@ï¿½ï¿½ï¿½ï¿½
 				e.HasIndex(x => new { x.MemberID, x.DeviceHash }).IsUnique();
 			});
 
@@ -162,7 +164,7 @@ namespace BookLoop.Data
 					.HasForeignKey(x => x.MemberID)
 					.OnDelete(DeleteBehavior.Cascade);
 
-				// ¡¹ ¤£­n³]©w Code/Purpose¡F¥u°w¹ï MemberID «Ø¯Á¤Ş
+				// ï¿½ï¿½ ï¿½ï¿½ï¿½nï¿½]ï¿½w Code/Purposeï¿½Fï¿½uï¿½wï¿½ï¿½ MemberID ï¿½Ø¯ï¿½ï¿½ï¿½
 				e.HasIndex(x => x.MemberID);
 			});
 
@@ -172,7 +174,7 @@ namespace BookLoop.Data
 				e.HasKey(x => x.Id);
 				e.HasIndex(x => x.MemberId);
 				e.HasIndex(x => x.TokenHash).IsUnique();
-				// ¡¹ ¤£­n³]©w Ip/UserAgent
+				// ï¿½ï¿½ ï¿½ï¿½ï¿½nï¿½]ï¿½w Ip/UserAgent
 			});
 		
             //Mail
@@ -188,7 +190,7 @@ namespace BookLoop.Data
             modelBuilder.Entity<TemplateVersion>()
 				.HasIndex(v => new { v.TemplateId, v.TemplateName }).IsUnique();
 
-            modelBuilder.Entity<TemplateVersion>() // ç¯©é¸?¯ä?ï¼šæ???Template ?ªèƒ½ 1 ?‹é?è¨­ç?
+            modelBuilder.Entity<TemplateVersion>() // ç¯©é¸?ï¿½ï¿½?ï¼šï¿½???Template ?ï¿½èƒ½ 1 ?ï¿½ï¿½?è¨­ï¿½?
 				.HasIndex(v => new { v.TemplateId, v.IsDefault })
 				.HasFilter("[IsDefault] = 1")
 				.IsUnique();
@@ -211,25 +213,25 @@ namespace BookLoop.Data
                 e.Property(x => x.CampaignName).HasMaxLength(200).IsRequired();
                 e.Property(x => x.Description).HasMaxLength(1000);
 
-                // ï¿½ï¿½ï¿½Aï¿½wï¿½]
-                e.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("Scheduled");
+				// ç‹€æ…‹é è¨­
+				e.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("Scheduled");
 
-                // ï¿½iï¿½ï¿½ï¿½ï¿½ï¿½wï¿½]
-                e.Property(x => x.TotalRecipients).HasDefaultValue(0);
+				// é€²åº¦æ¬„ä½é è¨­
+				e.Property(x => x.TotalRecipients).HasDefaultValue(0);
                 e.Property(x => x.SentCount).HasDefaultValue(0);
 
-                // ï¿½`ï¿½Î¬dï¿½ß¯ï¿½ï¿½ï¿½
-                e.HasIndex(x => x.SendAt);        // ï¿½wï¿½wï¿½É¶ï¿½
-                e.HasIndex(x => x.TemplateKey);
+				// å¸¸ç”¨æŸ¥è©¢ç´¢å¼•
+				e.HasIndex(x => x.SendAt);        //é å®šæ™‚é–“
+				e.HasIndex(x => x.TemplateKey);
                 e.HasIndex(x => x.Status);
 
-                // ï¿½ï¿½ï¿½Æµ{ï¿½ï¿½Cï¿½`ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¡]ï¿½ï¿½ï¿½Aï¿½Ï®É¶ï¿½ï¿½^
-                e.HasIndex(x => new { x.Status, x.SendAt })
+				// è®“æ’ç¨‹ä½‡åˆ—å¸¸ç”¨çš„æ¢ä»¶æ›´å¿«ï¼ˆç‹€æ…‹ï¼‹æ™‚é–“ï¼‰
+				e.HasIndex(x => new { x.Status, x.SendAt })
                  .HasDatabaseName("IX_MailJob_Status_SendAt");
             });
 
-            // MailJobRecipientï¿½]ï¿½Wï¿½ï¿½ï¿½ï¿½Ó¡^ï¿½X ï¿½@ï¿½Ê«Hï¿½×¤@ï¿½ï¿½
-            modelBuilder.Entity<MailJobRecipient>(e =>
+			// MailJobRecipientï¼ˆåå–®æ˜ç´°ï¼‰â€” ä¸€å°ä¿¡ï¼ä¸€ç­†
+			modelBuilder.Entity<MailJobRecipient>(e =>
             {
                 e.ToTable("MailJobRecipient");
                 e.HasKey(x => x.MailJobRecipientId);
@@ -248,20 +250,20 @@ namespace BookLoop.Data
                  .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // MailSendLogï¿½]ï¿½ï¿½xï¿½^ï¿½X ï¿½ï¿½ï¿½ï¿½x 1:1 ï¿½ï¿½ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿?
-            modelBuilder.Entity<MailSendLog>(e =>
+			// MailSendLogï¼ˆæ—¥èªŒï¼‰â€” è®“æ—¥èªŒ 1:1 å°åˆ°åå–®æ˜ç´°
+			modelBuilder.Entity<MailSendLog>(e =>
             {
                 e.ToTable("MailSendLog");
 
-                // ï¿½ï¿½ï¿½Ş¨ï¿½ JobRecipientIdï¿½Aï¿½Ó¬İ³ï¿½@ï¿½ï¿½ï¿½ï¿½Ìªï¿½ï¿½ï¿½xï¿½|ï¿½ï¿½ï¿?
-                e.HasIndex(x => x.JobRecipientId);
+				// ç´¢å¼•åˆ° JobRecipientIdï¼Œç´°çœ‹å–®ä¸€æ”¶ä»¶è€…çš„æ—¥èªŒæœƒæ›´å¿«
+				e.HasIndex(x => x.JobRecipientId);
 
-                // ï¿½Yï¿½Aï¿½nï¿½[ï¿½jï¿½ï¿½ï¿½pï¿½]ï¿½ï¿½ï¿½Â¸ï¿½Æ³Bï¿½zï¿½ï¿½ï¿½Aï¿½}ï¿½Ò¡^
-                // e.HasOne<MailJobRecipient>()
-                //   .WithMany()
-                //   .HasForeignKey(x => x.JobRecipientId)
-                //   .OnDelete(DeleteBehavior.SetNull);
-            });
+				// è‹¥ä½ è¦åŠ å¼·é—œè¯ï¼ˆç­‰èˆŠè³‡æ–™è™•ç†å®Œå†é–‹å•Ÿï¼‰
+				// e.HasOne<MailJobRecipient>()
+				//   .WithMany()
+				//   .HasForeignKey(x => x.JobRecipientId)
+				//   .OnDelete(DeleteBehavior.SetNull);
+			});
         }
     }
 }

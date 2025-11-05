@@ -282,8 +282,10 @@ namespace BookLoop
 			builder.Services.AddScoped<ITemplateMailer, TemplateMailer>();
             builder.Services.AddSingleton<IFileStorage, R2StorageService>();
             builder.Services.AddScoped<IMailJobRunner, MailJobRunner>();
+			builder.Services.AddHostedService<BrevoEventPoller>();
 
-            builder.Services.AddScoped<ICouponService, CouponService>();
+			builder.Services.AddScoped<ICouponService, CouponService>();
+			builder.Services.AddScoped<CouponService>();
 			builder.Services.AddScoped<IPointsService, PointsService>();
 			builder.Services.AddScoped<IPricingEngine, PricingEngine>();
 			builder.Services.AddScoped<IOrderService, OrderService>();
@@ -315,7 +317,10 @@ namespace BookLoop
             builder.Services.AddHangfire(cfg => cfg.UseMemoryStorage());
             builder.Services.AddHangfireServer();
 
-			//borrow
+
+
+
+			      //borrow
             builder.Services.AddScoped<ReservationExpiryService>();
             builder.Services.AddHostedService<ReservationExpiryWorker>();
             builder.Services.AddScoped<ReservationQueueService>();
@@ -323,7 +328,7 @@ namespace BookLoop
 
             // ------------------------------
             // 應用程式管線
-            // ------------------------------
+            // ----------------------------
             var app = builder.Build();
 
 			if (app.Environment.IsDevelopment())
