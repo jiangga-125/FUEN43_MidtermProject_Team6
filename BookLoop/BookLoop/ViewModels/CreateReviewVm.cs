@@ -26,5 +26,7 @@ namespace BookLoop.Models.ViewModels
 		[MinLength(10, ErrorMessage = "評論至少需要 10 個字")]
 		[MaxLength(200, ErrorMessage = "評論不能超過 200 個字")]
 		public string Content { get; set; } = null!;
+
+		public int TargetBookId { get; set; }  // 書籍ID
 	}
 }
