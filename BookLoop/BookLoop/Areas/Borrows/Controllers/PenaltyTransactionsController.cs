@@ -91,13 +91,17 @@ namespace BookLoop.Controllers
             ViewBag.UnitAmount = await _context.PenaltyRules
                 .Select(r => new { r.RuleID, r.UnitAmount })
                 .ToDictionaryAsync(x => x.RuleID, x => x.UnitAmount);
-            return View(vm);
+            bool isAjax = Request.Headers["X-Requested-With"] == "XMLHttpRequest";
+            if (isAjax)
+                return PartialView("_Create", vm);
+            return PartialView("_Create", vm);
         }
         // POST: PenaltyTransactions/Create        
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(PenaltyTransactionsViewModel vm)
         {
+            bool isAjax = Request.Headers["X-Requested-With"] == "XMLHttpRequest";
             if (vm == null)
             {
                 ModelState.AddModelError(string.Empty, "資料有誤。");
@@ -118,12 +122,13 @@ namespace BookLoop.Controllers
 
             if (borrowRecord == null)
             {
+                if (isAjax) return BadRequest("找不到對應的會員或借閱紀錄。");
                 TempData["ErrorMessage"] = "找不到對應的會員或借閱紀錄。";
                 return RedirectToAction("Index", "BorrowRecords");
             }
 
             // 抓選擇的罰則規則
-            
+
             var ruleQuery = _context.PenaltyRules.AsNoTracking().Where(r => r.IsActive);
             
             var rule = await ruleQuery.FirstOrDefaultAsync(r => r.RuleID == vm.RuleID);
@@ -147,6 +152,8 @@ namespace BookLoop.Controllers
 
                 // 顯示用
                 vm.MemberName = borrowRecord.Member?.Username ?? vm.MemberName;
+                if (isAjax)
+                    return PartialView("_Create", vm);
 
                 return View(vm);
             }
@@ -170,6 +177,8 @@ namespace BookLoop.Controllers
 
             await _context.SaveChangesAsync();
 
+            if (isAjax)
+                return Ok(new { message = "已建立罰款紀錄。" });
             TempData["SuccessMessage"] = "已建立罰款紀錄。";
 
 

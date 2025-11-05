@@ -4,9 +4,12 @@
     var totals = ViewBag.InventoryTotals as IDictionary<int, int> ?? new Dictionary<int, int>();
 }
 
-<table class="table table-striped">
+
+
+<table class="table table-striped table-custom">
     <thead>
         <tr>
+            <th>封面</th>
             <th>ISBN</th>
             <th>書名</th>
             <th>出版社</th>
@@ -15,7 +18,6 @@
             <th>實際售價</th>
             <th>建議售價</th>
             <th>庫存</th>
-            <th>封面</th>
             <th>操作</th>
         </tr>
     </thead>
@@ -23,6 +25,26 @@
         @foreach (var b in Model)
         {
             <tr>
+                <td style="width:110px;">
+                    @{
+                        string file = null;
+                        map?.TryGetValue(b.BookID, out file);
+                    }
+                    @if (!string.IsNullOrWhiteSpace(file))
+                    {
+                        var imgPath = file.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                        ? file
+                        : Url.Content("~/images/books/" + file);
+                        <img src="@imgPath" alt="封面" style="max-height:80px; width:auto;" class="img-thumbnail" />
+                    }
+                    else
+                    {
+                        <img src="@Url.Content("~/images/books/no-cover.png")"
+                             alt="無封面"
+                             style="max-height:80px; width:auto;"
+                             class="img-thumbnail" />
+                    }
+                </td>
                 <td>@b.ISBN</td>
                 <td>
                     <a asp-area="Books" asp-controller="Books" asp-action="Details" asp-route-id="@b.BookID">
@@ -32,8 +54,8 @@
                 <td>@b.Publisher?.PublisherName</td>
                 <td>@b.Category?.CategoryName</td>
                 <td>@(b.PublishDate?.ToString("yyyy-MM-dd"))</td>
-                <td>@($"{b.ListPrice} 元")</td>
-                <td>@($"{b.SalePrice} 元")</td>
+                <td>@( $"{Math.Round(b.ListPrice, 0):N0} 元" )</td>
+                <td>@( b.SalePrice.HasValue ? $"{Math.Round(b.SalePrice.Value, 0):N0} 元" : "-" )</td>
                 <td>
                     @{
                         var total = totals.ContainsKey(b.BookID) ? totals[b.BookID] : 0;
@@ -49,28 +71,6 @@
                     else
                     {
                         <span class="badge bg-secondary">缺貨</span>
-                    }
-                </td>
-                <td>
-                    @{
-                        string file = null;
-                        map?.TryGetValue(b.BookID, out file);
-                    }
-                    @if (!string.IsNullOrWhiteSpace(file))
-                    {
-                        var imgPath = file.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                        ? file
-                        : Url.Content("~/images/books/" + file);
-                        <img src="@imgPath" alt="封面" style="max-height:80px;" class="img-thumbnail" />
-                    }
-                    else
-                    {
-                        <span>
-                            <img src="@Url.Content("~/images/books/no-cover.png")"
-                                 alt="無封面"
-                                 style="max-height:80px;"
-                                 class="img-thumbnail" />
-                        </span>
                     }
                 </td>
                 <td>

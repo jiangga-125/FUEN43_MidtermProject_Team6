@@ -93,6 +93,34 @@ namespace BookLoop.Services.Coupons
 			return Result<bool>.Success(true);
 		}
 
+		// 取得目前可用的優惠券清單
+		// 取得目前可用的優惠券清單（安全版）
+		public IEnumerable<Coupon> GetAvailableCoupons(int memberId)
+		{
+			try
+			{
+				var now = DateTime.Now;
+
+				return _db.Coupons
+					.Where(c =>
+						c.IsActive &&
+						(!c.StartAt.HasValue || c.StartAt <= now) &&   // ✅ 防止 null 錯誤
+						(!c.EndAt.HasValue || c.EndAt >= now))         // ✅ 防止 null 錯誤
+					.AsNoTracking()
+					.ToList();
+			}
+			catch (Exception ex)
+			{
+				// 👇 這行可以暫時幫你在 Console 看清楚錯在哪
+				Console.WriteLine("❌ GetAvailableCoupons 發生例外: " + ex.Message);
+				Console.WriteLine(ex.StackTrace);
+
+				// 重新丟出，讓 API 回傳 500 錯誤
+				throw;
+			}
+		}
+
+
 
 	}
 }

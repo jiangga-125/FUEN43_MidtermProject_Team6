@@ -2,11 +2,12 @@
 import { onMounted, ref, watch } from 'vue'
 import { getBooks, type Book } from '@/api/catalog'
 import ProductCard from './ProductCard.vue'
+import UsedListingsGrid from '@/components/UsedListingsGrid.vue' // ★ 新增
 
 /* ★ 從父層接收 categoryId，當它或 tab 改變時重新抓資料 */
 const props = defineProps<{ categoryId: number | null }>()
 
-type TabKey = 'new' | 'hot'
+type TabKey = 'new' | 'hot' | 'list'
 const tab = ref<TabKey>('new')
 
 const page = ref(1)
@@ -17,6 +18,14 @@ const loading = ref(false)
 const err = ref('')
 
 async function load() {
+  // ★ 二手書頁籤不透過 getBooks，交給 UsedListingsGrid
+  if (tab.value === 'list') {
+    loading.value = false
+    err.value = ''
+    items.value = []
+    return
+  }
+
   try {
     loading.value = true
     err.value = ''
@@ -69,20 +78,28 @@ function like(b: Book) {
     <div class="tabs">
       <button :class="{ active: tab === 'new' }" @click="setTab('new')">新書熱推</button>
       <button :class="{ active: tab === 'hot' }" @click="setTab('hot')">熱門排行</button>
+      <button :class="{ active: tab === 'list' }" @click="setTab('list')">二手書</button>
       <div class="spacer" />
-      <div class="pager">
+       <div class="pager" v-if="tab !== 'list'"><!-- ★ 二手書不用這個分頁器 -->
         <button @click="prev" :disabled="page <= 1">‹</button>
         <span>{{ page }}</span>
         <button @click="next" :disabled="page * pageSize >= total">›</button>
       </div>
     </div>
 
-    <div v-if="loading" class="muted">載入中…</div>
-    <div v-else-if="err" class="err">{{ err }}</div>
+     <!-- 新書 / 熱門：舊有格狀卡片 -->
+    <template v-if="tab !== 'list'">
+      <div v-if="loading" class="muted">載入中…</div>
+      <div v-else-if="err" class="err">{{ err }}</div>
+      <div v-else class="grid">
+        <ProductCard v-for="b in items" :key="b.bookId" :book="b" @add="addToCart" @like="like" />
+      </div>
+    </template>
 
-    <div v-else class="grid">
-      <ProductCard v-for="b in items" :key="b.bookId" :book="b" @add="addToCart" @like="like" />
-    </div>
+    <!-- 二手書：直接嵌入共用清單元件 -->
+    <section v-else>
+      <UsedListingsGrid />
+    </section>
   </section>
 </template>
 

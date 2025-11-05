@@ -1,10 +1,5 @@
 using BookLoop.Models;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Reflection.Emit;
 
 namespace BookLoop.Data
 {
@@ -12,6 +7,7 @@ namespace BookLoop.Data
 	{
 		public AppDbContext(DbContextOptions<AppDbContext> opt) : base(opt) { }
 
+		// ===== ��x�]�즳�^ =====
 		public DbSet<User> Users => Set<User>();
 		public DbSet<Role> Roles => Set<Role>();
 		public DbSet<Permission> Permissions => Set<Permission>();
@@ -22,7 +18,16 @@ namespace BookLoop.Data
 		public DbSet<Feature> Features => Set<Feature>();
 		public DbSet<PermissionFeature> PermissionFeatures => Set<PermissionFeature>();
 		public DbSet<Blacklist> Blacklists => Set<Blacklist>();
+		public DbSet<MailTemplate> MailTemplates { get; set; } = null!;
+		public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;   // ��x Users �� refresh
+
+		// ===== �e�x�]�s�W/�j�ơ^ =====
 		public DbSet<Member> Members => Set<Member>();
+		public DbSet<MemberLogin> MemberLogins => Set<MemberLogin>();
+		public DbSet<MemberToken> MemberTokens => Set<MemberToken>();
+		public DbSet<MemberTrustedDevice> MemberTrustedDevices => Set<MemberTrustedDevice>();
+		public DbSet<MemberRecoveryCode> MemberRecoveryCodes => Set<MemberRecoveryCode>();
+		public DbSet<MemberRefreshToken> MemberRefreshTokens => Set<MemberRefreshToken>(); // �e�x Members �� refresh
 
 		//public DbSet<MailTemplate> MailTemplates { get; set; }
 		public DbSet<Template> Templates => Set<Template>();
@@ -34,13 +39,15 @@ namespace BookLoop.Data
 		public DbSet<IntegrationCursor> IntegrationCursors { get; set; } = null!;
 
 
-		public DbSet<RefreshToken> RefreshTokens { get; set; } = null!; // 新增JWT RefreshTokens
+		//public DbSet<RefreshToken> RefreshTokens { get; set; } = null!; // ?��?JWT RefreshTokens
+
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			base.OnModelCreating(modelBuilder);
 
-			// ===== 1) 白名單：只保留本 DbContext 宣告的 DbSet<> =====
+			// �Y�A����L EF �]�w�ɡA�O�d�F���䤤�Y�� DisplayName/Ip/UserAgent/Purpose/Code ���]�w��������
+			// ===== 1) ?��??��??��??�本 DbContext �????DbSet<> =====
 			//var allowedTypes = this.GetType()
 			//	.GetProperties(BindingFlags.Public | BindingFlags.Instance)
 			//	.Where(p => p.PropertyType.IsGenericType &&
@@ -57,16 +64,16 @@ namespace BookLoop.Data
 
 			modelBuilder.ApplyConfigurationsFromAssembly(typeof(PermissionFeatureConfiguration).Assembly);
 
-			// USERS
+			// ===== ��x =====
 			modelBuilder.Entity<User>(e =>
 			{
 				e.ToTable("USERS");
 				e.HasKey(x => x.UserID);
 				e.Property(x => x.Email).IsRequired().HasMaxLength(254);
 				e.HasIndex(x => x.Email).IsUnique(false);
+				// �� ���n�]�w e.Property(x => x.DisplayName)�]�ҫ��S���^
 			});
 
-			// ROLES
 			modelBuilder.Entity<Role>(e =>
 			{
 				e.ToTable("ROLES");
@@ -74,16 +81,6 @@ namespace BookLoop.Data
 				e.HasIndex(x => x.RoleCode).IsUnique();
 			});
 
-			// USER_ROLES
-			//b.Entity<UserRole>(e =>
-			//{
-			//	e.ToTable("USER_ROLES");
-			//	e.HasKey(x => new { x.UserID, x.RoleID });
-			//	e.HasOne(x => x.User).WithMany(x => x.UserRoles).HasForeignKey(x => x.UserID);
-			//	e.HasOne(x => x.Role).WithMany(x => x.UserRoles).HasForeignKey(x => x.RoleID);
-			//});
-
-			// PERMISSIONS
 			modelBuilder.Entity<Permission>(e =>
 			{
 				e.ToTable("PERMISSIONS");
@@ -91,16 +88,6 @@ namespace BookLoop.Data
 				e.HasIndex(x => x.PermKey).IsUnique();
 			});
 
-			// USER_PERMISSIONS
-			//b.Entity<UserPermission>(e =>
-			//{
-			//	e.ToTable("USER_PERMISSIONS");
-			//	e.HasKey(x => new { x.UserID, x.PermissionID });
-			//	e.HasOne(x => x.User).WithMany(x => x.UserPermissions).HasForeignKey(x => x.UserID);
-			//	e.HasOne(x => x.Permission).WithMany(x => x.UserPermissions).HasForeignKey(x => x.PermissionID);
-			//});
-
-			// SUPPLIERS
 			modelBuilder.Entity<Supplier>(e =>
 			{
 				e.ToTable("SUPPLIERS");
@@ -108,16 +95,6 @@ namespace BookLoop.Data
 				e.HasIndex(x => x.SupplierCode).IsUnique();
 			});
 
-			// SUPPLIER_USERS
-			//b.Entity<SupplierUser>(e =>
-			//{
-			//	e.ToTable("SUPPLIER_USERS");
-			//	e.HasKey(x => new { x.SupplierID, x.UserID });
-			//	e.HasOne(x => x.Supplier).WithMany(x => x.SupplierUsers).HasForeignKey(x => x.SupplierID);
-			//	e.HasOne(x => x.User).WithMany(x => x.SupplierUsers).HasForeignKey(x => x.UserID);
-			//});
-
-			// FEATURES
 			modelBuilder.Entity<Feature>(e =>
 			{
 				e.ToTable("FEATURES");
@@ -125,6 +102,81 @@ namespace BookLoop.Data
 				e.HasIndex(x => x.Code).IsUnique();
 			});
 
+			// ===== �e�x =====
+			modelBuilder.Entity<Member>(e =>
+			{
+				e.ToTable("Members");
+				e.HasKey(x => x.MemberID);
+
+				e.Property(x => x.RowVersion).IsRowVersion();
+
+				e.HasIndex(x => x.Username).IsUnique();
+				e.HasIndex(x => x.EmailNormalized)
+					.IsUnique()
+					.HasFilter("[EmailNormalized] IS NOT NULL");
+			});
+
+			modelBuilder.Entity<MemberLogin>(e =>
+			{
+				e.ToTable("MemberLogins");
+				e.HasKey(x => x.MemberLoginID);
+				e.HasOne(x => x.Member)
+					.WithMany(m => m.Logins)
+					.HasForeignKey(x => x.MemberID)
+					.OnDelete(DeleteBehavior.Cascade);
+
+				e.HasIndex(x => new { x.Provider, x.ProviderKey }).IsUnique();
+			});
+
+			modelBuilder.Entity<MemberToken>(e =>
+			{
+				e.ToTable("MemberTokens");
+				e.HasKey(x => x.MemberTokenID);
+				e.HasOne(x => x.Member)
+					.WithMany()
+					.HasForeignKey(x => x.MemberID)
+					.OnDelete(DeleteBehavior.Cascade);
+
+				// �� �u�O�d�w�����ޡA���n�]�w Purpose/Ip/UserAgent
+				e.HasIndex(x => new { x.MemberID, x.TokenType });
+				e.HasIndex(x => x.Token).IsUnique();
+			});
+
+			modelBuilder.Entity<MemberTrustedDevice>(e =>
+			{
+				e.ToTable("MemberTrustedDevices");
+				e.HasKey(x => x.TrustedDeviceID);
+				e.HasOne(x => x.Member)
+					.WithMany()
+					.HasForeignKey(x => x.MemberID)
+					.OnDelete(DeleteBehavior.Cascade);
+
+				// �� ���n�]�w Ip�F�u���ߤ@����
+				e.HasIndex(x => new { x.MemberID, x.DeviceHash }).IsUnique();
+			});
+
+			modelBuilder.Entity<MemberRecoveryCode>(e =>
+			{
+				e.ToTable("MemberRecoveryCodes");
+				e.HasKey(x => x.MemberRecoveryCodeID);
+				e.HasOne(x => x.Member)
+					.WithMany()
+					.HasForeignKey(x => x.MemberID)
+					.OnDelete(DeleteBehavior.Cascade);
+
+				// �� ���n�]�w Code/Purpose�F�u�w�� MemberID �د���
+				e.HasIndex(x => x.MemberID);
+			});
+
+			modelBuilder.Entity<MemberRefreshToken>(e =>
+			{
+				e.ToTable("MemberRefreshTokens");
+				e.HasKey(x => x.Id);
+				e.HasIndex(x => x.MemberId);
+				e.HasIndex(x => x.TokenHash).IsUnique();
+				// �� ���n�]�w Ip/UserAgent
+			});
+		
             //Mail
             modelBuilder.Entity<Template>().ToTable("Template");
             modelBuilder.Entity<TemplateVersion>().ToTable("TemplateVersion");
@@ -138,14 +190,14 @@ namespace BookLoop.Data
             modelBuilder.Entity<TemplateVersion>()
 				.HasIndex(v => new { v.TemplateId, v.TemplateName }).IsUnique();
 
-            modelBuilder.Entity<TemplateVersion>() // 篩選唯一：每個 Template 只能 1 個預設版
+            modelBuilder.Entity<TemplateVersion>() // 篩選?��?：�???Template ?�能 1 ?��?設�?
 				.HasIndex(v => new { v.TemplateId, v.IsDefault })
 				.HasFilter("[IsDefault] = 1")
 				.IsUnique();
 
 			//b.Entity<PermissionFeature>(e =>
 			//{
-			//	e.ToTable("PERMISSION_FEATURES"); // ← 與 DB 一致
+			//	e.ToTable("PERMISSION_FEATURES"); // ????DB 一??
 			//	e.HasKey(x => new { x.PermissionID, x.FeatureID });
 			//	e.HasOne(x => x.Permission).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.PermissionID);
 			//	e.HasOne(x => x.Feature).WithMany(x => x.PermissionFeatures).HasForeignKey(x => x.FeatureID);

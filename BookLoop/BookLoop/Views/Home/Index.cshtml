@@ -79,12 +79,17 @@
 
               const list = document.getElementById('latestOrdersList');
               list.innerHTML = '';
+              const orderDetailsTemplate = '@Url.Action("OrderDetails", "Orders", new { area = "Orders", id = "__id__" })';
               (json.latestOrders || []).forEach(o => {
+                const id = o.Id || o.id || o.OrderId || o.orderId;
                 const a = document.createElement('a');
                 a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-                a.href = '/Orders/Details/' + (o.Id || o.id || o.OrderId || o.orderId);
-                a.innerHTML = `<div><strong>${o.Id || o.id || o.OrderId || o.orderId}</strong><div class="text-muted small">${o.Member||''}</div></div>
-                               <div class="text-end">${(o.TotalAmount||o.totalAmount||0).toLocaleString()}</div>`;
+                a.href = orderDetailsTemplate.replace('__id__', id);
+                a.innerHTML = `<div>
+                                  <strong>${id}</strong>
+                                  <div class="text-muted small">${o.Member || ''}</div>
+                                </div>
+                                <div class="text-end">${(o.TotalAmount||o.totalAmount||0).toLocaleString()}</div>`;
                 list.appendChild(a);
               });
 
