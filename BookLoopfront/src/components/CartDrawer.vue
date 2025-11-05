@@ -89,17 +89,17 @@ async function checkoutCart() {
             >
               <div class="d-flex align-items-center gap-3 flex-grow-1">
                         <img
-                    :src="item.book.coverUrl && item.book.coverUrl.startsWith('http') 
-                          ? item.book.coverUrl 
+                    :src="item.book.coverUrl && item.book.coverUrl.startsWith('http')
+                          ? item.book.coverUrl
                           : `/api/BookImages/${item.book.id}/cover`"
                     :alt="item.book.title || 'Book Cover'"
-                    @error="(e: Event) => {
+                    error="(e: Event) => {
                       const target = e.currentTarget as HTMLImageElement | null;
                       if (target) target.src = '/placeholder.png';
                     }"
                     class="rounded shadow-sm"
                     style="width: 60px; height: 80px; object-fit: cover"
-                  />   
+                  />
                 <div>
                   <strong class="fs-6">{{ item.book.title }}</strong>
                   <div class="text-muted small">NT$ {{ item.book.salePrice || 0 }}</div>

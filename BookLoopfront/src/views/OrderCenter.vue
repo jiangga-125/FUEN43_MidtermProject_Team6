@@ -77,7 +77,7 @@ onMounted(async () => {
 
 <template>
   <div class="container py-5">
-    
+
 
     <!-- 在訂單中心標題旁邊或上方加回首頁按鈕 -->
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -173,13 +173,13 @@ onMounted(async () => {
                 <td>
                 <div class="d-flex align-items-center gap-3 flex-grow-1">
                     <img
-                    :src="item.Book?.coverUrl && item.Book.coverUrl.startsWith('http') 
-                            ? item.Book.coverUrl 
+                    :src="item.Book?.coverUrl && item.Book.coverUrl.startsWith('http')
+                            ? item.Book.coverUrl
                             : `/api/BookImages/${item.Book?.id}/cover`"
                     :alt="item.Book?.title || 'Book Cover'"
-                    @error="(e: Event) => { 
-                        const target = e.currentTarget as HTMLImageElement | null; 
-                        if(target) target.src='/placeholder.png' 
+                    error="(e: Event) => {
+                        const target = e.currentTarget as HTMLImageElement | null;
+                        if(target) target.src='/placeholder.png'
                     }"
                     class="rounded shadow-sm"
                     style="width: 60px; height: 80px; object-fit: cover"

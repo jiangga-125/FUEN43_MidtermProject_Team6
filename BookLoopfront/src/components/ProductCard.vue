@@ -1,3 +1,4 @@
+<!-- src/components/ProductCard.vue -->
 <script setup lang="ts">
 import { toRef, computed } from 'vue'
 import type { Book } from '@/api/book'

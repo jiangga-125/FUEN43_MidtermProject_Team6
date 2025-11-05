@@ -18,6 +18,7 @@ const isHome = computed(() => route.path === '/') // 只有首頁為 true
 const selectedCategoryId = ref<number | null>(null) // null=全部
 
 function onPickCategory(id: number | null) {
+  console.log('[Parent] onPickCategory', id)
   selectedCategoryId.value = id
 }
 </script>
@@ -28,8 +29,8 @@ function onPickCategory(id: number | null) {
 
 
   <!-- 首頁專屬區塊：只有在 '/' 才會渲染 -->
-  <template v-if="isHome">  
-    <HeaderBar /> 
+  <template v-if="isHome">
+    <HeaderBar />
     <AdPopupAndTopBar />
     <Marquee />
     <BannerCarousel />
@@ -37,7 +38,7 @@ function onPickCategory(id: number | null) {
       <!-- 左：分類清單，點擊後更新 selectedCategoryId -->
       <SidebarCategories :selected-id="selectedCategoryId" @select="onPickCategory" />
       <!-- 右：商品區，接收分類 id -->
-      <ProductTabs :category-id="selectedCategoryId" />
+      <ProductTabs :categoryId="selectedCategoryId" />
     </main>
   </template>
 
