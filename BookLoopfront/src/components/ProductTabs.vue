@@ -72,20 +72,21 @@ async function addToCart(b: Book) {
     console.log('加入購物車 payload', payload)
     const res = await addCartAPI(payload)
     console.log('購物車回傳資料', res)
-    alert(res.message ?? `✅ 已加入購物車：${b.title}`)
+    alert(`✅ 已加入購物車：${b.title}`)
   } catch (e: any) {
     console.error('加入購物車錯誤', e)
-    // 如果是 Axios 錯誤
     if (e.response) {
       console.group('加入購物車 Axios 錯誤')
       console.log('status:', e.response.status)
       console.log('headers:', e.response.headers)
-      console.log('data:', e.response.data) // 這裡通常就是後端 Exception 的 message 或 stack
+      console.log('data:', e.response.data)
       console.groupEnd()
-      alert(`❌ 加入購物車失敗: ${e.response.data?.message ?? JSON.stringify(e.response.data)}`)
+
+      // 只取 message 屬性，不用整個物件
+      const msg = e.response.data?.message ?? '加入購物車失敗'
+      alert(`❌ ${msg}`)
     } else {
-      // 其他錯誤
-      alert(`❌ 加入購物車失敗: ${e.message ?? e}`)
+      alert(`❌ 加入購物車失敗: ${e.message ?? '未知錯誤'}`)
     }
   }
 }

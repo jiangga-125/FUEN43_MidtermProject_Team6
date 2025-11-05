@@ -15,7 +15,7 @@ type RawOrder = {
   orderID?: number
   memberID: number
   customerID?: number | null
-  orderDate?: string
+  createdAt?: string      // 後端實際回傳欄位
   totalAmount: number
   status?: number
   discountAmount?: number
@@ -41,7 +41,7 @@ export type Order = {
   OrderID?: number
   MemberID: number
   CustomerID?: number | null
-  OrderDate?: string
+  OrderDate?: string       // 前端統一使用 OrderDate
   TotalAmount: number
   Status?: number
   DiscountAmount?: number
@@ -61,7 +61,6 @@ export async function createOrder(order: Order) {
   const { data } = await http.post('/order/create', order)
   console.log('createOrder 回傳:', data)
 
-  // ✅ 後端回傳是 orderId 小寫
   const orderId = data.orderId
   if (!orderId) {
     throw new Error('後端沒有回傳 OrderID')
@@ -69,6 +68,7 @@ export async function createOrder(order: Order) {
 
   return orderId
 }
+
 // -------------------------
 // 取得會員所有訂單
 // -------------------------
@@ -77,6 +77,8 @@ export async function getOrdersByMember(memberId: number) {
 
   const orders: Order[] = await Promise.all(
     data.map(async o => {
+      console.log('後端回傳 order:', o)
+
       const details: OrderDetail[] = await Promise.all(
         o.orderDetails.map(async od => {
           let book = od.book
@@ -100,7 +102,7 @@ export async function getOrdersByMember(memberId: number) {
         OrderID: o.orderID,
         MemberID: o.memberID,
         CustomerID: o.customerID ?? null,
-        OrderDate: o.orderDate,
+        OrderDate: o.createdAt ?? undefined,  // ✅ 使用 createdAt
         TotalAmount: o.totalAmount,
         Status: o.status,
         DiscountAmount: o.discountAmount,
@@ -143,7 +145,7 @@ export async function getOrderDetail(orderId: number) {
     OrderID: data.orderID,
     MemberID: data.memberID,
     CustomerID: data.customerID ?? null,
-    OrderDate: data.orderDate,
+    OrderDate: data.createdAt ?? undefined,  // ✅ 使用 createdAt
     TotalAmount: data.totalAmount,
     Status: data.status,
     DiscountAmount: data.discountAmount,

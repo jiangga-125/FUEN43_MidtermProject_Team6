@@ -34,6 +34,14 @@ async function loadOrders() {
   } catch (err) {
     console.error('載入訂單失敗', err)
   }
+}async function onPay(orderId: number) {
+  alert(`導向付款流程：OrderID ${orderId}`)
+  // 這裡之後可以整合 ECPay 或其他付款流程
+}
+
+async function onReturn(orderId: number) {
+  alert(`導向退貨流程：OrderID ${orderId}`)
+  // 這裡可以開退貨頁或彈出退貨理由 modal
 }
 
 async function viewOrderDetail(orderId: number) {
@@ -87,28 +95,65 @@ onMounted(async () => {
 
     <!-- 訂單列表 -->
     <div v-if="currentTab === 'orders'">
-      <div v-if="orders.length === 0" class="text-center text-muted py-5">
-        目前沒有訂單
-      </div>
-      <div class="row g-3">
-        <div v-for="order in orders" :key="order.OrderID" class="col-md-6">
-          <div class="card shadow-sm">
-            <div class="card-body">
-              <h5 class="card-title">訂單 #{{ order.OrderID ?? '-' }}</h5>
-              <p class="card-text mb-1">
-                總金額：NT$ {{ order.TotalAmount ?? 0 }} <br>
-                狀態：<span>{{ orderStatusMap[order.Status ?? 0] }}</span>
-              </p>
-              <div class="d-flex flex-wrap gap-2 mt-2">
-                <button class="btn btn-sm btn-info" @click="viewOrderDetail(order.OrderID!)">查看明細</button>
-                <button class="btn btn-sm btn-danger" @click="onCancel(order.OrderID!)">取消</button>
-                <button class="btn btn-sm btn-outline-danger" @click="onDelete(order.OrderID!)">刪除</button>
-              </div>
-            </div>
+  <div v-if="orders.length === 0" class="text-center text-muted py-5">
+    目前沒有訂單
+  </div>
+  <div class="row g-3">
+    <div v-for="order in orders" :key="order.OrderID" class="col-md-6">
+      <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        <div class="card-body">
+          <h5 class="card-title mb-2 fw-bold text-primary">
+            訂單 #{{ order.OrderID ?? '-' }}
+          </h5>
+          <p class="card-text mb-2 text-muted small">
+       下單時間：{{ order.OrderDate ? new Date(order.OrderDate).toLocaleString() : '無資料' }}
+          </p>
+          <p class="card-text mb-1">
+            💰 總金額：<span class="fw-bold text-success">NT$ {{ order.TotalAmount ?? 0 }}</span><br>
+            📦 狀態：<span class="badge bg-secondary">{{ orderStatusMap[order.Status ?? 0] }}</span>
+          </p>
+
+          <!-- 按鈕區 -->
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <!-- 查看明細 -->
+            <button
+              class="btn btn-sm btn-primary flex-grow-1"
+              @click="viewOrderDetail(order.OrderID!)"
+            >
+              查看明細
+            </button>
+
+            <!-- 付款 -->
+            <button
+              class="btn btn-sm btn-success flex-grow-1"
+              @click="onPay(order.OrderID!)"
+              :disabled="order.Status !== 0"
+            >
+              付款
+            </button>
+
+            <!-- 退貨 -->
+            <button
+            class="btn btn-sm btn-warning flex-grow-1"
+            @click="onReturn(order.OrderID!)"
+            :disabled="(order.Status ?? 0) < 2"
+            >
+            退貨
+            </button>
+
+            <!-- 刪除 -->
+            <button
+              class="btn btn-sm btn-outline-danger flex-grow-1"
+              @click="onDelete(order.OrderID!)"
+            >
+              🗑️ 刪除
+            </button>
           </div>
         </div>
       </div>
     </div>
+  </div>
+</div>
 
     <!-- 訂單明細 -->
     <div v-if="currentTab === 'details' && selectedOrder" class="mt-4">
