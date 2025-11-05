@@ -1,13 +1,21 @@
 <template>
-  <div class="marquee">
-    <p class="marquee-text">{{ messages[currentIndex] }}</p>
+ <div class="marquee">
+    <!-- 每句文字跑完後換下一句 -->
+    <p
+      class="marquee-text"
+      :key="currentIndex"
+      :style="{ '--offset': `${windowWidth}px` }"
+      @animationend="nextMessage"
+    >
+      {{ messages[currentIndex] }}
+    </p>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
-// ✅ 跑馬燈要顯示的寒暄文字
+// ✅ 跑馬燈要顯示的文字
 const messages = [
   "🌞 歡迎來到 BookLoop，祝你有美好的一天！🌞",
   "📚 今天也要記得看看書，讓靈魂充實一下～📚",
@@ -17,16 +25,24 @@ const messages = [
 
 // ✅ 當前顯示第幾句
 const currentIndex = ref(0)
-let timer: number
+const windowWidth = ref(window.innerWidth) // 用來控制動畫起點
 
-// ✅ 每 18 秒切換一句
+// 🟢 換下一句（動畫結束時觸發）
+function nextMessage() {
+  currentIndex.value = (currentIndex.value + 1) % messages.length
+}
+
+// 🔹 若使用者改變視窗大小，更新起點
+function updateWidth() {
+  windowWidth.value = window.innerWidth
+}
+
 onMounted(() => {
-  timer = window.setInterval(() => {
-    currentIndex.value = (currentIndex.value + 1) % messages.length
-  }, 18000)
+  window.addEventListener('resize', updateWidth)
 })
-
-onUnmounted(() => clearInterval(timer))
+onUnmounted(() => {
+  window.removeEventListener('resize', updateWidth)
+})
 </script>
 
 <style scoped>
@@ -50,17 +66,16 @@ onUnmounted(() => clearInterval(timer))
   font-weight: 600;
   color: #fefefe;
  padding-top: 15px;
-  animation: scrollText 10s linear infinite;
-  
+animation: scrollText 10s linear forwards;
 }
 
 /* 跑馬燈動畫 */
 @keyframes scrollText {
   from {
-    transform: translateX(100%);
+    transform: translateX(80vw);
   }
   to {
-    transform: translateX(-100%);
+    transform: translateX(-80vw);
   }
 }
 </style>

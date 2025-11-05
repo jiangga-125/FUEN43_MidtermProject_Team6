@@ -7,7 +7,7 @@ using System.Linq;
 namespace BookLoop.Controllers.Api
 {	
 	[ApiController]
-	[Route("api/[controller]")]
+	[Route("api/[controller]/[action]")]
 	[AllowAnonymous]
 	public class AdvertisementsApiController : ControllerBase
 	{

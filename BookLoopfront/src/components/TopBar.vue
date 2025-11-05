@@ -18,7 +18,7 @@ async function signout() {
     <div class="container">
       <!-- 🩵 左邊：Logo + 標題 -->
       <RouterLink class="brand" to="/">
-        <img src="../assets/banner1窄框.png" alt="BookLoop Logo" class="logo" />
+       <img src="@/assets/banner2.png" alt="BookLoop Logo" class="logo">
         <span class="brand-text">簿錄書城</span>
       </RouterLink>
 
@@ -72,7 +72,7 @@ async function signout() {
 }
 
 .logo {
-  width: 50px;        /* ✅ 調整 Logo 大小 */
+  width: 100px;        /* ✅ 調整 Logo 大小 */
   height: 50px;
   object-fit: contain;
 }
