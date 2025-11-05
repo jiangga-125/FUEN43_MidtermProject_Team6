@@ -9,7 +9,7 @@ import Reset from '@/views/Reset.vue'
 import Member from '@/views/Member.vue'
 import TwoFASetup from '@/views/TwoFASetup.vue'
 import AuthCallback from '@/views/AuthCallback.vue'
-
+import MyNewPage from '@/views/BorrowCenter.vue';
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -22,6 +22,7 @@ const router = createRouter({
     { path: '/member', component: Member },
     { path: '/', component: () => import('@/views/Home.vue'), meta: { public: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
+    { path: '/BorrowCenter',name: 'BRcenter',component: MyNewPage},
   ],
 })
 
