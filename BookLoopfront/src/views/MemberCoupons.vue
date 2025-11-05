@@ -40,7 +40,7 @@ function unwrapData(res: any) {
 
   async function loadCoupons() {
   try {
-    const res = await http.get('/api/CouponsApi/list')
+    const res = await http.get('/api/MemberCouponsApi/list')
     const data = unwrapData(res.data)
     // 假設後端 data = { usable:[], used:[], expired:[] }
     usable.value = data?.usable || []
@@ -79,7 +79,7 @@ function unwrapData(res: any) {
   async function claimCoupon(couponId: number) {
   if (!confirm('確定要領取這張優惠券嗎？')) return
   try {
-    const res = await http.post('/api/MmeberCouponsApi/claim', { couponID: couponId })
+    const res = await http.post('/api/MemberCouponsApi/claim', { couponID: couponId })
     const data = unwrapData(res.data)
     const message = data?.message ?? res.data?.message ?? '領取成功'
     alert('🎉 ' + message)
@@ -138,26 +138,27 @@ function unwrapData(res: any) {
           <div class="info">
             <div class="name">{{ c.name }}</div>
             <div class="date">
-              {{ new Date(c.startAt).toLocaleDateString() }} - {{ new Date(c.endAt).toLocaleDateString() }}
+                            {{ new Date(c.startAt).toLocaleDateString() }} -
+              {{ new Date(c.endAt).toLocaleDateString() }}
             </div>
-            <button class="btn small primary" @click="claimCoupon(c.couponID)">領取</button>
+            <button class="btn small primary" @click="claimCoupon(c.couponId)">領取</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 💙 我的優惠券 -->
+    <!--  我的優惠券 -->
     <div class="card">
       <h3>我的優惠券</h3>
       <ul class="tabs">
-        <li :class="{ active: tab==='usable' }" @click="tab='usable'">可使用</li>
-        <li :class="{ active: tab==='used' }" @click="tab='used'">已使用</li>
-        <li :class="{ active: tab==='expired' }" @click="tab='expired'">已逾期</li>
+        <li :class="{ active: tab === 'usable' }" @click="tab='usable'">可使用</li>
+        <li :class="{ active: tab === 'used' }" @click="tab='used'">已使用</li>
+        <li :class="{ active: tab === 'expired' }" @click="tab='expired'">已逾期</li>
       </ul>
 
       <transition name="fade" mode="out-in">
         <div :key="tab">
-          <div v-if="tab==='usable'" class="coupon-list">
+          <div v-if="tab === 'usable'" class="coupon-list">
             <p v-if="!usable.length" class="text-muted">目前沒有可使用的優惠券。</p>
             <div v-for="c in usable" :key="c.memberCouponID" class="coupon-card usable">
               <div class="value">
@@ -165,7 +166,8 @@ function unwrapData(res: any) {
               </div>
               <div class="info">
                 <div class="name">{{ c.name }}</div>
-                <div class="date">{{ new Date(c.startAt).toLocaleDateString() }} - {{ new Date(c.endAt).toLocaleDateString() }}</div>
+                <div class="date">              {{ new Date(c.startAt).toLocaleDateString() }} -
+              {{ new Date(c.endAt).toLocaleDateString() }}</div>
               </div>
             </div>
           </div>
@@ -178,13 +180,14 @@ function unwrapData(res: any) {
             </div>
           </div>
 
-          <div v-if="tab==='expired'" class="coupon-list">
+          <div v-if="tab === 'expired'" class="coupon-list">
             <p v-if="!expired.length" class="text-muted">目前沒有已逾期的優惠券。</p>
             <div v-for="c in expired" :key="c.memberCouponID" class="coupon-card expired">
               <div class="value">已逾期</div>
               <div class="info">
                 <div class="name">{{ c.name }}</div>
-                <div class="date">{{ new Date(c.startAt).toLocaleDateString() }} - {{ new Date(c.endAt).toLocaleDateString() }}</div>
+                <div class="date">             {{ new Date(c.startAt).toLocaleDateString() }} -
+             {{ new Date(c.endAt).toLocaleDateString() }}</div>
               </div>
             </div>
           </div>

@@ -1,28 +1,10 @@
-﻿
-// 功能說明：
-// 此控制器負責會員端優惠券相關 API，包括：
-//   ✅ 查詢會員已擁有的優惠券（List）
-//   ✅ 查詢可領取的優惠券（Available）
-//   ✅ 以按鈕或代碼領取優惠券（Claim / ClaimByCode）
-//
-// ⚠️ 開發注意事項（2025/11 狀態）
-// 目前「會員登入系統」尚未完成 Cookie 登入部分，
-// 因此無法從 User.Claims 取得真實的 MemberId。
-// 為了讓優惠券功能可以先開發與測試，暫時在程式中使用假會員 ID = 1。
-// 之後當登入機制完成（可從 Claims 取得 MemberId）後，
-// 請將 GetCurrentMemberId() 方法內的假 ID 移除，改為從登入資訊抓取即可。
-//
-// TODO: 等會員登入系統完成後，改成以下寫法
-// int currentMemberId = int.Parse(User.FindFirst("MemberId").Value);
-// 並刪除 fallback 假會員 ID 相關程式碼。
-
-
-using BookLoop.Data;
+﻿using BookLoop.Data;
 using BookLoop.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.Linq;
@@ -39,7 +21,6 @@ namespace BookLoop.Controllers.api
 		public string Code { get; set; } = "";
 	}
 
-	// 支援 Cookie 與 JWT，都需要是 Member 角色
 	[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 	[Route("api/[controller]/[action]")]
 	[ApiController]
@@ -56,6 +37,7 @@ namespace BookLoop.Controllers.api
 
 		// 🔍 測試誰登入
 		[HttpGet("whoami")]
+		[AllowAnonymous]
 		public IActionResult WhoAmI()
 		{
 			return Ok(new
@@ -66,15 +48,15 @@ namespace BookLoop.Controllers.api
 			});
 		}
 
-		// ✅ 統一安全取得登入會員ID（開發環境才會 fallback 假 ID）
+		// 取得登入會員ID
 		private int? GetCurrentMemberId()
 		{
 			// 優先從常見的 claim key 取
-			string?[] keys = new[]
-			{
-				"memberId", "MemberId", "memberID", "MemberID",
-				ClaimTypes.NameIdentifier, "sub"
+			string?[] keys = new[] {
+			"mid", "memberId", "MemberId", "memberID", "MemberID",
+			ClaimTypes.NameIdentifier, "sub", "id", "nameid"
 			};
+
 
 			foreach (var k in keys)
 			{
@@ -83,16 +65,9 @@ namespace BookLoop.Controllers.api
 					return id;
 			}
 
-			// 如果是開發環境，允許 fallback 假 ID（方便本地開發）
-			if (_env.IsDevelopment())
-			{
-				Console.WriteLine("⚠️ Development mode: 使用假會員 ID = 1（僅供開發測試）");
-				return 1;
-			}
-
-			// 非開發環境不予 fallback
 			return null;
 		}
+
 
 		// ✅ 取得會員優惠券清單
 		[HttpGet]
@@ -111,12 +86,16 @@ namespace BookLoop.Controllers.api
 						  select new
 						  {
 							  mc.MemberCouponId,
+							  c.CouponId,
 							  c.Name,
 							  c.DiscountType,
 							  c.DiscountValue,
 							  c.StartAt,
 							  c.EndAt,
-							  mc.Status
+							  mc.Status,
+							  mc.AssignedAt,
+							  mc.IsUsed,
+							  mc.UsedAt
 						  };
 
 			var all = coupons.ToList();
@@ -295,11 +274,14 @@ namespace BookLoop.Controllers.api
 				_db.MemberCoupons.Add(mc);
 				_db.SaveChanges();
 			}
-			catch (Exception ex)
+			catch (DbUpdateException dbEx)
 			{
-				// 開發時顯示內部錯誤詳情，方便 debug（上線前改回簡短訊息或記錄到 logger）
-				var inner = ex.InnerException?.Message ?? ex.Message;
-				return StatusCode(500, new { success = false, message = $"儲存發生錯誤：{inner}", detail = ex.ToString() });
+				// 若是唯一索引衝突（已被別人領或 race），回傳友善訊息
+				var inner = dbEx.InnerException?.Message ?? dbEx.Message;
+				if (inner?.Contains("UX_MemberCoupons_Member_Coupon") == true || inner?.Contains("UNIQUE KEY") == true)
+					return BadRequest(new { success = false, message = "你已經領取過這張優惠券" });
+
+				return StatusCode(500, new { success = false, message = $"儲存發生錯誤：{inner}" });
 			}
 
 			return Ok(new { message = $"成功領取「{coupon.Name}」優惠券！" });
