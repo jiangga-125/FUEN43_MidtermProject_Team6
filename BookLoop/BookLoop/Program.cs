@@ -117,9 +117,18 @@ namespace BookLoop
 			{
 				options.ForwardDefaultSelector = context =>
 				{
-					if (context.Request.Path.StartsWithSegments("/api"))
-						return JwtBearerDefaults.AuthenticationScheme; // API 一律 JWT
-					return CookieAuthenticationDefaults.AuthenticationScheme; // 後台 MVC 用 Cookie
+					var path = context.Request.Path;
+
+        // ✅ 會員 API 改用 Cookie
+        if (path.StartsWithSegments("/api/members"))
+            return CookieAuthenticationDefaults.AuthenticationScheme;
+
+        // 其他 API 繼續用 JWT
+        if (path.StartsWithSegments("/api"))
+            return JwtBearerDefaults.AuthenticationScheme;
+
+        // 預設給 MVC 頁面
+        return CookieAuthenticationDefaults.AuthenticationScheme;
 				};
 			})
 			// 外部登入暫存票證（必要，供 external callback 讀取）
@@ -428,6 +437,7 @@ namespace BookLoop
 			app.MapRazorPages();
 
 			app.Run();
+
 		}
 	}
 }

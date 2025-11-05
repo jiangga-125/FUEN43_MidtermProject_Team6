@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AdPopupAndTopBar from '@/components/AdPopupAndTopBar.vue'
 import BannerCarousel from '@/components/BannerCarousel.vue'
+import Marquee from '@/components/Marquee.vue'
 </script>
 
 <template>
@@ -12,6 +13,11 @@ import BannerCarousel from '@/components/BannerCarousel.vue'
   <!-- 💙 輪播廣告區 -->
   <div class="ad-carousel-wrapper">
     <BannerCarousel />
+  </div>
+
+  <!-- 🟠 跑馬燈文字 -->
+  <div class="home">
+    <Marquee />
   </div>
 
   <!-- 📘 首頁內容 -->

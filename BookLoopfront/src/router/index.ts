@@ -22,6 +22,9 @@ const router = createRouter({
     { path: '/member', component: Member },
     { path: '/', component: () => import('@/views/Home.vue'), meta: { public: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
+    { path: '/member/coupons',name: 'MemberCoupons',component: () => import('@/views/MemberCoupons.vue')
+}
+
   ],
 })
 
