@@ -284,6 +284,7 @@ namespace BookLoop
             builder.Services.AddScoped<IMailJobRunner, MailJobRunner>();
 
             builder.Services.AddScoped<ICouponService, CouponService>();
+			builder.Services.AddScoped<CouponService>();
 			builder.Services.AddScoped<IPointsService, PointsService>();
 			builder.Services.AddScoped<IPricingEngine, PricingEngine>();
 			builder.Services.AddScoped<IOrderService, OrderService>();
