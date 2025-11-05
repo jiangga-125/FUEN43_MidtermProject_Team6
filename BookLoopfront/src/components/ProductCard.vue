@@ -23,22 +23,14 @@ function onImgError(e: Event) {
 <template>
   <div class="card">
     <div class="cover">
-      <!-- 重要：先嘗試 book.coverUrl（若存在且為絕對網址），否則用 API endpoint（bookId） -->
-      <img
-        :src="
-          book?.coverUrl && book.coverUrl.startsWith('http')
-            ? book.coverUrl
-            : book
-              ? `/api/BookImages/${book['id'] ?? book['id'] ?? book['id']}/cover`
-              : '/placeholder.png'
-        "
-        :alt="book?.title || 'cover'"
-        :data-orig="
-          book?.coverUrl ||
-          (book ? `/api/BookImages/${book['id'] ?? book['id'] ?? book['id']}/cover` : '')
-        "
-        @error="onImgError"
-        loading="lazy"
+    <img
+    :src="computeCoverSrc(book)"
+    :alt="book?.title || 'cover'"
+    :data-orig="computeOriginalSrc(book)"
+    error="onImgError"
+    loading="lazy"
+/>
+
       />
     </div>
     <div class="info">

@@ -18,6 +18,7 @@ const confirmPassword = ref('')
 const changing = ref(false)
 const msg = ref('')
 
+
 async function changePassword () {
   msg.value = ''
   if (!newPassword.value || newPassword.value !== confirmPassword.value) {
@@ -43,6 +44,10 @@ async function changePassword () {
 
 function goto2FA () { router.push('/2fa/setup') }
 async function signout () { try { await auth.logout?.() } finally { router.push('/login') } }
+
+
+
+
 </script>
 
 <template>
@@ -94,6 +99,7 @@ async function signout () { try { await auth.logout?.() } finally { router.push(
       <p>尚未登入，請先 <a href="/login">登入</a>。</p>
     </div>
   </div>
+
 </template>
 
 <style scoped>
@@ -114,4 +120,5 @@ h3 { margin: 0 0 10px; }
 .btn.danger { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
 .msg { margin-top: 8px; color: #333; }
 @media (max-width: 900px) { .cards { grid-template-columns: 1fr; } }
+
 </style>

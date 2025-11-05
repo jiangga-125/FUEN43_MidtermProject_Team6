@@ -22,11 +22,11 @@ const router = createRouter({
     { path: '/2fa/setup', component: TwoFASetup },
     { path: '/member', component: Member },
     { path: '/', component: () => import('@/views/Home.vue'), meta: { public: true } },
-
- { path: '/order-center', component: OrderCenter },
-
+    { path: '/order-center', component: OrderCenter },
     { path: '/:pathMatch(.*)*', redirect: '/' },
-    
+    { path: '/member/coupons',name: 'MemberCoupons',component: () => import('@/views/MemberCoupons.vue')
+}
+
   ],
 })
 

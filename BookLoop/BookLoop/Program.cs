@@ -118,9 +118,18 @@ namespace BookLoop
 			{
 				options.ForwardDefaultSelector = context =>
 				{
-					if (context.Request.Path.StartsWithSegments("/api"))
-						return JwtBearerDefaults.AuthenticationScheme; // API 一律 JWT
-					return CookieAuthenticationDefaults.AuthenticationScheme; // 後台 MVC 用 Cookie
+					var path = context.Request.Path;
+
+        // ✅ 會員 API 改用 Cookie
+        if (path.StartsWithSegments("/api/members"))
+            return CookieAuthenticationDefaults.AuthenticationScheme;
+
+        // 其他 API 繼續用 JWT
+        if (path.StartsWithSegments("/api"))
+            return JwtBearerDefaults.AuthenticationScheme;
+
+        // 預設給 MVC 頁面
+        return CookieAuthenticationDefaults.AuthenticationScheme;
 				};
 			})
 			// 外部登入暫存票證（必要，供 external callback 讀取）
@@ -283,8 +292,10 @@ namespace BookLoop
 			builder.Services.AddScoped<ITemplateMailer, TemplateMailer>();
             builder.Services.AddSingleton<IFileStorage, R2StorageService>();
             builder.Services.AddScoped<IMailJobRunner, MailJobRunner>();
+			builder.Services.AddHostedService<BrevoEventPoller>();
 
-            builder.Services.AddScoped<ICouponService, CouponService>();
+			builder.Services.AddScoped<ICouponService, CouponService>();
+			builder.Services.AddScoped<CouponService>();
 			builder.Services.AddScoped<IPointsService, PointsService>();
 			builder.Services.AddScoped<IPricingEngine, PricingEngine>();
 			builder.Services.AddScoped<IOrderService, OrderService>();
@@ -316,12 +327,19 @@ namespace BookLoop
             builder.Services.AddHangfire(cfg => cfg.UseMemoryStorage());
             builder.Services.AddHangfireServer();
 
-			#endregion
 
-			// ------------------------------
-			// 應用程式管線
-			// ------------------------------
-			var app = builder.Build();
+
+
+			      //borrow
+            builder.Services.AddScoped<ReservationExpiryService>();
+            builder.Services.AddHostedService<ReservationExpiryWorker>();
+            builder.Services.AddScoped<ReservationQueueService>();
+            #endregion
+
+            // ------------------------------
+            // 應用程式管線
+            // ----------------------------
+            var app = builder.Build();
 
 			if (app.Environment.IsDevelopment())
 			{
@@ -420,6 +438,7 @@ namespace BookLoop
 			app.MapRazorPages();
 
 			app.Run();
+
 		}
 	}
 }

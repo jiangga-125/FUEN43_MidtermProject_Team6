@@ -91,7 +91,7 @@ watch(() => route.query.q, (val) => {
 <style scoped>
 .headerbar {
   position: sticky;
-  top: 0;
+  top: 60px;
   z-index: 1050;
 }
 
