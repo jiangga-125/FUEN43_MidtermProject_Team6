@@ -1,56 +1,68 @@
-<!-- src/components/CartDrawer.vue -->
 <script setup lang="ts">
-import { computed, defineProps, defineEmits, onMounted } from 'vue'
+import { computed, defineProps, defineEmits, watch } from 'vue'
 import { useCartStore } from '@/stores/cart'
+import { useRouter } from 'vue-router'
 
 const props = defineProps<{ visible: boolean; memberId: number }>()
 const emit = defineEmits<{ (e: 'update:visible', value: boolean): void }>()
-const close = () => emit('update:visible', false)
 
+const close = () => emit('update:visible', false)
 const cartStore = useCartStore()
+
+// 綁定 store 中的資料
 const cartItems = computed(() => cartStore.items)
 const totalItems = computed(() => cartStore.totalItems)
 const totalPrice = computed(() => cartStore.totalPrice)
+const router = useRouter()
+// 當購物車顯示時載入資料
+watch(
+  () => props.visible,
+  async (visible) => {
+    if (visible && props.memberId) {
+      console.log('Fetching cart for member', props.memberId)
+      await cartStore.initCart(props.memberId)
+    }
+  },
+  { immediate: true }
+)
 
-// 新增：打開購物車時初始化
-onMounted(async () => {
-  if (props.memberId) {
-    await cartStore.initCart(props.memberId)
-  }
-})
-
+// 更新商品數量（只修改前端）
 function updateItem(bookId: number, qty: number) {
+  const item = cartStore.items.find(i => i.book.id === bookId)
+  if (!item) return
   if (qty <= 0) cartStore.removeItem(bookId)
-  else cartStore.updateItem(bookId, qty)
+  else item.quantity = qty
 }
-function removeItem(bookId: number) {
-  cartStore.removeItem(bookId)
+
+// 移除商品
+function removeItem(itemId: number | null) {
+  if (itemId != null) cartStore.removeItemByItemId(itemId)
 }
+
+// 清空購物車
 function clearCart() {
   cartStore.clearCart()
 }
 
+// 結帳
 async function checkoutCart() {
   try {
-    // ✅ 使用 store 裡的 memberId
-    const memberId = cartStore.memberId
-    if (!memberId) {
+    if (!cartStore.memberId) {
       alert('請先登入會員')
       return
     }
 
-    // ✅ 新增：呼叫 store 裡的 checkout 方法
-    const res = await cartStore.checkout(memberId)
+    const orderId = await cartStore.checkout()
+    console.log('checkoutCart OrderID:', orderId)
 
-    // 假設後端回傳 { OrderID: 123 }
-    const orderId = res.OrderID || res.orderId || '未知'
-    alert('訂單建立成功！訂單編號：' + orderId)
-
+    // Modal 關閉
     close()
-  } catch (err: any) {
-    alert(err.message || '結帳失敗')
+  } catch (err) {
+    const e = err as any
+    alert(e.message || '結帳失敗')
   }
 }
+
 </script>
 
 <template>
@@ -72,21 +84,28 @@ async function checkoutCart() {
           <div class="cart-list mb-4">
             <div
               v-for="item in cartItems"
-              :key="item.book.id"
+              :key="item.itemId || item.book.id"
               class="cart-item d-flex justify-content-between align-items-center border-bottom py-3"
             >
               <div class="d-flex align-items-center gap-3 flex-grow-1">
-                <img
-                  :src="item.book.coverUrl || 'https://via.placeholder.com/60x80?text=Book'"
-                  alt="Book Cover"
-                  class="rounded shadow-sm"
-                  style="width: 60px; height: 80px; object-fit: cover"
-                />
+                        <img
+                    :src="item.book.coverUrl && item.book.coverUrl.startsWith('http') 
+                          ? item.book.coverUrl 
+                          : `/api/BookImages/${item.book.id}/cover`"
+                    :alt="item.book.title || 'Book Cover'"
+                    @error="(e: Event) => {
+                      const target = e.currentTarget as HTMLImageElement | null;
+                      if (target) target.src = '/placeholder.png';
+                    }"
+                    class="rounded shadow-sm"
+                    style="width: 60px; height: 80px; object-fit: cover"
+                  />   
                 <div>
                   <strong class="fs-6">{{ item.book.title }}</strong>
                   <div class="text-muted small">NT$ {{ item.book.salePrice || 0 }}</div>
                 </div>
               </div>
+
               <div class="d-flex align-items-center gap-2">
                 <input
                   type="number"
@@ -96,7 +115,10 @@ async function checkoutCart() {
                   v-model.number="item.quantity"
                   @change="updateItem(item.book.id, item.quantity)"
                 />
-                <button class="btn btn-sm btn-outline-danger" @click="removeItem(item.book.id)">
+                <button
+                  class="btn btn-sm btn-outline-danger"
+                  @click="removeItem(item.itemId)"
+                >
                   ✕
                 </button>
               </div>
@@ -115,8 +137,12 @@ async function checkoutCart() {
           </div>
 
           <div class="d-flex justify-content-end gap-3">
-            <button class="btn btn-outline-secondary px-4" @click="clearCart">清空購物車</button>
-            <button class="btn btn-primary px-4" @click="checkoutCart">前往結帳</button>
+            <button class="btn btn-outline-secondary px-4" @click="clearCart">
+              清空購物車
+            </button>
+            <button class="btn btn-primary px-4" @click="checkoutCart">
+              前往結帳
+            </button>
           </div>
         </div>
       </div>
@@ -134,7 +160,6 @@ async function checkoutCart() {
   justify-content: center;
 }
 
-/* 背景半透明＋模糊 */
 .modal-backdrop {
   position: absolute;
   inset: 0;
@@ -142,7 +167,6 @@ async function checkoutCart() {
   backdrop-filter: blur(6px);
 }
 
-/* 主視窗 */
 .modal-content {
   position: relative;
   z-index: 2100;
@@ -159,13 +183,11 @@ async function checkoutCart() {
   overflow: hidden;
 }
 
-/* 商品滾動區 */
 .cart-list {
   overflow-y: auto;
   max-height: 600px;
 }
 
-/* 關閉按鈕 */
 .btn-close {
   position: absolute;
   top: 20px;
@@ -181,7 +203,6 @@ async function checkoutCart() {
   opacity: 1;
 }
 
-/* 彈出動畫 */
 @keyframes slideUp {
   from {
     transform: translateY(50px) scale(0.95);
@@ -196,13 +217,11 @@ async function checkoutCart() {
   animation: slideUp 0.35s ease-out;
 }
 
-/* 商品 hover */
 .cart-item:hover {
   background: #f9fafc;
   transition: background 0.2s;
 }
 
-/* 手機適應 */
 @media (max-width: 576px) {
   .modal-content {
     width: 95%;

@@ -5,9 +5,9 @@
       <!-- LOGO -->
       <router-link to="/" class="me-3 text-decoration-none fw-bold fs-4">Logo</router-link>
 
-      <!-- 搜尋欄 + 購物車按鈕 -->
+      <!-- 搜尋欄 + 訂單中心 + 購物車按鈕 -->
       <div class="flex-grow-1 d-flex align-items-center gap-3">
-        <!-- 搜尋 -->
+        <!-- 搜尋框 -->
         <div class="input-group flex-grow-1">
           <input
             v-model="searchText"
@@ -17,64 +17,75 @@
             placeholder="請輸入書名、作者、ISBN..."
             aria-label="搜尋書籍"
           />
-          <button class="btn btn-primary" @click="submitSearch" type="button">搜尋</button>
+          <button class="btn btn-primary" @click="submitSearch">搜尋</button>
         </div>
+<!-- 訂單中心按鈕 -->
+<button class="btn btn-outline-primary px-4" style="min-width: 140px" @click="goToOrders">
+  📦 訂單中心
+</button>
 
-        <!-- 購物車按鈕 -->
-        <button class="btn btn-danger cart-btn position-relative" @click="showCart = true">
-          🛒 購物車
-          <span v-if="cartCount > 0" class="cart-count">{{ cartCount }}</span>
-        </button>
+<!-- 購物車按鈕 -->
+<button class="btn btn-danger position-relative px-4" style="min-width: 140px" @click="showCart = true">
+  🛒 購物車
+  <span
+    v-if="cartCount > 0"
+    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark"
+    style="font-size: 0.75rem;"
+  >
+    {{ cartCount }}
+  </span>
+</button>
       </div>
     </div>
-  </header>
 
-  <!-- 購物車彈窗 / 側邊欄 -->
-  <!-- <CartDrawer v-model:visible="showCart" /> -->
+    <!-- 購物車彈窗 -->
+    <CartDrawer v-model:visible="showCart" :memberId="memberId" />
+  </header>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import CartDrawer from '@/components/CartDrawer.vue'
 import { useCartStore } from '@/stores/cart'
 
+// Router
 const router = useRouter()
 const route = useRoute()
 
-// 搜尋框
+// 實際登入會員ID
+const memberId = 616
+
+// 搜尋欄
 const searchText = ref<string>((route.query.q as string) || '')
 
 // 購物車彈窗控制
 const showCart = ref(false)
 
-// 使用 Pinia 購物車 store
+// Pinia 購物車 store
 const cartStore = useCartStore()
-const cartCount = computed(() => cartStore.totalItems || 0) // 預設 0
+const cartCount = computed(() => cartStore.totalItems || 0)
 
 // 搜尋功能
 function submitSearch() {
   const q = (searchText.value || '').trim()
   const basePath = '/listings'
-
   if (!q) {
     router.push({ path: basePath })
     return
   }
+  router.push({ path: basePath, query: { q, page: '1' } })
+}
 
-  router.push({
-    path: basePath,
-    query: { q, page: '1' },
-  })
+// 跳到訂單中心
+function goToOrders() {
+  router.push({ path: '/order-center' })
 }
 
 // 當 route.query.q 變動時同步 input
-watch(
-  () => route.query.q,
-  (val) => {
-    searchText.value = String(val || '')
-  },
-)
+watch(() => route.query.q, (val) => {
+  searchText.value = String(val || '')
+})
 </script>
 
 <style scoped>
@@ -88,34 +99,28 @@ watch(
   min-width: 420px;
 }
 
+.btn-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.cart-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  padding: 2px 6px;
+  font-size: 12px;
+  color: #fff;
+  background: red;
+  border-radius: 12px;
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   .input-group .form-control {
     min-width: 150px;
   }
-}
-
-.cart-btn {
-  font-weight: bold;
-  font-size: 16px;
-  padding: 8px 16px;
-  border-radius: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.cart-count {
-  display: inline-block;
-  min-width: 20px;
-  padding: 2px 6px;
-  font-size: 12px;
-  color: white;
-  background: red;
-  border-radius: 12px;
-  text-align: center;
-  position: absolute;
-  top: -6px;
-  right: -6px;
 }
 </style>

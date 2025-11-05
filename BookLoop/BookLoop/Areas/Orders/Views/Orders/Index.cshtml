@@ -240,8 +240,8 @@
                         <td>
                             @String.Format("{0:N0}元", item.CouponDiscountAmount)
                         </td>
-                    
-                        <td>@item.Member.Username</td>
+
+                        <td>@(item.Member?.Username ?? "無會員")</td>
                        
                         <td>
                             <button type="button" class="btn btn-primary" data-bs-toggle="modal"

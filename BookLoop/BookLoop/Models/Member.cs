@@ -12,7 +12,7 @@ namespace BookLoop
 		public int MemberID { get; set; }
 		public int? UserID { get; set; } // 舊欄位：保留但前台認證不再使用
 
-		[NotMapped]
+
 		//public string? Account { get; set; } = null!;
 
 		public string Username { get; set; } = null!;

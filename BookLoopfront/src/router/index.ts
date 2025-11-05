@@ -9,6 +9,7 @@ import Reset from '@/views/Reset.vue'
 import Member from '@/views/Member.vue'
 import TwoFASetup from '@/views/TwoFASetup.vue'
 import AuthCallback from '@/views/AuthCallback.vue'
+import OrderCenter from '@/views/OrderCenter.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -21,7 +22,11 @@ const router = createRouter({
     { path: '/2fa/setup', component: TwoFASetup },
     { path: '/member', component: Member },
     { path: '/', component: () => import('@/views/Home.vue'), meta: { public: true } },
+
+ { path: '/order-center', component: OrderCenter },
+
     { path: '/:pathMatch(.*)*', redirect: '/' },
+    
   ],
 })
 
