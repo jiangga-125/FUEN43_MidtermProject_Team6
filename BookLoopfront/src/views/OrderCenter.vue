@@ -24,9 +24,9 @@ const orderStatusMap: Record<number, string> = {
   4: '已取消'
 }
 
-function goHome() {
-  router.push('/')
-}
+// function goHome() {
+//   router.push('/')
+// }
 
 // 載入會員所有訂單
 async function loadOrders() {
@@ -37,6 +37,10 @@ async function loadOrders() {
   }
 }
 
+async function onPay(orderId: number) {
+  window.open(`https://localhost:7176/Orders/Orders/GoToPayment?orderId=${orderId}`, '_blank')
+  // 整合 ECPay
+}
 // 載入會員所有退貨紀錄
 async function loadAllReturns() {
   try {
@@ -51,9 +55,7 @@ async function loadAllReturns() {
   }
 }
 
-function onPay(orderId: number) {
-  window.open(`https://localhost:7176/Orders/Orders/GoToPayment?orderId=${orderId}`, '_blank')
-}
+
 
 async function cancelReturnOrder(returnId: number) {
   if (!confirm('確定要取消這筆退貨嗎？')) return
@@ -96,12 +98,12 @@ async function onDelete(orderId: number) {
 
 // 計算所有訂單明細，用於 new Tab
 const allOrderDetails = computed(() =>
-  orders.value.flatMap(order =>
-    order.OrderDetails.map(od => ({
+  orders.value.flatMap((order) =>
+    order.OrderDetails.map((od) => ({
       ...od,
-      parentOrderID: order.OrderID
-    }))
-  )
+      parentOrderID: order.OrderID,
+    })),
+  ),
 )
 
 onMounted(async () => {
@@ -171,7 +173,7 @@ onMounted(async () => {
     </div>
 
     <!-- 單筆訂單明細 -->
-    <div v-if="currentTab==='details' && selectedOrder" class="mt-4">
+    <div v-if="currentTab === 'details' && selectedOrder" class="mt-4">
       <h4>訂單明細：#{{ selectedOrder.OrderID }}</h4>
       <div class="card shadow-sm bg-white p-3">
         <table class="table table-hover mb-0">
@@ -205,64 +207,83 @@ onMounted(async () => {
       </div>
     </div>
 
-<!-- 所有訂單明細 -->
-<div v-if="currentTab==='allDetails'" class="mt-4">
-  <h4>所有訂單明細</h4>
-  <div v-if="allOrderDetails.length===0" class="text-muted py-3">目前沒有訂單明細</div>
+    <!-- 所有訂單明細 -->
+    <div v-if="currentTab === 'allDetails'" class="mt-4">
+      <h4>所有訂單明細</h4>
+      <div v-if="allOrderDetails.length === 0" class="text-muted py-3">目前沒有訂單明細</div>
 
-  <div v-for="order in orders" :key="order.OrderID" class="mb-4">
-    <h5>訂單 #{{ order.OrderID }}</h5>
-    <div class="card shadow-sm bg-white p-3">
-      <table class="table table-hover mb-0">
-        <thead class="table-light">
-          <tr>
-            <th>書籍</th>
-            <th>數量</th>
-            <th>單價</th>
-            <th>小計</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in order.OrderDetails" :key="item.BookID">
-            <td>
-              <div class="d-flex align-items-center gap-3">
-                <img :src="item.Book?.coverUrl && item.Book.coverUrl.startsWith('http') ? item.Book.coverUrl : `/api/BookImages/${item.Book?.id}/cover`"
-                     :alt="item.Book?.title || 'Book Cover'" class="rounded shadow-sm" style="width:60px;height:80px;object-fit:cover"/>
-                <div>
-                  <strong class="fs-6">{{ item.Book?.title || '(已下架)' }}</strong>
-                  <div class="text-muted small">NT$ {{ item.Book?.salePrice ?? item.UnitPrice ?? 0 }}</div>
-                </div>
-              </div>
-            </td>
-            <td>{{ item.Quantity }}</td>
-            <td>NT$ {{ item.UnitPrice }}</td>
-            <td>NT$ {{ item.Quantity * item.UnitPrice }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="text-end fs-5 fw-bold mt-3">總金額：NT$ {{ order.TotalAmount }}</div>
+      <div v-for="order in orders" :key="order.OrderID" class="mb-4">
+        <h5>訂單 #{{ order.OrderID }}</h5>
+        <div class="card shadow-sm bg-white p-3">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>書籍</th>
+                <th>數量</th>
+                <th>單價</th>
+                <th>小計</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in order.OrderDetails" :key="item.BookID">
+                <td>
+                  <div class="d-flex align-items-center gap-3">
+                    <img
+                      :src="
+                        item.Book?.coverUrl && item.Book.coverUrl.startsWith('http')
+                          ? item.Book.coverUrl
+                          : `/api/BookImages/${item.Book?.id}/cover`
+                      "
+                      :alt="item.Book?.title || 'Book Cover'"
+                      class="rounded shadow-sm"
+                      style="width: 60px; height: 80px; object-fit: cover"
+                    />
+                    <div>
+                      <strong class="fs-6">{{ item.Book?.title || '(已下架)' }}</strong>
+                      <div class="text-muted small">
+                        NT$ {{ item.Book?.salePrice ?? item.UnitPrice ?? 0 }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>{{ item.Quantity }}</td>
+                <td>NT$ {{ item.UnitPrice }}</td>
+                <td>NT$ {{ item.Quantity * item.UnitPrice }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="text-end fs-5 fw-bold mt-3">總金額：NT$ {{ order.TotalAmount }}</div>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
     <!-- 退貨紀錄 -->
-    <div v-if="currentTab==='returns'" class="mt-4">
+    <div v-if="currentTab === 'returns'" class="mt-4">
       <h4>退貨紀錄</h4>
-      <div v-if="returns.length===0" class="text-muted py-3">目前沒有退貨紀錄</div>
+      <div v-if="returns.length === 0" class="text-muted py-3">目前沒有退貨紀錄</div>
       <div class="row g-3">
         <div v-for="r in returns" :key="r.returnID" class="col-md-6">
           <div class="card shadow-sm border-0 rounded-4 overflow-hidden position-relative">
-            <button v-if="r.status !== 9" class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-2" @click="cancelReturnOrder(r.returnID)">❌ 取消退貨</button>
+            <button
+              v-if="r.status !== 9"
+              class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-2"
+              @click="cancelReturnOrder(r.returnID)"
+            >
+              ❌ 取消退貨
+            </button>
             <div class="card-body">
               <h5 class="card-title fw-bold text-primary">退貨編號：#{{ r.returnID }}</h5>
               <p class="card-text mb-1">📝 原因：{{ r.returnReason }}</p>
-              <p class="card-text mb-1">📦 狀態：<span class="badge bg-warning text-dark">{{ getStatusText(r.status) }}</span></p>
+              <p class="card-text mb-1">
+                📦 狀態：<span class="badge bg-warning text-dark">{{
+                  getStatusText(r.status)
+                }}</span>
+              </p>
               <p class="card-text text-muted small">訂單編號：#{{ r.orderID }}</p>
             </div>
           </div>
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
@@ -279,7 +300,8 @@ button.active {
 .card {
   border-radius: 8px;
 }
-.table th, .table td {
+.table th,
+.table td {
   vertical-align: middle;
 }
 .text-end {
