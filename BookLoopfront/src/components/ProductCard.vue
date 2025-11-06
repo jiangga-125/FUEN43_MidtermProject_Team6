@@ -47,13 +47,22 @@ async function resolveMemberId(): Promise<number | null> {
   const tryIds = [m?.MemberID, m?.memberId, m?.id]
   for (const v of tryIds) if (v) return Number(v)
 
+  // fallback: examine token in storage (access_token or token)
   try {
-    const r = await http.get('/api/auth/me')
-    const data = r?.data ?? r
-    const candidate = data?.memberId ?? data?.MemberID ?? data?.id ?? data?.userId
+    const token =
+      localStorage.getItem('access_token') ??
+      localStorage.getItem('token') ??
+      sessionStorage.getItem('access_token') ??
+      sessionStorage.getItem('token')
+    if (!token) return null
+    const parts = token.split('.')
+    if (parts.length < 2) return null
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+    const candidate =
+      payload?.memberId ?? payload?.MemberID ?? payload?.userId ?? payload?.sub ?? payload?.id
     if (candidate) return Number(candidate)
-  } catch {
-    // ignore
+  } catch (e) {
+    // decode 失敗就忽略
   }
   return null
 }
@@ -73,7 +82,9 @@ async function add(e?: Event) {
 
   const memberId = await resolveMemberId()
   if (!memberId) {
-    alert('請先登入或確認會員資訊（MemberID）')
+    // 改善 UX：提示並提供跳轉到登入頁
+    const goLogin = confirm('請先登入或確認會員資訊（MemberID）。要前往登入頁嗎？')
+    if (goLogin) router.push({ name: 'Login' } as any) // 若你沒有命名路由，改成 router.push('/login')
     adding.value = false
     return
   }
@@ -90,9 +101,10 @@ async function add(e?: Event) {
     const res = await http.post('/api/ShoppingCart/add', payload)
     const data = res?.data ?? res
     if (data && (data.success === true || res.status === 200 || res.status === 201)) {
-      // MODIFIED: 不再 emit('add', book.value) 以避免父層重複呼叫
-      // 改成僅顯示成功提示或更新 local state
+      // 保留原本行為：直接顯示提示
       alert(data.message ?? '已加入購物車')
+      // 若你希望父層也知道可以 emit('add')，可以在這裡再 emit
+      // emit('add', book.value as Book)
     } else {
       alert(data?.message ?? '加入購物車失敗')
     }
