@@ -1,93 +1,99 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Mvc;
+using BookLoop.Data;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Threading.Tasks;
-using BookLoop.Data;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.EntityFrameworkCore;
 
-namespace BookLoop.Api
+[ApiController]
+[Route("api/[controller]")]
+public class BookImagesController : ControllerBase
 {
-	[ApiController]
-	[Route("api/[controller]")]
-	public class BookImagesController : ControllerBase
+	private readonly BookSystemContext _db;
+	private readonly IWebHostEnvironment _env;
+
+	public BookImagesController(BookSystemContext db, IWebHostEnvironment env)
 	{
-		private readonly BookSystemContext _db;
-		private readonly IWebHostEnvironment _env;
-		private static readonly HttpClient _http = new HttpClient();
+		_db = db;
+		_env = env;
+	}
 
-		public BookImagesController(BookSystemContext db, IWebHostEnvironment env)
+	// GET api/BookImages/book/{bookId}/cover
+	[HttpGet("book/{bookId:int}/cover")]
+	[AllowAnonymous]
+	public IActionResult GetCoverByBookId(int bookId)
+	{
+		var img = _db.BookImages.FirstOrDefault(i => i.BookID == bookId && i.IsPrimary);
+		if (img == null) return NotFound();
+
+		return ServeImage(img.FilePath);
+	}
+
+	// GET api/BookImages/{imageId}/cover (若需要根據 imageId 取圖)
+	[HttpGet("{imageId:int}/cover")]
+	[AllowAnonymous]
+	public IActionResult GetCoverByImageId(int imageId)
+	{
+		var img = _db.BookImages.FirstOrDefault(i => i.ImageID == imageId);
+		if (img == null) return NotFound();
+
+		return ServeImage(img.FilePath);
+	}
+
+	// helper：處理外部 url 或本地檔案回傳
+	private IActionResult ServeImage(string? filePath)
+	{
+		if (string.IsNullOrWhiteSpace(filePath)) return NotFound();
+
+		filePath = filePath.Trim();
+
+		// 外部 URL -> 直接 Redirect（避免 proxy 大檔）
+		if (filePath.StartsWith("http", System.StringComparison.OrdinalIgnoreCase))
 		{
-			_db = db;
-			_env = env;
+			return Redirect(filePath);
 		}
 
-		// GET api/BookImages/{bookId}/cover
-		[HttpGet("{bookId}/cover")]
-		[AllowAnonymous] // 必須允許匿名，否則預設 FallbackPolicy 會攔截
-		public async Task<IActionResult> GetCover(int bookId)
+		// 支援若 DB 存的是 /images/books/xxx.jpg 或只是檔名 xxx.jpg
+		var cleaned = filePath.TrimStart('/', '\\');
+		// 預設放在 wwwroot/images/books/{cleaned}
+		var localPath = Path.Combine(_env.WebRootPath ?? "wwwroot", "images", "books", cleaned);
+
+		if (!System.IO.File.Exists(localPath))
 		{
-			var img = await _db.BookImages
-				.Where(bi => bi.BookID == bookId && bi.IsPrimary)
-				.OrderByDescending(bi => bi.ImageID)
-				.FirstOrDefaultAsync();
-
-			if (img == null || string.IsNullOrWhiteSpace(img.FilePath))
-				return NotFound();
-
-			var path = img.FilePath.Trim();
-
-			// 若是絕對 URL（外部圖片） -> 直接 redirect（讓 client 去抓）
-			if (Uri.IsWellFormedUriString(path, UriKind.Absolute))
+			// 嘗試直接當作相對於 wwwroot 的路徑（例如 DB 可能存 images/...）
+			var altPath = Path.Combine(_env.WebRootPath ?? "wwwroot", cleaned);
+			if (System.IO.File.Exists(altPath))
 			{
-				// 可改用 Proxy 方式（下方有註解範例），但 redirect 最簡單也能保留瀏覽器的快取
-				return Redirect(path);
+				localPath = altPath;
 			}
-
-			// 處理本地檔名：支援存成「filename.jpg」或可能以 /images/books/... 的完整相對路徑
-			// 正常情況下你在 Create/Update 是只存檔名，所以以 wwwroot/images/books 組成實體路徑
-			string candidate;
-			if (path.StartsWith("/"))
-				candidate = Path.Combine(_env.WebRootPath, path.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
 			else
-				candidate = Path.Combine(_env.WebRootPath, "images", "books", path);
-
-			if (!System.IO.File.Exists(candidate))
+			{
 				return NotFound();
-
-			var provider = new FileExtensionContentTypeProvider();
-			if (!provider.TryGetContentType(candidate, out var contentType))
-				contentType = "application/octet-stream";
-
-			// 設定快取（可依需求調整 max-age）
-			Response.Headers["Cache-Control"] = "public,max-age=604800"; // 1 week
-
-			var stream = System.IO.File.OpenRead(candidate);
-			return File(stream, contentType);
+			}
 		}
 
-		/*
-        // — 若你想要 proxy 外部圖片（不 redirect），可以用下面的範例（會把外部圖片抓回來並回傳 bytes）：
-        private async Task<IActionResult> ProxyExternalImageAsync(string url)
-        {
-            try
-            {
-                using var resp = await _http.GetAsync(url);
-                if (!resp.IsSuccessStatusCode) return StatusCode((int)resp.StatusCode);
-                var contentType = resp.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
-                var bytes = await resp.Content.ReadAsByteArrayAsync();
-                Response.Headers["Cache-Control"] = "public,max-age=604800";
-                return File(bytes, contentType);
-            }
-            catch
-            {
-                return StatusCode(502);
-            }
-        }
-        */
+		var contentType = GetContentType(localPath);
+
+		// 設定 Cache-Control（可依需求調整）
+		Response.Headers["Cache-Control"] = "public, max-age=604800"; // 7 days
+
+		// 回傳實體檔案（FileStreamResult 會自動處理 stream）
+		var fs = System.IO.File.OpenRead(localPath);
+		return File(fs, contentType);
+	}
+
+	// 根據副檔名回 Content-Type，簡單實作
+	private static string GetContentType(string path)
+	{
+		var ext = Path.GetExtension(path).ToLowerInvariant();
+		return ext switch
+		{
+			".png" => "image/png",
+			".jpg" or ".jpeg" => "image/jpeg",
+			".gif" => "image/gif",
+			".webp" => "image/webp",
+			".svg" => "image/svg+xml",
+			".bmp" => "image/bmp",
+			_ => "application/octet-stream"
+		};
 	}
 }

@@ -1,3 +1,4 @@
+<!-- src/components/ProductTabs.vue -->
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { getBooks, type Book } from '@/api/book'

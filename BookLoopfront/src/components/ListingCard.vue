@@ -26,8 +26,8 @@ import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart' // <-- 引入購物車 store
 import type { Listing } from '@/api/Listings'
 import Listings from '@/views/Listings.vue';
-import type { Book } from '@/api/catalog'
-  
+import type { Book } from '@/api/book'
+
 const props = defineProps<{ listing: Listing }>()
 const placeholder = '../assets/ad.png' // 再改路徑(佔位圖)
 const coverSrc = computed(() => (props.listing as any).coverUrl || (props.listing as any).cover?.url || placeholder)
@@ -45,10 +45,10 @@ const detailUrl = computed(() => ({
 
 function addToCart() {
   const book: Book = {
-    bookId: props.listing.listingId,        // 對應 bookId
+    id: props.listing.listingId,        // id 對應 bookId
     title: props.listing.title,
     salePrice: 0,                            // 如果 Listing 沒有價格，先用 0
-    coverUrl: props.listing.coverUrl || ''
+    coverUrl: coverSrc.value ?? ''
   }
 
   cartStore.addItem(book, 1)                // 加入購物車
