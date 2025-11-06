@@ -323,7 +323,7 @@ namespace BookLoop.Areas.Mail.Controllers
                     attachmentBytes: null,
                     contentType: "application/octet-stream",
                     templateId: template.TemplateId,
-                    templateKey: template.TemplateKey,          // ← 需要 Template 有 TemplateKey 欄位
+                    templateKey: template.TemplateKey,          // 需要 Template 有 TemplateKey 欄位
                     templateVersionId: version?.TemplateVersionId, // 沒指定版本就寫 null
                     mailJobId: null,                            // 試寄不是群發
                     jobRecipientId: null,                       // 試寄沒有名單明細

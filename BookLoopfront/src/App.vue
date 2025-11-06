@@ -6,6 +6,7 @@ import BannerCarousel from './components/BannerCarousel.vue'
 import SidebarCategories from './components/SidebarCategories.vue'
 import ProductTabs from './components/ProductTabs.vue'
 import { computed, ref } from 'vue'
+import MailNudge from "@/components/MailNudge.vue";
 
 /* 依路由判斷是否首頁 */
 import { useRoute, RouterView } from 'vue-router'
@@ -40,6 +41,8 @@ function onPickCategory(id: number | null) {
       <!-- 右：商品區，接收分類 id -->
       <ProductTabs :categoryId="selectedCategoryId" />
     </main>
+      <RouterView />
+  <MailNudge />
   </template>
 
   <!-- 非首頁：只顯示各自頁面的內容（乾淨的新頁感） -->
@@ -118,3 +121,4 @@ function onPickCategory(id: number | null) {
   white-space: pre-wrap;
 }
 </style>
+
