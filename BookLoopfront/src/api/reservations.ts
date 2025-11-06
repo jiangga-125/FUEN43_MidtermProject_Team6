@@ -6,7 +6,7 @@ export interface MemberOption {
   id: number
   name: string
 }
-
+export const ALLOWED_MEMBER_ID = 616
 export interface PrepareReservationResponse {
   listingId: number
   bookTitle: string

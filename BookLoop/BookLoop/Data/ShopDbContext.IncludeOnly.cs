@@ -20,6 +20,8 @@ public partial class ShopDbContext
 		typeof(Publisher),
 		typeof(Supplier),
 		typeof(SupplierUser),
+		typeof(ShoppingCart),
+		typeof(ShoppingCartItems),
 		};
 
 	// Scaffold 產生的主檔最後會呼叫這個 partial；我們在這裡進行「總過濾」

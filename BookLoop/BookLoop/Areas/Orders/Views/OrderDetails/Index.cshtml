@@ -21,7 +21,7 @@
 <table class="table" style="text-align: center">
     <thead>
         <tr>
-            <th>書名</th>
+           
             <th>商品名稱</th>
             <th>數量</th>
             <th>單價</th>
@@ -35,7 +35,7 @@
         @foreach (var item in Model)
         {
             <tr>
-                <td>@item.Book.Title</td>
+                
                 <td>@item.ProductName</td>
                 <td>@item.Quantity</td>
                 <td>@String.Format("{0:N0}元", item.UnitPrice)</td>

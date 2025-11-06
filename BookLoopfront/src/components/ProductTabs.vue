@@ -1,10 +1,13 @@
+<!-- src/components/ProductTabs.vue -->
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
-import { getBooks, type Book } from '@/api/catalog'
+import { ref, onMounted, watch } from 'vue'
+import { getBooks, type Book } from '@/api/book'
 import ProductCard from './ProductCard.vue'
-import UsedListingsGrid from '@/components/UsedListingsGrid.vue' // ★ 新增
+import { addToCart as addCartAPI } from '@/api/shoppingCart'
+import http from '@/lib/http'
+import UsedListingsGrid from '@/components/UsedListingsGrid.vue'
 
-/* ★ 從父層接收 categoryId，當它或 tab 改變時重新抓資料 */
+// 從父層接收 categoryId
 const props = defineProps<{ categoryId: number | null }>()
 
 type TabKey = 'new' | 'hot' | 'list'
@@ -16,9 +19,10 @@ const total = ref(0)
 const items = ref<Book[]>([])
 const loading = ref(false)
 const err = ref('')
+const memberId = ref<number | null>(null)
+// const memberId = 616 // 確認資料庫有這個會員
 
 async function load() {
-  // ★ 二手書頁籤不透過 getBooks，交給 UsedListingsGrid
   if (tab.value === 'list') {
     loading.value = false
     err.value = ''
@@ -28,13 +32,13 @@ async function load() {
 
   try {
     loading.value = true
-    err.value = ''
     const { items: list, total: t } = await getBooks({
       tab: tab.value,
       categoryId: props.categoryId,
       page: page.value,
       pageSize: pageSize.value,
     })
+    console.log('📦 items loaded:', list) // <- 新增這行
     items.value = list
     total.value = t
   } catch (e: any) {
@@ -43,18 +47,38 @@ async function load() {
     loading.value = false
   }
 }
-
-/* ★ 切換 tab/分類/頁數就重新抓 */
-watch([() => props.categoryId, tab, page], () => {
-  load()
-})
-onMounted(load)
-
-function setTab(k: TabKey) {
-  if (tab.value !== k) {
-    tab.value = k
-    page.value = 1
+async function loadMemberInfo() {
+  // 優先：請求後端 /api/auth/me（需後端支援，回傳 JSON 包 memberId）
+  try {
+    const r = await http.get('/api/auth/me')
+    memberId.value = r.data?.memberId ?? r.data?.MemberID ?? null
+    // console.log('從 /api/auth/me 取得 memberId=', memberId.value)
+    return
+  } catch (err) {
+    // 如果失敗，再嘗試從 localStorage 的 token decode（fallback）
+    // console.log('無法從 /api/auth/me 取得，改從 token decode', err)
   }
+
+  // fallback: 從 localStorage（或 sessionStorage）解 JWT
+  try {
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token')
+    if (!token) return
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const maybeId = payload.memberId ?? payload.userId ?? payload.sub ?? payload.id
+    memberId.value = maybeId ?? null
+    // console.log('從 token decode memberId=', memberId.value)
+  } catch (e) {
+    // console.warn('decode token 失敗', e)
+  }
+}
+watch([() => props.categoryId, tab, page], load)
+onMounted(async () => {
+  await loadMemberInfo()
+  await load()
+})
+function setTab(k: TabKey) {
+  if (tab.value !== k) page.value = 1
+  tab.value = k
 }
 
 function next() {
@@ -64,12 +88,38 @@ function prev() {
   if (page.value > 1) page.value--
 }
 
-/* 先做可見動作：之後把這裡改成真正的購物車/收藏 API */
-function addToCart(b: Book) {
-  alert(`加入購物車：${b.title}`)
-}
-function like(b: Book) {
-  alert(`已收藏：${b.title}`)
+// 加入購物車
+async function addToCart(b: Book) {
+  try {
+    const payload: any = {
+      BookID: b.id,
+      Quantity: 1,
+      UnitPrice: b.salePrice ?? b.listPrice ?? 0,
+    }
+
+    // 若後端需要 MemberID（臨時做法），只在 memberId 有值時附上
+    if (memberId.value) payload.MemberID = memberId.value
+
+    console.log('加入購物車 payload', payload)
+    const res = await addCartAPI(payload)
+    console.log('購物車回傳資料', res)
+    alert(`✅ 已加入購物車：${b.title}`)
+  }catch (e: any) {
+    console.error('加入購物車錯誤', e)
+    if (e?.response) {
+      console.group('加入購物車 Axios 錯誤')
+      console.log('status:', e.response.status)
+      console.log('headers:', e.response.headers)
+      console.log('data:', e.response.data)
+      console.groupEnd()
+
+      // 只取 message 屬性，不用整個物件
+      const msg = e.response.data?.message ?? '加入購物車失敗'
+      alert(`❌ ${msg}`)
+    } else {
+      alert(`❌ 加入購物車失敗: ${e?.message ?? '未知錯誤'}`)
+    }
+  }
 }
 </script>
 
@@ -79,36 +129,35 @@ function like(b: Book) {
       <button :class="{ active: tab === 'new' }" @click="setTab('new')">新書熱推</button>
       <button :class="{ active: tab === 'hot' }" @click="setTab('hot')">熱門排行</button>
       <button :class="{ active: tab === 'list' }" @click="setTab('list')">二手書</button>
-      <div class="spacer" />
-       <div class="pager" v-if="tab !== 'list'"><!-- ★ 二手書不用這個分頁器 -->
+      <div class="spacer"></div>
+      <div class="pager" v-if="tab !== 'list'">
         <button @click="prev" :disabled="page <= 1">‹</button>
         <span>{{ page }}</span>
         <button @click="next" :disabled="page * pageSize >= total">›</button>
       </div>
     </div>
 
-     <!-- 新書 / 熱門：舊有格狀卡片 -->
     <template v-if="tab !== 'list'">
-      <div v-if="loading" class="muted">載入中…</div>
-      <div v-else-if="err" class="err">{{ err }}</div>
-      <div v-else class="grid">
-        <ProductCard v-for="b in items" :key="b.bookId" :book="b" @add="addToCart" @like="like" />
-      </div>
+    <div v-if="loading" class="muted">載入中…</div>
+    <div v-else-if="err" class="err">{{ err }}</div>
+    <div v-else class="grid">
+      <ProductCard v-for="b in items" :key="b.id" :book="b" @add="addToCart" />
+    </div>
     </template>
 
-    <!-- 二手書：直接嵌入共用清單元件 -->
     <section v-else>
       <UsedListingsGrid />
     </section>
+
   </section>
 </template>
 
 <style scoped>
 .panel {
   background: #fff;
-  border: 1px solid #e9ecef;
-  border-radius: 12px;
   padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
 }
 .tabs {
   display: flex;
@@ -117,11 +166,11 @@ function like(b: Book) {
   margin-bottom: 12px;
 }
 .tabs button {
-  background: #f1f3f5;
-  border: 0;
   padding: 8px 12px;
   border-radius: 999px;
   cursor: pointer;
+  border: 0;
+  background: #f1f3f5;
 }
 .tabs button.active {
   background: #0d6efd;
