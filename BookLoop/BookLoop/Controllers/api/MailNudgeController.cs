@@ -2,9 +2,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace BookLoop.Controllers.api
 {
@@ -203,12 +205,37 @@ namespace BookLoop.Controllers.api
 		private static bool Verify(string payload, string given, string? secret) =>
 			string.Equals(Sign(payload, secret), given, StringComparison.OrdinalIgnoreCase);
 
-		private static string MakePreview(string? html, int maxLen = 50)
+		private static string MakePreview(string? html, int maxLen = 80)
 		{
-			if (string.IsNullOrEmpty(html)) return "";
-			html = System.Text.RegularExpressions.Regex.Replace(html, "<.*?>", "");
-			html = System.Net.WebUtility.HtmlDecode(html).Trim();
-			return html.Length > maxLen ? html[..maxLen] + "…" : html;
+			if (string.IsNullOrWhiteSpace(html)) return "";
+
+			var s = html;
+
+			// 1) 先移除 <head> 區域（大多垃圾訊息在這裡）
+			s = Regex.Replace(s, "(?is)<head.*?>.*?</head>", "");
+
+			// 2) 移除條件註解（含 MSO 的 96dpi 區塊）
+			s = Regex.Replace(s, "(?is)<!--\\[if.*?endif\\]-->", "");
+			// 以及一般註解
+			s = Regex.Replace(s, "(?is)<!--.*?-->", "");
+
+			// 3) 移除不應進入預覽的區塊
+			s = Regex.Replace(s, "(?is)<(script|style|noscript|svg|xml).*?>.*?</\\1>", "");
+			// 移除命名空間標籤（例如 o:、v: 這類 MSO/VML）
+			s = Regex.Replace(s, "(?is)<[a-zA-Z]:[^>]*>.*?</[a-zA-Z]:[^>]*>", "");
+
+			// 4) 去所有 HTML 標籤
+			s = Regex.Replace(s, "(?is)<[^>]+>", " ");
+
+			// 5) HTML 解碼 + 壓縮空白
+			s = WebUtility.HtmlDecode(s);
+			s = Regex.Replace(s, "\\s+", " ").Trim();
+
+			// 6) 防呆：開頭若是孤立數字（像 96），清掉
+			s = Regex.Replace(s, @"^(?:\d+\s*)+", "");
+
+			if (s.Length > maxLen) s = s.Substring(0, maxLen) + "…";
+			return s;
 		}
 	}
 }
