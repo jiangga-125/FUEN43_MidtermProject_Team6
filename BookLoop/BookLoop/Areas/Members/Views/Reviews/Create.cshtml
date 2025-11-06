@@ -47,7 +47,13 @@
 
     <div class="mb-3">
         <label asp-for="Rating" class="form-label">評分</label>
-        <input asp-for="Rating" class="form-control" />
+        <select asp-for="Rating" class="form-control">
+            <option value="5">⭐⭐⭐⭐⭐</option>
+            <option value="4">⭐⭐⭐⭐</option>
+            <option value="3">⭐⭐⭐</option>
+            <option value="2">⭐⭐</option>
+            <option value="1">⭐</option>
+        </select>
         <span asp-validation-for="Rating" class="text-danger"></span>
     </div>
 

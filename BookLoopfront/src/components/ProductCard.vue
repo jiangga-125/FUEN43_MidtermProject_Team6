@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { toRef } from 'vue'
+import { toRef, computed } from 'vue'
 import type { Book } from '@/api/book'
 
 const props = defineProps<{ book: Book | null }>()
 const book = toRef(props, 'book')
-
+const getBookId = (b: Book | null) => (b as any)?.id ?? (b as any)?.bookId ?? (b as any)?.BookID ?? ''
 const emit = defineEmits<{ (e: 'add', b: Book): void; (e: 'like', b: Book): void }>()
+const coverSrc = computed(() => computeCoverSrc(book.value))
+const originalSrc = computed(() => computeOriginalSrc(book.value))
+
 function add() {
   if (book.value) emit('add', book.value)
 }
@@ -14,31 +17,35 @@ function like() {
 }
 
 function onImgError(e: Event) {
-  const img = e.currentTarget as HTMLImageElement
-  // console.warn('cover load failed ->', img.dataset.orig)
-  img.src = '/placeholder.png'
+  const img = (e.currentTarget ?? e.target) as HTMLImageElement
+  if (!img) return
+  if (!img.dataset['errored']) {
+    img.dataset['errored'] = '1'
+    img.src = '/placeholder.png'
+  }
+}
+
+function computeCoverSrc(b: Book | null) {
+  const url = (b as any)?.coverUrl
+  if (typeof url === 'string' && url.startsWith('http')) return url
+  const id = getBookId(b)
+  return id ? `/api/BookImages/${id}/cover` : '/placeholder.png'
+}
+function computeOriginalSrc(b: Book | null) {                         // <-- ADDD
+  return (b as any)?.coverUrl ?? (getBookId(b) ? `/api/BookImages/${getBookId(b)}/cover` : '') // <-- ADDED
 }
 </script>
 
 <template>
   <div class="card">
     <div class="cover">
-      <!-- 重要：先嘗試 book.coverUrl（若存在且為絕對網址），否則用 API endpoint（bookId） -->
       <img
-        :src="
-          book?.coverUrl && book.coverUrl.startsWith('http')
-            ? book.coverUrl
-            : book
-              ? `/api/BookImages/${book['id'] ?? book['id'] ?? book['id']}/cover`
-              : '/placeholder.png'
-        "
+        :src="coverSrc"
         :alt="book?.title || 'cover'"
-        :data-orig="
-          book?.coverUrl ||
-          (book ? `/api/BookImages/${book['id'] ?? book['id'] ?? book['id']}/cover` : '')
-        "
+        :data-orig="originalSrc"
         @error="onImgError"
         loading="lazy"
+      />
       />
     </div>
     <div class="info">

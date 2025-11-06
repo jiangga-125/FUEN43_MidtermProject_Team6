@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Diagnostics;
-using BookLoop.Contracts;
+﻿using BookLoop.Contracts;
+using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Services.Points;
 using BookLoop.Services.Pricing;
-using BookLoop.Data;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 
 namespace BookLoop.Controllers;
 

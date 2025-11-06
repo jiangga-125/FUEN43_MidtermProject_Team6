@@ -15,6 +15,24 @@
             return decoded ? JSON.parse(decoded) : null;
         } catch (_) { return null; }
     }
+    // 讀取頁面提供的 Merge Tags（供 Unlayer 與主旨插入用）
+    function readMergeTags() {
+        try {
+            var node = d.getElementById('merge-tags-json');
+            var list = node ? (JSON.parse(node.textContent || '[]') || []) : [];
+            console.log('[MergeTags] loaded:', list); // for debug
+            return list;
+        } catch (e) {
+            console.warn('merge-tags-json parse failed:', e);
+            return [];
+        }
+    }
+
+    // 讀取「測試變數（JSON）」供預覽/試寄使用
+    function readVarsJson() {
+        try { return JSON.parse(q('#VarsJson')?.value || '{}') || {}; }
+        catch { return {}; }
+    }
 
     var UnlayerMail = {
         init: function (opts) {
@@ -35,61 +53,69 @@
                 locale: 'zh-TW',
                 displayMode: 'email',
                 appearance: { theme: 'light', panels: { tools: { dock: 'left' } } },
-                editor: { minRows: 20, maxRows: 40 }
+                editor: { minRows: 20, maxRows: 40 },
+                mergeTags: readMergeTags()
             });
 
-            // Edit 模式才嘗試載入設計
+            // 載入設計 / 初始預覽
             w.unlayer.addEventListener('editor:ready', function () {
-                if (opts.mode !== 'edit') return;
+                console.log('[MergeTags] in editor:', readMergeTags()); // for debug
 
-                var rawDesign = byId(opts.designFieldId)?.value || '';
-                var rawHtml = byId(opts.htmlFieldId)?.value || '';
+                // EDIT：嘗試載入既有設計或 HTML
+                if (opts.mode === 'edit') {
+                    var rawDesign = byId(opts.designFieldId)?.value || '';
+                    var rawHtml = byId(opts.htmlFieldId)?.value || '';
 
-                var designObj = tryParseJson(rawDesign);
-                if (designObj) {
-                    try { w.unlayer.loadDesign(designObj); self._refreshPreviewOnce(); return; }
-                    catch (e) { console.warn('[UnlayerMail] loadDesign 失敗，改試 HTML：', e); }
-                }
-
-                var cleaned = '';
-                if (rawHtml && rawHtml.trim()) {
-                    try {
-                        var doc = new DOMParser().parseFromString(rawHtml, 'text/html');
-                        cleaned = doc?.body ? doc.body.innerHTML : '';
-                    } catch (_) { }
-                    if (!cleaned) {
-                        cleaned = rawHtml
-                            .replace(/<!doctype[^>]*>/ig, '')
-                            .replace(/<\/?html[^>]*>/ig, '')
-                            .replace(/<\/?head[^>]*>[\s\S]*?<\/head>/ig, '')
-                            .replace(/<\/?body[^>]*>/ig, '');
+                    var designObj = tryParseJson(rawDesign);
+                    if (designObj) {
+                        try { w.unlayer.loadDesign(designObj); self._refreshPreviewOnce(); return; }
+                        catch (e) { console.warn('[UnlayerMail] loadDesign 失敗，改試 HTML：', e); }
                     }
-                }
 
-                try {
-                    if (typeof w.unlayer.importHtml === 'function') {
-                        w.unlayer.importHtml(cleaned || '');
-                        self._refreshPreviewOnce();
-                        return;
+                    var cleaned = '';
+                    if (rawHtml && rawHtml.trim()) {
+                        try {
+                            var doc = new DOMParser().parseFromString(rawHtml, 'text/html');
+                            cleaned = doc?.body ? doc.body.innerHTML : '';
+                        } catch (_) { }
+                        if (!cleaned) {
+                            cleaned = rawHtml
+                                .replace(/<!doctype[^>]*>/ig, '')
+                                .replace(/<\/?html[^>]*>/ig, '')
+                                .replace(/<\/?head[^>]*>[\s\S]*?<\/head>/ig, '')
+                                .replace(/<\/?body[^>]*>/ig, '');
+                        }
                     }
-                } catch (e1) { console.warn('[UnlayerMail] importHtml 失敗：', e1); }
 
-                if (typeof w.unlayer.convertHtmlToDesign === 'function') {
                     try {
-                        w.unlayer.convertHtmlToDesign(cleaned || '', function (d) {
-                            w.unlayer.loadDesign(d); self._refreshPreviewOnce();
-                        });
-                        return;
-                    } catch (e2) { console.warn('[UnlayerMail] convertHtmlToDesign 失敗：', e2); }
+                        if (typeof w.unlayer.importHtml === 'function') {
+                            w.unlayer.importHtml(cleaned || '');
+                            self._refreshPreviewOnce();
+                            return;
+                        }
+                    } catch (e1) { console.warn('[UnlayerMail] importHtml 失敗：', e1); }
+
+                    if (typeof w.unlayer.convertHtmlToDesign === 'function') {
+                        try {
+                            w.unlayer.convertHtmlToDesign(cleaned || '', function (d) {
+                                w.unlayer.loadDesign(d); self._refreshPreviewOnce();
+                            });
+                            return;
+                        } catch (e2) { console.warn('[UnlayerMail] convertHtmlToDesign 失敗：', e2); }
+                    }
+
+                    // fallback：HTML Tool
+                    var fallbackDesign = {
+                        body: { rows: [{ id: 'r1', cells: [1], columns: [{ id: 'c1', contents: [{ id: 'h1', type: 'html', values: { html: cleaned || '<p></p>' } }] }] }] },
+                        schemaVersion: 16
+                    };
+                    try { w.unlayer.loadDesign(fallbackDesign); self._refreshPreviewOnce(); }
+                    catch (e3) { console.error('[UnlayerMail] fallback 載入失敗：', e3); }
+                    return;
                 }
 
-                // fallback：HTML Tool
-                var fallbackDesign = {
-                    body: { rows: [{ id: 'r1', cells: [1], columns: [{ id: 'c1', contents: [{ id: 'h1', type: 'html', values: { html: cleaned || '<p></p>' } }] }] }] },
-                    schemaVersion: 16
-                };
-                try { w.unlayer.loadDesign(fallbackDesign); self._refreshPreviewOnce(); }
-                catch (e3) { console.error('[UnlayerMail] fallback 載入失敗：', e3); }
+                // CREATE：初始化後先做一次匯出→預覽同步
+                self._refreshPreviewOnce();
             });
 
             // 圖片上傳 callback（URL/Token 由外層傳入）
@@ -124,7 +150,6 @@
                 alert('找不到表單，無法送出'); return;
             }
 
-            // 找到儲存按鈕並暫時禁用
             var saveButton = q(opts.saveButtonSelector);
             var originalButtonText = '';
             if (saveButton) {
@@ -141,25 +166,20 @@
                 if (dEl) dEl.value = JSON.stringify(design || {});
                 if (hEl) hEl.value = (htmlObj?.html || '');
 
-                // === 變更點：從 form.submit() 改為 fetch() ===
-
                 var formData = new FormData(form);
 
-                fetch(form.action, { // form.action 應為 /Mail/TemplateVersions/Create?templateId=...
+                fetch(form.action, {
                     method: 'POST',
-
                     body: formData
                 })
-                    .then(r => r.json()) // 假設伺服器一定會返回 JSON
+                    .then(r => r.json())
                     .then(res => {
                         if (res.ok) {
                             alert('儲存成功！');
-                            // 根據 Controller 返回的 URL 重導
                             if (res.redirectUrl) {
                                 window.location.href = res.redirectUrl;
                             }
                         } else {
-                            // 儲存失敗，顯示錯誤
                             var errorMsg = (res.errors && res.errors.join('\n')) || '儲存失敗，請檢查欄位。';
                             alert(errorMsg);
                         }
@@ -168,7 +188,6 @@
                         alert('儲存時發生網路錯誤：' + (err?.message || err));
                     })
                     .finally(() => {
-                        // 無論成功失敗，都恢復按鈕
                         if (saveButton) {
                             saveButton.disabled = false;
                             saveButton.innerHTML = originalButtonText;
@@ -177,13 +196,13 @@
 
             }).catch(function (err) {
                 alert('Unlayer 匯出失敗：' + (err?.message || err));
-                // 恢復按鈕
                 if (saveButton) {
                     saveButton.disabled = false;
                     saveButton.innerHTML = originalButtonText;
                 }
             });
         },
+
         // 試寄：先匯出 HTML 再打 API
         testSend: function () {
             var self = this, opts = self.opts;
@@ -199,7 +218,8 @@
                         to,
                         subject: q(opts.subjectSelector)?.value || '',
                         bodyHtml: html,
-                        name: q(opts.nameSelector)?.value || ''
+                        name: q(opts.nameSelector)?.value || '',
+                        vars: (q('#VarsJson')?.value || '').trim()
                     };
                     return fetch(opts.testSendUrl, {
                         method: 'POST',
@@ -234,6 +254,7 @@
                     if (name === 'Subject' || id === (opts.recipientSelector || '').replace('#', '') || id === (opts.nameSelector || '').replace('#', '')) {
                         schedule();
                     }
+                    if (id === 'VarsJson') schedule();
                 });
             });
 
@@ -245,9 +266,17 @@
             var s = q(opts.subjectSelector)?.value || '';
             var to = q(opts.recipientSelector)?.value || '';
             var name = q(opts.nameSelector)?.value || '';
-            var h = (html || '')
-                .replace(/\{\{\s*Recipient\s*\}\}/gi, to || '')
-                .replace(/\{\{\s*Name\s*\}\}/gi, name || '');
+            var tokenMap = Object.assign({}, readVarsJson(), {
+                Recipient: to || '',
+                Name: name || '',
+                Subject: s || ''
+            });
+            var h = (html || '');
+            Object.keys(tokenMap).forEach(function (key) {
+                var val = tokenMap[key] ?? '';
+                var re = new RegExp('\\{\\{\\s*' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\}\\}', 'gi');
+                h = h.replace(re, String(val));
+            });
 
             var frame = byId(opts.previewFrameId);
             if (!frame) return;
@@ -270,6 +299,25 @@
             q(opts.testButtonSelector)?.addEventListener('click', function (e) {
                 e.preventDefault(); self.testSend();
             });
+        },
+
+        // 把 token 插入目前選到的「文字」區塊
+        insertTokenToSelected: function (token) {
+            try {
+                var sel = unlayer.getSelected();
+                if (!sel || sel.type !== 'text') {
+                    alert('請先在編輯器內點一下「文字」區塊再試。');
+                    return false;
+                }
+                var html = (sel.values && sel.values.text) || '';
+                var updated = html + token; // 簡單：附加在結尾；若要游標位置需另做 caret 管理
+                unlayer.setBlock(sel.id, { values: { text: updated } });
+                return true;
+            } catch (err) {
+                console.warn('insertTokenToSelected failed:', err);
+                alert('無法插入，請確認已選到文字區塊。');
+                return false;
+            }
         }
     };
 

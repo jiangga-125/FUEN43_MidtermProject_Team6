@@ -1,76 +1,165 @@
 ﻿@model BookLoop.Models.TemplateVersion
 @{
-    ViewData["Title"] = $"編輯版本：{Model.TemplateName}";
+    ViewData["Title"] = "編輯版本";
 }
 
 @section Styles {
     <style>
         .unlayer-editor {
             height: calc(100vh - 260px);
-            min-height: 560px; /* */
+            min-height: 560px;
             border: 1px solid #e5e5e5;
             border-radius: .5rem;
-            background: #fff; /* */
+            background: #fff
         }
 
         .preview-frame {
             height: calc(100vh - 260px);
-            min-height: 560px; /* */
-            background: #fff;
+            min-height: 560px;
+            background: #fff
         }
 
         .side-note {
             font-size: .85rem;
-            color: #6c757d; /* */
+            color: #6c757d
         }
     </style>
 }
+
+@* 依 TemplateKey 輸出可插入變數清單（供 Unlayer mergeTags 與主旨插入用） *@
+@{
+    var tkey = ViewBag.TemplateKey as string ?? "";
+    var tags = new List<object>();
+
+    switch (tkey)
+    {
+        case "system.account.welcome":
+            tags = new() {
+                new { name = "品牌名稱", value = "{{BrandName}}" },
+                new { name = "使用者姓名", value = "{{Name}}" },
+                // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
+                // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
+            }; break;
+
+        case "system.order.placed":
+            tags = new() {
+                new { name = "使用者姓名", value = "{{Name}}" },
+                new { name = "訂單編號",   value = "{{OrderNo}}" },
+                new { name = "下單時間",   value = "{{OrderDate}}" },
+                new { name = "訂單金額",   value = "{{Total}}" },
+                // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
+                // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
+            }; break;
+
+        case "system.order.shipped":
+            tags = new() {
+                new { name = "使用者姓名", value = "{{Name}}" },
+                new { name = "訂單編號",   value = "{{OrderNo}}" },
+                new { name = "物流商",     value = "{{Carrier}}" },
+                new { name = "託運單號",   value = "{{TrackingNo}}" },
+                new { name = "查詢連結",   value = "{{TrackingUrl}}" },
+                // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
+                // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
+            }; break;
+
+        case "system.order.arrived":
+            tags = new() {
+                new { name = "使用者姓名", value = "{{Name}}" },
+                new { name = "訂單編號",   value = "{{OrderNo}}" },
+                new { name = "門市名稱",   value = "{{StoreName}}" },
+                new { name = "保管期限",   value = "{{HoldUntilDate}}" },
+                // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
+                // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
+            }; break;
+
+        case "system.reserve.arrived":
+            tags = new() {
+                new { name = "使用者姓名", value = "{{Name}}" },
+                new { name = "書名",       value = "{{BookTitle}}" },
+                new { name = "門市名稱",   value = "{{StoreName}}" },
+                new { name = "保管期限",   value = "{{HoldUntilDate}}" },
+                // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
+                // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
+            }; break;
+
+        case "system.reserve.overdue":
+            tags = new() {
+                new { name = "使用者姓名", value = "{{Name}}" },
+                new { name = "書名",       value = "{{BookTitle}}" },
+                new { name = "到期日",     value = "{{DueDate}}" },
+                new { name = "逾期天數",   value = "{{DaysOverdue}}" },
+                new { name = "處理連結",   value = "{{PrimaryActionUrl}}" }
+            }; break;
+    }
+
+    var tagsJson = System.Text.Json.JsonSerializer.Serialize(tags);
+}
+<script type="application/json" id="merge-tags-json">@Html.Raw(tagsJson)</script>
 
 <div class="container-fluid mt-4">
     <h1 class="mb-3">@ViewData["Title"]</h1>
     <div class="row g-3">
         <!-- 左：表單 + 編輯器 -->
         <div class="col-xl-8 col-lg-7">
-            <form asp-action="Edit" asp-controller="TemplateVersions" asp-area="Mail" id="form-basic">
+            <form asp-action="Edit"
+                  asp-route-id="@Model.TemplateVersionId"
+                  method="post"
+                  id="form-basic">
                 @Html.AntiForgeryToken()
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
 
-                <input type="hidden" asp-for="TemplateVersionId" /> <input type="hidden" asp-for="TemplateId" />
-                <input type="hidden" asp-for="BodyHtml" id="Html" />
-                <input type="hidden" asp-for="DesignJson" id="DesignJson" />
+                <!-- 必帶：識別與關聯 -->
+                <input asp-for="TemplateVersionId" type="hidden" />
+                <input asp-for="TemplateId" type="hidden" />
 
                 <div class="row g-2">
-
                     <div class="col-12">
-                        <label asp-for="TemplateName" class="form-label">版本名稱</label>
+                        <label class="form-label">版本名稱</label>
                         <input asp-for="TemplateName" class="form-control" />
                         <span asp-validation-for="TemplateName" class="text-danger"></span>
-                    </div> 
-                    <div class="col-12">
-                        <label asp-for="Subject" class="form-label">郵件主旨</label>
-                        <input asp-for="Subject" class="form-control" />
-                        <span asp-validation-for="Subject" class="text-danger"></span>
                     </div>
-                    <div class="col-12 d-flex align-items-center justify-content-between">
-                        <div class="d-flex gap-4">
-                            <div class="form-check">
-                                <input class="form-check-input" asp-for="IsActive" id="IsActive" />
-                                <label class="form-check-label" for="IsActive">啟用</label>
-                            </div> <div class="form-check">
-                                <input class="form-check-input" asp-for="IsDefault" id="IsDefault" />
-                                <label class="form-check-label" for="IsDefault">設為預設版本</label>
+                    <div class="col-12">
+                        <label class="form-label">郵件主旨</label>
+                        <input asp-for="Subject" class="form-control" name="Subject" />
+                        <span asp-validation-for="Subject" class="text-danger"></span>
+
+                        @* 主旨插入變數（與 Create 保持一致） *@
+                        <div class="mt-1">
+                            <div class="dropdown d-inline-block">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" type="button">
+                                    插入變數
+                                </button>
+                                <ul class="dropdown-menu" id="subject-tag-menu"></ul>
                             </div>
+                            <div class="form-text">點選變數會插入到主旨游標位置。</div>
+                        </div>
+                    </div>
+                    <div class="col-12 d-flex align-items-center gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" asp-for="IsActive" id="IsActive" />
+                            <label class="form-check-label" for="IsActive">啟用</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" asp-for="IsDefault" id="IsDefault" />
+                            <label class="form-check-label" for="IsDefault">設為預設版本</label>
                         </div>
                     </div>
                 </div>
+
+                <!-- Hidden：Unlayer 匯出（載入與覆寫都走這兩個欄位） -->
+                <input asp-for="BodyHtml" id="Html" type="hidden" />
+                <input asp-for="DesignJson" id="DesignJson" type="hidden" />
             </form>
+
             <div id="editor" class="unlayer-editor mt-3"></div>
+
             <div class="mt-3 d-flex justify-content-between">
                 <a class="btn btn-link"
                    asp-area="Mail" asp-controller="TemplateVersions" asp-action="Index" asp-route-templateId="@Model.TemplateId">← 返回版本列表</a>
-                <button type="button" class="btn btn-primary" id="btn-save-all">儲存</button>
+                <button type="button" class="btn btn-primary" id="btn-save-all">儲存變更</button>
             </div>
         </div>
+
         <!-- 右：試寄 + 預覽 -->
         <div class="col-xl-4 col-lg-5">
             <div class="d-flex align-items-center justify-content-between">
@@ -78,43 +167,188 @@
                 <button type="button" class="btn btn-sm btn-outline-primary" id="btn-test-send">送出測試</button>
             </div>
             <div class="row g-2 mt-2">
-                <div class="col-8"><input id="pv-recipient" class="form-control form-control-sm" placeholder="recipient@example.com" /></div>
-                <div class="col-4"><input id="pv-name" class="form-control form-control-sm" placeholder="Name" /></div>
+                <div class="col-8">
+                    <input id="pv-recipient" class="form-control form-control-sm" placeholder="recipient@example.com" />
+                </div>
+                <div class="col-4">
+                    <input id="pv-name" class="form-control form-control-sm" placeholder="Name" />
+                </div>
             </div>
+
+            @* 測試變數（動態欄位） + VarsJson 隱藏（沿用現有 JS） *@
+            <div class="mt-2">
+                <label class="form-label">測試變數</label>
+                <div id="var-form" class="vstack gap-2">
+                    @* 由腳本依 merge-tags-json 自動產生 *@
+                </div>
+                <div class="side-note">這些值只影響預覽／試寄，不會儲存到資料庫。</div>
+            </div>
+            <textarea id="VarsJson" class="form-control form-control-sm d-none" rows="5"></textarea>
 
             <div class="d-flex align-items-center justify-content-between mt-3">
                 <h6 class="mb-0">預覽</h6>
                 <div class="side-note">主旨：<span id="pv-subject"></span></div>
-            </div> <iframe id="pv-frame" class="w-100 border rounded preview-frame mt-2"></iframe>
+            </div>
+            <iframe id="pv-frame" class="w-100 border rounded preview-frame mt-2"></iframe>
         </div>
     </div>
 </div>
 
 @section Scripts {
     @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial"); 
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
     <script src="https://editor.unlayer.com/embed.js"></script>
     <script src="~/js/unlayer-mail.js" asp-append-version="true"></script>
+
     <script>
-        // 初始化 (Edit 模式)
+        // 初始化（Edit 頁面 → mode:'edit'）
         UnlayerMail.init({
-          mode: 'edit', 
-          formId: 'form-basic',
-          editorId: 'editor',
-          subjectSelector: '[name="Subject"]',
-          subjectOutSelector: '#pv-subject',
-          designFieldId: 'DesignJson',   
-          htmlFieldId: 'Html', 
-          previewFrameId: 'pv-frame',
-          recipientSelector: '#pv-recipient',
-          nameSelector: '#pv-name',
-          saveButtonSelector: '#btn-save-all',
-          testButtonSelector: '#btn-test-send',
-          // API URLs (注意：Action 和 Route 參數與 Create 不同)
-          testSendUrl: '@Url.Action("TestSend", "TemplateVersions", new { area = "Mail", templateId = Model.TemplateId })',
-          uploadUrl:   '@Url.Action("Upload", "TemplateVersions", new { area = "Mail", templateId = Model.TemplateId })', 
-          antiForgery: document.querySelector('#form-basic input[name="__RequestVerificationToken"]').value 
-        }); 
+            mode: 'edit',
+            formId: 'form-basic',
+            editorId: 'editor',
+
+            // 欄位
+            subjectSelector: '[name="Subject"]',
+            subjectOutSelector: '#pv-subject',
+            designFieldId: 'DesignJson',
+            htmlFieldId: 'Html',
+
+            // 試寄/預覽
+            previewFrameId: 'pv-frame',
+            recipientSelector: '#pv-recipient',
+            nameSelector: '#pv-name',
+
+            // 按鈕
+            saveButtonSelector: '#btn-save-all',
+            testButtonSelector: '#btn-test-send',
+
+            // API
+            testSendUrl: '@Url.Action("TestSend", "TemplateVersions", new { area = "Mail", templateId = Model.TemplateId })',
+            uploadUrl: '@Url.Action("Upload", "TemplateVersions", new { area = "Mail", templateId = Model.TemplateId })',
+
+            antiForgery: document.querySelector('#form-basic input[name="__RequestVerificationToken"]').value
+        });
+
+        // 主旨欄位：插入變數下拉
+        (function(){
+            const menu = document.getElementById('subject-tag-menu');
+            const input = document.querySelector('[name="Subject"]');
+            try {
+                const raw = document.getElementById('merge-tags-json')?.textContent || '[]';
+                const list = JSON.parse(raw) || [];
+                menu.innerHTML = list.length
+                    ? list.map(t => `<li><a href="#" class="dropdown-item" data-val="${t.value}">${t.name}</a></li>`).join('')
+                    : '<li><span class="dropdown-item-text text-muted">此模板沒有變數</span></li>';
+
+                menu.addEventListener('click', function(e){
+                    const a = e.target.closest('a[data-val]'); if (!a) return;
+                    e.preventDefault();
+                    const token = a.getAttribute('data-val') || '';
+                    const start = input.selectionStart, end = input.selectionEnd, v = input.value || '';
+                    input.value = v.slice(0, start) + token + v.slice(end);
+                    const pos = start + token.length;
+                    input.setSelectionRange(pos, pos);
+                    input.focus();
+                });
+            } catch (err) {
+                console.warn('merge-tags for Subject failed:', err);
+                menu.innerHTML = '<li><span class="dropdown-item-text text-muted">讀取變數失敗</span></li>';
+            }
+        })();
+
+        // 測試變數：依 merge-tags 產生欄位，並同步到 VarsJson（供現有 JS 預覽/試寄用）
+        (function(){
+            function getMergeTags(){
+                try{
+                    const raw = document.getElementById('merge-tags-json')?.textContent || '[]';
+                    return JSON.parse(raw) || [];
+                }catch{ return []; }
+            }
+            function tokenKeyFrom(value){
+                return (value || '').replace(/^\s*\{\{\s*/, '').replace(/\s*\}\}\s*$/, '');
+            }
+
+            const varsTa = document.getElementById('VarsJson');
+            function readVars(){
+                try{ return JSON.parse(varsTa.value || '{}') || {}; }catch{ return {}; }
+            }
+            function writeVars(obj){
+                varsTa.value = JSON.stringify(obj);
+                varsTa.dispatchEvent(new Event('input', { bubbles:true }));
+            }
+
+            function buildVarForm(){
+                const form = document.getElementById('var-form');
+                if(!form) return;
+                const tags = getMergeTags();
+                const current = readVars();
+
+                form.innerHTML = '';
+                if(!tags.length){
+                    form.innerHTML = '<div class="text-muted small">此模板沒有可用變數</div>';
+                    return;
+                }
+
+                tags.forEach(t=>{
+                    const key = tokenKeyFrom(t.value);
+                    const id  = 'var-' + key;
+
+                    const group = document.createElement('div');
+                    group.className = 'input-group input-group-sm';
+
+                    const label = document.createElement('span');
+                    label.className = 'input-group-text';
+                    label.textContent = t.name;
+
+                    const inp = document.createElement('input');
+                    inp.type = 'text';
+                    inp.className = 'form-control';
+                    inp.id = id;
+                    inp.placeholder = key;
+                    inp.value = (current[key] ?? '');
+
+                    inp.addEventListener('input', () => {
+                        const v = readVars();
+                        v[key] = inp.value;
+                        writeVars(v);
+                    });
+
+                    group.appendChild(label);
+                    group.appendChild(inp);
+                    form.appendChild(group);
+                });
+
+                const tools = document.createElement('div');
+                tools.className = 'd-flex gap-2 mt-1';
+                tools.innerHTML = `
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-vars-reset">重設</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-vars-from-subject">從主旨猜值</button>
+                `;
+                form.appendChild(tools);
+
+                form.querySelector('#btn-vars-reset').addEventListener('click', ()=>{
+                    const v = {};
+                    form.querySelectorAll('input.form-control').forEach(i=> i.value = '');
+                    writeVars(v);
+                });
+
+                form.querySelector('#btn-vars-from-subject').addEventListener('click', ()=>{
+                    const subj = document.querySelector('[name="Subject"]')?.value || '';
+                    const name = document.getElementById('pv-name')?.value || '';
+                    const v = readVars();
+                    if('Subject' in v || tags.some(t=>tokenKeyFrom(t.value)==='Subject')) v.Subject = subj;
+                    if('Name' in v     || tags.some(t=>tokenKeyFrom(t.value)==='Name'))    v.Name    = name;
+                    writeVars(v);
+                    form.querySelectorAll('input.form-control').forEach(i=>{
+                        const k = i.id.replace(/^var-/, '');
+                        if(k in v) i.value = v[k] ?? '';
+                    });
+                });
+            }
+
+            // 初始化一輪
+            buildVarForm();
+        })();
     </script>
 }

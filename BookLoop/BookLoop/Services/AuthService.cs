@@ -52,7 +52,9 @@ namespace BookLoop.Services
 				new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
 				new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
 				new Claim(ClaimTypes.Name, user.Email ?? $"user:{user.UserID}"),
-				new Claim("permver", permVersion)
+				new Claim("permver", permVersion),
+
+				new Claim(ClaimTypes.Role, "Member")
 			};
 
 			// 供報表資料範圍使用（你原本的需求）

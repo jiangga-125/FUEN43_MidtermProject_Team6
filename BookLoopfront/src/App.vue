@@ -10,6 +10,7 @@ import { computed, ref } from 'vue'
 /* 依路由判斷是否首頁 */
 import { useRoute, RouterView } from 'vue-router'
 import AdPopupAndTopBar from './components/AdPopupAndTopBar.vue'
+import Marquee from './components/Marquee.vue'
 const route = useRoute()
 const isHome = computed(() => route.path === '/') // 只有首頁為 true
 
@@ -30,6 +31,7 @@ function onPickCategory(id: number | null) {
   <template v-if="isHome">  
     <HeaderBar /> 
     <AdPopupAndTopBar />
+    <Marquee />
     <BannerCarousel />
     <main class="container layout">
       <!-- 左：分類清單，點擊後更新 selectedCategoryId -->
