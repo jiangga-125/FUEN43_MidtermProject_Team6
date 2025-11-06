@@ -1,4 +1,5 @@
 ﻿using BookLoop.Data;
+using BookLoop.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -146,18 +147,74 @@ namespace BookLoop.Controllers.api
 					.FirstOrDefaultAsync()
 					?? "<p>找不到可顯示的內容</p>";
 			}
+			// 在回傳前把所有 http/https 連結改寫成追蹤網址
+			var secret = _cfg["Mail:ViewSecret"];
+			html = RewriteLinksForClickTracking(html, id, secret, Url, Request);
 
 			// 標記開信（只記第一次）
 			var rec = await _db.MailJobRecipients.AsTracking().FirstOrDefaultAsync(r => r.MailJobRecipientId == id);
+			var logId = await _db.MailSendLogs.AsNoTracking().Where(l => l.JobRecipientId == rec.MailJobRecipientId).OrderByDescending(l => l.LogId).Select(l => (long?)l.LogId).FirstOrDefaultAsync();
 			if (rec != null && rec.OpenCount == 0)
 			{
 				rec.OpenCount = 1;
-				rec.OpenedAt = DateTime.Now;
+				rec.OpenedAt ??= DateTime.Now;
+				await _db.MailEvents.AddAsync(new MailEvent
+				{
+					MailJobId = rec.MailJobId,
+					JobRecipientId = rec.MailJobRecipientId,
+					EventType = "Open",
+					LogId = logId,
+					CreatedAt = DateTime.Now
+				});
 				await _db.SaveChangesAsync();
 			}
 
 			return Content(html, "text/html; charset=utf-8");
 		}
+
+		// GET /api/mail/c/{id}?u=...&s=...
+		[AllowAnonymous]
+		[HttpGet("c/{id:long}")]
+		public async Task<IActionResult> Click(long id, [FromQuery] string u, [FromQuery] string s)
+		{
+			var secret = _cfg["Mail:ViewSecret"];
+			if (string.IsNullOrWhiteSpace(u) || string.IsNullOrWhiteSpace(s)) return BadRequest();
+
+			var rawUrl = System.Net.WebUtility.UrlDecode(u);
+			// 簽章保護：rid | 目標URL
+			if (!Verify($"{id}|{rawUrl}", s, secret)) return Unauthorized();
+
+			// 1) 找收件人（要能追蹤 → AsTracking）
+			var rec = await _db.MailJobRecipients
+				.AsTracking()
+				.FirstOrDefaultAsync(r => r.MailJobRecipientId == id);
+			if (rec != null)
+			{
+				if (rec.ClickCount == 0) rec.ClickCount = 1; // 只統計第一次點擊
+				rec.LastClickAt = DateTime.Now;
+				// 寫一筆事件
+				var logId = await _db.MailSendLogs.AsNoTracking()
+		.Where(l => l.JobRecipientId == rec.MailJobRecipientId)
+		.OrderByDescending(l => l.LogId)
+		.Select(l => (long?)l.LogId)
+		.FirstOrDefaultAsync();
+				await _db.MailEvents.AddAsync(new MailEvent
+				{
+					MailJobId = rec.MailJobId,
+					JobRecipientId = rec.MailJobRecipientId,
+					EventType = "Click",
+					LogId = logId,
+					CreatedAt = DateTime.Now,
+					Url = rawUrl
+				});
+
+				await _db.SaveChangesAsync();
+			}
+
+			// 2) 轉跳到真正目標
+			return Redirect(rawUrl);
+		}
+
 
 		// =======================
 		// Private helpers
@@ -237,5 +294,42 @@ namespace BookLoop.Controllers.api
 			if (s.Length > maxLen) s = s.Substring(0, maxLen) + "…";
 			return s;
 		}
+
+		private static readonly Regex _hrefRegex =
+	new Regex("href\\s*=\\s*\"([^\"]+)\"", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+		// 把 <a href="https://..."> 改成 /api/mail/c/{rid}?u=ENC(url)&s=SIGN
+		private string RewriteLinksForClickTracking(
+			string html, long rid, string? secret, IUrlHelper url, HttpRequest req)
+		{
+			if (string.IsNullOrEmpty(html) || string.IsNullOrEmpty(secret)) return html;
+
+			string Rewriter(Match m)
+			{
+				var href = m.Groups[1].Value;
+				// 不處理 #anchor、mailto:、javascript: 等
+				if (string.IsNullOrWhiteSpace(href)) return m.Value;
+				var lower = href.Trim().ToLowerInvariant();
+				if (lower.StartsWith("#") || lower.StartsWith("mailto:") || lower.StartsWith("javascript:"))
+					return m.Value;
+
+				// 只處理 http/https
+				if (!(lower.StartsWith("http://") || lower.StartsWith("https://")))
+					return m.Value;
+
+				var encoded = System.Net.WebUtility.UrlEncode(href);
+				var sig = Sign($"{rid}|{href}", secret);
+
+				// 追蹤網址
+				var trackUrl = url.Action("Click", "MailNudge",
+					new { id = rid, u = encoded, s = sig }, req.Scheme)!;
+
+				// 也順手把 rel/target 強化（防釣魚/安全）
+				return $"href=\"{trackUrl}\" target=\"_blank\" rel=\"noopener noreferrer\"";
+			}
+
+			return _hrefRegex.Replace(html, Rewriter);
+		}
+
 	}
 }
