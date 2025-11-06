@@ -17,6 +17,7 @@
 
     <!-- 🧾 評論表單 -->
     <form @submit.prevent="submitReview" class="mt-4">
+      
 
       <!-- 👤 會員 ID -->
       <div class="mb-3">
@@ -37,7 +38,7 @@
           <i class="bi bi-book me-1"></i>選擇書籍
         </label>
         <select
-          v-model="form.targetBookId"
+          v-model.number="form.TargetBookID"
           class="form-select"
           :disabled="loadingBooks"
         >
@@ -117,7 +118,7 @@ const auth = useAuth()
 
 const form = ref({
   memberId: '',
-  targetBookId: '',
+  TargetBookID: '',
   rating: 0,
   content: ''
 })
@@ -157,7 +158,7 @@ onMounted(async () => {
     loadingBooks.value = true
     const res = await http.get(`/api/ReviewsApi/GetPurchasedBooks/${form.value.memberId}`)
     purchasedBooks.value = res.data.map((b: any) => ({
-      value: b.bookId,
+       value: b.bookId ?? b.BookID ?? b.bookID,  // ✅ 安全取值
       text: b.title
     }))
   } catch (err) {
@@ -170,7 +171,8 @@ onMounted(async () => {
 
 // 📤 送出評論
 const submitReview = async () => {
-  if (!form.value.targetBookId || !form.value.content || !form.value.rating) {
+  console.log("🔍 目前送出的表單內容：", form.value)
+  if (!form.value.TargetBookID || !form.value.content || !form.value.rating) {
     error.value = '請填寫所有必填欄位。'
     return
   }
@@ -180,18 +182,19 @@ const submitReview = async () => {
   message.value = ''
 
   try {
-    const payload = {
-      memberId: form.value.memberId,
-      targetBookId: form.value.targetBookId,
-      rating: form.value.rating,
-      content: form.value.content
-    }
+   const payload = {
+  MemberID: parseInt(form.value.memberId), // ✅ 首字母大寫
+  TargetBookID: Number(form.value.TargetBookID),
+  Rating: form.value.rating,
+  Content: form.value.content
+}
+
 
     const res = await http.post('/api/ReviewsApi/Create', payload)
     message.value = res.data.message || '✅ 評論已送出，等待管理員審核。'
 
     // 清空表單
-    form.value.targetBookId = ''
+    form.value.TargetBookID = ''
     form.value.rating = 0
     form.value.content = ''
   } catch (err: any) {

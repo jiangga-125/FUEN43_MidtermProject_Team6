@@ -7,16 +7,10 @@ namespace BookLoop.Models.ViewModels
 		[Required(ErrorMessage = "會員編號必填")]
 		public int MemberID { get; set; }
 
-		[Required(ErrorMessage = "目標類型必填")]
-		public byte TargetType { get; set; }  // 1=書本，2=會員
+		public byte TargetType { get; set; } = 1;  // 預設書本，不再 Required
 
-		// 書名（TargetType = 1 時必填）
-		public string? TargetBookName { get; set; }
-
-		// 會員暱稱（TargetType = 2 時必填）
-		public string? TargetMemberNickname { get; set; }
-
-		public int? TargetBookID { get; set; }
+		[Required(ErrorMessage = "請選擇書籍")]
+		public int TargetBookID { get; set; }  // ✅ 保留唯一版本
 
 		[Required(ErrorMessage = "評分必填")]
 		[Range(1, 5, ErrorMessage = "評分必須介於 1 到 5 之間")]
@@ -27,6 +21,6 @@ namespace BookLoop.Models.ViewModels
 		[MaxLength(200, ErrorMessage = "評論不能超過 200 個字")]
 		public string Content { get; set; } = null!;
 
-		public int TargetBookId { get; set; }  // 書籍ID
 	}
+
 }
