@@ -84,7 +84,16 @@ async function add(e?: Event) {
   if (!memberId) {
     // 改善 UX：提示並提供跳轉到登入頁
     const goLogin = confirm('請先登入或確認會員資訊（MemberID）。要前往登入頁嗎？')
-    if (goLogin) router.push({ name: 'Login' } as any) // 若你沒有命名路由，改成 router.push('/login')
+    if (goLogin) {
+      try {
+        // 用 path 最保險（不用依賴 route name）
+        await router.push({ path: '/login' })
+      } catch (err) {
+        console.warn('router.push(/login) failed, fallback to location.href', err)
+        // 最後保險：直接導頁（會 reload）
+        window.location.href = '/login'
+      }
+    }
     adding.value = false
     return
   }

@@ -80,14 +80,36 @@ function prev() {
   }
 }
 
-// 加入購物車
 async function addToCart(b: Book) {
   // 若未登入，提示並導去登入（可改成 modal）
   if (!auth.member) {
+    console.log('[addToCart] user not logged in, prompt to go to login')
     const ok = confirm('你尚未登入，請登入後再加入購物車。要前往登入頁嗎？')
-    if (ok) router.push({ name: 'Login' }) // 確認路由名稱是否為 'Login'
+    console.log('[addToCart] confirm result:', ok)
+    if (!ok) return
+
+    // 正確使用你實際的 route name（你說的是 'login'）
+    router
+      .push({ name: 'login' })
+      .then(() => {
+        console.log('[addToCart] router.push by name succeeded')
+      })
+      .catch((err) => {
+        console.warn('[addToCart] push by name failed:', err)
+        // fallback：用 path
+        router
+          .push({ path: '/login' })
+          .then(() => console.log('[addToCart] router.push by path succeeded'))
+          .catch((err2) => {
+            console.error('[addToCart] push by path failed too:', err2)
+            // 最後保險：直接改 window.location.href（會 full reload）
+            window.location.href = '/login'
+          })
+      })
     return
   }
+
+  // ========== 真正加入購物車邏輯 ==========
   try {
     const payload: any = {
       BookID: b.id,
