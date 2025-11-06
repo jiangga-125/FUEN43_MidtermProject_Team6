@@ -1,9 +1,17 @@
 ﻿@{
     ViewBag.Title = "付款完成";
+    string frontendUrl = "http://localhost:5173/order-center"; // 你的前台訂單列表
 }
 
 <h2>付款完成！</h2>
 <p>@ViewBag.Message</p>
-<div>
-    <a asp-action="Index" class="btn btn-secondary mt-3">返回訂單列表</a>
-</div>
+<p style="text-align:center; margin-top:20px;">
+    正在跳回前台訂單列表...
+</p>
+
+<script>
+    // 自動跳回前台
+    setTimeout(() => {
+        window.location.href = "@frontendUrl";
+    }, 500);
+</script>
