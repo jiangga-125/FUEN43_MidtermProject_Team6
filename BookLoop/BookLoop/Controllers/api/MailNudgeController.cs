@@ -148,7 +148,7 @@ namespace BookLoop.Controllers.api
 			}
 
 			// 標記開信（只記第一次）
-			var rec = await _db.MailJobRecipients.FirstOrDefaultAsync(r => r.MailJobRecipientId == id);
+			var rec = await _db.MailJobRecipients.AsTracking().FirstOrDefaultAsync(r => r.MailJobRecipientId == id);
 			if (rec != null && rec.OpenCount == 0)
 			{
 				rec.OpenCount = 1;
