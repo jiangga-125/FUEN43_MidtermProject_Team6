@@ -42,28 +42,78 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useMailNudge } from "@/composables/useMailNudge";
-import { markSeen, snoozed, setSnooze } from "@/utils/nudgeStore";
+import { markSeen } from "@/utils/nudgeStore";
 
 const { item, fetchOnce } = useMailNudge();
 
 const show = ref(false);
 const mail = ref<any>(null);
 
-// ⬅️ 移到外層：控制展開/收合（預設收合）
+// 移到外層：控制展開/收合（預設收合）
 const expanded = ref(false);
 
-function refresh() {
-  if (snoozed()) { show.value = false; return; }
-  fetchOnce().then(() => {
-    mail.value = item.value;
-    show.value = !!item.value;
-    expanded.value = false; // 初次顯示維持收合
-  });
+// === 使用者作用域：讓每個使用者有自己的 snooze/ignore 狀態 ===
+// 從 JWT 取 mid（優先）或 email，拿不到就 'anon'
+function getUserScope(): string {
+  const raw = localStorage.getItem('token');
+  if (raw) {
+    try {
+      const payload = JSON.parse(atob(raw.split('.')[1]));
+      return String(payload.mid || payload.email || 'anon');
+    } catch {}
+  }
+  return 'anon';
+}
+const scope = getUserScope();
+
+// 作用域化的 key（每個人不同）
+const SNOOZE_KEY = `nudge_snooze_until_${scope}`;
+const IGNORE_KEY = `nudge_ignore_rid_${scope}`;
+
+// 忽略這封（只記這位使用者）
+const setIgnoredRid = (rid:number) => localStorage.setItem(IGNORE_KEY, String(rid));
+const getIgnoredRid = () => Number(localStorage.getItem(IGNORE_KEY) || '0');
+const clearIgnoredRid = () => localStorage.removeItem(IGNORE_KEY);
+
+// 「稍後提醒」：只對這位使用者生效
+function snoozedScoped(): boolean {
+  const until = Number(localStorage.getItem(SNOOZE_KEY) || '0');
+  return until > Date.now();
+}
+function setSnoozeScoped(ms:number) {
+  localStorage.setItem(SNOOZE_KEY, String(Date.now() + ms));
+}
+function clearSnoozeScoped() {
+  localStorage.removeItem(SNOOZE_KEY);
 }
 
-// 小✕：暫停 8 小時並關閉
+
+async function refresh() {
+  // 只看本使用者的 snooze
+  if (snoozedScoped()) {
+    show.value = false;
+    return;
+  }
+
+  try {
+    await fetchOnce();                 // 拉 /api/mail/unopened
+    const ignored = getIgnoredRid();   // 本使用者忽略的 rid
+    const incoming = item.value ?? null;
+
+    // 若是被本使用者忽略過的那封，就當作沒有新資料
+    mail.value = (incoming && incoming.rid === ignored) ? null : incoming;
+
+    show.value = !!mail.value;
+    expanded.value = false;            // 初始維持收合
+  } catch (e) {
+    console.debug('[nudge] refresh failed', e);
+  }
+}
+
+
+// 只忽略這封
 function closeX() {
-  setSnooze(8 * 60 * 60 * 1000);
+  if (mail.value?.rid) setIgnoredRid(mail.value.rid); // 只記這封、只記給這位使用者
   expanded.value = false;
   show.value = false;
 }
@@ -71,6 +121,7 @@ function closeX() {
 function viewNow() {
   console.log('[nudge] viewUrl =', mail.value?.viewUrl);
   console.log('[nudge] item =', item.value);
+  clearIgnoredRid(); // 清掉本使用者的忽略狀態
   if (!mail.value?.viewUrl) return;
   markSeen(mail.value.rid);
   const w = window.open(mail.value.viewUrl, "_blank", "noopener,noreferrer");
@@ -80,11 +131,12 @@ function viewNow() {
 }
 
 function snooze() {
-  setSnooze(1 * 60 * 60 * 1000); // 暫停提醒 1小時
+  setSnoozeScoped(60 * 60 * 1000); // 1 小時，只對這位使用者
   show.value = false;
   expanded.value = false;
 }
 
+clearSnoozeScoped(); // 清掉之前暫停到期時間(只清本使用者）
 onMounted(refresh);
 </script>
 

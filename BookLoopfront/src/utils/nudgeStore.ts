@@ -21,3 +21,8 @@ export function snoozed(): boolean {
     const until = Number(localStorage.getItem(KEY_SNOOZE) || "0");
     return until > Date.now();
 }
+
+export function clearSnooze() {
+    localStorage.removeItem('nudge_snooze_until');
+}
+
