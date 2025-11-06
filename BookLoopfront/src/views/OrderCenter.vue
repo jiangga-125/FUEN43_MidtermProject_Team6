@@ -161,7 +161,7 @@ onMounted(async () => {
               <div class="d-flex flex-wrap gap-2 mt-3">
                 <button class="btn btn-sm btn-primary flex-grow-1" @click="viewOrderDetail(order.OrderID!)">查看明細</button>
                 <button class="btn btn-sm btn-success flex-grow-1" @click="onPay(order.OrderID!)" :disabled="order.Status!==0">付款</button>
-                <button class="btn btn-sm btn-warning flex-grow-1" @click="onReturn(order.OrderID!)" :disabled="!(order.Status === 2 || order.Status === 3)">退貨</button>
+                <button class="btn btn-sm btn-warning flex-grow-1" @click="onReturn(order.OrderID!)">退貨</button>
                 <button class="btn btn-sm btn-outline-danger flex-grow-1" @click="onDelete(order.OrderID!)">🗑️ 刪除</button>
               </div>
             </div>
