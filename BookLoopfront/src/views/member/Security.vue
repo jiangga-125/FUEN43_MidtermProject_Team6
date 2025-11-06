@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '@/stores/auth'
 import http from '@/lib/http'
 import { getDeviceHash } from '@/lib/deviceHash'
+import { changePassword as apiChangePassword } from '@/api/authApi'  // ✅ 新增：變更密碼 API
 
 const auth = useAuth()
 const router = useRouter()
@@ -89,24 +90,39 @@ async function verifyEmailOtp() {
   }
 }
 
-/* ===== 變更密碼（先保留外觀，等你串API） ===== */
+/* ===== 變更密碼（✅ 已串接） ===== */
 const oldPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
 const changing = ref(false)
 const pwdMsg = ref('')
 const pwdOk = ref(false)
+
+// 最低長度 6；可視需求增加複雜度規則
 const canChangePwd = computed(() =>
   oldPassword.value.length >= 1 &&
   newPassword.value.length >= 6 &&
   newPassword.value === confirmPassword.value
 )
+
 async function changePassword () {
+  pwdMsg.value = ''
+  pwdOk.value = false
+  if (!canChangePwd.value) {
+    pwdMsg.value = '請確認欄位皆填寫且新密碼一致（至少 6 碼）'
+    return
+  }
   try {
     changing.value = true
-    // 範例串法：await http.post('/api/auth/password/change', { Old: oldPassword.value, New: newPassword.value })
-    pwdMsg.value = '（示範）尚未串接 API'
+    await apiChangePassword(oldPassword.value, newPassword.value)
+    pwdOk.value = true
+    pwdMsg.value = '密碼已更新'
+    oldPassword.value = ''
+    newPassword.value = ''
+    confirmPassword.value = ''
+  } catch (e:any) {
     pwdOk.value = false
+    pwdMsg.value = e?.response?.data?.message || '變更密碼失敗'
   } finally {
     changing.value = false
   }

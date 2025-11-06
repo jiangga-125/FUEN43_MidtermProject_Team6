@@ -19,6 +19,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Linq; // ? 新增：Linq
 
 namespace BookLoop.Controllers.Api
 {
@@ -63,6 +64,7 @@ namespace BookLoop.Controllers.Api
 		public record ResetConfirmDto(string Account, string Code, string Password);
 		public record TotpBindDto(string Account);
 		public record TotpVerifyDto(string Account, string Code);
+		public record ChangePasswordDto(string Old, string New); // ? 新增
 
 		// 用於保存 Google token（示範用快取；正式建議落 DB 並加密）
 		private class GoogleTokenBundle
@@ -617,6 +619,48 @@ namespace BookLoop.Controllers.Api
 			return Ok(new { ok = true });
 		}
 
+		// ==================== X) 變更密碼（需登入） ==================== // ? 新增
+		[HttpPost("password/change")]
+		[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+		public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+		{
+			if (dto is null || string.IsNullOrWhiteSpace(dto.Old) || string.IsNullOrWhiteSpace(dto.New))
+				return BadRequest(new { message = "缺少舊密碼或新密碼" });
+
+			// 基本規則（可依需求加強）
+			if (dto.New.Length < 6)
+				return BadRequest(new { message = "新密碼至少 6 碼" });
+			if (dto.Old == dto.New)
+				return BadRequest(new { message = "新舊密碼不可相同" });
+
+			// 從 JWT 取出 member id
+			var midStr = User.FindFirst("mid")?.Value;
+			if (string.IsNullOrWhiteSpace(midStr) || !int.TryParse(midStr, out var mid))
+				return Unauthorized(new { message = "無效的登入狀態" });
+
+			var m = await _db.Members.FirstOrDefaultAsync(x => x.MemberID == mid);
+			if (m == null) return Unauthorized(new { message = "找不到帳號" });
+
+			// 驗舊密碼
+			if (!VerifyPassword(m, dto.Old))
+				return BadRequest(new { message = "舊密碼錯誤" });
+
+			// 寫入新密碼（PBKDF2）
+			m.PasswordHash = HashPasswordPbkdf2(dto.New);
+			m.SecurityStamp = Guid.NewGuid().ToString("N"); // 變更密碼後刷新安全戳
+			m.UpdatedAt = DateTime.UtcNow;
+			await _db.SaveChangesAsync();
+
+			// （可選）讓舊 refresh token 失效，強制客戶端重新 refresh
+			var activeTokens = await _db.MemberRefreshTokens
+				.Where(t => t.MemberId == mid && !t.IsRevoked && t.ExpiresAt > DateTime.UtcNow)
+				.ToListAsync();
+			foreach (var t in activeTokens) t.IsRevoked = true;
+			await _db.SaveChangesAsync();
+
+			return Ok(new { message = "Password changed" });
+		}
+
 		// ==================== 9) 外部登入（popup + postMessage） ====================
 		[HttpGet("external/{provider}")]
 		[AllowAnonymous]
@@ -787,26 +831,34 @@ namespace BookLoop.Controllers.Api
 			return frontBase + returnUrl;
 		}
 
-		// 回傳給 popup 的最小 HTML（成功）
+		// 回傳給 popup 的最小 HTML（成功）— 使用「origin」而不是整個 URL
 		private string HtmlCloseWithSuccess(string provider, string targetUrl, string accessToken, long expiresAt) => $@"
 <!doctype html><html><body>
 <script>
   (function() {{
     try {{
+      var targetUrl = '{targetUrl}';
+      var origin;
+      try {{
+        origin = new URL(targetUrl).origin;   // 只取 origin（例如 https://localhost:5173）
+      }} catch (e) {{
+        origin = '*'; // 後援：解析失敗就放寬（開發環境建議 ok；正式可改為固定字串）
+      }}
       if (window.opener && window.opener !== window) {{
         window.opener.postMessage({{
           type: 'oauth-success',
           provider: '{provider.ToLowerInvariant()}',
           accessToken: '{accessToken}',
           expiresAt: {expiresAt}
-        }}, '{targetUrl}');
+        }}, origin);
       }}
-    }} catch (e) {{ }}
+    }} catch (e) {{}}
     window.close();
   }})();
 </script>
 登入成功，視窗將自動關閉。
 </body></html>";
+
 
 		// 回傳給 popup 的最小 HTML（失敗）
 		private string HtmlCloseWithError(string code, string message) => $@"

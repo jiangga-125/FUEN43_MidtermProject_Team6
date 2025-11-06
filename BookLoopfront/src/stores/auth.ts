@@ -13,15 +13,35 @@ export type MemberInfo = {
 
 type OAuthResult = { accessToken: string; expiresAt: number }
 
+// --- 強化版：popup + timeout + 關閉偵測，避免 Promise 卡住 ---
 function openOAuthPopup(url: string, provider: 'Google' | 'Facebook' | 'LINE'): Promise<OAuthResult> {
   const w = window.open(url, `oauth_${provider.toLowerCase()}`, 'width=480,height=640')
+  if (!w) return Promise.reject(new Error('無法開啟登入視窗，請關閉彈出視窗封鎖後重試'))
+
   return new Promise((resolve, reject) => {
+    let settled = false
+
+    const cleanup = () => {
+      window.removeEventListener('message', handler)
+      window.clearTimeout(timeoutId)
+      window.clearInterval(closePollId)
+      try { w.close() } catch { /* ignore */ }
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(new Error('外部登入逾時，請再試一次'))
+    }, 90_000) // 90 秒超時
+
     function handler(ev: MessageEvent) {
       const data = ev.data
       if (!data || (data.provider !== provider.toLowerCase() && data.provider !== provider)) return
-      window.removeEventListener('message', handler)
-      try { w?.close() } catch { /* ignore */ }
-      if (data.type === 'oauth-success') {
+      if (settled) return
+      settled = true
+      cleanup()
+      if (data.type === 'oauth-success' && data.accessToken) {
         resolve({ accessToken: data.accessToken, expiresAt: data.expiresAt })
       } else {
         reject(new Error(data.message || 'OAuth error'))
@@ -30,10 +50,14 @@ function openOAuthPopup(url: string, provider: 'Google' | 'Facebook' | 'LINE'): 
     window.addEventListener('message', handler)
 
     // 使用者關閉視窗的防呆（避免 Promise 卡住）
-    const t = window.setInterval(() => {
+    const closePollId = window.setInterval(() => {
       if (w && w.closed) {
-        window.clearInterval(t)
-        window.removeEventListener('message', handler)
+        window.clearInterval(closePollId)
+        if (!settled) {
+          settled = true
+          cleanup()
+          reject(new Error('已關閉登入視窗，未完成授權'))
+        }
       }
     }, 500)
   })

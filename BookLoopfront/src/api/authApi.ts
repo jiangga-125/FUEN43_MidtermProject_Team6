@@ -35,3 +35,9 @@ export const reset = (email: string, code: string, newPassword: string) =>
 // 外部登入導向
 export const externalUrl = (provider: 'Google' | 'Facebook' | 'LINE', returnUrl: string) =>
   `/api/auth/external/${provider}?returnUrl=${encodeURIComponent(returnUrl)}`
+
+// ✅ 變更密碼
+// 預期後端路由：POST /api/auth/password/change
+// Request: { Old: string, New: string }；成功回 200（可帶 message）
+export const changePassword = (oldPwd: string, newPwd: string) =>
+  http.post('/api/auth/password/change', { Old: oldPwd, New: newPwd })
