@@ -18,7 +18,7 @@ namespace BookLoop.Models
 		public DateTime UpdatedDate { get; set; } = DateTime.Now;
 
 		[Display(Name = "·|­ûID")]
-		public int? MemberID { get; set; }
+		public int MemberID { get; set; }
 		
 		public virtual Member? Member { get; set; }
 
