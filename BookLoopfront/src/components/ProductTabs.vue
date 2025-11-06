@@ -1,12 +1,15 @@
 <!-- src/components/ProductTabs.vue -->
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { getBooks, type Book } from '@/api/book'
 import ProductCard from './ProductCard.vue'
 import { addToCart as addCartAPI } from '@/api/shoppingCart'
-import http from '@/lib/http'
 import UsedListingsGrid from '@/components/UsedListingsGrid.vue'
+// 使用 pinia auth store（你檔案最底有 export useAuth）
+import { useAuth } from '@/stores/auth'
 
+const router = useRouter()
 // 從父層接收 categoryId
 const props = defineProps<{ categoryId: number | null }>()
 
@@ -19,9 +22,14 @@ const total = ref(0)
 const items = ref<Book[]>([])
 const loading = ref(false)
 const err = ref('')
-const memberId = ref<number | null>(null)
-// const memberId = 616 // 確認資料庫有這個會員
 
+const auth = useAuth()
+// 取得 memberId（保護轉型：可能為 string 或 number）
+const memberId = computed<number | null>(() => {
+  const id = (auth.member as any)?.memberId ?? (auth.member as any)?.MemberID ?? null
+  return typeof id === 'string' ? Number(id) : id
+})
+// 讀取商品列表
 async function load() {
   if (tab.value === 'list') {
     loading.value = false
@@ -38,7 +46,7 @@ async function load() {
       page: page.value,
       pageSize: pageSize.value,
     })
-    console.log('📦 items loaded:', list) // <- 新增這行
+    console.log('📦 items loaded:', list)
     items.value = list
     total.value = t
   } catch (e: any) {
@@ -47,49 +55,39 @@ async function load() {
     loading.value = false
   }
 }
-async function loadMemberInfo() {
-  // 優先：請求後端 /api/auth/me（需後端支援，回傳 JSON 包 memberId）
-  try {
-    const r = await http.get('/api/auth/me')
-    memberId.value = r.data?.memberId ?? r.data?.MemberID ?? null
-    // console.log('從 /api/auth/me 取得 memberId=', memberId.value)
-    return
-  } catch (err) {
-    // 如果失敗，再嘗試從 localStorage 的 token decode（fallback）
-    // console.log('無法從 /api/auth/me 取得，改從 token decode', err)
-  }
 
-  // fallback: 從 localStorage（或 sessionStorage）解 JWT
-  try {
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token')
-    if (!token) return
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    const maybeId = payload.memberId ?? payload.userId ?? payload.sub ?? payload.id
-    memberId.value = maybeId ?? null
-    // console.log('從 token decode memberId=', memberId.value)
-  } catch (e) {
-    // console.warn('decode token 失敗', e)
-  }
-}
-watch([() => props.categoryId, tab, page], load)
 onMounted(async () => {
-  await loadMemberInfo()
   await load()
 })
+
 function setTab(k: TabKey) {
   if (tab.value !== k) page.value = 1
   tab.value = k
+  // 立即 reload（watch 也會觸發，但做一次保險）
+  load().catch((e) => console.error(e))
 }
 
 function next() {
-  if (page.value * pageSize.value < total.value) page.value++
+  if (page.value * pageSize.value < total.value) {
+    page.value++
+    load().catch((e) => console.error(e))
+  }
 }
 function prev() {
-  if (page.value > 1) page.value--
+  if (page.value > 1) {
+    page.value--
+    load().catch((e) => console.error(e))
+  }
 }
 
 // 加入購物車
 async function addToCart(b: Book) {
+  // 若未登入，提示並導去登入（可改成 modal）
+  if (!auth.member) {
+    const ok = confirm('你尚未登入，請登入後再加入購物車。要前往登入頁嗎？')
+    if (ok) router.push({ name: 'Login' }) // 確認路由名稱是否為 'Login'
+    return
+  }
   try {
     const payload: any = {
       BookID: b.id,
@@ -97,23 +95,16 @@ async function addToCart(b: Book) {
       UnitPrice: b.salePrice ?? b.listPrice ?? 0,
     }
 
-    // 若後端需要 MemberID（臨時做法），只在 memberId 有值時附上
+    // 短期 fallback：如果後端還要求 MemberID 才存，才附上（長期請後端改由 token 決定）
     if (memberId.value) payload.MemberID = memberId.value
 
     console.log('加入購物車 payload', payload)
     const res = await addCartAPI(payload)
     console.log('購物車回傳資料', res)
     alert(`✅ 已加入購物車：${b.title}`)
-  }catch (e: any) {
+  } catch (e: any) {
     console.error('加入購物車錯誤', e)
     if (e?.response) {
-      console.group('加入購物車 Axios 錯誤')
-      console.log('status:', e.response.status)
-      console.log('headers:', e.response.headers)
-      console.log('data:', e.response.data)
-      console.groupEnd()
-
-      // 只取 message 屬性，不用整個物件
       const msg = e.response.data?.message ?? '加入購物車失敗'
       alert(`❌ ${msg}`)
     } else {
@@ -138,17 +129,16 @@ async function addToCart(b: Book) {
     </div>
 
     <template v-if="tab !== 'list'">
-    <div v-if="loading" class="muted">載入中…</div>
-    <div v-else-if="err" class="err">{{ err }}</div>
-    <div v-else class="grid">
-      <ProductCard v-for="b in items" :key="b.id" :book="b" @add="addToCart" />
-    </div>
+      <div v-if="loading" class="muted">載入中…</div>
+      <div v-else-if="err" class="err">{{ err }}</div>
+      <div v-else class="grid">
+        <ProductCard v-for="b in items" :key="b.id" :book="b" @add="addToCart" />
+      </div>
     </template>
 
     <section v-else>
       <UsedListingsGrid />
     </section>
-
   </section>
 </template>
 

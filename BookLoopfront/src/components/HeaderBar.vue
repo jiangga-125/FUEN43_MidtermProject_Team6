@@ -19,22 +19,26 @@
           />
           <button class="btn btn-primary" @click="submitSearch">搜尋</button>
         </div>
-<!-- 訂單中心按鈕 -->
-<button class="btn btn-outline-primary px-4" style="min-width: 140px" @click="goToOrders">
-  📦 訂單中心
-</button>
+        <!-- 訂單中心按鈕 -->
+        <button class="btn btn-outline-primary px-4" style="min-width: 140px" @click="goToOrders">
+          📦 訂單中心
+        </button>
 
-<!-- 購物車按鈕 -->
-<button class="btn btn-danger position-relative px-4" style="min-width: 140px" @click="showCart = true">
-  🛒 購物車
-  <span
-    v-if="cartCount > 0"
-    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark"
-    style="font-size: 0.75rem;"
-  >
-    {{ cartCount }}
-  </span>
-</button>
+        <!-- 購物車按鈕 -->
+        <button
+          class="btn btn-danger position-relative px-4"
+          style="min-width: 140px"
+          @click="showCart = true"
+        >
+          🛒 購物車
+          <span
+            v-if="cartCount > 0"
+            class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark"
+            style="font-size: 0.75rem"
+          >
+            {{ cartCount }}
+          </span>
+        </button>
       </div>
     </div>
 
@@ -52,9 +56,10 @@ import { useCartStore } from '@/stores/cart'
 // Router
 const router = useRouter()
 const route = useRoute()
+const memberId = ref<number | null>(null)
 
 // 實際登入會員ID
-const memberId = 616
+// const memberId = 616
 
 // 搜尋欄
 const searchText = ref<string>((route.query.q as string) || '')
@@ -83,9 +88,12 @@ function goToOrders() {
 }
 
 // 當 route.query.q 變動時同步 input
-watch(() => route.query.q, (val) => {
-  searchText.value = String(val || '')
-})
+watch(
+  () => route.query.q,
+  (val) => {
+    searchText.value = String(val || '')
+  },
+)
 </script>
 
 <style scoped>
