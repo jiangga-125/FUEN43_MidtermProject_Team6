@@ -2,7 +2,8 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOrdersByMember, getOrderDetail, cancelOrder, deleteOrder, Order } from '@/api/order'
-import { getReturnsByOrder } from '@/api/return'
+import { createReturn, getReturnsByOrder, ReturnInfo, getStatusText } from '@/api/return'
+import { cancelReturn } from '@/api/return'
 import { useAuth } from '@/stores/auth'
 
 const router = useRouter()
@@ -16,23 +17,31 @@ const memberId = computed<number | null>(() => {
   return typeof id === 'string' ? Number(id) : id
 })
 
-const currentTab = ref<'orders' | 'details' | 'returns'>('orders')
+// Tab: 'orders'=我的訂單, 'details'=單筆明細, 'allDetails'=所有訂單明細, 'returns'=退貨紀錄
+const currentTab = ref<'orders' | 'details' | 'allDetails' | 'returns'>('orders')
 const orders = ref<Order[]>([])
 const selectedOrder = ref<Order | null>(null)
-const returns = ref<any[]>([])
-
+// const returns = ref<any[]>([])
+const returns = ref<ReturnInfo[]>([])
 function goHome() {
   router.push('/') // 導向首頁
 }
+
+
 // 訂單狀態對應
 const orderStatusMap: Record<number, string> = {
   0: '待付款',
-  1: '已下訂',
+  1: '已付款',
   2: '已出貨',
   3: '完成訂單',
   4: '已取消',
 }
 
+function goHome() {
+  router.push('/')
+}
+
+// 載入會員所有訂單
 async function loadOrders() {
   // 若沒有登入（無 memberId），就不呼叫 API
   if (memberId.value == null) {
@@ -53,14 +62,47 @@ async function loadOrders() {
   }
 }
 
+
 async function onPay(orderId: number) {
-  alert(`導向付款流程：OrderID ${orderId}`)
-  // 這裡之後可以整合 ECPay 或其他付款流程
+  window.open(`https://localhost:7176/Orders/Orders/GoToPayment?orderId=${orderId}`, '_blank')
+  // 整合 ECPay
+
+// 載入會員所有退貨紀錄
+async function loadAllReturns() {
+  try {
+    const allReturns: ReturnInfo[] = []
+    for (const order of orders.value) {
+      const rs = await getReturnsByOrder(order.OrderID!)
+      allReturns.push(...rs)
+    }
+    returns.value = allReturns
+  } catch (err) {
+    console.error('載入退貨紀錄失敗', err)
+  }
+}
+
+
+
+async function cancelReturnOrder(returnId: number) {
+  if (!confirm('確定要取消這筆退貨嗎？')) return
+  try {
+    await cancelReturn(returnId)
+    alert('✅ 退貨已取消')
+    await loadAllReturns()
+  } catch (err) {
+    console.error('取消退貨失敗', err)
+    alert('❌ 取消退貨失敗，請稍後再試')
+  }
 }
 
 async function onReturn(orderId: number) {
-  alert(`導向退貨流程：OrderID ${orderId}`)
-  // 這裡可以開退貨頁或彈出退貨理由 modal
+  const reason = prompt('請輸入退貨理由：')
+  if (!reason) return
+  const returnRequest = { orderID: orderId, returnReason: reason, returnType: 1 }
+  const ret = await createReturn(returnRequest)
+  alert(`✅ 退貨申請已送出（退貨編號：${ret.returnID}）`)
+  await loadOrders()
+  await loadAllReturns()
 }
 
 async function viewOrderDetail(orderId: number) {
@@ -105,10 +147,21 @@ watch(memberId, (v) => {
     loadOrders().catch((e) => console.error(e))
   }
 })
+// 計算所有訂單明細，用於 new Tab
+const allOrderDetails = computed(() =>
+  orders.value.flatMap(order =>
+    order.OrderDetails.map(od => ({
+      ...od,
+      parentOrderID: order.OrderID
+    }))
+  )
+)
 
 onMounted(async () => {
   await loadOrders()
+  await loadAllReturns()
 
+  // 如果有 query 帶入 selectedOrderId
   const selectedId = route.query.selectedOrderId
   if (selectedId) {
     const orderId = parseInt(selectedId as string)
@@ -121,7 +174,7 @@ onMounted(async () => {
 
 <template>
   <div class="container py-5">
-    <!-- 在訂單中心標題旁邊或上方加回首頁按鈕 -->
+    <!-- 標題與首頁按鈕 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h1>📦 訂單中心</h1>
       <button class="btn btn-outline-primary" @click="goHome">🏠 回首頁</button>
@@ -237,14 +290,14 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- 訂單明細 -->
-    <div v-if="currentTab === 'details' && selectedOrder" class="mt-4">
+    <!-- 單筆訂單明細 -->
+    <div v-if="currentTab==='details' && selectedOrder" class="mt-4">
       <h4>訂單明細：#{{ selectedOrder.OrderID }}</h4>
       <div class="card shadow-sm bg-white p-3">
         <table class="table table-hover mb-0">
           <thead class="table-light">
             <tr>
-              <th></th>
+              <th>書籍</th>
               <th>數量</th>
               <th>單價</th>
               <th>小計</th>
@@ -287,16 +340,64 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- 退貨紀錄 -->
-    <div v-if="currentTab === 'returns' && selectedOrder" class="mt-4">
-      <h4>退貨紀錄：訂單 #{{ selectedOrder.OrderID }}</h4>
-      <div v-if="returns.length === 0" class="text-muted py-3">目前沒有退貨紀錄</div>
-      <ul class="list-group">
-        <li v-for="r in returns" :key="r.ReturnID" class="list-group-item">
-          退貨編號：{{ r.ReturnID }} | 原因：{{ r.ReturnReason }} | 狀態：{{ r.Status }}
-        </li>
-      </ul>
+<!-- 所有訂單明細 -->
+<div v-if="currentTab==='allDetails'" class="mt-4">
+  <h4>所有訂單明細</h4>
+  <div v-if="allOrderDetails.length===0" class="text-muted py-3">目前沒有訂單明細</div>
+
+  <div v-for="order in orders" :key="order.OrderID" class="mb-4">
+    <h5>訂單 #{{ order.OrderID }}</h5>
+    <div class="card shadow-sm bg-white p-3">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>書籍</th>
+            <th>數量</th>
+            <th>單價</th>
+            <th>小計</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in order.OrderDetails" :key="item.BookID">
+            <td>
+              <div class="d-flex align-items-center gap-3">
+                <img :src="item.Book?.coverUrl && item.Book.coverUrl.startsWith('http') ? item.Book.coverUrl : `/api/BookImages/${item.Book?.id}/cover`"
+                     :alt="item.Book?.title || 'Book Cover'" class="rounded shadow-sm" style="width:60px;height:80px;object-fit:cover"/>
+                <div>
+                  <strong class="fs-6">{{ item.Book?.title || '(已下架)' }}</strong>
+                  <div class="text-muted small">NT$ {{ item.Book?.salePrice ?? item.UnitPrice ?? 0 }}</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ item.Quantity }}</td>
+            <td>NT$ {{ item.UnitPrice }}</td>
+            <td>NT$ {{ item.Quantity * item.UnitPrice }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="text-end fs-5 fw-bold mt-3">總金額：NT$ {{ order.TotalAmount }}</div>
     </div>
+  </div>
+</div>
+    <!-- 退貨紀錄 -->
+    <div v-if="currentTab==='returns'" class="mt-4">
+      <h4>退貨紀錄</h4>
+      <div v-if="returns.length===0" class="text-muted py-3">目前沒有退貨紀錄</div>
+      <div class="row g-3">
+        <div v-for="r in returns" :key="r.returnID" class="col-md-6">
+          <div class="card shadow-sm border-0 rounded-4 overflow-hidden position-relative">
+            <button v-if="r.status !== 9" class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-2" @click="cancelReturnOrder(r.returnID)">❌ 取消退貨</button>
+            <div class="card-body">
+              <h5 class="card-title fw-bold text-primary">退貨編號：#{{ r.returnID }}</h5>
+              <p class="card-text mb-1">📝 原因：{{ r.returnReason }}</p>
+              <p class="card-text mb-1">📦 狀態：<span class="badge bg-warning text-dark">{{ getStatusText(r.status) }}</span></p>
+              <p class="card-text text-muted small">訂單編號：#{{ r.orderID }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -306,21 +407,16 @@ onMounted(async () => {
   border-radius: 8px;
   padding: 2rem;
 }
-
 button.active {
   background-color: #0d6efd !important;
   color: white !important;
 }
-
 .card {
   border-radius: 8px;
 }
-
-.table th,
-.table td {
+.table th, .table td {
   vertical-align: middle;
 }
-
 .text-end {
   text-align: right;
 }
