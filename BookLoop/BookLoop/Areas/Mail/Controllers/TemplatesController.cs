@@ -27,7 +27,7 @@ namespace BookLoop.Areas.Mail.Controllers
 
 		// POST: /Mail/Templates/Create
 		[HttpPost, ValidateAntiForgeryToken]
-		public async Task<IActionResult> Create([Bind("TemplateKey,Description")] Template m)
+		public async Task<IActionResult> Create([Bind("TemplateKey,Name,Description")] Template m)
 		{
 			if (await _db.Templates.AnyAsync(x => x.TemplateKey == m.TemplateKey))
 				ModelState.AddModelError(nameof(m.TemplateKey), "此 TemplateKey 已存在");
@@ -50,7 +50,7 @@ namespace BookLoop.Areas.Mail.Controllers
 
         // POST: /Mail/Templates/Edit/5
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("TemplateId,TemplateKey,Description")] Template m)
+        public async Task<IActionResult> Edit(int id, [Bind("TemplateId,Name,TemplateKey,Description")] Template m)
         {
             if (id != m.TemplateId) return BadRequest();
 
@@ -66,14 +66,19 @@ namespace BookLoop.Areas.Mail.Controllers
             if (entity == null) return NotFound();
 
             entity.TemplateKey = m.TemplateKey?.Trim() ?? "";
-            entity.Description = m.Description ?? "";
+			entity.Name = m.Name?.Trim() ?? "";
+			entity.Description = m.Description ?? "";
 
             try
             {
-                await _db.SaveChangesAsync();
-                TempData["Ok"] = "已更新範本。";
-                return RedirectToAction(nameof(Index));
-            }
+				await _db.SaveChangesAsync();
+				TempData["Ok"] = "已更新範本。";
+				// 導回 Index 總清單（原本的）
+				// return RedirectToAction(nameof(Index)); 
+
+				// 導回目前的編輯頁面（修改後）
+				return RedirectToAction(nameof(Edit), new { id = id });
+			}
             catch (DbUpdateException ex)
             {
                 TempData["Err"] = $"更新失敗：{ex.Message}";
