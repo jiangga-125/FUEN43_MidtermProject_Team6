@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace BookLoop.Controllers.Api
 {
 	[ApiController]
-	[Route("api/_debug")]
+	[Route("api/debug")]
 	public class DebugController : ControllerBase
 	{
 		// GET /api/_debug/ping
@@ -19,6 +19,15 @@ namespace BookLoop.Controllers.Api
 			var isAuth = User?.Identity?.IsAuthenticated == true;
 			var name = User?.Identity?.Name;
 			return Ok(new { isAuthenticated = isAuth, name });
+		}
+
+		[HttpGet("claims")]
+		public IActionResult Claims()
+		{
+			var list = User?.Claims?
+				.Select(c => new { c.Type, c.Value })
+				.ToList() ?? new();
+			return Ok(list);
 		}
 	}
 }

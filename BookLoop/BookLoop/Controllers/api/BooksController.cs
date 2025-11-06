@@ -58,7 +58,8 @@ namespace BookLoop.Controllers.api
 			}
 
 			var total = await q.CountAsync();
-			var items = await q
+
+			var rawItems = await q
 				.Skip((page - 1) * pageSize)
 				.Take(pageSize)
 				.Select(b => new
@@ -67,11 +68,38 @@ namespace BookLoop.Controllers.api
 					title = b.Title,
 					isbn = b.ISBN,
 					slug = b.Slug,
-					image = b.BookImages.Where(i => i.IsPrimary).Select(i => i.FilePath).FirstOrDefault(),
+					imageFilePath = b.BookImages.Where(i => i.IsPrimary).Select(i => i.FilePath).FirstOrDefault(),
 					listPrice = b.ListPrice,
 					salePrice = b.SalePrice
 				})
 				.ToListAsync();
+
+			// 在記憶體組成 coverUrl（若 FilePath 以 http 開頭就直接使用，否則轉成絕對 URL 指向 wwwroot/images/books/{fileName}）
+			var items = rawItems.Select(x =>
+			{
+				string? coverUrl = null;
+				if (!string.IsNullOrWhiteSpace(x.imageFilePath) &&
+			x.imageFilePath.StartsWith("http", System.StringComparison.OrdinalIgnoreCase))
+				{
+					coverUrl = x.imageFilePath;
+				}
+				else
+				{
+					coverUrl = $"{Request.Scheme}://{Request.Host}/api/BookImages/book/{x.id}/cover";
+				}
+
+				return new
+				{
+					id = x.id,
+					title = x.title,
+					isbn = x.isbn,
+					slug = x.slug,
+					coverUrl,
+					listPrice = x.listPrice,
+					salePrice = x.salePrice
+				};
+			}).ToList();
+
 
 			return Ok(new { total, page, pageSize, items });
 		}
@@ -90,6 +118,10 @@ namespace BookLoop.Controllers.api
 
 			if (b == null) return NotFound();
 
+			var primary = b.BookImages.FirstOrDefault(i => i.IsPrimary);
+
+			var coverUrl = $"{Request.Scheme}://{Request.Host}/api/BookImages/book/{b.BookID}/cover";
+
 			return Ok(new
 			{
 				id = b.BookID,
@@ -101,7 +133,8 @@ namespace BookLoop.Controllers.api
 				salePrice = b.SalePrice,
 				publisher = b.Publisher != null ? new { id = b.Publisher.PublisherID, name = b.Publisher.PublisherName } : null,
 				category = b.Category != null ? new { id = b.Category.CategoryID, name = b.Category.CategoryName } : null,
-				images = b.BookImages.Select(i => new { i.ImageID, i.FilePath, i.IsPrimary })
+				images = b.BookImages.Select(i => new { i.ImageID, i.FilePath, i.IsPrimary }),
+				coverUrl
 			});
 		}
 	}

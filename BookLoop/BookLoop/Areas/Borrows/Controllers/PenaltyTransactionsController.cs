@@ -170,7 +170,7 @@ namespace BookLoop.Controllers
                 // UnitAmount = unitAmount,
                 // TotalAmount = totalAmount,
                 PaidAt = vm.PaidAt,          // 若你的 UI 有輸入繳清時間，就沿用；若一律未付款可改為 null
-                CreatedAt = DateTime.UtcNow  // 時區需求若要台北時間可改用 DateTimeOffset.Now / TimeZoneInfo 轉換
+                CreatedAt = DateTime.Now  // 時區需求若要台北時間可改用 DateTimeOffset.Now / TimeZoneInfo 轉換
             };
 
             _context.Add(entity);
