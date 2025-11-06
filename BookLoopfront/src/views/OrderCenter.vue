@@ -4,7 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { getOrdersByMember, getOrderDetail, cancelOrder, deleteOrder, Order } from '@/api/order'
 import { createReturn, getReturnsByOrder, ReturnInfo, getStatusText } from '@/api/return'
 import { cancelReturn } from '@/api/return'
-
+import { getShipmentByOrder, updateShipment, ShipmentInfo ,createShipment} from '@/api/shipment'
+  
 const router = useRouter()
 const route = useRoute()
 const memberId = 616
@@ -14,6 +15,37 @@ const currentTab = ref<'orders' | 'details' | 'allDetails' | 'returns'>('orders'
 const orders = ref<Order[]>([])
 const selectedOrder = ref<Order | null>(null)
 const returns = ref<ReturnInfo[]>([])
+
+
+const shipmentMap = ref<Record<number, ShipmentInfo>>({}) // key = OrderID
+
+async function onChangeShipment(orderId: number, provider: string) {
+  if (!provider) return; // 未選擇物流不處理
+  try {
+    // 統一呼叫 createShipment，由後端自動覆蓋或建立
+    const shipment = await createShipment({ orderID: orderId, provider });
+
+    // 後端會自動生成 TrackingNumber 並固定 Status = 0 (待出貨)
+    shipmentMap.value[orderId] = shipment;
+
+    alert(`✅ 物流公司已更新\n追蹤號碼：${shipment.trackingNumber}\n狀態：待出貨`);
+  } catch (err) {
+    console.error('更新物流失敗', err);
+    alert('❌ 更新物流失敗，請稍後再試');
+  }
+}
+
+// 載入物流（初始化時）
+async function loadShipment(orderId: number) {
+  try {
+    const shipment = await getShipmentByOrder(orderId);
+    shipmentMap.value[orderId] = shipment;
+  } catch (err) {
+    // 沒有物流資料不用理會
+    console.warn(`尚無物流資料 for OrderID ${orderId}`, err);
+  }
+}
+
 
 // 訂單狀態對應
 const orderStatusMap: Record<number, string> = {
@@ -105,18 +137,22 @@ const allOrderDetails = computed(() =>
 )
 
 onMounted(async () => {
-  await loadOrders()
-  await loadAllReturns()
+  await loadOrders();
+  await loadAllReturns();
+
+  for (const order of orders.value) {
+    await loadShipment(order.OrderID!);
+  }
 
   // 如果有 query 帶入 selectedOrderId
-  const selectedId = route.query.selectedOrderId
+  const selectedId = route.query.selectedOrderId;
   if (selectedId) {
-    const orderId = parseInt(selectedId as string)
+    const orderId = parseInt(selectedId as string);
     if (!isNaN(orderId)) {
-      await viewOrderDetail(orderId)
+      await viewOrderDetail(orderId);
     }
   }
-})
+});
 </script>
 
 <template>
@@ -135,40 +171,86 @@ onMounted(async () => {
       <button class="btn btn-outline-warning" :disabled="returns.length===0" :class="{ active: currentTab==='returns' }" @click="currentTab='returns'">退貨紀錄</button>
     </div>
 
-    <!-- 訂單列表 -->
-    <div v-if="currentTab==='orders'">
-      <div v-if="orders.length===0" class="text-center text-muted py-5">目前沒有訂單</div>
-      <div class="row g-3">
-        <div v-for="order in orders" :key="order.OrderID" class="col-md-6">
-          <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
-            <div class="card-body">
-              <h5 class="card-title fw-bold text-primary">訂單 #{{ order.OrderID ?? '-' }}</h5>
-              <p class="card-text text-muted small mb-2">下單時間：{{ order.OrderDate ? new Date(order.OrderDate).toLocaleString() : '無資料' }}</p>
-              <p class="card-text mb-1">
-                💰 總金額：<span class="fw-bold text-success">NT$ {{ order.TotalAmount ?? 0 }}</span><br>
-                📦 狀態：
-                <span class="badge" 
-                      :class="{
-                        'bg-secondary': order.Status === 0,
-                        'bg-primary': order.Status === 1,
-                        'bg-info text-dark': order.Status === 2,
-                        'bg-success': order.Status === 3,
-                        'bg-danger': order.Status === 4
-                      }">
-                  {{ orderStatusMap[order.Status ?? 0] }}
-                </span>
-              </p>
-              <div class="d-flex flex-wrap gap-2 mt-3">
-                <button class="btn btn-sm btn-primary flex-grow-1" @click="viewOrderDetail(order.OrderID!)">查看明細</button>
-                <button class="btn btn-sm btn-success flex-grow-1" @click="onPay(order.OrderID!)" :disabled="order.Status!==0">付款</button>
-                <button class="btn btn-sm btn-warning flex-grow-1" @click="onReturn(order.OrderID!)">退貨</button>
-                <button class="btn btn-sm btn-outline-danger flex-grow-1" @click="onDelete(order.OrderID!)">🗑️ 刪除</button>
-              </div>
-            </div>
+<!-- 訂單列表 -->
+<div v-if="currentTab === 'orders'">
+  <!-- 沒有訂單時顯示 -->
+  <div v-if="orders.length === 0" class="text-center text-muted py-5">
+    目前沒有訂單
+  </div>
+
+  <!-- 訂單卡片列表 -->
+  <div class="row g-3">
+    <div v-for="order in orders" :key="order.OrderID" class="col-md-6">
+      <div class="card shadow-sm border-0 rounded-4 overflow-hidden position-relative">
+        
+        <!-- 物流公司下拉選單 -->
+        <select class="form-select form-select-sm position-absolute top-0 end-0 m-2 shadow-sm"
+                style="width: 140px;"
+                :value="shipmentMap[order.OrderID!]?.provider || ''"
+                @change="onChangeShipment(order.OrderID!, ($event.target as HTMLSelectElement).value)">
+          <option value="">請選擇物流公司</option>
+          <option value="黑貓宅急便">黑貓宅急便</option>
+          <option value="宅配通">宅配通</option>
+          <option value="新竹物流">新竹物流</option>
+        </select>
+
+        <div class="card-body">
+          <!-- 訂單標題 -->
+          <h5 class="card-title fw-bold text-primary">
+            訂單 #{{ order.OrderID ?? '-' }}
+          </h5>
+
+          <!-- 下單時間 -->
+          <p class="card-text text-muted small mb-2">
+            下單時間：{{ order.OrderDate ? new Date(order.OrderDate).toLocaleString() : '無資料' }}
+          </p>
+
+          <!-- 總金額與訂單狀態 -->
+          <p class="card-text mb-1">
+            💰 總金額：
+            <span class="fw-bold text-success">NT$ {{ order.TotalAmount ?? 0 }}</span>
+            <br>
+            📦 狀態：
+            <span class="badge"
+                  :class="{
+                    'bg-secondary': order.Status === 0,
+                    'bg-primary': order.Status === 1,
+                    'bg-info text-dark': order.Status === 2,
+                    'bg-success': order.Status === 3,
+                    'bg-danger': order.Status === 4
+                  }">
+              {{ orderStatusMap[order.Status ?? 0] }}
+            </span>
+          </p>
+
+          <!-- 功能按鈕 -->
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <button class="btn btn-sm btn-primary flex-grow-1" 
+                    @click="viewOrderDetail(order.OrderID!)">
+              查看明細
+            </button>
+            <button class="btn btn-sm btn-success flex-grow-1" 
+                    @click="onPay(order.OrderID!)" 
+                    :disabled="order.Status !== 0">
+              付款
+            </button>
+            <button class="btn btn-sm btn-warning flex-grow-1" 
+                    @click="onReturn(order.OrderID!)">
+              退貨
+            </button>
+            <button class="btn btn-sm btn-outline-danger flex-grow-1" 
+                    @click="onDelete(order.OrderID!)">
+              🗑️ 刪除
+            </button>
           </div>
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+
+
 
     <!-- 單筆訂單明細 -->
     <div v-if="currentTab==='details' && selectedOrder" class="mt-4">
