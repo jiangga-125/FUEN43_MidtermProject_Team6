@@ -105,7 +105,8 @@ namespace BookLoop.Ordersys.Controllers
 			ViewData["MemberID"] = new SelectList(_context.Members, "MemberID", "Username");
 			var model = new Order
 			{
-				TotalAmount = 0 // 預設總金額
+				TotalAmount = 0 ,// 預設總金額
+				 OrderDate = DateTime.Today
 			};
 			return View(model);
 		}
@@ -284,7 +285,7 @@ string Provider)
 			if (amountToPay <= 0) amountToPay = 1;
 
 			string merchantTradeNo = $"B{DateTime.Now:yyMMddHHmmssfff}{order.OrderID}";
-			string website = "http://localhost:5059/Orders/Orders";
+			string website = "https://localhost:7176";
 			// ⚠️ 改成你的實際網域（或 localhost 測試）
 
 			var ecpayRequest = new ECPayRequest
@@ -297,7 +298,7 @@ string Provider)
 				TradeDesc = "BookLoop 書籍付款",
 				ItemName = string.Join("#", order.OrderDetails.Select(od => od.ProductName)), // 可顯示所有商品
 				ReturnURL = $"{website}/api/ecpay/notify",
-				OrderResultURL = $"{website}/PaymentResult?orderId={order.OrderID}",
+				OrderResultURL = $"{website}/Orders/Orders/PaymentResult?orderId={order.OrderID}",
 				ChoosePayment = "ALL",
 				EncryptType = "1"
 			};
@@ -359,7 +360,7 @@ string Provider)
 		//
 		// ✅ 付款完成導回頁面
 		//
-		[HttpGet]
+		[HttpGet, HttpPost]
 		public IActionResult PaymentResult(int orderId)
 		{
 			var order = _context.Orders.FirstOrDefault(o => o.OrderID == orderId);

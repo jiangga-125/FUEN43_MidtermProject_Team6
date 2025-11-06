@@ -29,8 +29,8 @@
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div>
-                                <h5 class="card-title mb-1">ReturnID: @item.ReturnID</h5>
-                                <p class="mb-0">OrderID: @item.OrderID</p>
+                                <h5 class="card-title mb-1">退貨編號: @item.ReturnID</h5>
+                                <p class="mb-0">訂單編號: @item.OrderID</p>
                             </div>
                             <div class="dropdown">
                                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -129,9 +129,12 @@
 @section Scripts {
     <script>
         $(document).on("click", ".card", function (e) {
-            if (!$(e.target).closest("a, button").length) {
-                var returnID = $(this).find(".card-title").text().replace("ReturnID: ", "");
-                window.location = '/Returns/ReturnsDetails/' + returnID;
+            // 排除點擊 dropdown 或 按鈕
+            if (!$(e.target).closest("a, button, .dropdown").length) {
+                var returnID = $(this).find(".card-title").text().replace("退貨編號:", "").trim();
+                if (returnID) {
+                    window.location.href = '/Returns/ReturnsDetails/' + returnID;
+                }
             }
         });
     </script>
