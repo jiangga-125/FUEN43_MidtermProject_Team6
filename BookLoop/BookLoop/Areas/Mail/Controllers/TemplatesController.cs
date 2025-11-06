@@ -73,16 +73,12 @@ namespace BookLoop.Areas.Mail.Controllers
             {
 				await _db.SaveChangesAsync();
 				TempData["Ok"] = "已更新範本。";
-				// 導回 Index 總清單（原本的）
-				// return RedirectToAction(nameof(Index)); 
-
-				// 導回目前的編輯頁面（修改後）
-				return RedirectToAction(nameof(Edit), new { id = id });
-			}
+                return RedirectToAction("Index", "TemplateVersions", new { area = "Mail", templateId = id });
+            }
             catch (DbUpdateException ex)
             {
                 TempData["Err"] = $"更新失敗：{ex.Message}";
-                return View(m);
+                return RedirectToAction("Index", "TemplateVersions", new { area = "Mail", templateId = id });
             }
         }
 

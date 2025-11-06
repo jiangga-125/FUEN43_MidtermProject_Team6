@@ -1,6 +1,6 @@
 ﻿@model BookLoop.Models.Template
 @{
-    ViewData["Title"] = $"範本群組「{Model.TemplateKey}」";
+    ViewData["Title"] = $"範本群組「{Model.Name}」";
     var hasDefault = Model.Versions.Any(x => x.IsDefault);     // 是否有預設版
 }
 
