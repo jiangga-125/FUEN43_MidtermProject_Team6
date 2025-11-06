@@ -1,88 +1,132 @@
 <template>
-  <div class="container py-5">
-    <h1>建立評論</h1>
+  <div class="review-container container my-5 p-4 shadow rounded bg-white">
+    <!-- 🔹 標題區 -->
+    <h2 class="mb-4 text-center text-primary fw-bold">
+      ✍️ 建立書籍評論
+    </h2>
 
     <!-- ✅ 成功訊息 -->
-    <div v-if="message" class="alert alert-success">
+    <div v-if="message" class="alert alert-success text-center">
       {{ message }}
     </div>
 
-    <!-- 🧾 評論表單 -->
-    <form @submit.prevent="submitReview">
+    <!-- ⚠️ 錯誤訊息 -->
+    <div v-if="error" class="alert alert-danger text-center">
+      {{ error }}
+    </div>
 
-      <!-- 🧍‍♂️ 顯示目前登入會員 -->
+    <!-- 🧾 評論表單 -->
+    <form @submit.prevent="submitReview" class="mt-4">
+
+      <!-- 👤 會員 ID -->
       <div class="mb-3">
-        <label class="form-label">會員 ID</label>
+        <label class="form-label fw-bold">
+          <i class="bi bi-person-circle me-1"></i>會員 ID
+        </label>
         <input
           v-model="form.memberId"
           type="text"
-          class="form-control"
+          class="form-control bg-light"
           readonly
         />
       </div>
 
-      <!-- 📚 書名（自動載入購買過的書籍） -->
+      <!-- 📚 書名 -->
       <div class="mb-3">
-        <label class="form-label">選擇書籍</label>
-        <select v-model="form.targetBookId" class="form-select">
+        <label class="form-label fw-bold">
+          <i class="bi bi-book me-1"></i>選擇書籍
+        </label>
+        <select
+          v-model="form.targetBookId"
+          class="form-select"
+          :disabled="loadingBooks"
+        >
           <option value="">-- 請選擇您購買過的書籍 --</option>
-          <option v-for="b in purchasedBooks" :key="b.value" :value="b.value">
+          <option
+            v-for="b in purchasedBooks"
+            :key="b.value"
+            :value="b.value"
+          >
             {{ b.text }}
           </option>
         </select>
+        <div v-if="loadingBooks" class="text-muted mt-1 small">
+          ⏳ 載入中...
+        </div>
       </div>
 
       <!-- 🌟 評分 -->
       <div class="mb-3">
-        <label class="form-label d-block">評分</label>
+        <label class="form-label fw-bold d-block">
+          <i class="bi bi-star me-1"></i>評分
+        </label>
         <div class="star-rating">
           <i
             v-for="n in 5"
             :key="n"
             class="bi"
-            :class="n <= hoverRating || n <= form.rating ? 'bi-star-fill text-warning active' : 'bi-star text-secondary'"
+            :class="[
+              n <= hoverRating || n <= form.rating
+                ? 'bi-star-fill text-warning active'
+                : 'bi-star text-secondary'
+            ]"
             @mouseover="hoverRating = n"
             @mouseleave="hoverRating = 0"
             @click="selectRating(n)"
           ></i>
         </div>
-
-        <!-- ⭐ 提示文字 -->
-        <div v-if="hoverRating || form.rating" class="rating-hint mt-1 text-muted">
-          {{ ratingTexts[hoverRating || form.rating - 1] }}
+        <div v-if="hoverRating || form.rating" class="rating-hint mt-2 text-muted">
+          {{ ratingTexts[(hoverRating || form.rating) - 1] }}
         </div>
       </div>
 
       <!-- 💬 評論內容 -->
-      <div class="mb-3">
-        <label class="form-label">評論內容</label>
+      <div class="mb-4">
+        <label class="form-label fw-bold">
+          <i class="bi bi-chat-left-dots me-1"></i>評論內容
+        </label>
         <textarea
           v-model="form.content"
           class="form-control"
           rows="4"
-          placeholder="請輸入評論內容"
+          placeholder="請輸入您對書籍的看法、心得或建議"
         ></textarea>
       </div>
 
       <!-- 🚀 送出按鈕 -->
-      <button type="submit" class="btn btn-primary">送出評論</button>
+      <div class="text-center">
+        <button
+          type="submit"
+          class="btn btn-primary px-4 py-2"
+          :disabled="submitting"
+        >
+          <i class="bi" :class="submitting ? 'bi-hourglass-split' : 'bi-send'"></i>
+          {{ submitting ? '送出中...' : '送出評論' }}
+        </button>
+      </div>
     </form>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import http from '@/lib/http'  // ✅ 改用內建 JWT axios 實例（自動帶 token）
+import http from '@/lib/http'
+import { useAuth } from '@/stores/auth'
 
-// ✅ 表單資料
+const auth = useAuth()
+
 const form = ref({
-  memberId: '',          // 只顯示，不送出
+  memberId: '',
   targetBookId: '',
   rating: 0,
   content: ''
 })
 
 const message = ref('')
+const error = ref('')
+const submitting = ref(false)
+const loadingBooks = ref(false)
+
 const hoverRating = ref(0)
 const purchasedBooks = ref<{ value: number; text: string }[]>([])
 const ratingTexts = ['非常不滿意 😡', '不太滿意 😕', '普通 🙂', '滿意 😊', '非常滿意 🤩']
@@ -98,38 +142,46 @@ const selectRating = (n: number) => {
   }
 }
 
-// ✅ 取得目前登入會員ID + 載入書籍
+// 🚀 初始載入
 onMounted(async () => {
   try {
-    // 1️⃣ 從 whoami 取得登入會員資訊（JWT 驗證）
-    const who = await http.get('/api/MemberCouponsApi/WhoAmI')
+    await auth.tryLoadSession()
 
-    // whoami 回傳格式：{ isAuth, user, claims: [{type, value}, ...] }
-    const idClaim = who.data.claims.find((c: any) =>
-      ['mid', 'memberId', 'MemberId', 'MemberID'].includes(c.type)
-    )
-    if (idClaim) {
-      form.value.memberId = idClaim.value
-      console.log('🧍‍♂️ 當前登入會員 ID:', form.value.memberId)
-    } else {
-      console.warn('⚠️ 無法從 token 取得會員ID')
+    if (!auth.member?.memberId) {
+      error.value = '⚠️ 尚未登入，請先登入會員。'
+      return
     }
 
-    // 2️⃣ 取得會員購買過的書籍
-    const res = await http.get('/api/ReviewsApi/GetPurchasedBooks')
-    purchasedBooks.value = res.data.data.map((b: any) => ({
+    form.value.memberId = auth.member.memberId.toString()
+
+    loadingBooks.value = true
+    const res = await http.get(`/api/ReviewsApi/GetPurchasedBooks/${form.value.memberId}`)
+    purchasedBooks.value = res.data.map((b: any) => ({
       value: b.bookId,
       text: b.title
     }))
   } catch (err) {
     console.error('❌ 載入會員或書籍資料失敗', err)
+    error.value = '無法載入會員或書籍資料，請稍後再試。'
+  } finally {
+    loadingBooks.value = false
   }
 })
 
-// 📤 送出評論（memberId 不送出）
+// 📤 送出評論
 const submitReview = async () => {
+  if (!form.value.targetBookId || !form.value.content || !form.value.rating) {
+    error.value = '請填寫所有必填欄位。'
+    return
+  }
+
+  submitting.value = true
+  error.value = ''
+  message.value = ''
+
   try {
     const payload = {
+      memberId: form.value.memberId,
       targetBookId: form.value.targetBookId,
       rating: form.value.rating,
       content: form.value.content
@@ -144,20 +196,31 @@ const submitReview = async () => {
     form.value.content = ''
   } catch (err: any) {
     console.error('❌ 送出評論失敗', err)
-    message.value = '❌ 送出失敗：' + (err.response?.data?.message || err.message)
+    error.value = '❌ 送出失敗：' + (err.response?.data?.message || err.message)
+  } finally {
+    submitting.value = false
   }
 }
 </script>
 
 <style scoped>
-.container {
-  max-width: 600px;
+.review-container {
+  max-width: 650px;
 }
 
-/* 🌟 星星樣式與動畫 */
+/* 🌟 星星評分 */
 .star-rating {
   font-size: 2rem;
   cursor: pointer;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.star-rating .bi {
+  transition: transform 0.2s, color 0.2s;
+}
+.star-rating .bi.active {
+  transform: scale(1.2);
 }
 .star-rating .bi.pop {
   animation: popStar 0.3s ease;
@@ -166,5 +229,15 @@ const submitReview = async () => {
   0% { transform: scale(1); }
   40% { transform: scale(1.4); }
   100% { transform: scale(1); }
+}
+
+/* 🎨 表單風格 */
+textarea.form-control {
+  resize: none;
+}
+.btn-primary {
+  font-weight: 600;
+  border-radius: 8px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
 }
 </style>
