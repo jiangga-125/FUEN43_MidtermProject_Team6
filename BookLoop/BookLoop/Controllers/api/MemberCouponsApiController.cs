@@ -20,7 +20,7 @@ namespace BookLoop.Controllers.api
 	{
 		public string Code { get; set; } = "";
 	}
-
+	[AllowAnonymous]
 	[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 	[Route("api/[controller]/[action]")]
 	[ApiController]
@@ -37,16 +37,30 @@ namespace BookLoop.Controllers.api
 
 		// 🔍 測試誰登入
 		[HttpGet("whoami")]
-		[AllowAnonymous]
+		[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 		public IActionResult WhoAmI()
 		{
+			var idClaim = User.FindFirst("userId");
+			if (idClaim == null) return Unauthorized(new { message = "missing_userId_in_token" });
+
+			if (!int.TryParse(idClaim.Value, out var userId))
+				return BadRequest(new { message = "invalid_userId" });
+
+			// 🔍 查出對應的會員
+			var member = _db.Members.FirstOrDefault(m => m.UserID == userId);
+			if (member == null)
+				return NotFound(new { message = "尚未綁定會員資料" });
+
 			return Ok(new
 			{
-				isAuth = User.Identity?.IsAuthenticated,
-				user = User.Identity?.Name,
-				claims = User.Claims.Select(c => new { c.Type, c.Value })
+				isAuth = true,
+				userId = userId,
+				memberId = member.MemberID,
+				username = member.Username
 			});
 		}
+
+
 
 		// 取得登入會員ID
 		private int? GetCurrentMemberId()
