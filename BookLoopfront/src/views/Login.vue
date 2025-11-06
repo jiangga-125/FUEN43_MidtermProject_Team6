@@ -55,6 +55,12 @@
           <input v-model.trim="emailCode" placeholder="例如：123456" maxlength="6" />
         </label>
 
+        <!-- ✅ 新增：2FA 記住此裝置（交給後端寫入 MemberTrustedDevices） -->
+        <label class="row remember2fa">
+          <input type="checkbox" v-model="rememberDevice2fa" />
+          <span class="muted">此裝置 30 天免驗證</span>
+        </label>
+
         <button class="primary" type="button" :disabled="auth.loading || !canSubmitEmail" @click="loginByEmailOtp">
           使用 Email 驗證碼登入
         </button>
@@ -80,7 +86,7 @@
         </div>
       </div>
 
-      <p v-if="err" class="err">{{ err }}</p>
+      <p class="err" v-if="err">{{ err }}</p>
 
       <div class="divider"><span>或</span></div>
 
@@ -100,6 +106,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '@/lib/http'
 import { useAuth } from '@/stores/auth'
+import { getDeviceHash } from '@/lib/deviceHash'   // ✅ 新增（請確定此檔存在）
 
 const auth = useAuth()
 const router = useRouter()
@@ -109,7 +116,9 @@ const account = ref(''); const password = ref(''); const emailCode = ref(''); co
 const showPwd = ref(false)
 const err = ref('')
 
-const remember = ref(true)
+const remember = ref(true)               // token 保存位置（localStorage / sessionStorage）
+const rememberDevice2fa = ref(true)      // ✅ 2FA 記住此裝置（寫入 MemberTrustedDevices）
+
 function onRememberChange() {
   auth.setRemember(remember.value)
   localStorage.setItem('remember_me', remember.value ? '1':'0')
@@ -148,7 +157,7 @@ async function loginPassword() {
     await auth.login(account.value, password.value)
     router.replace(getRedirectTarget())
   } catch (e: any) {
-    err.value = auth.error || e?.response?.data?.message || '登入失敗'
+    err.value = (auth as any).error || e?.response?.data?.message || '登入失敗'
   }
 }
 
@@ -163,11 +172,16 @@ async function sendEmailOtp() {
     err.value = e?.response?.data?.message || '驗證碼寄送失敗'
   }
 }
+
+// ✅ Email OTP：交給 store，帶 RememberDevice + DeviceHash（第三參數可選）
 async function loginByEmailOtp() {
   if (!canSubmitEmail.value) return
   err.value = ''
   try {
-    await auth.loginWithEmailCode(account.value, emailCode.value)
+    await auth.loginWithEmailCode(account.value, emailCode.value, {
+      rememberDevice: !!rememberDevice2fa.value,
+      deviceHash: getDeviceHash()
+    })
     router.replace(getRedirectTarget())
   } catch (e: any) {
     err.value = e?.response?.data?.message || '驗證碼登入失敗'
@@ -186,11 +200,16 @@ async function loginByTotp() {
   }
 }
 
-// 外部登入
-function external(provider: 'Google'|'Facebook'|'LINE') {
-  const redirect = getRedirectTarget()
-  const returnUrl = `${location.origin}/auth-callback?redirect=${encodeURIComponent(redirect)}`
-  auth.external(provider, returnUrl)
+// 外部登入（popup）
+async function external(provider: 'Google'|'Facebook'|'LINE') {
+  err.value = ''
+  try {
+    const redirect = getRedirectTarget()
+    await auth.loginWithExternal(provider, redirect)
+    router.replace(redirect)
+  } catch (e: any) {
+    err.value = e?.message || '外部登入失敗，請重試或改用帳密登入'
+  }
 }
 
 onMounted(() => {
@@ -202,7 +221,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 保持你的樣式（略） */
+/* 保持你的原樣式，僅補 2FA 勾選的小間距微調（可選） */
 .auth-shell{min-height:100vh;display:grid;place-items:center;background:radial-gradient(60% 120% at 10% 10%, #eef4ff 0%, transparent 60%),radial-gradient(70% 130% at 90% 20%, #fff3f0 0%, transparent 60%),#fafafa}
 .card{width:min(92vw,460px);background:#fff;border:1px solid #e9ecef;border-radius:16px;padding:20px 20px 16px;box-shadow:0 6px 24px rgba(0,0,0,.06);display:grid;gap:12px}
 .title{margin:0 0 6px;text-align:center}
@@ -233,4 +252,7 @@ button{padding:10px 12px;border-radius:10px;cursor:pointer;border:1px solid tran
 .sso.facebook{background:#1877f2;color:#fff;border:0}
 .sso.line{background:#06c755;color:#fff;border:0}
 .hint{font-size:13px;color:#666;text-align:center;margin-top:4px}
+
+/* ✅ 微調 2FA 記住勾選的對齊 */
+.remember2fa{gap:8px;margin-top:-2px}
 </style>

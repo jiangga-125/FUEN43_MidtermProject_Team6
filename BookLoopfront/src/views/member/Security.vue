@@ -1,4 +1,3 @@
-<!-- src/views/Member.vue -->
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -8,12 +7,12 @@ import { getDeviceHash } from '@/lib/deviceHash'
 
 const auth = useAuth()
 const router = useRouter()
-
 const member = computed(() => auth.member)
-// 後端 /api/auth/me 目前未回傳 TwoFactorEnabled，就先以 false; 之後你補欄位再改讀值
+
+// TODO: 之後從 /api/auth/me 讀真正的 TwoFactorEnabled
 const twofaEnabled = ref(false)
 
-// ========== Email OTP 狀態 ==========
+/* ===== Email OTP 狀態 ===== */
 const sending = ref(false)
 const verifying = ref(false)
 const otpCode = ref('')
@@ -25,7 +24,6 @@ const otpMsg = ref('')
 const otpOk = ref(false)
 
 function isEmail(s: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) }
-
 function startCountdown(sec = 60) {
   countdown.value = sec
   if (timer.value) window.clearInterval(timer.value)
@@ -37,7 +35,6 @@ function startCountdown(sec = 60) {
     }
   }, 1000)
 }
-
 async function sendEmailOtp() {
   if (!member.value?.email || !isEmail(member.value.email)) {
     otpMsg.value = '無效的 Email'
@@ -52,19 +49,17 @@ async function sendEmailOtp() {
       Account: member.value.email,
       Purpose: 'Login'
     })
-    // 開發環境後端會帶 devCode
-    devCode.value = r.data?.devCode ?? null
+    devCode.value = r.data?.devCode ?? null // 開發環境
     otpMsg.value = '驗證碼已寄出，請查看信箱'
     otpOk.value = true
     startCountdown(60)
-  } catch (e: any) {
+  } catch (e:any) {
     otpMsg.value = e?.response?.data?.message || '驗證碼寄送失敗'
     otpOk.value = false
   } finally {
     sending.value = false
   }
 }
-
 async function verifyEmailOtp() {
   if (!/^[0-9]{6}$/.test(otpCode.value)) {
     otpMsg.value = '請輸入 6 碼數字'
@@ -86,7 +81,7 @@ async function verifyEmailOtp() {
     otpMsg.value = '驗證成功！此裝置已記住'
     otpOk.value = true
     otpCode.value = ''
-  } catch (e: any) {
+  } catch (e:any) {
     otpMsg.value = e?.response?.data?.message || '驗證失敗'
     otpOk.value = false
   } finally {
@@ -94,7 +89,7 @@ async function verifyEmailOtp() {
   }
 }
 
-// ========== 變更密碼（外觀先保留；API 你再接） ==========
+/* ===== 變更密碼（先保留外觀，等你串API） ===== */
 const oldPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
@@ -107,10 +102,9 @@ const canChangePwd = computed(() =>
   newPassword.value === confirmPassword.value
 )
 async function changePassword () {
-  // 範例：await http.post('/api/auth/password/change', { Old: oldPassword.value, New: newPassword.value })
-  // 這裡先放示範訊息，等你後端補上再串。
   try {
     changing.value = true
+    // 範例串法：await http.post('/api/auth/password/change', { Old: oldPassword.value, New: newPassword.value })
     pwdMsg.value = '（示範）尚未串接 API'
     pwdOk.value = false
   } finally {
@@ -118,8 +112,7 @@ async function changePassword () {
   }
 }
 
-// ========== 其他 ==========
-function gotoTotpSetup () { router.push('/2fa/setup') } // 之後你完成 TOTP 綁定頁用這條路徑
+function gotoTotpSetup () { router.push('/2fa/setup') }
 async function signout () { try { await auth.logout?.() } finally { router.push('/login') } }
 
 onMounted(() => {
@@ -128,13 +121,13 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="member">
-    <h2>會員中心</h2>
+  <div class="security">
+    <h3 class="title">帳號密碼與安全性</h3>
 
-    <div v-if="member" class="grid">
-      <!-- 左：基本資料 + 2FA 狀態 + TOTP 入口 -->
+    <div class="grid">
+      <!-- 基本資訊 / 2FA 狀態 / TOTP -->
       <section class="card">
-        <h3 class="title">基本資料</h3>
+        <h4>基本資訊</h4>
         <div class="row"><span class="k">名稱</span><span class="v">{{ member?.name || '-' }}</span></div>
         <div class="row"><span class="k">Email</span><span class="v">{{ member?.email }}</span></div>
         <div class="row">
@@ -143,26 +136,21 @@ onMounted(() => {
             <span class="badge" :class="twofaEnabled ? 'on' : 'off'">{{ twofaEnabled ? '已啟用' : '未啟用' }}</span>
           </span>
         </div>
-
         <div class="actions">
-          <!-- TOTP（保留，之後實作頁面） -->
           <button type="button" class="btn" @click="gotoTotpSetup">設定 / 綁定 2FA（TOTP）</button>
           <button type="button" class="btn danger" @click="signout">登出</button>
         </div>
 
         <div class="divider"></div>
 
-        <!-- Email OTP（現在可測） -->
-        <h4 class="sub">Email OTP</h4>
+        <h4>Email OTP</h4>
         <p class="muted">寄 6 碼到你的 Email，勾選「記住此裝置」可 30 天免驗證。</p>
-
         <div class="otp-send">
           <button
-            type="button"
-            class="btn outline"
+            type="button" class="btn outline"
             :disabled="sending || !member?.email || countdown>0"
             @click="sendEmailOtp"
-            title="寄送驗證碼到 {{ member?.email }}"
+            :title="`寄送驗證碼到 ${member?.email ?? ''}`"
           >
             {{ countdown>0 ? `重新寄送 (${countdown}s)` : '寄送驗證碼' }}
           </button>
@@ -170,22 +158,14 @@ onMounted(() => {
         </div>
 
         <div class="otp-verify">
-          <input
-            class="input"
-            placeholder="輸入 6 碼"
-            maxlength="6"
-            v-model.trim="otpCode"
-          />
+          <input class="input" placeholder="輸入 6 碼" maxlength="6" v-model.trim="otpCode" />
           <label class="check">
             <input type="checkbox" v-model="rememberDevice">
             記住此裝置 30 天
           </label>
-          <button
-            type="button"
-            class="btn primary"
-            :disabled="verifying || !/^[0-9]{6}$/.test(otpCode)"
-            @click="verifyEmailOtp"
-          >
+          <button type="button" class="btn primary"
+                  :disabled="verifying || !/^[0-9]{6}$/.test(otpCode)"
+                  @click="verifyEmailOtp">
             驗證（Email OTP）
           </button>
         </div>
@@ -193,9 +173,9 @@ onMounted(() => {
         <p v-if="otpMsg" :class="['msg', otpOk ? 'ok':'err']">{{ otpMsg }}</p>
       </section>
 
-      <!-- 右：變更密碼 -->
+      <!-- 變更密碼 -->
       <section class="card">
-        <h3 class="title">變更密碼</h3>
+        <h4>變更密碼</h4>
         <div class="field">
           <label>舊密碼</label>
           <input class="input" v-model="oldPassword" type="password" autocomplete="current-password" />
@@ -208,46 +188,35 @@ onMounted(() => {
           <label>確認新密碼</label>
           <input class="input" v-model="confirmPassword" type="password" autocomplete="new-password" />
         </div>
-        <button type="button" class="btn primary" :disabled="!canChangePwd || changing" @click="changePassword">
-          儲存變更
-        </button>
+        <button class="btn primary" :disabled="!canChangePwd || changing" @click="changePassword">儲存變更</button>
         <p v-if="pwdMsg" :class="['msg', pwdOk ? 'ok':'err']">{{ pwdMsg }}</p>
       </section>
-    </div>
-
-    <div v-else class="guest">
-      <p>尚未登入，請先 <a href="/login">登入</a>。</p>
     </div>
   </div>
 </template>
 
 <style scoped>
-.member{max-width:1100px;margin:24px auto;padding:0 16px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.title{margin:0 0 12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media (max-width: 900px){.grid{grid-template-columns:1fr}}
 
 .card{background:#fff;border:1px solid #e9ecef;border-radius:16px;padding:18px;box-shadow:0 4px 18px rgba(0,0,0,.04);display:grid;gap:12px}
-.title{margin:0 0 4px}
 .row{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center}
-.k{color:#666}
-.v{font-weight:600}
+.k{color:#666}.v{font-weight:600}
 
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px}
 .badge.on{background:#e8f7ef;color:#139a50}
 .badge.off{background:#fff3f0;color:#c74a2e;border:1px solid #ffd8cc}
 
 .actions{display:flex;gap:10px;margin-top:4px;flex-wrap:wrap}
-
-.input{padding:10px 12px;border:1px solid #dfe3e8;border-radius:10px;font-size:14px;width:100%}
+.input{padding:10px 12px;border:1px solid #dfe3e8;border-radius:10px;width:100%}
 .btn{padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#f8fafc;font-weight:600;cursor:pointer}
-.btn:hover{filter:brightness(0.98)}
 .btn.primary{background:#0d6efd;border-color:#0d6efd;color:#fff}
 .btn.outline{background:#fff;border-color:#cfd6e0}
 .btn.danger{background:#ffecec;border-color:#ffd9d9;color:#c0392b}
 
 .divider{height:1px;background:#f0f2f5;margin:6px 0}
 .muted{color:#6b7280;font-size:13px}
-
 .otp-send{display:flex;align-items:center;gap:8px}
 .dev-code{color:#999;font-size:12px}
 .otp-verify{display:flex;gap:10px;align-items:center;flex-wrap:wrap}

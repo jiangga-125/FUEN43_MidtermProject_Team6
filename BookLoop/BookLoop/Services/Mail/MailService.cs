@@ -23,8 +23,8 @@ namespace BookLoop.Services.Mail
 		private readonly IConfiguration _config;
         private readonly ILogger<MailService>? _logger;
         private readonly IWebHostEnvironment? _env;
-        private readonly AppDbContext _db;
-        public MailService(
+        private readonly AppDbContext _db; // AppDbContext? _db
+		public MailService(
             IConfiguration config,
             ILogger<MailService>? logger = null,
             IWebHostEnvironment? env = null,
@@ -33,8 +33,8 @@ namespace BookLoop.Services.Mail
             _config = config;
             _logger = logger;
             _env = env;
-            _db = db!;
-        }
+            _db = db!; // _db = db;
+		}
 
         /// <summary>
         /// 寄送一般通知（無附件）

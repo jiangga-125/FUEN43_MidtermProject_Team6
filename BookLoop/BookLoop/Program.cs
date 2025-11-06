@@ -12,28 +12,28 @@ using BookLoop.Services.Points;
 using BookLoop.Services.Pricing;
 using BookLoop.Services.Reports;
 using BookLoop.Services.Rules;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authentication.OAuth;
-using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.Authentication.Facebook;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.DataProtection;
+using BookLoop.Services.Security;
+using BookLoop.Services.Storage;
 using Hangfire;
 using Hangfire.MemoryStorage;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Facebook;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using BookLoop.Services.Storage;
 using Microsoft.Extensions.FileProviders;           // [KEEP]
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using OfficeOpenXml;
 using System;
 using System.IO;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
-using System.Security.Claims;
 
 namespace BookLoop
 {
@@ -127,7 +127,7 @@ namespace BookLoop
 			{
 				opt.Cookie.Name = "bookloop.external";
 				opt.Cookie.HttpOnly = true;
-				opt.Cookie.SameSite = SameSiteMode.Lax;
+				opt.Cookie.SameSite = SameSiteMode.None;
 				opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 				opt.ExpireTimeSpan = TimeSpan.FromMinutes(5);
 			})
@@ -197,6 +197,7 @@ namespace BookLoop
 					}
 				};
 			})
+
 			// === 外部登入：Google / Facebook / LINE ===
 			.AddGoogle("Google", opt =>
 			{
@@ -204,6 +205,25 @@ namespace BookLoop
 				opt.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]!;
 				opt.SaveTokens = true;
 				opt.SignInScheme = Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme;
+
+				opt.AccessType = "offline"; // refresh_token
+
+				opt.Events.OnRedirectToAuthorizationEndpoint = ctx =>
+				{
+					var delimiter = ctx.RedirectUri.Contains("?") ? "&" : "?";
+					var target = ctx.RedirectUri + $"{delimiter}prompt=consent";
+					System.Diagnostics.Debug.WriteLine("[Google] redirect: " + target);
+					ctx.Response.Redirect(target);
+					return Task.CompletedTask;
+				};
+
+				opt.Scope.Clear();
+				opt.Scope.Add("openid");
+				opt.Scope.Add("email");
+				opt.Scope.Add("profile");
+
+				var cb = builder.Configuration["Authentication:Google:CallbackPath"];
+				if (!string.IsNullOrWhiteSpace(cb)) opt.CallbackPath = cb;
 			})
 			.AddFacebook("Facebook", opt =>
 			{
@@ -214,7 +234,7 @@ namespace BookLoop
 			})
 			.AddOAuth("LINE", opt =>
 			{
-				opt.ClientId = builder.Configuration["Authentication:Line:ClientId"]!;        // ← 對齊 appsettings
+				opt.ClientId = builder.Configuration["Authentication:Line:ClientId"]!;
 				opt.ClientSecret = builder.Configuration["Authentication:Line:ClientSecret"]!;
 				opt.AuthorizationEndpoint = "https://access.line.me/oauth2/v2.1/authorize";
 				opt.TokenEndpoint = "https://api.line.me/oauth2/v2.1/token";
@@ -252,7 +272,6 @@ namespace BookLoop
 					.RequireAuthenticatedUser()
 					.Build();
 
-				// 保留你先前新增的可匿名 Policy（目前未直接套用到中介層，但保留不動）
 				options.AddPolicy("AllowAnonymousAccess", policy =>
 				{
 					policy.RequireAssertion(_ => true);
@@ -268,28 +287,30 @@ namespace BookLoop
 				opts.MaxFileBytes = 5 * 1024 * 1024;
 				opts.PermittedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 			});
+
 			builder.Services.AddScoped<ImportCategoryDto>();
 			builder.Services.AddScoped<BookService>();
 			builder.Services.AddHttpClient<IImageValidator, ImageValidator>();
 			builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
 			builder.Services.AddScoped<ReportQueryBuilder>();
 			builder.Services.AddSingleton<IExcelExporter, ClosedXmlExcelExporter>();
-			builder.Services.AddScoped<MailService>();
-			builder.Services.AddScoped<ICouponService, CouponService>();
-			builder.Services.AddSingleton<IExcelExporter, EpplusExcelExporter>();
 			builder.Services.AddScoped<IMailService, MailService>();
 			builder.Services.AddSingleton<ITemplateRenderer, SimpleTemplateRenderer>();
 			builder.Services.AddScoped<ITemplateMailer, TemplateMailer>();
-            builder.Services.AddSingleton<IFileStorage, R2StorageService>();
-            builder.Services.AddScoped<IMailJobRunner, MailJobRunner>();
+			builder.Services.AddSingleton<IFileStorage, R2StorageService>();
+			builder.Services.AddScoped<IMailJobRunner, MailJobRunner>();
 
-            builder.Services.AddScoped<ICouponService, CouponService>();
+			// Email OTP / Token
+			builder.Services.Configure<EmailOtpOptions>(builder.Configuration.GetSection("Auth:EmailOtp"));
+			builder.Services.AddScoped<IOtpService, SimpleOtpService>();
+			builder.Services.AddScoped<ITokenService, JwtTokenService>();
+
+			builder.Services.AddScoped<ICouponService, CouponService>();
 			builder.Services.AddScoped<IPointsService, PointsService>();
 			builder.Services.AddScoped<IPricingEngine, PricingEngine>();
 			builder.Services.AddScoped<IOrderService, OrderService>();
 			builder.Services.AddScoped<IReviewRulePipeline, ReviewRulePipeline>();
 			builder.Services.AddScoped<IReviewModerationService, ReviewModerationService>();
-			//builder.Services.AddScoped<IReviewRule, ForbiddenKeywordsRule>();
 			builder.Services.AddScoped<IReviewRuleProvider, DbReviewRuleProvider>();
 			builder.Services.AddScoped<IReviewRule>(sp =>
 			{
@@ -311,9 +332,9 @@ namespace BookLoop
 			builder.Services.AddControllersWithViews();
 			builder.Services.AddRazorPages();
 
-            // Hangfire（開發期先用記憶體儲存；正式環境可改 SQL Storage）
-            builder.Services.AddHangfire(cfg => cfg.UseMemoryStorage());
-            builder.Services.AddHangfireServer();
+			// Hangfire（開發期先用記憶體儲存；正式環境可改 SQL Storage）
+			builder.Services.AddHangfire(cfg => cfg.UseMemoryStorage());
+			builder.Services.AddHangfireServer();
 
 			#endregion
 
@@ -326,37 +347,7 @@ namespace BookLoop
 			{
 				app.UseDeveloperExceptionPage();
 				app.UseMigrationsEndPoint();
-
-				// 開發中觀察排程與工作狀態
 				app.UseHangfireDashboard("/hangfire");
-			}
-			else
-			{
-				app.UseExceptionHandler("/Home/Error");
-				app.UseHsts();
-			}
-
-                // 啟動時印出實際連到的 DB（幫助你確認連線是否為空或指錯 DB）
-                //using (var scope = app.Services.CreateScope())
-                //{
-                //	var appdb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                //	var csb = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(appdb.Database.GetConnectionString());
-                //	Console.WriteLine($"[AppDbContext] Server={csb.DataSource}, Database={csb.InitialCatalog}");
-
-                //	var memdb = scope.ServiceProvider.GetRequiredService<MemberContext>();
-                //	var csb2 = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(memdb.Database.GetConnectionString());
-                //	Console.WriteLine($"[MemberContext] Server={csb2.DataSource}, Database={csb2.InitialCatalog}");
-
-                //	// 啟動時資料初始化
-                //	var init = scope.ServiceProvider.GetRequiredService<DbInitializer>();
-                //	await init.EnsureAdminPasswordAsync("admin@bookstore.local", "Admin@12345!");
-                //	await init.EnsurePermissionAndFeatureSeedAsync("admin@bookstore.local");
-                //}
-
-                if (app.Environment.IsDevelopment())
-			{
-				app.UseDeveloperExceptionPage();
-				app.UseMigrationsEndPoint();
 			}
 			else
 			{
@@ -378,36 +369,23 @@ namespace BookLoop
 				});
 			});
 
-
-
-
-
-			// ================================
-			// 靜態檔案（順序極重要）
-			// ================================
-
-			// 1️⃣ 先放行廣告圖片：不需登入即可讀取
-			//    這段會讓 /images/ads/* 優先被 StaticFileMiddleware 處理
-			//    不會再被授權系統攔下導向 /Login?ReturnUrl=...
+			// 靜態檔案
 			app.UseStaticFiles(new StaticFileOptions
 			{
 				FileProvider = new PhysicalFileProvider(
 					Path.Combine(app.Environment.WebRootPath, "images", "ads")),
 				RequestPath = "/images/ads",
-				ServeUnknownFileTypes = true // 支援 webp / jfif / bmp 等副檔名
+				ServeUnknownFileTypes = true
 			});
 
-			// 2️⃣ 再開啟一般靜態資源服務（wwwroot 下的 CSS、JS、其他圖片）
 			app.UseStaticFiles();
 			app.UseRouting();
 
 			app.UseCors("DevCors");
 			app.UseAuthentication();
-			app.UseAuthorization(); // 順序：UseCors -> Authentication -> Authorization
+			app.UseAuthorization();
 
-			app.MapControllers(); // 讓路由的 /api/* 運作
-								  //app.MapFallbackToFile("index.html"); // 正式上線時 SPA 前端路由回傳 index.html
-
+			app.MapControllers();
 			app.MapControllerRoute(
 				name: "areas",
 				pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");

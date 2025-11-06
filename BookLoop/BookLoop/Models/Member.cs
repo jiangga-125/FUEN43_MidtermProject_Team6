@@ -76,8 +76,8 @@ namespace BookLoop
 	{
 		public int MemberTokenID { get; set; }
 		public int MemberID { get; set; }
-		public byte TokenType { get; set; }     // 1=EmailConfirm, 2=ResetPassword, 3=TwoFactorSession
-		public string Token { get; set; } = null!;
+		public string TokenType { get; set; }     // 1=EmailConfirm, 2=ResetPassword, 3=TwoFactorSession
+		public string? Token { get; set; } = null!;
 		public DateTime ExpiresAtUtc { get; set; }
 		public DateTime? ConsumedAtUtc { get; set; }
 		public DateTime CreatedAt { get; set; }
