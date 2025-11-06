@@ -27,7 +27,6 @@ function goHome() {
   router.push('/') // 導向首頁
 }
 
-
 // 訂單狀態對應
 const orderStatusMap: Record<number, string> = {
   0: '待付款',
@@ -55,6 +54,8 @@ async function loadOrders() {
     const list = await getOrdersByMember(Number(memberId.value))
     orders.value = list
     console.log('orders.value', orders.value)
+
+    await loadAllReturns()
   } catch (err) {
     console.error('載入訂單失敗', err)
     // 視需要顯示錯誤給使用者
@@ -68,6 +69,7 @@ async function onPay(orderId: number) {
 }
 // 載入會員所有退貨紀錄
 async function loadAllReturns() {
+  if (!orders.value.length) return // 🔹 防護：沒有訂單就不抓
   try {
     const allReturns: ReturnInfo[] = []
     for (const order of orders.value) {
@@ -79,8 +81,6 @@ async function loadAllReturns() {
     console.error('載入退貨紀錄失敗', err)
   }
 }
-
-
 
 async function cancelReturnOrder(returnId: number) {
   if (!confirm('確定要取消這筆退貨嗎？')) return
@@ -151,15 +151,30 @@ const allOrderDetails = computed(() =>
   orders.value.flatMap((order) =>
     order.OrderDetails.map((od) => ({
       ...od,
-      parentOrderID: order.OrderID,
+      parentOrderID: order.OrderID!, // 用 ! 告訴 TS 一定有值
     })),
   ),
 )
-
+const allOrderDetailsGroupedArray = computed(() => {
+  const map: Record<number, { details: (typeof allOrderDetails.value)[number][]; total: number }> =
+    {}
+  allOrderDetails.value.forEach((item) => {
+    if (!map[item.parentOrderID]) map[item.parentOrderID] = { details: [], total: 0 }
+    map[item.parentOrderID].details.push(item)
+    map[item.parentOrderID].total += item.Quantity * item.UnitPrice
+  })
+  // 🔹 將物件轉成陣列，每筆元素包含 orderId 與 group
+  return Object.entries(map).map(([orderId, group]) => ({
+    orderId,
+    ...group,
+  }))
+})
 onMounted(async () => {
   await loadOrders()
-  await loadAllReturns()
-
+  //   await loadAllReturns()
+  if (orders.value.length > 0) {
+    selectedOrder.value = orders.value[0]
+  }
   // 如果有 query 帶入 selectedOrderId
   const selectedId = route.query.selectedOrderId
   if (selectedId) {
@@ -168,6 +183,9 @@ onMounted(async () => {
       await viewOrderDetail(orderId)
     }
   }
+  console.log('orders.value', orders.value)
+  console.log('allOrderDetails.value', allOrderDetails.value)
+  console.log('allOrderDetailsGroupedArray.value', allOrderDetailsGroupedArray.value)
 })
 </script>
 
@@ -216,6 +234,14 @@ onMounted(async () => {
         @click="currentTab = 'returns'"
       >
         退貨紀錄
+      </button>
+      <button
+        class="btn btn-outline-info me-2"
+        :disabled="orders.length === 0"
+        :class="{ active: currentTab === 'allDetails' }"
+        @click="currentTab = 'allDetails'"
+      >
+        所有訂單明細
       </button>
     </div>
 
@@ -342,10 +368,10 @@ onMounted(async () => {
     <!-- 所有訂單明細 -->
     <div v-if="currentTab === 'allDetails'" class="mt-4">
       <h4>所有訂單明細</h4>
-      <div v-if="allOrderDetails.length === 0" class="text-muted py-3">目前沒有訂單明細</div>
+      <div v-if="allOrderDetailsGroupedArray.length === 0">目前沒有訂單明細</div>
 
-      <div v-for="order in orders" :key="order.OrderID" class="mb-4">
-        <h5>訂單 #{{ order.OrderID }}</h5>
+      <div v-for="group in allOrderDetailsGroupedArray" :key="group.orderId" class="mb-4">
+        <h5>訂單 #{{ group.orderId }}</h5>
         <div class="card shadow-sm bg-white p-3">
           <table class="table table-hover mb-0">
             <thead class="table-light">
@@ -357,34 +383,15 @@ onMounted(async () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in order.OrderDetails" :key="item.BookID">
-                <td>
-                  <div class="d-flex align-items-center gap-3">
-                    <img
-                      :src="
-                        item.Book?.coverUrl && item.Book.coverUrl.startsWith('http')
-                          ? item.Book.coverUrl
-                          : `/api/BookImages/${item.Book?.id}/cover`
-                      "
-                      :alt="item.Book?.title || 'Book Cover'"
-                      class="rounded shadow-sm"
-                      style="width: 60px; height: 80px; object-fit: cover"
-                    />
-                    <div>
-                      <strong class="fs-6">{{ item.Book?.title || '(已下架)' }}</strong>
-                      <div class="text-muted small">
-                        NT$ {{ item.Book?.salePrice ?? item.UnitPrice ?? 0 }}
-                      </div>
-                    </div>
-                  </div>
-                </td>
+              <tr v-for="item in group.details" :key="item.BookID">
+                <td>{{ item.Book?.title || '(已下架)' }}</td>
                 <td>{{ item.Quantity }}</td>
                 <td>NT$ {{ item.UnitPrice }}</td>
                 <td>NT$ {{ item.Quantity * item.UnitPrice }}</td>
               </tr>
             </tbody>
           </table>
-          <div class="text-end fs-5 fw-bold mt-3">總金額：NT$ {{ order.TotalAmount }}</div>
+          <div class="text-end fs-5 fw-bold mt-3">總金額：NT$ {{ group.total }}</div>
         </div>
       </div>
     </div>
