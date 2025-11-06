@@ -36,14 +36,12 @@
         case "system.account.welcome":
             tags = new() {
                 new { name = "品牌名稱", value = "{{BrandName}}" },
-                new { name = "使用者姓名", value = "{{Name}}" },
                 // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
                 // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
             }; break;
 
         case "system.order.placed":
             tags = new() {
-                new { name = "使用者姓名", value = "{{Name}}" },
                 new { name = "訂單編號",   value = "{{OrderNo}}" },
                 new { name = "下單時間",   value = "{{OrderDate}}" },
                 new { name = "訂單金額",   value = "{{Total}}" },
@@ -53,7 +51,6 @@
 
         case "system.order.shipped":
             tags = new() {
-                new { name = "使用者姓名", value = "{{Name}}" },
                 new { name = "訂單編號",   value = "{{OrderNo}}" },
                 new { name = "物流商",     value = "{{Carrier}}" },
                 new { name = "託運單號",   value = "{{TrackingNo}}" },
@@ -64,7 +61,6 @@
 
         case "system.order.arrived":
             tags = new() {
-                new { name = "使用者姓名", value = "{{Name}}" },
                 new { name = "訂單編號",   value = "{{OrderNo}}" },
                 new { name = "門市名稱",   value = "{{StoreName}}" },
                 new { name = "保管期限",   value = "{{HoldUntilDate}}" },
@@ -74,7 +70,6 @@
 
         case "system.reserve.arrived":
             tags = new() {
-                new { name = "使用者姓名", value = "{{Name}}" },
                 new { name = "書名",       value = "{{BookTitle}}" },
                 new { name = "門市名稱",   value = "{{StoreName}}" },
                 new { name = "保管期限",   value = "{{HoldUntilDate}}" },
@@ -84,13 +79,18 @@
 
         case "system.reserve.overdue":
             tags = new() {
-                new { name = "使用者姓名", value = "{{Name}}" },
                 new { name = "書名",       value = "{{BookTitle}}" },
                 new { name = "到期日",     value = "{{DueDate}}" },
                 new { name = "逾期天數",   value = "{{DaysOverdue}}" },
                 new { name = "處理連結",   value = "{{PrimaryActionUrl}}" }
             }; break;
-    }
+    }// 通用 tags：所有模板都會多這些
+    var common = new List<object> {
+        new { name = "使用者姓名", value = "{{Name}}" }
+    };
+
+    // 合併（只加不減）
+    tags.AddRange(common);
 
     var tagsJson = System.Text.Json.JsonSerializer.Serialize(tags);
 }
