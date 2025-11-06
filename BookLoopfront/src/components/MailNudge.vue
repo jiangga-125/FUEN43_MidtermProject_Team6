@@ -32,7 +32,14 @@
 
         <div class="nudge-actions">
           <button class="btn btn-outline-secondary btn-sm" @click="snooze">稍後提醒</button>
-          <button class="btn btn-primary btn-sm" @click="viewNow">查看</button>
+<!-- 按鈕：加 type、防預設、防冒泡 -->
+<button
+  class="btn btn-primary btn-sm"
+  type="button"
+  @click.prevent.stop="viewNow"
+>
+  查看
+</button>
         </div>
       </div>
     </div>
@@ -124,10 +131,35 @@ function viewNow() {
   clearIgnoredRid(); // 清掉本使用者的忽略狀態
   if (!mail.value?.viewUrl) return;
   markSeen(mail.value.rid);
-  const w = window.open(mail.value.viewUrl, "_blank", "noopener,noreferrer");
-  if (!w) location.href = mail.value.viewUrl;
-  show.value = false;
-  expanded.value = false;
+
+  // 以視窗大小 + 置中開啟，並移除工具列
+  const w = 900, h = 680;
+  const dualScreenLeft = window.screenLeft ?? window.screenX ?? 0;
+  const dualScreenTop  = window.screenTop  ?? window.screenY ?? 0;
+  const width  = window.innerWidth  ?? document.documentElement.clientWidth  ?? screen.width;
+  const height = window.innerHeight ?? document.documentElement.clientHeight ?? screen.height;
+  const left = Math.max(0, dualScreenLeft + (width - w) / 2);
+  const top  = Math.max(0, dualScreenTop  + (height - h) / 2);
+
+  const features = [
+    'popup=yes',
+    `width=${w}`, `height=${h}`,
+    `left=${left}`, `top=${top}`,
+    'toolbar=no', 'menubar=no', 'location=no',
+    'status=no', 'resizable=yes', 'scrollbars=yes'
+  ].join(',');
+
+  // 用命名視窗，避免連點開很多個
+  const win = window.open(mail.value.viewUrl, 'mail_preview_popup', features);
+  if (win) {
+    // 安全一點，切斷 opener
+    try { win.opener = null } catch {}
+    show.value = false;
+    expanded.value = false;
+  } else {
+    // 被瀏覽器攔截（使用者關閉了彈出視窗）→ 給提示，不做分頁 fallback
+    alert('瀏覽器阻擋了彈出視窗，請允許此網站的彈出視窗再試一次。');
+  }
 }
 
 function snooze() {
