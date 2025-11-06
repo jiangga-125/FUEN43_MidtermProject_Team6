@@ -1,40 +1,128 @@
 <!-- src/components/ProductCard.vue -->
 <script setup lang="ts">
-import { toRef, computed } from 'vue'
+import { toRef, computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Book } from '@/api/book'
+import { useAuth } from '@/stores/auth'
+import http from '@/lib/http'
 
 const props = defineProps<{ book: Book | null }>()
+const emit = defineEmits<{
+  (e: 'add', b: Book): void
+  (e: 'like', b: Book): void
+  (e: 'view', id: string | number): void
+}>()
 const book = toRef(props, 'book')
+
 const getBookId = (b: Book | null) =>
   (b as any)?.id ?? (b as any)?.bookId ?? (b as any)?.BookID ?? ''
-const emit = defineEmits<{ (e: 'add', b: Book): void; (e: 'like', b: Book): void }>()
 const coverSrc = computed(() => {
   const b = book.value
   if (!b) return '/placeholder.png'
-  // 若從列表 API 已回傳 coverUrl，直接用
-  if ((b as any).coverUrl) return (b as any).coverUrl
-  // 若沒有 coverUrl，試用 book.image (舊 API 欄位)，或 fallback 到我們的 endpoint
+  const anyb = b as any
+  if (anyb.coverUrl) return anyb.coverUrl
+  if (anyb.image) return anyb.image
   const id = getBookId(b)
-  if ((b as any).image) return (b as any).image
   if (id) return `/api/BookImages/book/${id}/cover`
   return '/placeholder.png'
 })
-const originalSrc = computed(() => computeOriginalSrc(book.value))
+const originalSrc = computed(() => {
+  const b = book.value as any
+  return (
+    b?.coverUrl ??
+    b?.image ??
+    (getBookId(book.value) ? `/api/BookImages/book/${getBookId(book.value)}/cover` : '')
+  )
+})
 
+// local state
+const adding = ref(false)
+const liking = ref(false)
 const router = useRouter()
+const auth = useAuth()
 
-function add() {
-  if (book.value) emit('add', book.value)
+// 取得 memberId 的 helper
+async function resolveMemberId(): Promise<number | null> {
+  const m = (auth as any).member
+  const tryIds = [m?.MemberID, m?.memberId, m?.id]
+  for (const v of tryIds) if (v) return Number(v)
+
+  try {
+    const r = await http.get('/api/auth/me')
+    const data = r?.data ?? r
+    const candidate = data?.memberId ?? data?.MemberID ?? data?.id ?? data?.userId
+    if (candidate) return Number(candidate)
+  } catch {
+    // ignore
+  }
+  return null
 }
-function like() {
-  if (book.value) emit('like', book.value)
+
+async function add(e?: Event) {
+  e?.stopPropagation()
+  if (!book.value) return
+  if (adding.value) return
+  adding.value = true
+
+  const id = Number(getBookId(book.value))
+  if (!id) {
+    alert('找不到 book id')
+    adding.value = false
+    return
+  }
+
+  const memberId = await resolveMemberId()
+  if (!memberId) {
+    alert('請先登入或確認會員資訊（MemberID）')
+    adding.value = false
+    return
+  }
+
+  const unitPrice = (book.value as any)?.salePrice ?? (book.value as any)?.listPrice ?? 0
+  const payload = {
+    MemberID: memberId,
+    BookID: id,
+    Quantity: 1,
+    UnitPrice: unitPrice,
+  }
+
+  try {
+    const res = await http.post('/api/ShoppingCart/add', payload)
+    const data = res?.data ?? res
+    if (data && (data.success === true || res.status === 200 || res.status === 201)) {
+      // MODIFIED: 不再 emit('add', book.value) 以避免父層重複呼叫
+      // 改成僅顯示成功提示或更新 local state
+      alert(data.message ?? '已加入購物車')
+    } else {
+      alert(data?.message ?? '加入購物車失敗')
+    }
+  } catch (err: any) {
+    console.error('AddToCart error', err)
+    const msg = err?.response?.data?.message ?? err?.response?.data ?? err?.message ?? '網路錯誤'
+    alert('加入購物車失敗：' + msg)
+  } finally {
+    adding.value = false
+  }
 }
+
+async function like(e?: Event) {
+  e?.stopPropagation()
+  if (!book.value) return
+  if (liking.value) return
+  liking.value = true
+  try {
+    emit('like', book.value)
+    alert('已加入收藏（示範）')
+  } finally {
+    liking.value = false
+  }
+}
+
 function goDetail() {
   const id = getBookId(book.value)
   if (!id) return
-  // 跳轉到 BookDetail，name 要跟 router/index.ts 的 name 相同
-  router.push({ name: 'BookDetail', params: { id: String(id) } })
+  router.push(`/books/${id}`)
+  emit('view', id)
 }
 
 function onImgError(e: Event) {
@@ -45,16 +133,6 @@ function onImgError(e: Event) {
     img.src = '/placeholder.png'
   }
 }
-
-function computeCoverSrc(b: Book | null) {
-  const url = (b as any)?.coverUrl
-  if (typeof url === 'string' && url.startsWith('http')) return url
-  const id = getBookId(b)
-  return id ? `/api/BookImages/${id}/cover` : '/placeholder.png'
-}
-function computeOriginalSrc(b: Book | null) {
-  return (b as any)?.coverUrl ?? (getBookId(b) ? `/api/BookImages/${getBookId(b)}/cover` : '') // <-- ADDED
-}
 </script>
 
 <template>
@@ -64,7 +142,7 @@ function computeOriginalSrc(b: Book | null) {
         :src="coverSrc"
         :alt="book?.title || 'cover'"
         :data-orig="originalSrc"
-        error="onImgError"
+        @error="onImgError"
         loading="lazy"
       />
     </div>
@@ -84,7 +162,7 @@ function computeOriginalSrc(b: Book | null) {
       </div>
 
       <div class="actions">
-        <button @click="add">加入購物車</button>
+        <button type="button" @click="add" :disabled="adding">加入購物車</button>
         <button class="ghost" @click="like">收藏</button>
       </div>
     </div>

@@ -1,3 +1,207 @@
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import http from '@/lib/http'
+import ProductCard from '@/components/ProductCard.vue'
+import { useAuth } from '@/stores/auth'
+
+const route = useRoute()
+const router = useRouter()
+
+const loading = ref(true)
+const auth = useAuth()
+const error = ref<string | null>(null)
+const rawItem = ref<any | null>(null)
+const book = ref<any | null>(null)
+const adding = ref(false)
+
+// 模擬讀者評價與相關推薦 TODO: 改為 API 請求
+const reviews = ref<any[]>([])
+const related = ref<any[]>([])
+const sidebarList = ref<any[]>([])
+
+const imgSrc = computed(() => {
+  if (!book.value) return '/placeholder.png'
+  return (
+    book.value.coverUrl ||
+    (book.value.id ? `/api/BookImages/book/${book.value.id}/cover` : '/placeholder.png')
+  )
+})
+
+const isDescriptionString = computed(
+  () => typeof book.value?.description === 'string' && book.value?.description.length > 0,
+)
+const descriptionExtracted = computed(() => {
+  const d = book.value?.description
+  if (!d || typeof d === 'string') return null
+  return d.content ?? d.summary ?? d.html ?? null
+})
+
+function smallCover(b: any) {
+  return b.coverUrl ?? (b.id ? `/api/BookImages/${b.id}/cover` : '/placeholder.png')
+}
+
+async function fetchBook() {
+  loading.value = true
+  error.value = null
+  rawItem.value = null
+  book.value = null
+
+  const id = String(route.params.id ?? '')
+  if (!id) {
+    error.value = '無效 id'
+    loading.value = false
+    return
+  }
+
+  try {
+    let res: any
+    try {
+      res = await http.get(`/api/books/${id}`)
+    } catch (err) {
+      // fallback
+      res = await http.get(`/api/BooksApi/GetById?id=${id}`)
+    }
+
+    rawItem.value = res.data ?? res
+    const payload = rawItem.value?.data ?? rawItem.value
+
+    // 格式化(範例)
+    const item = Array.isArray(payload) ? payload[0] : payload
+    book.value = {
+      id: item.id ?? item.bookId ?? id,
+      title: item.title ?? item.bookTitle ?? '無標題',
+      author: item.author ?? item.authors?.join?.(', ') ?? null,
+      isbn: item.isbn ?? item.ISBN ?? null,
+      price: item.salePrice ?? item.Price ?? null,
+      coverUrl: item.coverUrl ?? item.imageUrl ?? null,
+      description: item.description ?? item.summary ?? null,
+      raw: item,
+    }
+
+    // 載入相關商品（範例） TODO: 改為 API 請求
+    try {
+      const rel = await http.get(`/api/BooksApi/Related/${book.value.id}`)
+      related.value = (rel.data ?? []).slice(0, 8)
+    } catch (__) {
+      // ADDED: 若沒有相關 endpoint，就用空陣列（避免拋錯）
+      related.value = []
+    }
+
+    // 假資料：sidebarList / reviews TODO: 改為 API 請求
+    sidebarList.value = related.value.slice(0, 5)
+    reviews.value = item.reviews ?? [
+      { title: '好書推薦', author: '小明', rating: 5, content: '很實用的書，範例詳細。' },
+    ]
+
+    loading.value = false
+  } catch (e: any) {
+    console.error(e)
+    error.value = e?.message ?? '讀取錯誤'
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchBook()
+})
+
+async function resolveMemberId(): Promise<number | null> {
+  try {
+    const m = (auth as any).member
+    const tryIds = [m?.MemberID, m?.memberId, m?.id]
+    for (const v of tryIds) if (v) return Number(v)
+
+    // 若 store 沒有時可以呼叫 /api/auth/me
+    const r = await http.get('/api/auth/me')
+    const data = r?.data ?? r
+    const candidate = data?.memberId ?? data?.MemberID ?? data?.id ?? data?.userId
+    if (candidate) return Number(candidate)
+  } catch {
+    // ignore - 回 null 由呼叫處處理
+  }
+  return null
+}
+
+async function onAddToCart(e?: Event) {
+  e?.stopPropagation()
+  if (!book.value) return
+  if (adding.value) return
+  adding.value = true
+
+  const id = Number(book.value.id ?? book.value.bookId ?? book.value.BookID)
+  if (!id) {
+    alert('找不到 book id')
+    adding.value = false
+    return
+  }
+
+  const memberId = await resolveMemberId()
+  if (!memberId) {
+    alert('請先登入')
+    adding.value = false
+    return
+  }
+
+  const unitPrice = (book.value as any)?.price ?? (book.value as any)?.salePrice ?? 0
+  const payload = {
+    MemberID: memberId,
+    BookID: id,
+    Quantity: 1,
+    UnitPrice: unitPrice,
+  }
+
+  try {
+    // 與你後端 ShoppingCartController 對應的 endpoint
+    const res = await http.post('/api/ShoppingCart/add', payload)
+    const data = res?.data ?? res
+    if (data && (data.success === true || res.status === 200 || res.status === 201)) {
+      // 成功：顯示提示（你可改成 toast / 更新 cart store）
+      alert(data.message ?? '已加入購物車')
+      // 若後端有回 newCount，可在這裡更新全域購物車數字
+      // EX: cartStore.count = data.newCount
+      adding.value = false
+      return true
+    } else {
+      alert(data?.message ?? '加入購物車失敗')
+      adding.value = false
+      return false
+    }
+  } catch (err: any) {
+    console.error('onAddToCart error', err)
+    const msg = err?.response?.data?.message ?? err?.message ?? '網路錯誤'
+    alert('加入購物車失敗：' + msg)
+    adding.value = false
+    return false
+  }
+}
+
+async function onBuyNow() {
+  // 立即購買：先加入購物車，成功後才跳轉到購物車或結帳頁 TODO: 改為結帳頁
+  const ok = await onAddToCart()
+  if (ok) {
+    router.push('/cart')
+  }
+}
+
+function onFav() {
+  alert('加入收藏（示範）')
+}
+
+function onImgError(e: Event) {
+  const img = (e.currentTarget ?? e.target) as HTMLImageElement | null
+  if (!img) return
+  if (!img.dataset.errored) {
+    img.dataset.errored = '1'
+    img.src = '/placeholder.png'
+  }
+}
+
+function emitAdd(b: any) {
+  /* ProductCard 的 add event handler 若使用 */
+}
+</script>
+
 <template>
   <div class="container py-4">
     <nav aria-label="breadcrumb" class="mb-3">
@@ -40,11 +244,29 @@
             </div>
 
             <div class="d-flex align-items-center gap-2 mb-3">
-              <button class="btn btn-primary btn-lg" @click="onBuyNow">立即購買</button>
-              <button class="btn btn-outline-primary btn-lg" @click="onAddToCart">
-                加入購物車
+              <!-- type="button" + disabled 綁定 adding，onBuyNow 會等待加入購物車成功才跳轉 -->
+              <button
+                type="button"
+                class="btn btn-primary btn-lg"
+                @click="onBuyNow"
+                :disabled="adding"
+              >
+                立即購買
               </button>
-              <button class="btn btn-light" @click="onFav"><i class="bi bi-heart"></i> 收藏</button>
+
+              <!-- type="button" + disabled 綁定 adding，點擊會呼 onAddToCart -->
+              <button
+                type="button"
+                class="btn btn-outline-primary btn-lg"
+                @click="onAddToCart"
+                :disabled="adding"
+              >
+                {{ adding ? '處理中...' : '加入購物車' }}
+              </button>
+
+              <button type="button" class="btn btn-light" @click="onFav">
+                <i class="bi bi-heart"></i> 收藏
+              </button>
             </div>
 
             <ul class="list-inline small text-muted">
@@ -171,8 +393,16 @@
             <div class="card-body">
               <h6 class="card-title">活動與優惠</h6>
               <p class="small text-muted">使用 VIP 折扣或輸入優惠碼可享折扣。</p>
-              <button class="btn btn-outline-secondary w-100 mb-2">查看優惠</button>
-              <button class="btn btn-outline-primary w-100" @click="onAddToCart">加入購物車</button>
+              <button type="button" class="btn btn-outline-secondary w-100 mb-2">查看優惠</button>
+              <!-- 按鈕改為 type="button" 並呼叫 onAddToCart 同一函式 -->
+              <button
+                type="button"
+                class="btn btn-outline-primary w-100"
+                @click="onAddToCart"
+                :disabled="adding"
+              >
+                {{ adding ? '處理中...' : '加入購物車' }}
+              </button>
             </div>
           </div>
 
@@ -195,145 +425,6 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import http from '@/lib/http'
-import ProductCard from '@/components/ProductCard.vue' // 你已經有的卡片
-
-const route = useRoute()
-const router = useRouter()
-
-const loading = ref(true)
-const error = ref<string | null>(null)
-const rawItem = ref<any | null>(null)
-const book = ref<any | null>(null)
-
-// 模擬讀者評價與相關推薦（你可改為 API 請求）
-const reviews = ref<any[]>([])
-const related = ref<any[]>([])
-const sidebarList = ref<any[]>([])
-
-const imgSrc = computed(() => {
-  if (!book.value) return '/placeholder.png'
-  return (
-    book.value.coverUrl ||
-    (book.value.id ? `/api/BookImages/book/${book.value.id}/cover` : '/placeholder.png')
-  )
-})
-
-const isDescriptionString = computed(
-  () => typeof book.value?.description === 'string' && book.value?.description.length > 0,
-)
-const descriptionExtracted = computed(() => {
-  const d = book.value?.description
-  if (!d || typeof d === 'string') return null
-  return d.content ?? d.summary ?? d.html ?? null
-})
-
-function smallCover(b: any) {
-  return b.coverUrl ?? (b.id ? `/api/BookImages/${b.id}/cover` : '/placeholder.png')
-}
-
-async function fetchBook() {
-  loading.value = true
-  error.value = null
-  rawItem.value = null
-  book.value = null
-
-  const id = String(route.params.id ?? '')
-  if (!id) {
-    error.value = '無效 id'
-    loading.value = false
-    return
-  }
-
-  try {
-    let res: any
-    try {
-      res = await http.get(`/api/books/${id}`)
-    } catch (err) {
-      // fallback
-      res = await http.get(`/api/BooksApi/GetById?id=${id}`)
-    }
-
-    rawItem.value = res.data ?? res
-    const payload = rawItem.value?.data ?? rawItem.value
-
-    // normalize（簡單範例）
-    const item = Array.isArray(payload) ? payload[0] : payload
-    book.value = {
-      id: item.id ?? item.bookId ?? id,
-      title: item.title ?? item.bookTitle ?? '無標題',
-      author: item.author ?? item.authors?.join?.(', ') ?? null,
-      isbn: item.isbn ?? item.ISBN ?? null,
-      price: item.salePrice ?? item.Price ?? null,
-      coverUrl: item.coverUrl ?? item.imageUrl ?? null,
-      description: item.description ?? item.summary ?? null,
-      raw: item,
-    }
-
-    // 範例：載入相關商品（改成真實 API）
-    try {
-      const rel = await http.get(`/api/BooksApi/Related/${book.value.id}`)
-      related.value = (rel.data ?? []).slice(0, 8)
-    } catch (__) {
-      // ADDED: 若沒有相關 endpoint，就用空陣列（避免拋錯）
-      related.value = []
-    }
-
-    // 假資料：sidebarList / reviews
-    sidebarList.value = related.value.slice(0, 5)
-    reviews.value = item.reviews ?? [
-      { title: '好書推薦', author: '小明', rating: 5, content: '很實用的書，範例詳細。' },
-    ]
-
-    loading.value = false
-  } catch (e: any) {
-    console.error(e)
-    error.value = e?.message ?? '讀取錯誤'
-    loading.value = false
-  }
-}
-
-onMounted(() => {
-  fetchBook()
-})
-
-// actions
-function onAddToCart() {
-  if (!book.value) return
-  // 你們已有購物車功能：直接呼叫 API 或 emit
-  http
-    .post('/api/Cart/Add', { bookId: book.value.id, qty: 1 })
-    .then(() => alert('已加入購物車'))
-    .catch(() => alert('加入失敗'))
-}
-
-function onBuyNow() {
-  // 立即購買流程（示範）
-  onAddToCart()
-  router.push('/cart') // 或跳到結帳
-}
-
-function onFav() {
-  alert('加入收藏（示範）')
-}
-
-function onImgError(e: Event) {
-  const img = (e.currentTarget ?? e.target) as HTMLImageElement | null
-  if (!img) return
-  if (!img.dataset.errored) {
-    img.dataset.errored = '1'
-    img.src = '/placeholder.png'
-  }
-}
-
-function emitAdd(b: any) {
-  /* ProductCard 的 add event handler 若使用 */
-}
-</script>
 
 <style scoped>
 /* 微調：讓右側 sticky 區在大畫面時固定 */
