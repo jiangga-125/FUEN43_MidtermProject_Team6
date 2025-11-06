@@ -1,20 +1,40 @@
 <!-- src/components/ProductCard.vue -->
 <script setup lang="ts">
 import { toRef, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import type { Book } from '@/api/book'
 
 const props = defineProps<{ book: Book | null }>()
 const book = toRef(props, 'book')
-const getBookId = (b: Book | null) => (b as any)?.id ?? (b as any)?.bookId ?? (b as any)?.BookID ?? ''
+const getBookId = (b: Book | null) =>
+  (b as any)?.id ?? (b as any)?.bookId ?? (b as any)?.BookID ?? ''
 const emit = defineEmits<{ (e: 'add', b: Book): void; (e: 'like', b: Book): void }>()
-const coverSrc = computed(() => computeCoverSrc(book.value))
+const coverSrc = computed(() => {
+  const b = book.value
+  if (!b) return '/placeholder.png'
+  // 若從列表 API 已回傳 coverUrl，直接用
+  if ((b as any).coverUrl) return (b as any).coverUrl
+  // 若沒有 coverUrl，試用 book.image (舊 API 欄位)，或 fallback 到我們的 endpoint
+  const id = getBookId(b)
+  if ((b as any).image) return (b as any).image
+  if (id) return `/api/BookImages/book/${id}/cover`
+  return '/placeholder.png'
+})
 const originalSrc = computed(() => computeOriginalSrc(book.value))
+
+const router = useRouter()
 
 function add() {
   if (book.value) emit('add', book.value)
 }
 function like() {
   if (book.value) emit('like', book.value)
+}
+function goDetail() {
+  const id = getBookId(book.value)
+  if (!id) return
+  // 跳轉到 BookDetail，name 要跟 router/index.ts 的 name 相同
+  router.push({ name: 'BookDetail', params: { id: String(id) } })
 }
 
 function onImgError(e: Event) {
@@ -32,13 +52,13 @@ function computeCoverSrc(b: Book | null) {
   const id = getBookId(b)
   return id ? `/api/BookImages/${id}/cover` : '/placeholder.png'
 }
-function computeOriginalSrc(b: Book | null) {                         // <-- ADDD
+function computeOriginalSrc(b: Book | null) {
   return (b as any)?.coverUrl ?? (getBookId(b) ? `/api/BookImages/${getBookId(b)}/cover` : '') // <-- ADDED
 }
 </script>
 
 <template>
-  <div class="card">
+  <div class="card" @click="goDetail" role="button" tabindex="0" @keydown.enter.prevent="goDetail">
     <div class="cover">
       <img
         :src="coverSrc"
@@ -47,20 +67,22 @@ function computeOriginalSrc(b: Book | null) {                         // <-- ADD
         error="onImgError"
         loading="lazy"
       />
-      />
     </div>
+
     <div class="info">
       <h5 class="title" :title="book?.title">{{ book?.title }}</h5>
       <div class="prices">
         <span v-if="book?.salePrice != null" class="sale"
-          >NT$ {{ Math.round(book!.salePrice) }}</span
-        >
+          >NT$ {{ Math.round(book!.salePrice) }}
+        </span>
         <span
           v-if="book?.listPrice && book?.salePrice && book!.salePrice < book!.listPrice"
           class="list"
-          >NT$ {{ Math.round(book!.listPrice) }}</span
         >
+          NT$ {{ Math.round(book!.listPrice) }}
+        </span>
       </div>
+
       <div class="actions">
         <button @click="add">加入購物車</button>
         <button class="ghost" @click="like">收藏</button>
@@ -70,7 +92,6 @@ function computeOriginalSrc(b: Book | null) {                         // <-- ADD
 </template>
 
 <style scoped>
-/* 你的既有樣式（不必改） */
 .card {
   border: 1px solid #eee;
   border-radius: 12px;
