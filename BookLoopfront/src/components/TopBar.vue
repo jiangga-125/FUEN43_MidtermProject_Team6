@@ -29,6 +29,7 @@ async function signout() {
           <RouterLink class="link" to="/member">會員中心</RouterLink>
           <RouterLink class="link" :to="{ name: 'BRcenter' }">二手書紀錄</RouterLink>
           <router-link class="link" to="/member/coupons">優惠券</router-link>
+          <RouterLink class="link" to="/review/create" >撰寫評論</RouterLink>
           <button class="link btn" type="button" @click="signout">登出</button>
         </template>
 

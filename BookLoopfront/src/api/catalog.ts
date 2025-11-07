@@ -11,6 +11,8 @@ export async function getCategories() {
 export async function getBanners() {
   try {
     const { data } = await http.get('AdvertisementsApi')
+    console.log('✅ 成功載入廣告資料', data)
+
     return data
   } catch (err) {
     console.error('❌ 無法讀取廣告資料', err)
