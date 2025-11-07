@@ -266,7 +266,7 @@ string Provider)
 		}
 
 		// ✅ 使用綠界官方測試環境 
-		[HttpPost]
+		[HttpGet, HttpPost]
 		public IActionResult GoToPayment(int orderId)
 		{
 			// 先抓訂單並 Include OrderDetails

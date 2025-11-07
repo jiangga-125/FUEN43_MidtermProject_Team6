@@ -3,6 +3,13 @@ using System.Collections.Generic;
 
 namespace BookLoop.Models;
 
+
+
+public class ShipmentCreateRequest
+{
+	public int OrderID { get; set; }
+	public string Provider { get; set; } = string.Empty;
+}
 public partial class Shipment
 {
     public int ShipmentID { get; set; }

@@ -20,7 +20,7 @@
                 <td>@s.Address?.Address</td>
                 <td>@s.ShippedDate?.ToString("yyyy-MM-dd HH:mm")</td>
                 <td>@s.DeliveredDate?.ToString("yyyy-MM-dd HH:mm")</td>
-                <td>@(s.Status == 0 ? "已出貨" : s.Status == 1 ? "已送達" : "已退回")</td>
+                <td>@(s.Status == 0 ? "待出貨" : s.Status == 1 ? "已送達" : "已退回")</td>
             </tr>
         }
     </tbody>

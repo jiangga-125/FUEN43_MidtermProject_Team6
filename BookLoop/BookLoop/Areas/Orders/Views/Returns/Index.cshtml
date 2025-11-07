@@ -60,21 +60,22 @@
                             </div>
                             <div>
                                 <p class="mb-1">
-                                    <strong>狀態:</strong>
+                                    <strong>退貨狀態:</strong>
                                     @{
-                                        string statusText = item.Status switch
+                                        string returnStatusText = item.Status switch
                                         {
                                             0 => "申請中",
                                             1 => "審核中",
                                             2 => "已出貨",
                                             3 => "退貨中",
                                             4 => "已完成",
-                                            _ => ""
+                                            9 => "已取消", // ✅ 新增已取消
+                                            _ => "未知狀態"
                                         };
                                     }
-                                    @statusText
+                                    @returnStatusText
                                 </p>
-                                <p class="mb-1"><strong>退貨日期:</strong> @item.ReturnedDate?.ToString("yyyy/MM/dd")</p>
+                       
                             </div>
                         </div>
                     </div>
