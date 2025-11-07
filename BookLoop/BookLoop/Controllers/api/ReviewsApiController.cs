@@ -142,6 +142,28 @@ namespace BookLoop.Controllers.api
 			}
 		}
 
+		[HttpGet("{bookId}")]
+		[AllowAnonymous]
+		public async Task<IActionResult> GetBookReviews(int bookId)
+		{
+			var reviews = await _memberDb.Reviews
+				.Where(r => r.TargetType == 1 && r.TargetID == bookId && r.Status == 1)
+				.OrderByDescending(r => r.CreatedAt)
+				.Select(r => new
+				{
+					title = _memberDb.Members
+						.Where(m => m.MemberID == r.MemberID)
+						.Select(m => m.Username)
+						.FirstOrDefault() ?? $"會員 {r.MemberID}",  // 暱稱或會員編號
+					author = "",  // 若你想顯示書籍作者可以後面補
+					rating = r.Rating,
+					content = r.Content,
+					createdAt = r.CreatedAt
+				})
+				.ToListAsync();
+
+			return Ok(reviews);
+		}
 
 	}
 }

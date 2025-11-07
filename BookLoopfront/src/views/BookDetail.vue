@@ -15,8 +15,42 @@ const rawItem = ref<any | null>(null)
 const book = ref<any | null>(null)
 const adding = ref(false)
 
+// 🧩 預設假評論資料（後端無資料時使用）
+const fakeReviews = [
+  {
+    title: '超棒的書！',
+    author: '小美',
+    rating: 5,
+    content: '內容淺顯易懂，讓我快速上手程式設計！',
+    createdAt: new Date('2025-10-01').toISOString()
+  },
+  {
+    title: '值得推薦 📚',
+    author: '阿明',
+    rating: 4,
+    content: '範例豐富，實用性高，唯一缺點是字有點小～',
+    createdAt: new Date('2025-10-03').toISOString()
+  },
+  {
+    title: '不錯的參考書',
+    author: '讀者A',
+    rating: 5,
+    content: '學習時隨時可以翻來查，很方便。',
+    createdAt: new Date('2025-10-05').toISOString()
+  }
+]
+
+
 // 模擬讀者評價與相關推薦 TODO: 改為 API 請求
-const reviews = ref<any[]>([])
+const reviews = ref<{ 
+  title: string
+  author: string
+  rating: number
+  content: string
+  createdAt: string
+}[]>([])
+
+const loadingReviews = ref(true)
 const related = ref<any[]>([])
 const sidebarList = ref<any[]>([])
 
@@ -102,8 +136,24 @@ async function fetchBook() {
   }
 }
 
-onMounted(() => {
-  fetchBook()
+onMounted(async () => {
+  const bookId = Number(route.params.id)
+
+  // ✅ 先載入書籍資料
+  await fetchBook()
+
+  // ✅ 再載入評論
+   try {
+    const res = await http.get(`/api/ReviewsApi/GetBookReviews/${bookId}`)
+    reviews.value = Array.isArray(res.data) && res.data.length > 0
+      ? res.data
+      : fakeReviews
+  } catch (err) {
+    console.warn('⚠️ 無法載入評論，改用假資料')
+    reviews.value = fakeReviews
+  } finally {
+    loadingReviews.value = false
+  }
 })
 
 async function resolveMemberId(): Promise<number | null> {
@@ -346,33 +396,37 @@ function emitAdd(b: any) {
           </div>
 
           <div class="tab-pane fade" id="tab-reviews" role="tabpanel">
-            <!-- 範例 Accordion -->
-            <div class="accordion" id="reviewsAccordion">
-              <div class="accordion-item" v-for="(r, idx) in reviews" :key="idx">
-                <h2 class="accordion-header" :id="'h' + idx">
-                  <button
-                    class="accordion-button collapsed"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    :data-bs-target="'#c' + idx"
-                  >
-                    {{ r.title }} — {{ r.author }}
-                  </button>
-                </h2>
-                <div
-                  :id="'c' + idx"
-                  class="accordion-collapse collapse"
-                  :data-bs-parent="'#reviewsAccordion'"
-                >
-                  <div class="accordion-body">
-                    <div class="small text-muted mb-2">評分：{{ r.rating }}/5</div>
-                    <div>{{ r.content }}</div>
-                  </div>
-                </div>
-              </div>
-              <div v-if="reviews.length === 0" class="p-3 text-muted">目前尚無評價</div>
-            </div>
-          </div>
+  <div v-if="loadingReviews" class="p-3 text-muted">⏳ 載入評論中...</div>
+
+  <!-- 範例 Accordion -->
+  <div v-else class="accordion" id="reviewsAccordion">
+    <div class="accordion-item" v-for="(r, idx) in reviews" :key="idx">
+      <h2 class="accordion-header" :id="'h' + idx">
+        <button
+          class="accordion-button collapsed"
+          type="button"
+          data-bs-toggle="collapse"
+          :data-bs-target="'#c' + idx"
+        >
+          🧑‍💬 {{ r.title }}　⭐ {{ r.rating }}/5
+        </button>
+      </h2>
+      <div
+        :id="'c' + idx"
+        class="accordion-collapse collapse"
+        :data-bs-parent="'#reviewsAccordion'"
+      >
+        <div class="accordion-body">
+          <div class="text-muted small mb-2">{{ new Date(r.createdAt).toLocaleString() }}</div>
+          <div>{{ r.content }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="!reviews.length" class="p-3 text-muted">目前尚無評價</div>
+  </div>
+</div>
+
         </div>
 
         <hr />
