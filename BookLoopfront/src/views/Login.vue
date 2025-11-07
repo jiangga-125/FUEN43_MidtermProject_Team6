@@ -168,7 +168,13 @@ async function loginPassword() {
   if (!canSubmitPassword.value) return
   err.value = ''
   try {
-    await auth.login(account.value, password.value)
+    /*修改：接住 auth.login 的回傳*/
+    const res = await auth.login(account.value, password.value)
+    /*新增：抽 token 並套用；如果 auth.login 沒回，就嘗試從 auth 內部狀態取*/
+    const token = pickToken(res) || (auth as any)?.token || (auth as any)?.state?.token || null
+    if (!token) throw new Error('登入回應沒有 token')
+    applyToken(token)
+
     router.replace(getRedirectTarget())
   } catch (e: any) {
     err.value = (auth as any).error || e?.response?.data?.message || '登入失敗'
@@ -217,7 +223,13 @@ async function loginByTotp() {
   if (!canSubmitTotp.value) return
   err.value = ''
   try {
-    await auth.loginWithTotp(account.value, totpCode.value)
+    /*修改：接住回傳*/
+    const res = await auth.loginWithTotp(account.value, totpCode.value)
+     /*新增：抽 token + 套用*/
+    const token = pickToken(res) || (auth as any)?.token || (auth as any)?.state?.token || null
+    if (!token) throw new Error('登入回應沒有 token')
+    applyToken(token)
+
     router.replace(getRedirectTarget())
   } catch (e: any) {
     err.value = e?.response?.data?.message || 'TOTP 登入失敗'

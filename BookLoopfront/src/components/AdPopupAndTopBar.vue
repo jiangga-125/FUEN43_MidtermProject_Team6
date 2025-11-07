@@ -78,7 +78,7 @@ onMounted(loadAds)
 
 <style scoped>
 .top-banner {
-  top: 0;
+  padding-top: 50px;
   left: 0;
   width: 100vw;           /* 🔥 滿版寬度 (視窗寬度) */
   z-index: 9999;

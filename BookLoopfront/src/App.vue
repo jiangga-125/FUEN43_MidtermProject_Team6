@@ -6,10 +6,12 @@ import BannerCarousel from './components/BannerCarousel.vue'
 import SidebarCategories from './components/SidebarCategories.vue'
 import ProductTabs from './components/ProductTabs.vue'
 import { computed, ref } from 'vue'
+import MailNudge from "@/components/MailNudge.vue";
 
 /* 依路由判斷是否首頁 */
 import { useRoute, RouterView } from 'vue-router'
 import AdPopupAndTopBar from './components/AdPopupAndTopBar.vue'
+import Marquee from './components/Marquee.vue'
 const route = useRoute()
 const isHome = computed(() => route.path === '/') // 只有首頁為 true
 
@@ -17,6 +19,7 @@ const isHome = computed(() => route.path === '/') // 只有首頁為 true
 const selectedCategoryId = ref<number | null>(null) // null=全部
 
 function onPickCategory(id: number | null) {
+  console.log('[Parent] onPickCategory', id)
   selectedCategoryId.value = id
 }
 </script>
@@ -27,16 +30,19 @@ function onPickCategory(id: number | null) {
 
 
   <!-- 首頁專屬區塊：只有在 '/' 才會渲染 -->
-  <template v-if="isHome">  
-    <HeaderBar /> 
+  <template v-if="isHome">
+    <HeaderBar />
     <AdPopupAndTopBar />
+    <Marquee />
     <BannerCarousel />
     <main class="container layout">
       <!-- 左：分類清單，點擊後更新 selectedCategoryId -->
       <SidebarCategories :selected-id="selectedCategoryId" @select="onPickCategory" />
       <!-- 右：商品區，接收分類 id -->
-      <ProductTabs :category-id="selectedCategoryId" />
+      <ProductTabs :categoryId="selectedCategoryId" />
     </main>
+      <RouterView />
+  <MailNudge />
   </template>
 
   <!-- 非首頁：只顯示各自頁面的內容（乾淨的新頁感） -->
@@ -115,3 +121,4 @@ function onPickCategory(id: number | null) {
   white-space: pre-wrap;
 }
 </style>
+

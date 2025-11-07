@@ -9,6 +9,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using MimeKit.Utils;
+using System;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,15 +30,16 @@ namespace BookLoop.Services.Mail
         private readonly AppDbContext _db; // AppDbContext? _db
 		public MailService(
             IConfiguration config,
-            ILogger<MailService>? logger = null,
-            IWebHostEnvironment? env = null,
-            AppDbContext? db = null)
+			AppDbContext db,
+			ILogger<MailService>? logger = null,
+            IWebHostEnvironment? env = null
+             )
         {
             _config = config;
-            _logger = logger;
+			_db = db;
+			_logger = logger;
             _env = env;
-            _db = db!; // _db = db;
-		}
+        }
 
         /// <summary>
         /// 寄送一般通知（無附件）
@@ -90,16 +95,18 @@ namespace BookLoop.Services.Mail
 
             if (string.IsNullOrWhiteSpace(fromEmail))
                 throw new InvalidOperationException("Smtp:FromEmail 未設定。");
-
-            // 組 MimeMessage
-            var message = new MimeMessage();
+			// 標準化收件者：解析出純 email 並轉小寫，避免與 Brevo 事件 email 對不到
+			var toMailbox = MailboxAddress.Parse(to);
+			var toEmail = (toMailbox.Address ?? to).Trim().ToLowerInvariant(); 
+			// 組 MimeMessage
+			var message = new MimeMessage();
             message.From.Add(new MailboxAddress(fromName, fromEmail));
-            message.To.Add(MailboxAddress.Parse(to));
+            message.To.Add(toMailbox);
             message.Subject = subject ?? string.Empty;
 
             var builder = new BodyBuilder();
 
-            // 影像策略：Cid（離線也能顯示）或 Hosted（你有 PublicBaseUrl）
+            // Cid（離線也能顯示）或 Hosted（PublicBaseUrl）
             var imageMode = (smtp["ImageEmbedding"] ?? "Cid").Trim();
             var publicBaseUrl = (smtp["PublicBaseUrl"] ?? "").Trim();
 
@@ -109,7 +116,21 @@ namespace BookLoop.Services.Mail
             else
                 html = EmbedLocalImagesToCid(html, builder); // 預設：Cid
 
-            builder.HtmlBody = html;
+			// 取得簽章密鑰與 BaseUrl（兩者都要有才改寫）
+			var viewSecret = _config["Mail:ViewSecret"];
+			var baseUrl = _config["App:PublicBaseUrl"]
+						  ?? _config["Smtp:PublicBaseUrl"]
+						  ?? ""; // 例如 https://yourdomain.com
+
+			if (jobRecipientId.HasValue &&
+				!string.IsNullOrWhiteSpace(viewSecret) &&
+				!string.IsNullOrWhiteSpace(baseUrl))
+			{
+				html = RewriteLinksForClickTrackingSimple(
+					html, jobRecipientId.Value, viewSecret, baseUrl);
+			}
+
+			builder.HtmlBody = html;
 
             if (attachmentBytes is { Length: > 0 })
             {
@@ -117,10 +138,19 @@ namespace BookLoop.Services.Mail
                 builder.Attachments.Add(name, attachmentBytes, ContentType.Parse(contentType));
             }
 
-            message.Body = builder.ToMessageBody();
+			message.Body = builder.ToMessageBody();
 
-            // === 先寫 Pending Log ===
-            var log = new MailSendLog
+			// 顯式確保有 Message-Id（MailKit 通常會自生，這裡保險）
+			if (string.IsNullOrWhiteSpace(message.MessageId))
+				message.MessageId = MimeUtils.GenerateMessageId();
+
+			// [增加自訂 header（利於排錯）
+			if (mailJobId.HasValue) message.Headers.Add("X-App-JobId", mailJobId.Value.ToString());
+			if (jobRecipientId.HasValue) message.Headers.Add("X-App-JobRecipientId", jobRecipientId.Value.ToString());
+			if (!string.IsNullOrWhiteSpace(templateKey)) message.Headers.Add("X-App-TemplateKey", templateKey!);
+
+			// === 先寫 Pending Log ===
+			var log = new MailSendLog
             {
                 Category = string.IsNullOrWhiteSpace(category) ? "System" : category,
                 TemplateId = templateId,
@@ -128,11 +158,11 @@ namespace BookLoop.Services.Mail
                 TemplateVersionId = templateVersionId,
                 MailJobId = mailJobId,
                 JobRecipientId = jobRecipientId,
-                Recipient = to,
+                Recipient = toEmail,
                 Subject = subject ?? "",
                 Status = "Pending",
                 SentAt = DateTime.Now,
-                BodySnapshot = body
+                BodySnapshot = html
             };
 
             _db.MailSendLogs.Add(log);                 // ← 使用複數 DbSet 名稱
@@ -155,8 +185,8 @@ namespace BookLoop.Services.Mail
                 // 成功
                 log.TemplateVersionId = templateVersionId;
                 log.Status = "Sent";
-                log.ProviderMsgId = response;
-                log.BodySnapshot = body;
+                log.ProviderMsgId = NormalizeMsgId(message.MessageId);
+				//log.BodySnapshot = body;
                 log.Error = null;
                 log.SentAt = DateTime.Now;
                 await _db.SaveChangesAsync(cancellationToken);
@@ -165,18 +195,18 @@ namespace BookLoop.Services.Mail
             {
                 // 失敗
                 log.TemplateVersionId = templateVersionId;
-                log.BodySnapshot = body;
+                //log.BodySnapshot = body;
                 log.Status = "Failed";
                 log.Error = ex.Message;
                 await _db.SaveChangesAsync(cancellationToken);
 
-                _logger?.LogError(ex, "Mail send failed to {To}", to);
+                _logger?.LogError(ex, "Mail send failed to {To}", toEmail);
                 throw;
             }
         }
         // ====== 圖片處理（Hosted / Cid）======
 
-        // Hosted：把 /uploads/... 改成 https://公開端點/uploads/...
+        // Hosted
         private string RewriteRelativeImgToAbsolute(string html, string publicBaseUrl)
         {
             if (string.IsNullOrWhiteSpace(html) || string.IsNullOrWhiteSpace(publicBaseUrl)) return html;
@@ -256,6 +286,51 @@ namespace BookLoop.Services.Mail
             return path;
         }
 
+		// 工具：Message-Id 正規化（移除尖括號/空白 → 小寫）
+		private static string NormalizeMsgId(string? s) // [NEW]
+		{
+			return string.IsNullOrWhiteSpace(s)
+				? ""
+				: s.Trim().Trim('<', '>', ' ', '\t', '\r', '\n').ToLowerInvariant();
+		}
 
-    }
+		// 簡化版：把 <a href="http/https"> 改成 /api/mail/c/{rid}?u=ENC(url)&s=HMAC
+		private static readonly Regex _hrefRegex =
+			new Regex("href\\s*=\\s*\"([^\"]+)\"", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+		private string RewriteLinksForClickTrackingSimple(
+			string html, long rid, string secret, string baseUrl)
+		{
+			if (string.IsNullOrWhiteSpace(html)) return html;
+			baseUrl = baseUrl.TrimEnd('/');
+
+			return _hrefRegex.Replace(html, m =>
+			{
+				var href = m.Groups[1].Value?.Trim();
+				if (string.IsNullOrWhiteSpace(href)) return m.Value;
+
+				var lower = href.ToLowerInvariant();
+				// 放過非 http(s) 連結與錨點/腳本/mailto
+				if (lower.StartsWith("#") || lower.StartsWith("mailto:") || lower.StartsWith("javascript:"))
+					return m.Value;
+				if (!(lower.StartsWith("http://") || lower.StartsWith("https://")))
+					return m.Value;
+
+				var sig = Sign($"{rid}|{href}", secret); // 與 Controller Click 驗證規則一致
+				var trackUrl = $"{baseUrl}/api/mail/c/{rid}?u={WebUtility.UrlEncode(href)}&s={sig}";
+
+				// 強化 target / rel
+				return $"href=\"{trackUrl}\" target=\"_blank\" rel=\"noopener noreferrer\"";
+			});
+		}
+
+		// 與 Controller 相同邏輯：HMAC-SHA256 → Hex
+		private static string Sign(string payload, string secret)
+		{
+			using var h = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+			var b = h.ComputeHash(Encoding.UTF8.GetBytes(payload));
+			return Convert.ToHexString(b);
+		}
+
+	}
 }

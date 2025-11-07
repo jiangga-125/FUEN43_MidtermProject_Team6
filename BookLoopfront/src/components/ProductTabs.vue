@@ -1,10 +1,16 @@
+<!-- src/components/ProductTabs.vue -->
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
-import { getBooks, type Book } from '@/api/catalog'
+import { ref, onMounted, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { getBooks, type Book } from '@/api/book'
 import ProductCard from './ProductCard.vue'
-import UsedListingsGrid from '@/components/UsedListingsGrid.vue' // ★ 新增
+import { addToCart as addCartAPI } from '@/api/shoppingCart'
+import UsedListingsGrid from '@/components/UsedListingsGrid.vue'
+// 使用 pinia auth store（你檔案最底有 export useAuth）
+import { useAuth } from '@/stores/auth'
 
-/* ★ 從父層接收 categoryId，當它或 tab 改變時重新抓資料 */
+const router = useRouter()
+// 從父層接收 categoryId
 const props = defineProps<{ categoryId: number | null }>()
 
 type TabKey = 'new' | 'hot' | 'list'
@@ -17,8 +23,14 @@ const items = ref<Book[]>([])
 const loading = ref(false)
 const err = ref('')
 
+const auth = useAuth()
+// 取得 memberId（保護轉型：可能為 string 或 number）
+const memberId = computed<number | null>(() => {
+  const id = (auth.member as any)?.memberId ?? (auth.member as any)?.MemberID ?? null
+  return typeof id === 'string' ? Number(id) : id
+})
+// 讀取商品列表
 async function load() {
-  // ★ 二手書頁籤不透過 getBooks，交給 UsedListingsGrid
   if (tab.value === 'list') {
     loading.value = false
     err.value = ''
@@ -28,13 +40,13 @@ async function load() {
 
   try {
     loading.value = true
-    err.value = ''
     const { items: list, total: t } = await getBooks({
       tab: tab.value,
       categoryId: props.categoryId,
       page: page.value,
       pageSize: pageSize.value,
     })
+    console.log('📦 items loaded:', list)
     items.value = list
     total.value = t
   } catch (e: any) {
@@ -44,32 +56,83 @@ async function load() {
   }
 }
 
-/* ★ 切換 tab/分類/頁數就重新抓 */
-watch([() => props.categoryId, tab, page], () => {
-  load()
+onMounted(async () => {
+  await load()
 })
-onMounted(load)
 
 function setTab(k: TabKey) {
-  if (tab.value !== k) {
-    tab.value = k
-    page.value = 1
-  }
+  if (tab.value !== k) page.value = 1
+  tab.value = k
+  // 立即 reload（watch 也會觸發，但做一次保險）
+  load().catch((e) => console.error(e))
 }
 
 function next() {
-  if (page.value * pageSize.value < total.value) page.value++
+  if (page.value * pageSize.value < total.value) {
+    page.value++
+    load().catch((e) => console.error(e))
+  }
 }
 function prev() {
-  if (page.value > 1) page.value--
+  if (page.value > 1) {
+    page.value--
+    load().catch((e) => console.error(e))
+  }
 }
 
-/* 先做可見動作：之後把這裡改成真正的購物車/收藏 API */
-function addToCart(b: Book) {
-  alert(`加入購物車：${b.title}`)
-}
-function like(b: Book) {
-  alert(`已收藏：${b.title}`)
+async function addToCart(b: Book) {
+  // 若未登入，提示並導去登入（可改成 modal）
+  if (!auth.member) {
+    console.log('[addToCart] user not logged in, prompt to go to login')
+    const ok = confirm('你尚未登入，請登入後再加入購物車。要前往登入頁嗎？')
+    console.log('[addToCart] confirm result:', ok)
+    if (!ok) return
+
+    // 正確使用你實際的 route name（你說的是 'login'）
+    router
+      .push({ name: 'login' })
+      .then(() => {
+        console.log('[addToCart] router.push by name succeeded')
+      })
+      .catch((err) => {
+        console.warn('[addToCart] push by name failed:', err)
+        // fallback：用 path
+        router
+          .push({ path: '/login' })
+          .then(() => console.log('[addToCart] router.push by path succeeded'))
+          .catch((err2) => {
+            console.error('[addToCart] push by path failed too:', err2)
+            // 最後保險：直接改 window.location.href（會 full reload）
+            window.location.href = '/login'
+          })
+      })
+    return
+  }
+
+  // ========== 真正加入購物車邏輯 ==========
+  try {
+    const payload: any = {
+      BookID: b.id,
+      Quantity: 1,
+      UnitPrice: b.salePrice ?? b.listPrice ?? 0,
+    }
+
+    // 短期 fallback：如果後端還要求 MemberID 才存，才附上（長期請後端改由 token 決定）
+    if (memberId.value) payload.MemberID = memberId.value
+
+    console.log('加入購物車 payload', payload)
+    const res = await addCartAPI(payload)
+    console.log('購物車回傳資料', res)
+    alert(`✅ 已加入購物車：${b.title}`)
+  } catch (e: any) {
+    console.error('加入購物車錯誤', e)
+    if (e?.response) {
+      const msg = e.response.data?.message ?? '加入購物車失敗'
+      alert(`❌ ${msg}`)
+    } else {
+      alert(`❌ 加入購物車失敗: ${e?.message ?? '未知錯誤'}`)
+    }
+  }
 }
 </script>
 
@@ -79,24 +142,22 @@ function like(b: Book) {
       <button :class="{ active: tab === 'new' }" @click="setTab('new')">新書熱推</button>
       <button :class="{ active: tab === 'hot' }" @click="setTab('hot')">熱門排行</button>
       <button :class="{ active: tab === 'list' }" @click="setTab('list')">二手書</button>
-      <div class="spacer" />
-       <div class="pager" v-if="tab !== 'list'"><!-- ★ 二手書不用這個分頁器 -->
+      <div class="spacer"></div>
+      <div class="pager" v-if="tab !== 'list'">
         <button @click="prev" :disabled="page <= 1">‹</button>
         <span>{{ page }}</span>
         <button @click="next" :disabled="page * pageSize >= total">›</button>
       </div>
     </div>
 
-     <!-- 新書 / 熱門：舊有格狀卡片 -->
     <template v-if="tab !== 'list'">
       <div v-if="loading" class="muted">載入中…</div>
       <div v-else-if="err" class="err">{{ err }}</div>
       <div v-else class="grid">
-        <ProductCard v-for="b in items" :key="b.bookId" :book="b" @add="addToCart" @like="like" />
+        <ProductCard v-for="b in items" :key="b.id" :book="b" @add="addToCart" />
       </div>
     </template>
 
-    <!-- 二手書：直接嵌入共用清單元件 -->
     <section v-else>
       <UsedListingsGrid />
     </section>
@@ -106,9 +167,9 @@ function like(b: Book) {
 <style scoped>
 .panel {
   background: #fff;
-  border: 1px solid #e9ecef;
-  border-radius: 12px;
   padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
 }
 .tabs {
   display: flex;
@@ -117,11 +178,11 @@ function like(b: Book) {
   margin-bottom: 12px;
 }
 .tabs button {
-  background: #f1f3f5;
-  border: 0;
   padding: 8px 12px;
   border-radius: 999px;
   cursor: pointer;
+  border: 0;
+  background: #f1f3f5;
 }
 .tabs button.active {
   background: #0d6efd;

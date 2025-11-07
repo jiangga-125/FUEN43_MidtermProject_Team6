@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookLoop.Areas.Borrows.Controllers
+namespace BookLoop.Controllers.api
 {
     [Route("api/listings")]
     [ApiController]

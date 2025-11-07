@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-
+function notifyBorrowed() {
+  alert('此書已被你借閱，無法預約');
+  // 若要用第三方彈窗（像 SweetAlert2），在這裡呼叫即可
+  // Swal.fire({ icon: 'info', text: '此書已被你借閱，無法預約' })
+}
 // ---- API ----
 import { getFrontListings, type Listing } from '@/api/Listings'
 import {
   prepareReservation,
   createReservation,
   type CreateReservationRequest,
+  type MemberOption,            // ✅ 改從 API 匯入型別
+  ALLOWED_MEMBER_ID,            // ✅ 允許的會員常數
 } from '@/api/reservations'
 import ReservationDialog from '@/components/ReservationDialog.vue'
-import type { MemberOption } from '@/components/ReservationDialog.vue'
+
+
 
 // ---- 狀態 ----
 const listings = ref<Listing[]>([])
@@ -63,7 +70,7 @@ function statusBadgeClass(s:number){ return ({0:'bg-success',1:'bg-primary',2:'b
 
 function onImgError(e: Event) {
   const img = e.target as HTMLImageElement | null
-  if (img) { img.onerror = null; img.src = '/images/borrow/noimage.jpeg' }
+  if (img) { img.onerror = null; img.src = '/noimage.jpeg' }
 }
 const reserving = ref(false)
 const showDialog = ref(false)
@@ -91,9 +98,15 @@ async function doReserve(item: Listing){
   reserving.value = true
   try {
     const pre = await prepareReservation(item.listingId)
+    let allowed = pre.members?.find(m => m.id === ALLOWED_MEMBER_ID)
+    if (!allowed) {
+      // 用現有第一個名稱當作 fallback；若沒有就給預設
+      const fallbackName = pre.members?.[0]?.name || `會員 ${ALLOWED_MEMBER_ID}`
+      allowed = { id: ALLOWED_MEMBER_ID, name: fallbackName }
+    }
     dialogListingId.value = pre.listingId
     dialogBookTitle.value = pre.bookTitle
-    dialogMembers.value = pre.members as MemberOption[]
+    dialogMembers.value = [allowed]
     dialogDate.value = pre.defaultPickupDate.slice(0,10)
     dialogTime.value = pre.defaultPickupTime
     showDialog.value = true
@@ -109,7 +122,7 @@ async function onConfirmReserve(payload: { memberId:number; date:string; time:st
     reserving.value = true
     const req: CreateReservationRequest = {
       listingId: dialogListingId.value,
-      memberId: payload.memberId,
+      memberId: ALLOWED_MEMBER_ID,
       requestedPickupDate: payload.date,
       requestedPickupTime: payload.time,
     }
@@ -160,12 +173,12 @@ onMounted(async () => {
       <div class="col" v-for="item in pagedItems" :key="item.listingId">
         <div class="card h-100 shadow-sm card-compact">
           <img
-            :src="(item.imageUrl || '').trim() || '/images/borrow/noimage.jpeg'"
+            :src="(item.imageUrl || '').trim() || '/noimage.jpeg'"
             :alt="item.title"
             :title="item.title"
             class="card-img-top cover"
             loading="lazy"
-            @error="onImgError"
+            error="onImgError"
           />
 
           <div class="card-body d-flex flex-column">
@@ -192,7 +205,8 @@ onMounted(async () => {
               >
                 借書
               </button>
-              <button v-if="item.status===2" class="btn btn-danger btn-sm w-25" disabled>預約</button>
+              <button v-if="item.status===2" class="btn btn-danger btn-sm w-25"
+              @click="notifyBorrowed">預約</button>
             </div>
           </div>
         </div>

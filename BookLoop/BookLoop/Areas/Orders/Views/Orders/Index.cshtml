@@ -3,11 +3,9 @@
 @{
     ViewData["Title"] = "Index";
 }
+@inject BookLoop.Data.MemberContext DbContext
 @section Styles {
     <style>
-
-
-
         th.head-width, td.head-width {
             width: 140px;
             text-overflow: ellipsis;
@@ -16,41 +14,36 @@
 
         /* 訂單滑鼠移上去變色*/
         .table tbody tr:hover {
-            background-color: #f0f8ff; /* 淡藍色，可換顏色 */
-            cursor: pointer; /* 滑鼠變成手型，更直覺 */
-            transition: background-color 0.3s ease; /* 平滑過渡 */
+            background-color: #f0f8ff;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
         }
 
-        /* 新增按鈕CSS*/
         .btn-new {
-            width: 200px; /* 寬度 */
-            border: 2px solid #28a745; /* 跟 btn-success 顏色一致 */
-            background-color: #eaf9ee; /* 框內淺綠色 */
-            color: #28a745; /* 文字顏色 */
+            width: 200px;
+            border: 2px solid #28a745;
+            background-color: #eaf9ee;
+            color: #28a745;
             font-weight: 600;
             transition: all 0.3s ease;
         }
 
             .btn-new:hover {
-                background-color: #28a745; /* 新增按鈕滑鼠移上去變深綠 */
+                background-color: #28a745;
                 color: white;
             }
-
-
-
 
         .btn-action {
             width: 120px;
             font-weight: 600;
-            border-radius: 12px; /* 圓角 */
+            border-radius: 12px;
             transition: all 0.3s ease;
         }
 
             .btn-action:hover {
-                transform: translateY(-2px); /* 輕微浮起 */
+                transform: translateY(-2px);
                 box-shadow: 0 4px 8px rgba(0,0,0,0.15);
             }
-
     </style>
 }
 
@@ -58,11 +51,11 @@
 <div class="text-center">
     <h1 class="border-2">訂單</h1>
 
-
     @if (TempData["Success"] != null)
     {
         <div class="alert alert-success">@TempData["Success"]</div>
     }
+
     <div class="mb-3 text-start">
         <button class="btn btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#advancedSearch" aria-expanded="false" aria-controls="advancedSearch">
             進階搜尋
@@ -70,16 +63,14 @@
     </div>
 
     <div class="collapse @(
-          !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchOrderID"]) ||
-       
-          !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchStartDate"]) ||
-          !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchEndDate"]) ||
-          !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchBookName"])
-          ? "show" : "")"
-          id="advancedSearch">
+         !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchOrderID"]) ||
+         !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchStartDate"]) ||
+         !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchEndDate"]) ||
+         !string.IsNullOrEmpty(ViewContext.HttpContext.Request.Query["searchBookName"])
+         ? "show" : "")"
+         id="advancedSearch">
         <div class="card card-body mb-3">
             <form asp-action="Index" method="get" class="row g-2">
-
                 <div class="col-md-2">
                     <label for="searchStartDate" class="form-label">訂單編號</label>
                     <input type="number" name="searchOrderID" class="form-control" placeholder="OrderID" value="@ViewContext.HttpContext.Request.Query["searchOrderID"]">
@@ -119,78 +110,35 @@
     <p>
         <a asp-action="Create" class="btn btn-new">新增</a>
     </p>
+
     <div class="d-flex justify-content-center">
         <table class="table" style="table-layout: fixed; width:100%;">
             <thead>
                 <tr>
-                    <th class="head-width">
-                        @Html.DisplayNameFor(model => model.OrderID)
-                    </th>
-                    <th class="head-width">
-                        @Html.DisplayNameFor(model => model.OrderDate)
-                    </th>
-                    <th class="head-width">
-                        @Html.DisplayNameFor(model => model.TotalAmount)
-                    </th>
-                    <th class="head-width">
-                        @Html.DisplayNameFor(model => model.Status)
-                    </th>
-                    <th class="head-width">
-                        會員ID
-                    </th>
-                    @*  <th class="head-width">
-                @Html.DisplayNameFor(model => model.DiscountAmount)
-            </th> *@
-                    <th class="head-width">
-                        @Html.DisplayNameFor(model => model.DiscountCode)
-                    </th>
-
-                    @*  <th class="head-width">
-                @Html.DisplayNameFor(model => model.MemberCouponID)
-            </th> *@
-                    <th class="head-width">
-                        @Html.DisplayNameFor(model => model.CouponTypeSnap)
-                    </th>
-                    @* <th class="head-width">
-                @Html.DisplayNameFor(model => model.CouponValueSnap)
-            </th> *@
-                    <th class="head-width">
-                        @Html.DisplayNameFor(model => model.CouponNameSnap)
-                    </th>
-                    <th class="head-width">
-                        @Html.DisplayNameFor(model => model.CouponDiscountAmount)
-                    </th>
-                    <th class="head-width">
-                    會員名稱<!-- 改成會員 -->
-                    </th>
-
-                    <th class="head-width">
-                        物流資訊
-                    </th>
-                    <th class="head-width">
-                        付款資訊
-                    </th>
-                    @* <th class="head-width">
-                        租借書籍資訊
-                    </th> *@
-
+                    <th class="head-width">@Html.DisplayNameFor(model => model.OrderID)</th>
+                    <th class="head-width">@Html.DisplayNameFor(model => model.OrderDate)</th>
+                    <th class="head-width">@Html.DisplayNameFor(model => model.TotalAmount)</th>
+                    <th class="head-width">@Html.DisplayNameFor(model => model.Status)</th>
+                    <th class="head-width">會員ID</th>
+                    <th class="head-width">@Html.DisplayNameFor(model => model.DiscountCode)</th>
+                    <th class="head-width">@Html.DisplayNameFor(model => model.CouponTypeSnap)</th>
+                    <th class="head-width">@Html.DisplayNameFor(model => model.CouponNameSnap)</th>
+                    <th class="head-width">@Html.DisplayNameFor(model => model.CouponDiscountAmount)</th>
+                    <th class="head-width">會員名稱</th>
+                    <th class="head-width">物流資訊</th>
+                    <th class="head-width">付款資訊</th>
                     <th></th>
                 </tr>
             </thead>
+
             <tbody>
                 @foreach (var item in Model)
                 {
                     <tr class="order-row" data-id="@item.OrderID">
+                        <td>@item.OrderID</td>
+                        <td>@item.OrderDate.ToString("yyyy/MM/dd")</td>
+                        <td>@String.Format("{0:N0} 元", item.TotalAmount)</td>
 
-                        <td>
-                            @Html.DisplayFor(modelItem => item.OrderID)
-                        </td>
-                        <td>
-                            @item.OrderDate.ToString("yyyy/MM/dd")
-                        </td>
-                        <td>
-                            @String.Format("{0:N0} 元", item.TotalAmount)
-                        </td>
                         <td>
                             @{
                                 string statusText = item.Status switch
@@ -215,34 +163,45 @@
                             }
                             <span class="@badgeClass">@statusText</span>
                         </td>
-                        <td>
-                            @(item.MemberID)
-                        </td>
-                        @* <td>
-                @Html.DisplayFor(modelItem => item.DiscountAmount)
-            </td> *@
-                        <td>
-                            @Html.DisplayFor(modelItem => item.DiscountCode)
-                        </td>
 
-                        @* <td>
-                @Html.DisplayFor(modelItem => item.MemberCouponID)
-            </td> *@
-                        <td>
-                            @Html.DisplayFor(modelItem => item.CouponTypeSnap)
-                        </td>
-                        @* <td>
-                @Html.DisplayFor(modelItem => item.CouponValueSnap)
-            </td> *@
-                        <td>
-                            @Html.DisplayFor(modelItem => item.CouponNameSnap)
-                        </td>
-                        <td>
-                            @String.Format("{0:N0}元", item.CouponDiscountAmount)
-                        </td>
-                    
-                        <td>@item.Member.Username</td>
-                       
+                        <td>@item.MemberID</td>
+                        <td>@item.DiscountCode</td>
+                        <td>@item.CouponTypeSnap</td>
+
+                        @{
+                            // 🔍 從優惠券資料庫查出實際優惠券名稱與折扣
+                            var couponInfo = item.MemberCouponID != null
+                            ? (from mc in DbContext.MemberCoupons
+                               join c in DbContext.Coupons on mc.CouponId equals c.CouponId
+                               where mc.MemberCouponId == item.MemberCouponID
+                               select new
+                               {
+                                   c.Name,
+                                   c.DiscountType,
+                                   c.DiscountValue
+                               }).FirstOrDefault()
+                            : null;
+
+                            string couponName = couponInfo?.Name ?? (string.IsNullOrEmpty(item.CouponNameSnap) ? "未使用優惠券" : item.CouponNameSnap);
+                            string discountDisplay = "—";
+                            if (couponInfo != null)
+                            {
+                                discountDisplay = couponInfo.DiscountType == 0
+                                ? $"{couponInfo.DiscountValue:N0} 元折抵"
+                                : $"{couponInfo.DiscountValue:N0}% 折扣";
+                            }
+                            else if (item.CouponDiscountAmount > 0)
+                            {
+                                // 若沒有找回 couponInfo，但有快照折抵金額，顯示快照金額
+                                discountDisplay = $"{item.CouponDiscountAmount:N0} 元";
+                            }
+                        }
+
+                        <td>@couponName</td>
+                        <td>@discountDisplay</td>
+
+                        <td>@(item.Member?.Username ?? "無會員")</td>
+
                         <td>
                             <button type="button" class="btn btn-primary" data-bs-toggle="modal"
                                     data-bs-target="#shipmentModal" data-orderid="@item.OrderID">
@@ -250,27 +209,33 @@
                             </button>
                         </td>
 
-                        
+
                         <td>
                             @if (item.Status == 0)
                             {
-                                <form id="paymentForm_@item.OrderID" asp-action="GoToPayment" asp-controller="Orders" method="post" target="_blank">
-                                    <input type="hidden" name="orderId" value="@item.OrderID" />
-                                    <button type="button" class="btn btn-success btn-action" onclick="document.getElementById('paymentForm_@item.OrderID').submit();">
-                                        前往付款
+                                if (item.TotalAmount > 0)
+                                {
+                                    <form id="paymentForm_@item.OrderID" asp-action="GoToPayment" asp-controller="Orders" method="post" target="_blank">
+                                        <input type="hidden" name="orderId" value="@item.OrderID" />
+                                        <button type="button" class="btn btn-success btn-action"
+                                                onclick="document.getElementById('paymentForm_@item.OrderID').submit();">
+                                            前往付款
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-secondary btn-action" disabled title="金額為 0 元，無法付款">
+                                        無需付款
                                     </button>
-                                </form>
+                                 
+                                }
                             }
                             else
                             {
                                 <span class="text-muted">已付款</span>
                             }
                         </td>
-                        @* <td>
-                            <a asp-controller="Rentals" asp-action="ByID" asp-route-orderID="@item.OrderID" class="btn btn-secondary">
-                                查看租借書籍
-                            </a>
-                        </td> *@
 
                         <td class="text-center">
                             <div class="dropdown">

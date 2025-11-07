@@ -2,35 +2,42 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '@/stores/auth'
 import { memberRoutes } from './member' // ⬅️ 會員中心巢狀路由（Profile/Security/...）
+import Login from '@/views/Login.vue'
+import Register from '@/views/Register.vue'
+import Forgot from '@/views/Forgot.vue'
+import Reset from '@/views/Reset.vue'
+import Member from '@/views/Member.vue'
+import TwoFASetup from '@/views/TwoFASetup.vue'
+import AuthCallback from '@/views/AuthCallback.vue'
+import MyNewPage from '@/views/BorrowCenter.vue'
+import OrderCenter from '@/views/OrderCenter.vue'
+import BookDetail from '@/views/BookDetail.vue'
 
-// ✅ 建議頁面改為 lazy-load，縮小首屏體積
-const Login = () => import('@/views/Login.vue')
-const Register = () => import('@/views/Register.vue')
-const Forgot = () => import('@/views/Forgot.vue')
-const Reset = () => import('@/views/Reset.vue')
-const TwoFASetup = () => import('@/views/TwoFASetup.vue')
-const AuthCallback = () => import('@/views/AuthCallback.vue')
-const Home = () => import('@/views/Home.vue')
+let bootstrapped = false
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', component: Home, meta: { public: true, title: '首頁' } },
-
-    // 🔐 Auth flows
-    { path: '/login', component: Login, meta: { public: true, title: '登入' } },
-    { path: '/register', component: Register, meta: { public: true, title: '註冊' } },
-    { path: '/forgot', component: Forgot, meta: { public: true, title: '忘記密碼' } },
-    { path: '/reset', component: Reset, meta: { public: true, title: '重設密碼' } },
-    { path: '/auth-callback', component: AuthCallback, meta: { public: true, title: '外部登入跳轉' } },
-
-    // 2FA 設定頁（需登入）
-    { path: '/2fa/setup', component: TwoFASetup, meta: { title: '雙因素驗證設定' } },
-
-    // 🧑‍💻 會員中心（整包子頁：profile/security/orders/...）
-    memberRoutes,
-
-    // 兜底：回首頁
+    // { path: '/', name: 'Home', component: Home, meta: { public: true } },
+      { path: '/login', component: Login, meta: { public: true, title: '登入' } },
+      { path: '/register', component: Register, meta: { public: true, title: '註冊' } },
+      { path: '/forgot', component: Forgot, meta: { public: true ,title: '忘記密碼' } },
+      { path: '/reset', component: Reset, meta: { public: true, title: '重設密碼' } },
+      { path: '/auth-callback', component: AuthCallback, meta: { public: true, title: '外部登入跳轉' } },
+      { path: '/2fa/setup', component: TwoFASetup, meta: { title: '雙因素驗證設定' } },
+    { path: '/member', component: Member },
+    { path: '/', component: () => import('@/views/Home.vue'), meta: { public: true } },
+    { path: '/order-center', component: OrderCenter },
+    { path: '/:pathMatch(.*)*', redirect: '/' },
+    { path: '/BorrowCenter', name: 'BRcenter', component: MyNewPage },
+    {
+      path: '/member/coupons',
+      name: 'MemberCoupons',
+      component: () => import('@/views/MemberCoupons.vue'),
+    },
+    // 商品詳細頁（props: true 會把 route.params 當 props 傳入元件）
+    { path: '/books/:id', name: 'BookDetail', component: BookDetail, props: true },
+    // fallback（務必放最後）
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 
