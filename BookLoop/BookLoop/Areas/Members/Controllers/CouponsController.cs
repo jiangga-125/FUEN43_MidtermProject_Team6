@@ -1,14 +1,13 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Collections.Generic;
+﻿using BookLoop.Areas.Members.ViewModels; // CouponEditVm
+using BookLoop.Data;                    // MemberContext
+using BookLoop.Models;                  // Coupon / Category / CouponCategory
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-
-using BookLoop.Data;                    // MemberContext
-using BookLoop.Models;                  // Coupon / Category / CouponCategory
-using BookLoop.Areas.Members.ViewModels; // CouponEditVm
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace BookLoop.Areas.Members.Controllers
 {
@@ -258,5 +257,24 @@ namespace BookLoop.Areas.Members.Controllers
 
 			return Json(new { count = data.Count, items = data });
 		}
+
+	[HttpPost]
+		[ValidateAntiForgeryToken]
+		public IActionResult Delete(int id)
+		{
+			var coupon = _db.Coupons.FirstOrDefault(c => c.CouponId == id);
+			if (coupon == null)
+			{
+				TempData["Msg"] = "找不到要刪除的優惠券。";
+				return RedirectToAction("Index");
+			}
+
+			_db.Coupons.Remove(coupon);
+			_db.SaveChanges();
+
+			TempData["Msg"] = $"已成功刪除優惠券「{coupon.Name}」。";
+			return RedirectToAction("Index");
+		}
+
 	}
 }

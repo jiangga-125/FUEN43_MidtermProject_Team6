@@ -23,25 +23,24 @@ namespace BookLoop.Controllers
 		[HttpGet]
 		public async Task<IActionResult> PendingList()
 		{
-			// 系統審核清單
+			// ✅ 系統自動審核清單
 			var autoList = await _db.ReviewModerations
-	.Join(_db.Reviews,
-		mod => mod.ReviewID,
-		rev => rev.ReviewID,
-		(mod, rev) => new { mod, rev })  // ✅ 建立匿名物件
-	.Where(x => x.mod.Decision == 0)     // ✅ 用 x.mod
-	.Select(x => new ReviewModerationUnifiedVM
-	{
-		ReviewID = x.rev.ReviewID,
-		Content = x.rev.Content,
-		Reason = x.mod.Reasons,
-		Source = "系統審核",
-		CreatedAt = x.rev.CreatedAt
-	})
-	.ToListAsync();
+				.Join(_db.Reviews,
+					mod => mod.ReviewID,
+					rev => rev.ReviewID,
+					(mod, rev) => new { mod, rev })
+				.Where(x => x.mod.Decision == 0)
+				.Select(x => new ReviewModerationUnifiedVM
+				{
+					ReviewID = x.rev.ReviewID,
+					Content = x.rev.Content,
+					Reason = x.mod.Reasons,
+					Source = "系統審核",
+					CreatedAt = x.rev.CreatedAt
+				})
+				.ToListAsync();
 
-
-			// 會員檢舉清單
+			// ✅ 會員檢舉清單
 			var reportList = await _db.ReviewReports
 				.Include(r => r.Review)
 				.Include(r => r.Reporter)
@@ -56,12 +55,29 @@ namespace BookLoop.Controllers
 					CreatedAt = r.CreatedAt
 				}).ToListAsync();
 
-			var all = autoList.Concat(reportList)
+			// 🆕 新送出的評論（Status=0）
+			var newReviews = await _db.Reviews
+				.Where(r => r.Status == 0 && !_db.ReviewModerations.Any(m => m.ReviewID == r.ReviewID))
+				.Select(r => new ReviewModerationUnifiedVM
+				{
+					ReviewID = r.ReviewID,
+					Content = r.Content,
+					Reason = "(尚未審核)",
+					Source = "新評論",
+					CreatedAt = r.CreatedAt
+				})
+				.ToListAsync();
+
+			// ✅ 合併所有來源
+			var all = autoList
+				.Concat(reportList)
+				.Concat(newReviews)
 				.OrderByDescending(x => x.CreatedAt)
 				.ToList();
 
-			return View(all); // ✅ 傳給 View 的是 ReviewModerationUnifiedVM
+			return View(all);
 		}
+
 
 
 		[HttpGet]
@@ -80,15 +96,15 @@ namespace BookLoop.Controllers
 			var review = new Review
 			{
 				MemberID = vm.MemberID,
-				TargetType = vm.TargetType,
-				TargetID = 0,
+				TargetType = 1, // 固定為書籍
+				TargetID = vm.TargetBookID, // 這是書籍 IDf
 				Rating = vm.Rating,
 				Content = vm.Content,
-				Status = 0, // 0 = 待審
-				ImageUrls = vm.TargetType == 1 ? vm.TargetBookName : vm.TargetMemberNickname,
+				Status = 0, // 待審
 				CreatedAt = DateTime.UtcNow,
 				UpdatedAt = DateTime.UtcNow
 			};
+
 
 			_db.Reviews.Add(review);
 			await _db.SaveChangesAsync();

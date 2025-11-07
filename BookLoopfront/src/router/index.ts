@@ -39,6 +39,11 @@ const router = createRouter({
     { path: '/books/:id', name: 'BookDetail', component: BookDetail, props: true },
     // fallback（務必放最後）
     { path: '/:pathMatch(.*)*', redirect: '/' },
+    { path: '/member/coupons',name: 'MemberCoupons',component: () => import('@/views/MemberCoupons.vue')},
+    {path: '/review/create',name: 'CreateReview',component: () => import('@/views/CreateReview.vue')}
+
+
+
   ],
 
   // 捲動行為：切頁回到頂端
@@ -78,5 +83,6 @@ router.afterEach((to) => {
   const title = (to.meta?.title as string) ?? 'BookLoop'
   document.title = `${title} - BookLoop`
 })
+
 
 export default router
