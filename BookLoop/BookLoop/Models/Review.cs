@@ -9,7 +9,7 @@ public partial class Review
 
     public int MemberID { get; set; }
 
-    public byte TargetType { get; set; }
+    public byte TargetType { get; set; } = 0;
 
     public int TargetID { get; set; }
 

@@ -29,6 +29,7 @@ export const useAuthStore = defineStore('auth', {
 
     async setTokenAndLoadMember(token: string) {
       this.token = token
+      console.log('🟢 設定 token:', token.slice(0, 20) + '...')
       setAccessToken(this.token, this.remember)
       const me = await http.get('/api/auth/me')
       this.member = me.data.member

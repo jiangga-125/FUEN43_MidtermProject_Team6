@@ -39,6 +39,11 @@ const router = createRouter({
     { path: '/books/:id', name: 'BookDetail', component: BookDetail, props: true },
     // fallback（務必放最後）
     { path: '/:pathMatch(.*)*', redirect: '/' },
+    { path: '/member/coupons',name: 'MemberCoupons',component: () => import('@/views/MemberCoupons.vue')},
+    {path: '/review/create',name: 'CreateReview',component: () => import('@/views/CreateReview.vue')}
+
+
+
   ],
 })
 
@@ -68,5 +73,7 @@ router.beforeEach(async (to) => {
 
   return true
 })
+
+
 
 export default router

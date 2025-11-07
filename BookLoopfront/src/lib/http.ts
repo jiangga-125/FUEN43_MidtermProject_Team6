@@ -80,11 +80,14 @@ const http: AxiosInstance = axios.create({
 
 /** Request：帶 Authorization */
 http.interceptors.request.use((config) => {
-  if (accessToken) {
-    config.headers = config.headers ?? {}
-    ;(config.headers as any).Authorization = `Bearer ${accessToken}`
-  }
-  return config
+    if (accessToken) {
+        config.headers = config.headers ?? {}
+            ; (config.headers as any).Authorization = `Bearer ${accessToken}`
+             console.log('✅ 正在帶出 Token:', accessToken.slice(0, 20) + '...')
+  } else {
+    console.warn('⚠️ 沒有帶出 Token')
+    }
+    return config
 })
 
 /** Response：401 時嘗試 refresh（簡易旋轉一次） */
