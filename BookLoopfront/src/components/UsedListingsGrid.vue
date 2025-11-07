@@ -15,8 +15,12 @@ import {
   ALLOWED_MEMBER_ID,            // ✅ 允許的會員常數
 } from '@/api/reservations'
 import ReservationDialog from '@/components/ReservationDialog.vue'
+//判定登入
+import { useAuthStore } from '@/stores/auth'
+import { storeToRefs } from 'pinia'
 
-
+const auth = useAuthStore()
+const { isMemberLoggedIn } = storeToRefs(auth)
 
 // ---- 狀態 ----
 const listings = ref<Listing[]>([])
@@ -198,14 +202,14 @@ onMounted(async () => {
 
             <div class="mt-auto d-flex gap-2">
               <button
-                v-if="item.status===0"
+                v-if="isMemberLoggedIn && item.status === 0"
                 class="btn btn-primary btn-sm w-25"
                 :disabled="reserving"
                 @click="doReserve(item)"
               >
                 借書
               </button>
-              <button v-if="item.status===2" class="btn btn-danger btn-sm w-25"
+              <button v-if="isMemberLoggedIn && item.status === 2" class="btn btn-danger btn-sm w-25"
               @click="notifyBorrowed">預約</button>
             </div>
           </div>

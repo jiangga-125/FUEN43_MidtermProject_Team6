@@ -26,12 +26,21 @@ namespace BookLoop.Controllers.api
 		// helper: 從 token claim 取 memberId
 		private int? GetMemberIdFromClaims()
 		{
+			// ✅ 支援 mid / memberId / NameIdentifier / sub 四種來源
 			var idClaim = User.FindFirst("memberId")
-					   ?? User.FindFirst(ClaimTypes.NameIdentifier)
-					   ?? User.FindFirst("sub");
-			if (idClaim == null) return null;
-			return int.TryParse(idClaim.Value, out var id) ? id : null;
+				?? User.FindFirst("mid")
+				?? User.FindFirst(ClaimTypes.NameIdentifier)
+				?? User.FindFirst("sub");
+
+			if (idClaim == null)
+				return null;
+
+			if (int.TryParse(idClaim.Value, out var id))
+				return id;
+
+			return null;
 		}
+
 
 		// ✅ 取得使用者可用優惠券列表
 		[HttpGet("list")]
