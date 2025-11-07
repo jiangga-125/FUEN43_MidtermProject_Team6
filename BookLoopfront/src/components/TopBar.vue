@@ -27,6 +27,7 @@ async function signout() {
         <template v-if="isMemberLoggedIn">
           <span class="hi">Hi, {{ member?.name || member?.email }}</span>
           <RouterLink class="link" to="/member">會員中心</RouterLink>
+          <RouterLink class="link" :to="{ name: 'BRcenter' }">二手書紀錄</RouterLink>
           <router-link class="link" to="/member/coupons">優惠券</router-link>
           <button class="link btn" type="button" @click="signout">登出</button>
         </template>

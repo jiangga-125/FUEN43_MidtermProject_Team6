@@ -1,14 +1,23 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOrdersByMember, getOrderDetail, cancelOrder, deleteOrder, Order } from '@/api/order'
+import { getReturnsByOrder } from '@/api/return'
+import { useAuth } from '@/stores/auth'
 import { createReturn, getReturnsByOrder, ReturnInfo, getStatusText } from '@/api/return'
 import { cancelReturn } from '@/api/return'
 import { getShipmentByOrder, updateShipment, ShipmentInfo ,createShipment} from '@/api/shipment'
-  
+
 const router = useRouter()
 const route = useRoute()
-const memberId = 616
+const auth = useAuth()
+// const memberId = 616
+const memberId = computed<number | null>(() => {
+  const m = (auth as any).member
+  const id = m?.memberId ?? m?.MemberID ?? m?.id ?? null
+  if (id == null) return null
+  return typeof id === 'string' ? Number(id) : id
+})
 
 // Tab: 'orders'=我的訂單, 'details'=單筆明細, 'allDetails'=所有訂單明細, 'returns'=退貨紀錄
 const currentTab = ref<'orders' | 'details' | 'allDetails' | 'returns'>('orders')
@@ -33,6 +42,8 @@ async function onChangeShipment(orderId: number, provider: string) {
     console.error('更新物流失敗', err);
     alert('❌ 更新物流失敗，請稍後再試');
   }
+function goHome() {
+  router.push('/') // 導向首頁
 }
 
 // 載入物流（初始化時）
@@ -53,7 +64,7 @@ const orderStatusMap: Record<number, string> = {
   1: '已付款',
   2: '已出貨',
   3: '完成訂單',
-  4: '已取消'
+  4: '已取消',
 }
 
 function goHome() {
@@ -62,10 +73,19 @@ function goHome() {
 
 // 載入會員所有訂單
 async function loadOrders() {
+  // 若沒有登入（無 memberId），就不呼叫 API
+  if (memberId.value == null) {
+    orders.value = []
+    console.warn('loadOrders: memberId is null — skip loading orders')
+    return
+  }
+
   try {
     orders.value = await getOrdersByMember(memberId)
   } catch (err) {
     console.error('載入訂單失敗', err)
+    // 視需要顯示錯誤給使用者
+    // alert('載入訂單失敗')
   }
 }
 
@@ -110,20 +130,36 @@ async function onReturn(orderId: number) {
 }
 
 async function viewOrderDetail(orderId: number) {
-  selectedOrder.value = await getOrderDetail(orderId)
-  currentTab.value = 'details'
+  try {
+    selectedOrder.value = await getOrderDetail(orderId)
+    currentTab.value = 'details'
+    returns.value = await getReturnsByOrder(orderId)
+  } catch (err) {
+    console.error('讀取訂單明細失敗', err)
+    // 可提示使用者
+  }
 }
 
 async function onCancel(orderId: number) {
   if (!confirm('確定要取消訂單嗎？')) return
-  await cancelOrder(orderId)
-  await loadOrders()
+  try {
+    await cancelOrder(orderId)
+    await loadOrders()
+  } catch (err) {
+    console.error('取消訂單失敗', err)
+    alert('取消訂單失敗')
+  }
 }
 
 async function onDelete(orderId: number) {
   if (!confirm('確定要刪除訂單嗎？')) return
-  await deleteOrder(orderId)
-  await loadOrders()
+  try {
+    await deleteOrder(orderId)
+    await loadOrders()
+  } catch (err) {
+    console.error('刪除訂單失敗', err)
+    alert('刪除訂單失敗')
+  }
 }
 
 // 計算所有訂單明細，用於 new Tab
@@ -135,6 +171,15 @@ const allOrderDetails = computed(() =>
     }))
   )
 )
+// 若登出或剛登入，watch memberId 自動 reload 或清空 orders
+watch(memberId, (v) => {
+  if (v == null) {
+    orders.value = []
+    selectedOrder.value = null
+  } else {
+    loadOrders().catch((e) => console.error(e))
+  }
+})
 
 onMounted(async () => {
   await loadOrders();
@@ -172,13 +217,11 @@ onMounted(async () => {
     </div>
 
 <!-- 訂單列表 -->
-<div v-if="currentTab === 'orders'">
-  <!-- 沒有訂單時顯示 -->
+<div v-if="memberId !== null && currentTab === 'orders'">
   <div v-if="orders.length === 0" class="text-center text-muted py-5">
     目前沒有訂單
   </div>
 
-  <!-- 訂單卡片列表 -->
   <div class="row g-3">
     <div v-for="order in orders" :key="order.OrderID" class="col-md-6">
       <div class="card shadow-sm border-0 rounded-4 overflow-hidden position-relative">
@@ -246,8 +289,6 @@ onMounted(async () => {
         </div>
       </div>
     </div>
-  </div>
-</div>
 
 
 
@@ -268,15 +309,25 @@ onMounted(async () => {
           <tbody>
             <tr v-for="item in selectedOrder.OrderDetails" :key="item.BookID">
               <td>
-                <div class="d-flex align-items-center gap-3">
-                  <img :src="item.Book?.coverUrl && item.Book.coverUrl.startsWith('http') ? item.Book.coverUrl : `/api/BookImages/${item.Book?.id}/cover`"
-                       :alt="item.Book?.title || 'Book Cover'" class="rounded shadow-sm" style="width:60px;height:80px;object-fit:cover"/>
-                  <div>
-                    <strong class="fs-6">{{ item.Book?.title || '(已下架)' }}</strong>
-                    <div class="text-muted small">NT$ {{ item.Book?.salePrice ?? item.UnitPrice ?? 0 }}</div>
-                  </div>
+             <div class="d-flex align-items-center gap-3 flex-grow-1">
+              <img
+                :src="item.Book?.coverUrl && item.Book.coverUrl.startsWith('http')
+                      ? item.Book.coverUrl
+                      : `/api/BookImages/${item.Book?.id}/cover`"
+                :alt="item.Book?.title || 'Book Cover'"
+                @error="(e) => { const target = e.target as HTMLImageElement; target.src='/placeholder.png' }"
+                class="rounded shadow-sm"
+                style="width: 60px; height: 80px; object-fit: cover"
+              />
+              <div>
+                <strong class="fs-6">{{ item.Book?.title || '(已下架)' }}</strong>
+                <div class="text-muted small">
+                  NT$ {{ item.Book?.salePrice ?? item.UnitPrice ?? 0 }}
                 </div>
+              </div>
+            </div>
               </td>
+
               <td>{{ item.Quantity }}</td>
               <td>NT$ {{ item.UnitPrice }}</td>
               <td>NT$ {{ item.Quantity * item.UnitPrice }}</td>

@@ -145,7 +145,13 @@ async function loginPassword() {
   if (!canSubmitPassword.value) return
   err.value = ''
   try {
-    await auth.login(account.value, password.value)
+    /*修改：接住 auth.login 的回傳*/
+    const res = await auth.login(account.value, password.value)
+    /*新增：抽 token 並套用；如果 auth.login 沒回，就嘗試從 auth 內部狀態取*/
+    const token = pickToken(res) || (auth as any)?.token || (auth as any)?.state?.token || null
+    if (!token) throw new Error('登入回應沒有 token')
+    applyToken(token)
+
     router.replace(getRedirectTarget())
   } catch (e: any) {
     err.value = auth.error || e?.response?.data?.message || '登入失敗'
@@ -167,7 +173,13 @@ async function loginByEmailOtp() {
   if (!canSubmitEmail.value) return
   err.value = ''
   try {
-    await auth.loginWithEmailCode(account.value, emailCode.value)
+    /*修改：接住回傳*/
+    const res = await auth.loginWithEmailCode(account.value, emailCode.value)
+/*新增：抽 token + 套用*/
+    const token = pickToken(res) || (auth as any)?.token || (auth as any)?.state?.token || null
+    if (!token) throw new Error('登入回應沒有 token')
+    applyToken(token)
+
     router.replace(getRedirectTarget())
   } catch (e: any) {
     err.value = e?.response?.data?.message || '驗證碼登入失敗'
@@ -179,7 +191,13 @@ async function loginByTotp() {
   if (!canSubmitTotp.value) return
   err.value = ''
   try {
-    await auth.loginWithTotp(account.value, totpCode.value)
+    /*修改：接住回傳*/
+    const res = await auth.loginWithTotp(account.value, totpCode.value)
+     /*新增：抽 token + 套用*/
+    const token = pickToken(res) || (auth as any)?.token || (auth as any)?.state?.token || null
+    if (!token) throw new Error('登入回應沒有 token')
+    applyToken(token)
+
     router.replace(getRedirectTarget())
   } catch (e: any) {
     err.value = e?.response?.data?.message || 'TOTP 登入失敗'
@@ -199,6 +217,18 @@ onMounted(() => {
   const qs = new URLSearchParams(location.search)
   if (qs.get('err') === 'oauth') err.value = '外部登入未完成授權，請重試或改用帳密登入'
 })
+
+/*統一存 token + 讓 axios 立刻帶上*/
+function applyToken(token: string) {
+  localStorage.setItem('token', token);
+  http.defaults.headers.common.Authorization = `Bearer ${token}`;
+}
+
+/*從各種可能的回傳取出 token（後端回的是 data.token）*/
+function pickToken(res: any): string | null {
+  return res?.token ?? res?.access_token ?? res?.Token ?? null;
+}
+
 </script>
 
 <style scoped>

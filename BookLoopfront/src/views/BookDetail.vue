@@ -2,6 +2,9 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import http from '@/lib/http'
+import ProductCard from '@/components/ProductCard.vue'
+import { useAuth } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()

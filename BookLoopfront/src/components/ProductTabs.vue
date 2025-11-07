@@ -1,10 +1,16 @@
+<!-- src/components/ProductTabs.vue -->
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { getBooks, type Book } from '@/api/book'
 import ProductCard from './ProductCard.vue'
 import { addToCart as addCartAPI } from '@/api/shoppingCart'
 import { useCartStore } from '@/stores/cart'
+import UsedListingsGrid from '@/components/UsedListingsGrid.vue'
+// 使用 pinia auth store（你檔案最底有 export useAuth）
+import { useAuth } from '@/stores/auth'
 
+const router = useRouter()
 // 從父層接收 categoryId
 const props = defineProps<{ categoryId: number | null }>()
 
@@ -18,9 +24,16 @@ const items = ref<Book[]>([])
 const loading = ref(false)
 const err = ref('')
 
-const memberId = 616 // 確認資料庫有這個會員
+
 const cartStore = useCartStore()// 購物車
 
+const auth = useAuth()
+// 取得 memberId（保護轉型：可能為 string 或 number）
+const memberId = computed<number | null>(() => {
+  const id = (auth.member as any)?.memberId ?? (auth.member as any)?.MemberID ?? null
+  return typeof id === 'string' ? Number(id) : id
+})
+// 讀取商品列表
 async function load() {
   if (tab.value === 'list') {
     loading.value = false
@@ -37,7 +50,7 @@ async function load() {
       page: page.value,
       pageSize: pageSize.value,
     })
-    console.log('📦 items loaded:', list) // <- 新增這行
+    console.log('📦 items loaded:', list)
     items.value = list
     total.value = t
   } catch (e: any) {
@@ -57,20 +70,55 @@ onMounted(async () => {
 function setTab(k: TabKey) {
   if (tab.value !== k) page.value = 1
   tab.value = k
+  // 立即 reload（watch 也會觸發，但做一次保險）
+  load().catch((e) => console.error(e))
 }
 
 function next() {
-  if (page.value * pageSize.value < total.value) page.value++
+  if (page.value * pageSize.value < total.value) {
+    page.value++
+    load().catch((e) => console.error(e))
+  }
 }
 function prev() {
-  if (page.value > 1) page.value--
+  if (page.value > 1) {
+    page.value--
+    load().catch((e) => console.error(e))
+  }
 }
 
-// 加入購物車
 async function addToCart(b: Book) {
+  // 若未登入，提示並導去登入（可改成 modal）
+  if (!auth.member) {
+    console.log('[addToCart] user not logged in, prompt to go to login')
+    const ok = confirm('你尚未登入，請登入後再加入購物車。要前往登入頁嗎？')
+    console.log('[addToCart] confirm result:', ok)
+    if (!ok) return
+
+    // 正確使用你實際的 route name（你說的是 'login'）
+    router
+      .push({ name: 'login' })
+      .then(() => {
+        console.log('[addToCart] router.push by name succeeded')
+      })
+      .catch((err) => {
+        console.warn('[addToCart] push by name failed:', err)
+        // fallback：用 path
+        router
+          .push({ path: '/login' })
+          .then(() => console.log('[addToCart] router.push by path succeeded'))
+          .catch((err2) => {
+            console.error('[addToCart] push by path failed too:', err2)
+            // 最後保險：直接改 window.location.href（會 full reload）
+            window.location.href = '/login'
+          })
+      })
+    return
+  }
+
+  // ========== 真正加入購物車邏輯 ==========
   try {
-    const payload = {
-      MemberID: memberId,
+    const payload: any = {
       BookID: b.id,
       Quantity: 1,
       UnitPrice: b.salePrice ?? b.listPrice ?? 0,
@@ -93,7 +141,8 @@ async function addToCart(b: Book) {
     <div class="tabs">
       <button :class="{ active: tab === 'new' }" @click="setTab('new')">新書熱推</button>
       <button :class="{ active: tab === 'hot' }" @click="setTab('hot')">熱門排行</button>
-      <div class="spacer" />
+      <button :class="{ active: tab === 'list' }" @click="setTab('list')">二手書</button>
+      <div class="spacer"></div>
       <div class="pager" v-if="tab !== 'list'">
         <button @click="prev" :disabled="page <= 1">‹</button>
         <span>{{ page }}</span>
@@ -101,11 +150,17 @@ async function addToCart(b: Book) {
       </div>
     </div>
 
-    <div v-if="loading" class="muted">載入中…</div>
-    <div v-else-if="err" class="err">{{ err }}</div>
-    <div v-else class="grid">
-      <ProductCard v-for="b in items" :key="b.id" :book="b" @add="addToCart" />
-    </div>
+    <template v-if="tab !== 'list'">
+      <div v-if="loading" class="muted">載入中…</div>
+      <div v-else-if="err" class="err">{{ err }}</div>
+      <div v-else class="grid">
+        <ProductCard v-for="b in items" :key="b.id" :book="b" @add="addToCart" />
+      </div>
+    </template>
+
+    <section v-else>
+      <UsedListingsGrid />
+    </section>
   </section>
 </template>
 
