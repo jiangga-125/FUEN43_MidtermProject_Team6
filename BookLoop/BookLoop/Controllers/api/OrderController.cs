@@ -142,18 +142,27 @@ namespace BookLoop.Controllers.Api
 			return Ok(new { success = true, message = "訂單已取消" });
 		}
 
-		// ✅ 軟刪除訂單
+
+		// ✅ 刪除訂單
 		[HttpPost("delete/{orderId}")]
 		public async Task<IActionResult> DeleteOrder(int orderId)
 		{
-			var order = await _db.Orders.FindAsync(orderId);
+			var order = await _db.Orders
+				.Include(o => o.OrderDetails) // ✅ 同時載入明細，否則會有 FK 錯誤
+				.FirstOrDefaultAsync(o => o.OrderID == orderId);
+
 			if (order == null)
 				return NotFound(new { success = false, message = "找不到訂單" });
 
-			order.Status = 9; // 軟刪除
+			// ✅ 先刪除子項（OrderDetails）
+			_db.OrderDetails.RemoveRange(order.OrderDetails);
+
+			// ✅ 再刪除主項（Order）
+			_db.Orders.Remove(order);
+
 			await _db.SaveChangesAsync();
 
-			return Ok(new { success = true, message = "訂單已軟刪除" });
+			return Ok(new { success = true, message = "訂單已永久刪除" });
 		}
 
 
