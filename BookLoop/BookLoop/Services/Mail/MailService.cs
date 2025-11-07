@@ -106,16 +106,23 @@ namespace BookLoop.Services.Mail
 
             var builder = new BodyBuilder();
 
-            // Cid（離線也能顯示）或 Hosted（PublicBaseUrl）
-            var imageMode = (smtp["ImageEmbedding"] ?? "Cid").Trim();
+			// 1. 保留 "渲染後"、"轉換前" 的 HTML (給 Snapshot 用)
+			string renderedBody = body ?? string.Empty;
+			string finalHtml; // 這是要實際寄送的 HTML
+
+			// Cid（離線也能顯示）或 Hosted（PublicBaseUrl）
+			var imageMode = (smtp["ImageEmbedding"] ?? "Cid").Trim();
             var publicBaseUrl = (smtp["PublicBaseUrl"] ?? "").Trim();
 
-            string html = body ?? string.Empty;
-            if (string.Equals(imageMode, "Hosted", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(publicBaseUrl))
-                html = RewriteRelativeImgToAbsolute(html, publicBaseUrl);
-            else
-                html = EmbedLocalImagesToCid(html, builder); // 預設：Cid
-
+			if (string.Equals(imageMode, "Hosted", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(publicBaseUrl))
+			{
+				finalHtml = RewriteRelativeImgToAbsolute(renderedBody, publicBaseUrl);
+			}
+			else
+			{
+				// 2. 'finalHtml' 拿去轉換 Cid
+				finalHtml = EmbedLocalImagesToCid(renderedBody, builder); // 預設：Cid
+			}
 			// 取得簽章密鑰與 BaseUrl（兩者都要有才改寫）
 			var viewSecret = _config["Mail:ViewSecret"];
 			var baseUrl = _config["App:PublicBaseUrl"]
@@ -126,13 +133,15 @@ namespace BookLoop.Services.Mail
 				!string.IsNullOrWhiteSpace(viewSecret) &&
 				!string.IsNullOrWhiteSpace(baseUrl))
 			{
-				html = RewriteLinksForClickTrackingSimple(
-					html, jobRecipientId.Value, viewSecret, baseUrl);
+				// 3. 繼續在 'finalHtml' 上改寫連結
+				finalHtml = RewriteLinksForClickTrackingSimple(
+					finalHtml, jobRecipientId.Value, viewSecret, baseUrl);
 			}
 
-			builder.HtmlBody = html;
+			// 4. 實際寄送的 MimeMessage 使用 'finalHtml' (包含 cid: 和追蹤連結)
+			builder.HtmlBody = finalHtml;
 
-            if (attachmentBytes is { Length: > 0 })
+			if (attachmentBytes is { Length: > 0 })
             {
                 var name = string.IsNullOrWhiteSpace(attachmentName) ? "report.xlsx" : attachmentName!;
                 builder.Attachments.Add(name, attachmentBytes, ContentType.Parse(contentType));
@@ -162,8 +171,8 @@ namespace BookLoop.Services.Mail
                 Subject = subject ?? "",
                 Status = "Pending",
                 SentAt = DateTime.Now,
-                BodySnapshot = html
-            };
+                BodySnapshot = renderedBody
+			};
 
             _db.MailSendLogs.Add(log);                 // ← 使用複數 DbSet 名稱
             await _db.SaveChangesAsync(cancellationToken);

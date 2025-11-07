@@ -1,6 +1,6 @@
 ﻿@model BookLoop.Models.Template
 @{
-    ViewData["Title"] = $"範本群組「{Model.TemplateKey}」";
+    ViewData["Title"] = $"範本群組「{Model.Name}」";
     var hasDefault = Model.Versions.Any(x => x.IsDefault);     // 是否有預設版
 }
 
@@ -39,17 +39,22 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="TemplateId" value="@Model.TemplateId" />
 
-                    <div class="col-md-4">
-                        <label class="form-label">TemplateKey</label>
+                    <div class="col-md-3">
+                        <label class="form-label">TemplateKey(範本群組識別碼)</label>
                         <input class="form-control" name="TemplateKey" value="@Model.TemplateKey" />
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-md-3">
+                        <label class="form-label">中文名稱</label>
+                        <input class="form-control" name="Name" value="@Model.Name" />
+                    </div>
+
+                    <div class="col-md-5">
                         <label class="form-label">說明</label>
                         <input class="form-control" name="Description" value="@Model.Description" />
                     </div>
 
-                    <div class="col-md-2 text-end">
+                    <div class="col-md-1 text-end">
                         <button type="submit" class="btn btn-success w-100">儲存</button>
                     </div>
                 </form>
