@@ -2,9 +2,10 @@
   <div class="userdata-tabs">
     <!-- Nav Tabs -->
     <div role="tablist" class="tabs">
-      <button :class="['tab', active==='borrow' && 'active']" @click="activate('borrow')">借閱紀錄</button>
-      <button :class="['tab', active==='reserve' && 'active']" @click="activate('reserve')">預約紀錄</button>
-      <button :class="['tab', active==='penalty' && 'active']" @click="activate('penalty')">罰金紀錄</button>
+      <button :class="['tab', active==='borrow' && 'active']" @click="activate('borrow')"><i class="fa-solid fa-book"></i> 借閱紀錄</button>
+      <button :class="['tab', active==='reserve' && 'active']" @click="activate('reserve')"><i class="fa-solid fa-file-medical"></i> 預約紀錄</button>
+      <button :class="['tab', active==='penalty' && 'active']" @click="activate('penalty')"><i class="fa-solid fa-money-bill-1-wave"></i> 罰金紀錄</button>
+       <button class="view-btn" @click="openOtherModal" aria-haspopup="dialog"><i class="fa-solid fa-scale-balanced"></i> 查看罰款規則</button>
     </div>
 
     <!-- 借閱紀錄 -->
@@ -86,14 +87,99 @@
         </table>
       </DataPanel>
     </section>
-  </div>
+    <transition name="backdrop">
+  <div
+    v-if="showRules"
+    class="fixed inset-0 bg-black/40 z-40"
+    @click.self="showRules=false"
+    aria-hidden="true"
+  />
+</transition>
+    <transition name="modal-top">
+  <div v-if="showRules" class="fixed inset-0 z-50 pointer-events-none">
+    <div class="pointer-events-auto mx-auto mt-10 w-[90%] max-w-3xl bg-white rounded-lg shadow-xl p-4">
+
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold px-3 py-1 rounded bg-green-100 text-green-800">罰款規則</h2>
+       
+      </div>
+
+      <div v-if="loading" class="py-6 text-center">載入中…</div>
+      <div v-else-if="error" class="py-6 text-red-600">{{ error }}</div>
+
+      <div v-else>
+        <table class="w-full border-collapse">
+          <thead>
+            <tr>
+              <th class="border px-2 py-1 text-left">ID</th>
+              <th class="border px-2 py-1 text-left">原因</th>
+              <th class="border px-2 py-1 text-left">罰款類型</th>
+              <th class="border px-2 py-1 text-right">單位金額</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in rules" :key="r.ruleID ?? r.RuleID">
+              <td class="border px-2 py-1">{{ r.ruleID ?? r.RuleID }}</td>
+              <td class="border px-2 py-1">{{ r.reasonCode ?? r.ReasonCode }}</td>
+              <td class="border px-2 py-1">{{ r.chargeType ?? r.ChargeType }}</td>
+              <td class="border px-2 py-1 text-right">{{ r.unitAmount ?? r.UnitAmount }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div v-if="!rules.length" class="text-center py-6 text-gray-500">
+          沒有規則資料
+        </div>
+      </div>
+
+      <div class="mt-4 text-right">
+        <button @click="showRules=false" class="px-3 py-1 border rounded"><i class="fa-solid fa-circle-xmark"></i>關閉</button>
+      </div>
+    </div>
+    </div> 
+  </transition>
+  </div>  
+ 
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, onMounted, onBeforeUnmount  } from 'vue'
 import DataPanel from '@/components/DataPanel.vue'
 import http from '@/lib/http'
 
+
+// 狀態
+const showRules = ref(false);
+const loading = ref(false);
+const error = ref(null)
+const rules = ref([])
+
+// 按下按鈕：開 Modal -> 抓資料
+async function openOtherModal() {
+  showRules.value = true;
+  loading.value = true;
+  error.value = null;
+  try {
+    const res = await http.get('/api/PenatlyRules/rule')
+    const data = res.data
+    rules.value = (Array.isArray(data) ? data : []).map(d => ({
+  RuleID: d.ruleID,
+  ReasonCode: d.reasonCode,
+  ChargeType: d.chargeType,
+  UnitAmount: d.unitAmount,
+}));
+  } catch (e) {
+    error.value = e?.response?.data?.message ?? e?.message ?? '載入失敗，請稍後再試'
+  } finally {
+    loading.value = false
+  }
+}
+// Esc 關閉
+function onEsc (e) {
+  if (e.key === 'Escape' && showRules.value) showRules.value = false
+}
+onMounted(() => window.addEventListener("keydown", onEsc));
+onBeforeUnmount(() => window.removeEventListener("keydown", onEsc));
 /** 取得資料的可重用 composable */
 function useTabFetcher(path) {
   const state = reactive({ loading: false, error: '', data: [] })
@@ -209,4 +295,121 @@ function statusClass(name) {
 .text-primary { color: #0d6efd; }
 .text-danger { color: #dc3545; }
 .text-success { color: #198754; }
+
+.view-btn {
+  margin-left: auto; padding: .5rem .75rem; border: 1px solid #ddd; background: #fff;
+  border-radius: .5rem; cursor: pointer;
+}
+
+/* ===== Backdrop（黑色背景） ===== */
+.modal-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  z-index: 999;
+}
+
+/* ===== Modal 視窗 ===== */
+.modal{
+  position: fixed;
+  top: 10%;                 /* 放高一點，營造「上方浮入」 */
+  left: 50%;
+  transform: translate(-50%, 0);
+  width: min(900px, 92vw);
+  max-height: 80vh;
+  background: #fff;
+  border-radius: .75rem;
+  box-shadow: 0 12px 30px rgba(0,0,0,.18);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+
+/* ===== Backdrop（黑色背景） ===== */
+.modal-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  z-index: 999;
+}
+
+/* ===== Modal 視窗 ===== */
+.modal{
+  position: fixed;
+  top: 10%;                 /* 放高一點，營造「上方浮入」 */
+  left: 50%;
+  transform: translate(-50%, 0);
+  width: min(900px, 92vw);
+  max-height: 80vh;
+  background: #fff;
+  border-radius: .75rem;
+  box-shadow: 0 12px 30px rgba(0,0,0,.18);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+
+/* ===== Header（標題 + 右上角 X） ===== */
+.modal-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;   /* 標題在左、X 在最右 */
+  padding: .75rem 1rem;
+  border-bottom: 1px solid #eee;
+}
+.modal-title{
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* 右上角關閉按鈕 */
+.close-btn{
+  margin-left: auto;                /* 保險：推到最右 */
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: .25rem .5rem;
+  cursor: pointer;
+  color: #555;
+}
+.close-btn:hover{ color: #222; }
+.close-btn:focus-visible{
+  outline: 2px solid #6aa3ff;
+  outline-offset: 2px;
+  border-radius: .375rem;
+}
+
+/* ===== 內容與頁腳 ===== */
+.modal-body{
+  overflow: auto;
+  padding: 1rem;
+}
+.modal-footer{
+  padding: .75rem 1rem;
+  border-top: 1px solid #eee;
+  text-align: right;
+}
+
+/* ===== 進場/退場動畫（搭配 <transition name="...">） ===== */
+/* 背景淡入 */
+.backdrop-enter-active, .backdrop-leave-active{ transition: opacity .2s ease; }
+.backdrop-enter-from, .backdrop-leave-to{ opacity: 0; }
+
+/* 視窗自上方浮入 */
+.modal-top-enter-active, .modal-top-leave-active{ transition: all .25s ease; }
+.modal-top-enter-from, .modal-top-leave-to{
+  opacity: 0;
+  transform: translate(-50%, -24px);   /* 從更上方開始 */
+}
+
+.userdata-tabs {
+  padding: 40px;            /* 內距，自行調整 */
+  /* 常見一起設的 */
+  box-sizing: border-box;   /* 讓 padding 不把容器撐大 */
+}
+
 </style>
