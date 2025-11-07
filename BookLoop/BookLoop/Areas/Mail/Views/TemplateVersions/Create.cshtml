@@ -32,14 +32,30 @@
 
     switch (tkey)
     {
-        case "system.account.welcome":
+        case "Auth.EmailVerification.OTP":
+            tags = new() {
+                new { name = "品牌名稱", value = "{{BrandName}}" },
+                new { name = "驗證碼", value = "{{EmailOTP}}" },
+                new { name = "有限期限", value = "{{ValidityPeriod}}" },
+                // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
+                // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
+            }; break;
+        case "Auth.ResetPassword.OTP":
+            tags = new() {
+                new { name = "品牌名稱", value = "{{BrandName}}" },
+                new { name = "驗證碼", value = "{{PasswordOTP}}" },
+                new { name = "有限期限", value = "{{ValidityPeriod}}" },
+                // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
+                // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
+            }; break;
+        case "System.Account.Welcome":
             tags = new() {
                 new { name = "品牌名稱", value = "{{BrandName}}" },
                 // new { name = "主要按鈕文字", value = "{{PrimaryActionText}}" },
                 // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
             }; break;
 
-        case "system.order.placed":
+        case "System.Order.Placed":
             tags = new() {
                 new { name = "訂單編號",   value = "{{OrderNo}}" },
                 new { name = "下單時間",   value = "{{OrderDate}}" },
@@ -48,7 +64,7 @@
                 // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
             }; break;
 
-        case "system.order.shipped":
+        case "System.Order.Shipped":
             tags = new() {
                 new { name = "訂單編號",   value = "{{OrderNo}}" },
                 new { name = "物流商",     value = "{{Carrier}}" },
@@ -58,7 +74,7 @@
                 // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
             }; break;
 
-        case "system.order.arrived":
+        case "System.Order.Arrived":
             tags = new() {
                 new { name = "訂單編號",   value = "{{OrderNo}}" },
                 new { name = "門市名稱",   value = "{{StoreName}}" },
@@ -67,7 +83,7 @@
                 // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
             }; break;
 
-        case "system.reserve.arrived":
+        case "System.Reserve.Arrived":
             tags = new() {
                 new { name = "書名",       value = "{{BookTitle}}" },
                 new { name = "門市名稱",   value = "{{StoreName}}" },
@@ -76,7 +92,7 @@
                 // new { name = "主要按鈕連結", value = "{{PrimaryActionUrl}}" }
             }; break;
 
-        case "system.reserve.overdue":
+        case "System.Reserve.Overdue":
             tags = new() {
                 new { name = "書名",       value = "{{BookTitle}}" },
                 new { name = "到期日",     value = "{{DueDate}}" },
@@ -152,9 +168,8 @@
             </form>
             <div id="editor" class="unlayer-editor mt-3"></div>
             <div class="mt-3 d-flex justify-content-between">
-                <a class="btn btn-link"
-                   asp-area="Mail" asp-controller="TemplateVersions" asp-action="Index" asp-route-templateId="@Model.TemplateId">← 返回版本列表</a>
-                <button type="button" class="btn btn-primary" id="btn-save-all">儲存</button>
+                <a asp-area="Mail" asp-controller="TemplateVersions" asp-action="Index" asp-route-templateId="@Model.TemplateId" class="btn btn-outline-secondary">返回</a>
+                   <button type="button" class="btn btn-primary" id="btn-save-all">儲存</button>
             </div>
         </div>
 
@@ -331,12 +346,12 @@
               form.appendChild(group);
             });
 
-            // 補一排快速操作（重設 / 從主旨帶入常見欄位）
+            // 快速操作（重設 / 從主旨帶入常見欄位）
             const tools = document.createElement('div');
             tools.className = 'd-flex gap-2 mt-1';
             tools.innerHTML = `
               <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-vars-reset">重設</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-vars-from-subject">從主旨猜值</button>
+              // <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-vars-from-subject">從主旨猜值</button>
             `;
             form.appendChild(tools);
 
