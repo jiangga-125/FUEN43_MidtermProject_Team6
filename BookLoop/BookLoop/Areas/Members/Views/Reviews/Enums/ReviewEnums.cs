@@ -28,7 +28,7 @@ namespace BookLoop.ReviewEnums
 	// 你如果有 TargetType 的定義，也可以集中在這裡
 	public static class TargetTypes
 	{
-		public const byte Book = 1;
-		public const byte Member = 2; // 你在設定檔中當作「禁止自評」的判斷用
+		public const byte Book = 0;
+		public const byte Member = 1; // 你在設定檔中當作「禁止自評」的判斷用
 	}
 }

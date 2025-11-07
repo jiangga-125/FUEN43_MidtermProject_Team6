@@ -41,7 +41,7 @@ namespace BookLoop.Services
             if (next == null)
             {
                 // 沒有人預約 → 書可借
-                listing.Status = 1;//改變書籍狀態:可借,isavailable就會自動改變
+                listing.Status = 0;//改變書籍狀態:可借為0,isavailable就會自動改變
                 await _db.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
                 return false;

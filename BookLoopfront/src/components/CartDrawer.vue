@@ -1,20 +1,49 @@
 <script setup lang="ts">
-import { computed, defineProps, defineEmits, watch } from 'vue'
+import { computed, defineProps, defineEmits, ref, watch, Ref } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useRouter } from 'vue-router'
-import { useAuth } from '@/stores/auth'
+import http from '@/lib/http'
+import { useAuth  } from '@/stores/auth'
+
+// --- 傳入父層 props 與事件 ---
 
 const props = defineProps<{ visible: boolean; memberId?: number | null }>()
 const emit = defineEmits<{ (e: 'update:visible', value: boolean): void }>()
-
 const close = () => emit('update:visible', false)
+
 const cartStore = useCartStore()
+const router = useRouter()
 const auth = useAuth()
+
+// 優惠券輸入與折扣資料
+const couponCode = ref('')
+const discountAmount = ref(0)
+const discountInfo = ref<string>('')
+const memberCoupons: Ref<any[]> = ref([]) // ✅ 小寫統一，型別明確化
+
+// 當購物車開啟時載入資料
+watch(
+  () => props.visible,
+  async (visible) => {
+    if (!visible) return
+
+    console.log('🟡 購物車開啟，準備載入優惠券...')
+    // ✅ 1️⃣ 確保 Token 已灌入 header
+    auth.__hydrateHttpAuthHeaderOnce()
+
+    // ✅ 2️⃣ 等待登入狀態載入（確保 token 有效）
+    const ok = await auth.tryLoadSession()
+    if (!ok) {
+      alert('請先登入會員再查看優惠券')
+      return
+    }
+  }
+)
+
 // 綁定 store 中的資料
 const cartItems = computed(() => cartStore.items)
 const totalItems = computed(() => cartStore.totalItems)
 const totalPrice = computed(() => cartStore.totalPrice)
-const router = useRouter()
 
 /** 嘗試由多個來源解析 memberId（優先順序：prop > cartStore > auth.store > token） */
 function resolveMemberId(): number | null {
@@ -89,6 +118,17 @@ watch(
     if (visible) {
       await loadCartIfNeeded()
     }
+
+    // ✅ 3️⃣ 開始載入購物車與優惠券
+    const mid = resolveMemberId()
+    console.log('📦 Fetching cart for member', mid ?? props.memberId)
+    if (mid != null) {
+      await cartStore.initCart(mid)
+    } else {
+      // 若無會員，清空或載入 guest cart（視實作而定）
+      cartStore.clearCart()
+    }
+    await loadMemberCoupons()
   },
   { immediate: true },
 )
@@ -109,7 +149,79 @@ watch(
   },
 )
 
-// 更新商品數量（只修改前端）
+// ✅ 取得會員已領取的優惠券清單
+async function loadMemberCoupons() {
+  try {
+    // 🟢 若沒有 token，就不發 request
+    const token =
+      localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+    if (!token) {
+      console.warn('⚠️ 無法載入優惠券：尚未登入')
+      memberCoupons.value = []
+      return
+    }
+
+    // 🟢 呼叫 API
+    const { data } = await http.get('/api/MemberCouponsApi/List')
+    memberCoupons.value = data?.usable ?? []
+    console.log('🎟 已領取優惠券：', memberCoupons.value)
+  } catch (err: any) {
+    console.error('❌ 無法載入會員優惠券', err)
+    memberCoupons.value = []
+  }
+}
+
+
+// ✅ 使用代碼領取優惠券
+async function claimByCode() {
+  if (!couponCode.value.trim()) {
+    alert('請輸入優惠代碼')
+    return
+  }
+  try {
+    const { data } = await http.post('/api/MemberCouponsApi/ClaimByCode', {
+      Code: couponCode.value.trim(),
+    })
+    alert(data.message || '領取成功！')
+    couponCode.value = ''
+    await loadMemberCoupons()
+  } catch (err: any) {
+    alert(err.response?.data?.message || '領取失敗，請確認優惠代碼是否正確')
+  }
+}
+
+// ✅ 套用優惠券折扣
+async function applyCoupon() {
+  if (!couponCode.value.trim()) {
+    alert('請輸入優惠碼')
+    return
+  }
+  try {
+    const subtotal = totalPrice.value
+    const { data } = await http.post('/api/CouponsApi/Apply', {
+      Code: couponCode.value,
+      Subtotal: subtotal,
+    })
+    if (data.success) {
+      discountAmount.value = data.data.discount
+      discountInfo.value = data.data.rule
+    } else {
+      discountAmount.value = 0
+      discountInfo.value = data.message || '無效的優惠券'
+    }
+  } catch (err: any) {
+    console.error('applyCoupon error:', err)
+    alert('套用優惠券時發生錯誤，請重新登入')
+  }
+}
+
+// ✅ 點擊優惠券 → 自動填入並立即套用
+async function useCoupon(coupon: any) {
+  couponCode.value = coupon.code
+  await applyCoupon()
+}
+
+// ✅ 更新商品數量
 function updateItem(bookId: number, qty: number) {
   const item = cartStore.items.find((i) => i.book.id === bookId)
   if (!item) return
@@ -123,17 +235,20 @@ function updateItem(bookId: number, qty: number) {
   }
 }
 
-// 移除商品
+// ✅ 移除商品
 function removeItem(itemId: number | null) {
   if (itemId != null) cartStore.removeItemByItemId(itemId)
 }
 
-// 清空購物車
+// ✅ 清空購物車
 function clearCart() {
   cartStore.clearCart()
+  discountAmount.value = 0
+  discountInfo.value = ''
+  couponCode.value = ''
 }
 
-// 結帳
+// ✅ 結帳
 async function checkoutCart() {
   try {
     const mid = resolveMemberId()
@@ -144,8 +259,6 @@ async function checkoutCart() {
 
     const orderId = await cartStore.checkout()
     console.log('checkoutCart OrderID:', orderId)
-
-    // Modal 關閉
     close()
   } catch (err) {
     const e = err as any
@@ -165,10 +278,12 @@ async function checkoutCart() {
       </div>
 
       <div class="modal-body">
+        <!-- 🩶 空購物車 -->
         <div v-if="cartItems.length === 0" class="text-center py-5 text-muted fs-5">
           購物車是空的
         </div>
 
+        <!-- 🟦 有商品 -->
         <div v-else>
           <div class="cart-list mb-4">
             <div
@@ -178,18 +293,9 @@ async function checkoutCart() {
             >
               <div class="d-flex align-items-center gap-3 flex-grow-1">
                 <img
-                  :src="
-                    item.book.coverUrl && item.book.coverUrl.startsWith('http')
-                      ? item.book.coverUrl
-                      : `/api/BookImages/${item.book.id}/cover`
-                  "
+                  :src="item.book.coverUrl && item.book.coverUrl.startsWith('http') ? item.book.coverUrl : `/api/BookImages/${item.book.id}/cover`"
                   :alt="item.book.title || 'Book Cover'"
-                  @error="
-                    (e: Event) => {
-                      const target = e.currentTarget as HTMLImageElement | null
-                      if (target) target.src = '/placeholder.png'
-                    }
-                  "
+                  @error="(e) => { const target = e.currentTarget as HTMLImageElement | null; if (target) target.src = '/placeholder.png' }"
                   class="rounded shadow-sm"
                   style="width: 60px; height: 80px; object-fit: cover"
                 />
@@ -215,17 +321,90 @@ async function checkoutCart() {
             </div>
           </div>
 
+          <!-- 🧾 總金額區塊 -->
           <div class="summary-box mb-4">
             <div class="d-flex justify-content-between fs-5 mb-2">
               <span>🧺 總數量：</span>
               <strong>{{ totalItems }}</strong>
             </div>
-            <div class="d-flex justify-content-between fs-5">
-              <span>💰 總金額：</span>
-              <strong class="text-danger fs-4">NT$ {{ totalPrice }}</strong>
+            <div class="d-flex justify-content-between fs-5 mb-2">
+              <span>💰 小計：</span>
+              <strong>NT$ {{ totalPrice }}</strong>
+            </div>
+
+            <!-- 🎫 優惠券輸入 -->
+            <div class="d-flex gap-2 align-items-center mb-3">
+              <input
+                v-model="couponCode"
+                type="text"
+                class="form-control"
+                placeholder="輸入優惠碼"
+              />
+              <button class="btn btn-outline-primary" @click="applyCoupon">套用</button>
+            </div>
+
+            <!-- ✅ 新增：會員優惠券清單 -->
+            <div class="member-coupons mb-3">
+              <h6 class="fw-bold mb-2">🎟 你已領取的優惠券：</h6>
+
+              <!-- 有優惠券 -->
+              <ul v-if="memberCoupons.length > 0" class="list-group small">
+                <li
+                  v-for="c in memberCoupons"
+                  :key="c.CouponId"
+                  class="list-group-item d-flex justify-content-between align-items-center"
+                >
+                  <div>
+                    <div class="fw-bold">{{ c.name }}</div>
+                    <div class="text-muted small">
+  有效期限：
+  <span v-if="c.startAt && c.endAt">
+    {{ c.startAt }} ~ {{ c.endAt }}
+  </span>
+  <span v-else>無期限</span>
+</div>
+
+                  </div>
+                  <div class="text-end">
+                    <span v-if="c.DiscountType === 0">折抵 NT$ {{ c.DiscountValue }}</span>
+                    <span v-else>{{ c.DiscountValue }}% 折扣</span>
+                    <button
+                      class="btn btn-sm btn-outline-success ms-2"
+                      @click="useCoupon(c)"
+                    >
+                      使用
+                    </button>
+                  </div>
+                </li>
+              </ul>
+
+              <!-- 沒有優惠券 -->
+              <p v-else class="text-muted small mb-0">
+                尚未領取任何優惠券，請輸入代碼領取。
+              </p>
+            </div>
+
+            <!-- 優惠券結果提示 -->
+            <div v-if="discountInfo" class="text-success small ms-1">
+              {{ discountInfo }}
+            </div>
+
+            <!-- 折扣金額 -->
+            <div v-if="discountAmount > 0" class="d-flex justify-content-between fs-5 mt-2">
+              <span>🎉 優惠折抵：</span>
+              <strong class="text-success">-NT$ {{ discountAmount }}</strong>
+            </div>
+
+            <!-- 實付金額 -->
+            <div class="d-flex justify-content-between fs-5 mt-2 border-top pt-2">
+              <span>🧾 實付金額：</span>
+              <strong class="text-danger fs-4">
+                NT$ {{ totalPrice - discountAmount }}
+              </strong>
             </div>
           </div>
 
+          <!-- 按鈕列 -->
           <div class="d-flex justify-content-end gap-3">
             <button class="btn btn-outline-secondary px-4" @click="clearCart">清空購物車</button>
             <button class="btn btn-primary px-4" @click="checkoutCart">前往結帳</button>
@@ -277,6 +456,18 @@ async function checkoutCart() {
   max-height: 600px;
 }
 
+.list-group-item {
+  transition: all 0.2s ease;
+}
+.list-group-item:hover {
+  background: #f0f9ff;
+  transform: translateY(-2px);
+}
+.btn-outline-success {
+  padding: 2px 8px;
+  font-size: 0.8rem;
+}
+
 .btn-close {
   position: absolute;
   top: 20px;
@@ -290,35 +481,5 @@ async function checkoutCart() {
 }
 .btn-close:hover {
   opacity: 1;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(50px) scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-}
-.animate-slide-up {
-  animation: slideUp 0.35s ease-out;
-}
-
-.cart-item:hover {
-  background: #f9fafc;
-  transition: background 0.2s;
-}
-
-@media (max-width: 576px) {
-  .modal-content {
-    width: 95%;
-    max-height: 90%;
-    padding: 1rem;
-  }
-  .cart-list {
-    max-height: 300px;
-  }
 }
 </style>
