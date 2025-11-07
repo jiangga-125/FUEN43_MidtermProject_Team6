@@ -36,12 +36,14 @@ watch(
     if (!ok) {
       alert('請先登入會員再查看優惠券')
       return
-const auth = useAuth()
+    }
+  }
+)
+
 // 綁定 store 中的資料
 const cartItems = computed(() => cartStore.items)
 const totalItems = computed(() => cartStore.totalItems)
 const totalPrice = computed(() => cartStore.totalPrice)
-const router = useRouter()
 
 /** 嘗試由多個來源解析 memberId（優先順序：prop > cartStore > auth.store > token） */
 function resolveMemberId(): number | null {
@@ -118,8 +120,14 @@ watch(
     }
 
     // ✅ 3️⃣ 開始載入購物車與優惠券
-    console.log('📦 Fetching cart for member', props.memberId)
-    await cartStore.initCart(props.memberId)
+    const mid = resolveMemberId()
+    console.log('📦 Fetching cart for member', mid ?? props.memberId)
+    if (mid != null) {
+      await cartStore.initCart(mid)
+    } else {
+      // 若無會員，清空或載入 guest cart（視實作而定）
+      cartStore.clearCart()
+    }
     await loadMemberCoupons()
   },
   { immediate: true },
@@ -285,23 +293,9 @@ async function checkoutCart() {
             >
               <div class="d-flex align-items-center gap-3 flex-grow-1">
                 <img
-                  :src="item.book.coverUrl && item.book.coverUrl.startsWith('http')
-                        ? item.book.coverUrl
-                        : `/api/BookImages/${item.book.id}/cover`"
+                  :src="item.book.coverUrl && item.book.coverUrl.startsWith('http') ? item.book.coverUrl : `/api/BookImages/${item.book.id}/cover`"
                   :alt="item.book.title || 'Book Cover'"
-                  @error="(e) => ((e.target as HTMLImageElement).src = '/placeholder.png')"
-                  :src="
-                    item.book.coverUrl && item.book.coverUrl.startsWith('http')
-                      ? item.book.coverUrl
-                      : `/api/BookImages/${item.book.id}/cover`
-                  "
-                  :alt="item.book.title || 'Book Cover'"
-                  @error="
-                    (e: Event) => {
-                      const target = e.currentTarget as HTMLImageElement | null
-                      if (target) target.src = '/placeholder.png'
-                    }
-                  "
+                  @error="(e) => { const target = e.currentTarget as HTMLImageElement | null; if (target) target.src = '/placeholder.png' }"
                   class="rounded shadow-sm"
                   style="width: 60px; height: 80px; object-fit: cover"
                 />
