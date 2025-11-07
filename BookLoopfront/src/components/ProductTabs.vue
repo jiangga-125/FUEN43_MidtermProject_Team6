@@ -8,7 +8,9 @@ import { addToCart as addCartAPI } from '@/api/shoppingCart'
 import UsedListingsGrid from '@/components/UsedListingsGrid.vue'
 // 使用 pinia auth store（你檔案最底有 export useAuth）
 import { useAuth } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
 
+const cartStore = useCartStore()
 const router = useRouter()
 // 從父層接收 categoryId
 const props = defineProps<{ categoryId: number | null }>()
@@ -111,28 +113,36 @@ async function addToCart(b: Book) {
 
   // ========== 真正加入購物車邏輯 ==========
   try {
-    const payload: any = {
-      BookID: b.id,
-      Quantity: 1,
-      UnitPrice: b.salePrice ?? b.listPrice ?? 0,
-    }
-
-    // 短期 fallback：如果後端還要求 MemberID 才存，才附上（長期請後端改由 token 決定）
-    if (memberId.value) payload.MemberID = memberId.value
-
-    console.log('加入購物車 payload', payload)
-    const res = await addCartAPI(payload)
-    console.log('購物車回傳資料', res)
-    alert(`✅ 已加入購物車：${b.title}`)
-  } catch (e: any) {
-    console.error('加入購物車錯誤', e)
-    if (e?.response) {
-      const msg = e.response.data?.message ?? '加入購物車失敗'
-      alert(`❌ ${msg}`)
-    } else {
-      alert(`❌ 加入購物車失敗: ${e?.message ?? '未知錯誤'}`)
-    }
+  const payload: any = {
+    BookID: b.id,
+    Quantity: 1,
+    UnitPrice: b.salePrice ?? b.listPrice ?? 0,
   }
+
+  if (memberId.value) payload.MemberID = memberId.value
+
+  console.log('加入購物車 payload', payload)
+  const res = await addCartAPI(payload)
+  console.log('購物車回傳資料', res)
+
+  // ✅ 同步更新 Pinia store，讓 HeaderBar 數字立刻變動
+  const exist = cartStore.items.find(i => i.book.id === b.id)
+  if (exist) {
+    exist.quantity += 1
+  } else {
+    cartStore.items.push({ book: b, quantity: 1, itemId: res.itemId ?? undefined })
+  }
+
+  alert(`✅ 已加入購物車：${b.title}`)
+} catch (e: any) {
+  console.error('加入購物車錯誤', e)
+  if (e?.response) {
+    const msg = e.response.data?.message ?? '加入購物車失敗'
+    alert(`❌ ${msg}`)
+  } else {
+    alert(`❌ 加入購物車失敗: ${e?.message ?? '未知錯誤'}`)
+  }
+}
 }
 </script>
 
