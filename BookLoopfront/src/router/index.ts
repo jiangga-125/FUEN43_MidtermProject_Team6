@@ -14,6 +14,7 @@ import OrderCenter from '@/views/OrderCenter.vue'
 import BookDetail from '@/views/BookDetail.vue'
 
 // let bootstrapped = false
+const MemberCenter = () => import('@/views/MemberCenter.vue')
 
 const router = createRouter({
   history: createWebHistory(),
@@ -29,7 +30,8 @@ const router = createRouter({
       meta: { public: true, title: '外部登入跳轉' },
     },
     { path: '/2fa/setup', component: TwoFASetup, meta: { title: '雙因素驗證設定' } },
-    { path: '/member', component: Member },
+    // { path: '/member', component: Member },
+    memberRoutes,
     { path: '/', component: () => import('@/views/Home.vue'), meta: { public: true } },
     { path: '/order-center', component: OrderCenter },
     { path: '/:pathMatch(.*)*', redirect: '/' },
@@ -43,11 +45,6 @@ const router = createRouter({
     { path: '/books/:id', name: 'BookDetail', component: BookDetail, props: true },
     // fallback（務必放最後）
     { path: '/:pathMatch(.*)*', redirect: '/' },
-    {
-      path: '/member/coupons',
-      name: 'MemberCoupons',
-      component: () => import('@/views/MemberCoupons.vue'),
-    },
     {
       path: '/review/create',
       name: 'CreateReview',
