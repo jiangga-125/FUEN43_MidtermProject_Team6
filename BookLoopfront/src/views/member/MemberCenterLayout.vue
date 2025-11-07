@@ -11,7 +11,7 @@ const tabs = [
   { to: { name: 'member-profile' },  text: '會員資料維護', icon: '👤' },
   { to: { name: 'member-security' }, text: '帳號密碼與安全性', icon: '🔒' },
   { to: { name: 'member-orders' },   text: '訂單紀錄', icon: '🧾' },
-  { to: { name: 'member-borrows' },  text: '借書紀錄', icon: '📚' },
+  { to: { name: 'member-borrows' },  text: '二手書紀錄', icon: '📚' },
   { to: { name: 'member-coupons' },  text: '優惠券',   icon: '🎟️' },
   { to: { name: 'member-favorites' },text: '收藏',     icon: '💖' },
   { to: { name: 'member-cart' },     text: '購物車',   icon: '🛒' },
