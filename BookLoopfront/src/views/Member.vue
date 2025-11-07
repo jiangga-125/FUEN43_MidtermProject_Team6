@@ -219,7 +219,6 @@ onMounted(() => {
       <p>尚未登入，請先 <a href="/login">登入</a>。</p>
     </div>
   </div>
-
 </template>
 
 <style scoped>
