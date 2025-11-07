@@ -45,7 +45,7 @@ namespace BookLoop.Controllers.Api
 			}
 			else
 			{
-				var member = await _db.Members.FirstOrDefaultAsync(m => m.MemberID == userId.Value);
+				var member = await _db.Members.FirstOrDefaultAsync(m => m.UserID == userId.Value);
 				if (member == null) return NotFound();
 				return Ok(new
 				{

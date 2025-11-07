@@ -1,16 +1,17 @@
-﻿using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
-using System.IdentityModel.Tokens.Jwt;
-using BookLoop.Data;
+﻿using BookLoop.Data;
 using BookLoop.Helpers;   // RefreshTokenHelper
 using BookLoop.Models;    // RefreshToken & User
+using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace BookLoop.Services
 {
@@ -183,6 +184,7 @@ namespace BookLoop.Services
 				new Claim("uid", uid),
 				new Claim(ClaimTypes.Email, email),
 				new Claim(ClaimTypes.Name, name),
+				new Claim("userId", user.UserID.ToString()),
 				new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
 			};
 

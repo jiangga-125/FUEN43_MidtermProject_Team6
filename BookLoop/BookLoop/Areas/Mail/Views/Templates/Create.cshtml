@@ -13,15 +13,19 @@
             <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
 
             <div class="mb-3">
-                <label asp-for="TemplateKey" class="form-label">TemplateKey（群組識別碼）</label>
+                <label asp-for="TemplateKey" class="form-label">TemplateKey（唯一範本群組識別碼）</label>
                 <input asp-for="TemplateKey" class="form-control" />
-                <div class="form-text">例如：<code>OrderPaid</code>、<code>Welcome</code>、<code>Promo</code>。</div>
                 <span asp-validation-for="TemplateKey" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label">中文名稱</label>
+                <input asp-for="Name" class="form-control">
+                <span asp-validation-for="Name" class="text-danger"></span>
             </div>
 
             <div class="mb-3">
                 <label asp-for="Description" class="form-label">說明（可選）</label>
-                <textarea asp-for="Description" rows="2" class="form-control"></textarea>
+                <textarea asp-for="Description" rows="3" class="form-control"></textarea>
                 <span asp-validation-for="Description" class="text-danger"></span>
             </div>
         </div>
