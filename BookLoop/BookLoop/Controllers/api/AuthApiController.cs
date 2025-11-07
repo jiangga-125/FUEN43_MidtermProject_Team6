@@ -1,7 +1,9 @@
+// 路徑：BookLoop/Controllers/Api/AuthApiController.cs
 using BookLoop;
 using BookLoop.Data;
 using BookLoop.Helpers;
 using BookLoop.Models;
+using BookLoop.Services.Mail; // 使用 IMailService
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -10,10 +12,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Linq; // ? 新增：Linq
 
 namespace BookLoop.Controllers.Api
 {
@@ -26,34 +32,47 @@ namespace BookLoop.Controllers.Api
 		private readonly IConfiguration _cfg;
 		private readonly IMemoryCache _cache;
 		private readonly IWebHostEnvironment _env;
+		private readonly IMailService _mail;
 
-		public AuthApiController(AppDbContext db, IConfiguration cfg, IMemoryCache cache, IWebHostEnvironment env)
+		public AuthApiController(
+			AppDbContext db,
+			IConfiguration cfg,
+			IMemoryCache cache,
+			IWebHostEnvironment env,
+			IMailService mail)
 		{
 			_db = db;
 			_cfg = cfg;
 			_cache = cache;
 			_env = env;
+			_mail = mail;
 		}
 
 		// ==== DTOs ====
 		public record LoginDto(string Account, string Password);
-
-		// Email OTP（共用）
-		public record EmailOtpDto(string Account, string Code);
+		public record EmailOtpDto(
+			string Account,
+			string Code,
+			bool? RememberDevice = null,
+			string? DeviceHash = null
+		);
 		public record EmailSendDto(string Account, string? Purpose);
-
-		// 註冊
 		public record RegisterSimpleDto(string Email, string Password, string? Username);
 		public record RegisterWithCodeDto(string Account, string Name, string Password, string Code);
-
-		// 忘記/重設
 		public record ForgotDto(string Email);
 		public record ResetDto(string Email, string Code, string NewPassword);
 		public record ResetConfirmDto(string Account, string Code, string Password);
-
-		// TOTP
 		public record TotpBindDto(string Account);
 		public record TotpVerifyDto(string Account, string Code);
+		public record ChangePasswordDto(string Old, string New); // ? 新增
+
+		// 用於保存 Google token（示範用快取；正式建議落 DB 並加密）
+		private class GoogleTokenBundle
+		{
+			public string AccessToken { get; set; } = "";
+			public string? RefreshToken { get; set; }
+			public DateTimeOffset ExpiresAt { get; set; }
+		}
 
 		// ==== 密碼雜湊（PBKDF2） ====
 		private static string HashPasswordPbkdf2(string password, int iterations = 100_000, int saltSize = 16, int keySize = 32)
@@ -110,11 +129,9 @@ namespace BookLoop.Controllers.Api
 			var stored = member.PasswordHash ?? string.Empty;
 			if (string.IsNullOrEmpty(stored)) return false;
 
-			// BCrypt
 			if (stored.StartsWith("$2"))
 			{ try { return BCrypt.Net.BCrypt.Verify(password, stored); } catch { } }
 
-			// PBKDF2: PBKDF2$<iter>$<saltBase64>$<hashBase64>
 			if (stored.StartsWith("PBKDF2$", StringComparison.OrdinalIgnoreCase))
 			{
 				try
@@ -130,7 +147,6 @@ namespace BookLoop.Controllers.Api
 				catch { }
 			}
 
-			// SHA256 hex
 			if (stored.Length == 64 && stored.All(c => "0123456789abcdefABCDEF".Contains(c)))
 			{
 				var sha = SHA256.HashData(Encoding.UTF8.GetBytes(password));
@@ -138,7 +154,6 @@ namespace BookLoop.Controllers.Api
 				return string.Equals(stored, hex, StringComparison.OrdinalIgnoreCase);
 			}
 
-			// 退場機制：明碼（僅開發）
 			return stored == password;
 		}
 
@@ -161,14 +176,45 @@ namespace BookLoop.Controllers.Api
 			});
 			await _db.SaveChangesAsync();
 
+			var isProd = !_env.IsDevelopment(); // 依你專案的準則決定
 			Response.Cookies.Append("refreshToken", rawRefresh, new CookieOptions
 			{
 				HttpOnly = true,
-				Secure = true,
-				SameSite = SameSiteMode.None,
+				Secure = isProd,                 // 只有正式環境強制 Secure
+				SameSite = isProd ? SameSiteMode.None : SameSiteMode.Lax, // 本機開發用 Lax 比較好測
 				Path = "/",
 				Expires = DateTime.UtcNow.AddDays(days)
 			});
+		}
+
+		// 寄 OTP
+		private Task SendOtpEmailAsync(string email, string purpose, string code, DateTimeOffset expiresAt)
+		{
+			var subject = purpose.Equals("ResetPassword", StringComparison.OrdinalIgnoreCase)
+				? "【BookLoop】重設密碼驗證碼"
+				: "【BookLoop】Email 驗證碼";
+
+			var html = $@"
+<p>您好，</p>
+<p>您的一次性驗證碼為：</p>
+<h2 style=""letter-spacing:3px"">{code}</h2>
+<p>有效期限：{expiresAt:yyyy/MM/dd HH:mm}</p>
+<p>若非本人操作，請忽略本信。</p>";
+
+			return _mail.SendAsync(
+				to: email,
+				subject: subject,
+				body: html,
+				attachmentName: null,
+				attachmentBytes: null,
+				contentType: "text/html",
+				templateId: null,
+				templateKey: purpose.Equals("ResetPassword", StringComparison.OrdinalIgnoreCase) ? "Auth.ResetPassword.OTP" : "Auth.EmailVerification.OTP",
+				templateVersionId: null,
+				mailJobId: null,
+				jobRecipientId: null,
+				category: purpose.Equals("ResetPassword", StringComparison.OrdinalIgnoreCase) ? "Auth/Reset" : "Auth/Register",
+				cancellationToken: HttpContext.RequestAborted);
 		}
 
 		// ==================== 1) 帳密登入 ====================
@@ -210,7 +256,7 @@ namespace BookLoop.Controllers.Api
 			return Ok(new { member = new { memberId, name, email } });
 		}
 
-		// ==================== 3) Refresh（匿名） ====================
+		// ==================== 3) Refresh ====================
 		[HttpPost("refresh")]
 		[AllowAnonymous]
 		public async Task<IActionResult> Refresh()
@@ -261,8 +307,6 @@ namespace BookLoop.Controllers.Api
 		}
 
 		// ==================== 5) Email OTP：寄送 / 驗證 ====================
-
-		// 統一寄送端點（Purpose: Register / ResetPassword）
 		[HttpPost("email/send")]
 		[AllowAnonymous]
 		public async Task<IActionResult> EmailSend([FromBody] EmailSendDto dto)
@@ -277,27 +321,35 @@ namespace BookLoop.Controllers.Api
 			var norm = NormalizeEmail(email);
 			var purpose = (dto.Purpose ?? "Register").Trim();
 
-			// ResetPassword 需確認帳號存在；Register 不檢查
 			if (purpose.Equals("ResetPassword", StringComparison.OrdinalIgnoreCase))
 			{
 				var exists = await _db.Members.AnyAsync(m => m.EmailNormalized == norm);
 				if (!exists) return NotFound(new { message = "帳號不存在" });
 			}
 
-			var code = Random.Shared.Next(100000, 999999).ToString();
-			_cache.Set($"emailotp:{email}", code, TimeSpan.FromMinutes(10));
+			var throttleKey = $"emailotp:throttle:{norm}";
+			if (_cache.TryGetValue(throttleKey, out _))
+				return StatusCode(429, new { message = "寄送過於頻繁，請稍後再試" });
+			_cache.Set(throttleKey, 1, TimeSpan.FromSeconds(60));
 
-			if (_env.IsDevelopment()) return Ok(new { message = "OTP 已寄出", devCode = code });
-			return Ok(new { message = "OTP 已寄出" });
+			var code = Random.Shared.Next(100000, 999999).ToString();
+			var expires = DateTimeOffset.UtcNow.AddMinutes(10);
+
+			_cache.Set($"emailotp:{norm}", code, TimeSpan.FromMinutes(10));
+
+			await SendOtpEmailAsync(email, purpose, code, expires);
+
+			if (_env.IsDevelopment())
+				return Ok(new { message = "OTP 已寄出", devCode = code, expires });
+
+			return Ok(new { message = "OTP 已寄出", expires });
 		}
 
-		// 舊路徑相容：/2fa/email/send → 轉呼叫新版 email/send（Purpose=Register）
 		[HttpPost("2fa/email/send")]
 		[AllowAnonymous]
 		public Task<IActionResult> SendEmailOtp([FromBody] TotpBindDto dto)
 			=> EmailSend(new EmailSendDto(dto?.Account ?? "", "Register"));
 
-		// 用「Email OTP」直接登入（既有會員）
 		[HttpPost("2fa/email/verify")]
 		[AllowAnonymous]
 		public async Task<IActionResult> VerifyEmailOtp([FromBody] EmailOtpDto dto)
@@ -305,17 +357,49 @@ namespace BookLoop.Controllers.Api
 			if (dto == null || string.IsNullOrWhiteSpace(dto.Account) || string.IsNullOrWhiteSpace(dto.Code))
 				return BadRequest(new { message = "缺少帳號或驗證碼" });
 
-			if (!_cache.TryGetValue<string>($"emailotp:{dto.Account}", out var cached) || cached != dto.Code)
+			var norm = NormalizeEmail(dto.Account);
+			if (!_cache.TryGetValue<string>($"emailotp:{norm}", out var cached) || cached != dto.Code)
 				return Unauthorized(new { message = "驗證碼錯誤或已過期" });
 
-			var norm = NormalizeEmail(dto.Account);
 			var member = await _db.Members.FirstOrDefaultAsync(m => m.EmailNormalized == norm);
 			if (member == null) return NotFound(new { message = "帳號不存在" });
+
+			// ? 記住此裝置（可選）
+			if ((dto.RememberDevice ?? false) && !string.IsNullOrWhiteSpace(dto.DeviceHash))
+			{
+				// 讀取保存天數（appsettings: Auth:EmailOtp:BypassIfTrustedDeviceDays；預設 30）
+				int days = 30;
+				if (int.TryParse(_cfg["Auth:EmailOtp:BypassIfTrustedDeviceDays"], out var cfgDays) && cfgDays > 0)
+					days = cfgDays;
+
+				var now = DateTime.UtcNow;
+				var dev = await _db.MemberTrustedDevices
+					.FirstOrDefaultAsync(x => x.MemberID == member.MemberID && x.DeviceHash == dto.DeviceHash);
+
+				if (dev == null)
+				{
+					_db.MemberTrustedDevices.Add(new MemberTrustedDevice
+					{
+						MemberID = member.MemberID,
+						DeviceHash = dto.DeviceHash!,
+						DeviceName = "我的裝置",
+						CreatedAt = now,
+						LastUsedAt = now,
+						ExpiresAtUtc = now.AddDays(days)
+					});
+				}
+				else
+				{
+					dev.LastUsedAt = now;
+					dev.ExpiresAtUtc = now.AddDays(days);
+				}
+				await _db.SaveChangesAsync();
+			}
 
 			var (tokenStr, expiresUtc) = IssueAccessToken(BuildMemberClaims(member));
 			await SetRefreshCookieAsync(member.MemberID);
 
-			_cache.Remove($"emailotp:{dto.Account}");
+			_cache.Remove($"emailotp:{norm}");
 			return Ok(new
 			{
 				token = tokenStr,
@@ -372,9 +456,7 @@ namespace BookLoop.Controllers.Api
 			return Ok(new { ok = true });
 		}
 
-		// ==================== 7) 註冊（兩種流派都支援） ====================
-
-		// A) 簡單註冊（不驗碼）
+		// ==================== 7) 註冊 ====================
 		[HttpPost("register")]
 		[AllowAnonymous]
 		public async Task<IActionResult> RegisterSimple([FromBody] RegisterSimpleDto dto)
@@ -417,7 +499,6 @@ namespace BookLoop.Controllers.Api
 			});
 		}
 
-		// B) 驗證碼註冊（需先 /api/auth/email/send Purpose=Register）
 		[HttpPost("register/confirm")]
 		[AllowAnonymous]
 		public async Task<IActionResult> RegisterWithCode([FromBody] RegisterWithCodeDto dto)
@@ -426,10 +507,10 @@ namespace BookLoop.Controllers.Api
 			var email = dto.Account?.Trim();
 			if (string.IsNullOrWhiteSpace(email)) return BadRequest(new { message = "缺少 Email" });
 
-			if (!_cache.TryGetValue<string>($"emailotp:{email}", out var cached) || cached != dto.Code)
+			var norm = NormalizeEmail(email);
+			if (!_cache.TryGetValue<string>($"emailotp:{norm}", out var cached) || cached != dto.Code)
 				return BadRequest(new { message = "Email 驗證碼錯誤或已過期" });
 
-			var norm = NormalizeEmail(email);
 			var exists = await _db.Members.AnyAsync(x => x.EmailNormalized == norm);
 			if (exists) return Conflict(new { message = "Email 已存在" });
 
@@ -453,7 +534,7 @@ namespace BookLoop.Controllers.Api
 			_db.Members.Add(m);
 			await _db.SaveChangesAsync();
 
-			_cache.Remove($"emailotp:{email}");
+			_cache.Remove($"emailotp:{norm}");
 
 			var (tokenStr, expiresUtc) = IssueAccessToken(BuildMemberClaims(m));
 			await SetRefreshCookieAsync(m.MemberID);
@@ -465,39 +546,45 @@ namespace BookLoop.Controllers.Api
 			});
 		}
 
-		// ==================== 8) 忘記 / 重設密碼（同 /email/send + /reset/confirm 模式） ====================
+		// ==================== 8) 忘記 / 重設密碼 ====================
 		[HttpPost("forgot")]
 		[AllowAnonymous]
 		public async Task<IActionResult> Forgot([FromBody] ForgotDto dto)
 		{
-			// 這支你可保留（與 email/send(Purpose=ResetPassword) 作用等價）
 			if (dto == null || string.IsNullOrWhiteSpace(dto.Email)) return BadRequest(new { message = "缺少 Email" });
 
-			var norm = NormalizeEmail(dto.Email);
+			var email = dto.Email.Trim();
+			var norm = NormalizeEmail(email);
 			var member = await _db.Members.FirstOrDefaultAsync(m => m.EmailNormalized == norm);
 			if (member == null) return NotFound(new { message = "帳號不存在" });
 
 			var code = Random.Shared.Next(100000, 999999).ToString();
-			_cache.Set($"reset:{dto.Email}", code, TimeSpan.FromMinutes(10));
-			if (_env.IsDevelopment()) return Ok(new { message = "重設碼已寄出", devCode = code });
-			return Ok(new { message = "重設碼已寄出" });
+			var expires = DateTimeOffset.UtcNow.AddMinutes(10);
+
+			_cache.Set($"emailotp:{norm}", code, TimeSpan.FromMinutes(10));
+
+			await SendOtpEmailAsync(email, "ResetPassword", code, expires);
+
+			if (_env.IsDevelopment())
+				return Ok(new { message = "重設碼已寄出", devCode = code, expires });
+
+			return Ok(new { message = "重設碼已寄出", expires });
 		}
 
 		[HttpPost("reset")]
 		[AllowAnonymous]
 		public async Task<IActionResult> Reset([FromBody] ResetDto dto)
 		{
-			// 舊相容：用 reset:email 的碼
 			if (dto == null ||
 				string.IsNullOrWhiteSpace(dto.Email) ||
 				string.IsNullOrWhiteSpace(dto.Code) ||
 				string.IsNullOrWhiteSpace(dto.NewPassword))
 				return BadRequest(new { message = "參數不完整" });
 
-			if (!_cache.TryGetValue<string>($"reset:{dto.Email}", out var cached) || cached != dto.Code)
+			var norm = NormalizeEmail(dto.Email);
+			if (!_cache.TryGetValue<string>($"emailotp:{norm}", out var cached) || cached != dto.Code)
 				return BadRequest(new { message = "重設碼錯誤或已過期" });
 
-			var norm = NormalizeEmail(dto.Email);
 			var m = await _db.Members.FirstOrDefaultAsync(x => x.EmailNormalized == norm);
 			if (m == null) return BadRequest(new { message = "帳號不存在" });
 
@@ -505,11 +592,10 @@ namespace BookLoop.Controllers.Api
 			m.UpdatedAt = DateTime.UtcNow;
 			await _db.SaveChangesAsync();
 
-			_cache.Remove($"reset:{dto.Email}");
+			_cache.Remove($"emailotp:{norm}");
 			return Ok(new { ok = true });
 		}
 
-		// 對齊新流程：/email/send(Purpose=ResetPassword) + /reset/confirm
 		[HttpPost("reset/confirm")]
 		[AllowAnonymous]
 		public async Task<IActionResult> ResetConfirm([FromBody] ResetConfirmDto dto)
@@ -518,10 +604,10 @@ namespace BookLoop.Controllers.Api
 			var email = dto.Account?.Trim();
 			if (string.IsNullOrWhiteSpace(email)) return BadRequest(new { message = "缺少 Email" });
 
-			if (!_cache.TryGetValue<string>($"emailotp:{email}", out var cached) || cached != dto.Code)
+			var norm = NormalizeEmail(email);
+			if (!_cache.TryGetValue<string>($"emailotp:{norm}", out var cached) || cached != dto.Code)
 				return BadRequest(new { message = "驗證碼錯誤或已過期" });
 
-			var norm = NormalizeEmail(email);
 			var m = await _db.Members.FirstOrDefaultAsync(x => x.EmailNormalized == norm);
 			if (m == null) return BadRequest(new { message = "帳號不存在" });
 
@@ -529,15 +615,59 @@ namespace BookLoop.Controllers.Api
 			m.UpdatedAt = DateTime.UtcNow;
 			await _db.SaveChangesAsync();
 
-			_cache.Remove($"emailotp:{email}");
+			_cache.Remove($"emailotp:{norm}");
 			return Ok(new { ok = true });
 		}
 
-		// ==================== 9) 外部登入 ====================
+		// ==================== X) 變更密碼（需登入） ==================== // ? 新增
+		[HttpPost("password/change")]
+		[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+		public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+		{
+			if (dto is null || string.IsNullOrWhiteSpace(dto.Old) || string.IsNullOrWhiteSpace(dto.New))
+				return BadRequest(new { message = "缺少舊密碼或新密碼" });
+
+			// 基本規則（可依需求加強）
+			if (dto.New.Length < 6)
+				return BadRequest(new { message = "新密碼至少 6 碼" });
+			if (dto.Old == dto.New)
+				return BadRequest(new { message = "新舊密碼不可相同" });
+
+			// 從 JWT 取出 member id
+			var midStr = User.FindFirst("mid")?.Value;
+			if (string.IsNullOrWhiteSpace(midStr) || !int.TryParse(midStr, out var mid))
+				return Unauthorized(new { message = "無效的登入狀態" });
+
+			var m = await _db.Members.FirstOrDefaultAsync(x => x.MemberID == mid);
+			if (m == null) return Unauthorized(new { message = "找不到帳號" });
+
+			// 驗舊密碼
+			if (!VerifyPassword(m, dto.Old))
+				return BadRequest(new { message = "舊密碼錯誤" });
+
+			// 寫入新密碼（PBKDF2）
+			m.PasswordHash = HashPasswordPbkdf2(dto.New);
+			m.SecurityStamp = Guid.NewGuid().ToString("N"); // 變更密碼後刷新安全戳
+			m.UpdatedAt = DateTime.UtcNow;
+			await _db.SaveChangesAsync();
+
+			// （可選）讓舊 refresh token 失效，強制客戶端重新 refresh
+			var activeTokens = await _db.MemberRefreshTokens
+				.Where(t => t.MemberId == mid && !t.IsRevoked && t.ExpiresAt > DateTime.UtcNow)
+				.ToListAsync();
+			foreach (var t in activeTokens) t.IsRevoked = true;
+			await _db.SaveChangesAsync();
+
+			return Ok(new { message = "Password changed" });
+		}
+
+		// ==================== 9) 外部登入（popup + postMessage） ====================
 		[HttpGet("external/{provider}")]
 		[AllowAnonymous]
 		public IActionResult ExternalChallenge([FromRoute] string provider, [FromQuery] string? returnUrl = null)
 		{
+			if (!IsSafeReturnUrl(returnUrl)) returnUrl = "/";
+
 			var props = new AuthenticationProperties
 			{
 				RedirectUri = Url.Action(nameof(ExternalCallback), new { provider, returnUrl })
@@ -550,13 +680,26 @@ namespace BookLoop.Controllers.Api
 		public async Task<IActionResult> ExternalCallback([FromRoute] string provider, [FromQuery] string? returnUrl = null)
 		{
 			var result = await HttpContext.AuthenticateAsync(Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme);
-			if (!result.Succeeded) return Unauthorized(new { message = "外部登入失敗" });
+			if (!result.Succeeded || result.Principal == null)
+				return Content(HtmlCloseWithError("external_auth_failed", "外部登入失敗"));
 
-			var extId = result.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-			var email = result.Principal?.FindFirst(ClaimTypes.Email)?.Value;
-			var name = result.Principal?.Identity?.Name ?? email ?? extId ?? "member";
+			var extId = result.Principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			var email = result.Principal.FindFirst(ClaimTypes.Email)?.Value;
 
-			var accountKey = !string.IsNullOrEmpty(email) ? NormalizeEmail(email) : $"{provider}:{extId}".ToUpperInvariant();
+			var accessToken = result.Properties?.GetTokenValue("access_token");
+			var idToken = result.Properties?.GetTokenValue("id_token");
+			var refreshToken = result.Properties?.GetTokenValue("refresh_token");
+			var expiresAtStr = result.Properties?.GetTokenValue("expires_at");
+
+			DateTimeOffset googleExpiresAt = DateTimeOffset.UtcNow.AddHours(1);
+			if (!string.IsNullOrWhiteSpace(expiresAtStr) &&
+				DateTimeOffset.TryParse(expiresAtStr, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dto))
+			{
+				googleExpiresAt = dto;
+			}
+
+			var accountKey = !string.IsNullOrWhiteSpace(email) ? NormalizeEmail(email)
+							: $"{provider}:{extId}".ToUpperInvariant();
 
 			var member = await _db.Members.FirstOrDefaultAsync(m => m.EmailNormalized == accountKey);
 			if (member == null)
@@ -581,11 +724,161 @@ namespace BookLoop.Controllers.Api
 				await _db.SaveChangesAsync();
 			}
 
+			if (!string.IsNullOrEmpty(accessToken))
+			{
+				var cacheKey = $"google:tokens:{member.MemberID}";
+				_cache.Set(cacheKey, new GoogleTokenBundle
+				{
+					AccessToken = accessToken,
+					RefreshToken = refreshToken,
+					ExpiresAt = googleExpiresAt
+				}, TimeSpan.FromHours(12));
+			}
+
 			var (tokenStr, expiresUtc) = IssueAccessToken(BuildMemberClaims(member));
 			await SetRefreshCookieAsync(member.MemberID);
 
-			var dest = (returnUrl ?? "/") + $"#access_token={tokenStr}&expires={Uri.EscapeDataString(expiresUtc.ToString("o"))}";
-			return Redirect(dest);
+			await HttpContext.SignOutAsync(Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme);
+
+			var frontBase = _cfg["Frontend:BaseUrl"]?.TrimEnd('/') ?? "/";
+			if (!IsSafeReturnUrl(returnUrl)) returnUrl = "/";
+			var target = BuildFrontEndTarget(frontBase, returnUrl);
+
+			return Content(
+				HtmlCloseWithSuccess(provider, target, tokenStr, new DateTimeOffset(expiresUtc).ToUnixTimeSeconds()),
+				"text/html; charset=utf-8"
+			);
 		}
+
+		// ==================== 10) 後端代理呼叫 Google API（範例：userinfo） ====================
+		[HttpGet("google/profile")]
+		[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+		public async Task<IActionResult> GetGoogleProfile()
+		{
+			var midStr = User.FindFirst("mid")?.Value;
+			if (string.IsNullOrWhiteSpace(midStr) || !int.TryParse(midStr, out var mid))
+				return Unauthorized(new { message = "invalid member id" });
+
+			var bundle = _cache.Get<GoogleTokenBundle>($"google:tokens:{mid}");
+			if (bundle == null)
+				return NotFound(new { message = "google tokens not found; please re-login with Google" });
+
+			// 過期則嘗試用 refresh_token 換新
+			if (bundle.ExpiresAt <= DateTimeOffset.UtcNow && !string.IsNullOrEmpty(bundle.RefreshToken))
+			{
+				var newBundle = await RefreshGoogleAccessTokenAsync(bundle.RefreshToken!);
+				if (newBundle != null)
+				{
+					bundle.AccessToken = newBundle.AccessToken;
+					bundle.ExpiresAt = newBundle.ExpiresAt;
+					_cache.Set($"google:tokens:{mid}", bundle, TimeSpan.FromHours(12));
+				}
+			}
+
+			using var client = new HttpClient();
+			client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", bundle.AccessToken);
+
+			var resp = await client.GetAsync("https://www.googleapis.com/oauth2/v3/userinfo");
+			if (!resp.IsSuccessStatusCode)
+				return StatusCode((int)resp.StatusCode, new { message = "google api error" });
+
+			var json = await resp.Content.ReadAsStringAsync();
+			return Content(json, "application/json; charset=utf-8");
+		}
+
+		private async Task<GoogleTokenBundle?> RefreshGoogleAccessTokenAsync(string refreshToken)
+		{
+			var clientId = _cfg["Authentication:Google:ClientId"]!;
+			var clientSecret = _cfg["Authentication:Google:ClientSecret"]!;
+
+			using var client = new HttpClient();
+			var form = new FormUrlEncodedContent(new Dictionary<string, string>
+			{
+				["client_id"] = clientId,
+				["client_secret"] = clientSecret,
+				["grant_type"] = "refresh_token",
+				["refresh_token"] = refreshToken
+			});
+			var resp = await client.PostAsync("https://oauth2.googleapis.com/token", form);
+			if (!resp.IsSuccessStatusCode) return null;
+
+			var json = await resp.Content.ReadAsStringAsync();
+			using var doc = JsonDocument.Parse(json);
+			var root = doc.RootElement;
+
+			var accessToken = root.GetProperty("access_token").GetString()!;
+			var expiresIn = root.TryGetProperty("expires_in", out var ei) ? ei.GetInt32() : 3600;
+
+			return new GoogleTokenBundle
+			{
+				AccessToken = accessToken,
+				RefreshToken = refreshToken,
+				ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(expiresIn)
+			};
+		}
+
+		// ---- Private helpers ----
+		private static bool IsSafeReturnUrl(string? url)
+		{
+			if (string.IsNullOrWhiteSpace(url)) return false;
+			return url.StartsWith("/") && !url.StartsWith("//");
+		}
+
+		private static string BuildFrontEndTarget(string frontBase, string? returnUrl)
+		{
+			if (string.IsNullOrWhiteSpace(returnUrl) || !IsSafeReturnUrl(returnUrl))
+				return frontBase;
+			return frontBase + returnUrl;
+		}
+
+		// 回傳給 popup 的最小 HTML（成功）— 使用「origin」而不是整個 URL
+		private string HtmlCloseWithSuccess(string provider, string targetUrl, string accessToken, long expiresAt) => $@"
+<!doctype html><html><body>
+<script>
+  (function() {{
+    try {{
+      var targetUrl = '{targetUrl}';
+      var origin;
+      try {{
+        origin = new URL(targetUrl).origin;   // 只取 origin（例如 https://localhost:5173）
+      }} catch (e) {{
+        origin = '*'; // 後援：解析失敗就放寬（開發環境建議 ok；正式可改為固定字串）
+      }}
+      if (window.opener && window.opener !== window) {{
+        window.opener.postMessage({{
+          type: 'oauth-success',
+          provider: '{provider.ToLowerInvariant()}',
+          accessToken: '{accessToken}',
+          expiresAt: {expiresAt}
+        }}, origin);
+      }}
+    }} catch (e) {{}}
+    window.close();
+  }})();
+</script>
+登入成功，視窗將自動關閉。
+</body></html>";
+
+
+		// 回傳給 popup 的最小 HTML（失敗）
+		private string HtmlCloseWithError(string code, string message) => $@"
+<!doctype html><html><body>
+<script>
+  (function() {{
+    try {{
+      if (window.opener && window.opener !== window) {{
+        window.opener.postMessage({{
+          type: 'oauth-error',
+          provider: 'google',
+          error: '{code}',
+          message: '{message}'
+        }}, '*');
+      }}
+    }} catch (e) {{ }}
+    window.close();
+  }})();
+</script>
+登入失敗：{message}
+</body></html>";
 	}
 }

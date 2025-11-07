@@ -55,6 +55,11 @@
           <input v-model.trim="emailCode" placeholder="例如：123456" maxlength="6" />
         </label>
 
+        <label class="row remember2fa">
+          <input type="checkbox" v-model="rememberDevice2fa" />
+          <span class="muted">此裝置 30 天免驗證</span>
+        </label>
+
         <button class="primary" type="button" :disabled="auth.loading || !canSubmitEmail" @click="loginByEmailOtp">
           使用 Email 驗證碼登入
         </button>
@@ -80,10 +85,22 @@
         </div>
       </div>
 
-      <p v-if="err" class="err">{{ err }}</p>
+      <p class="err" v-if="err">{{ err }}</p>
 
       <div class="divider"><span>或</span></div>
 
+      <!-- ✅ 一鍵登入（前台）— 直接用目前帳密欄位的值送出 -->
+      <button type="button"
+              class="btn-demo"
+              :disabled="auth.loading || !account || !password"
+              @click="oneClickLogin"
+              title="使用上方輸入的 Email/Password 直接登入（快捷鍵 Alt+D）">
+        一鍵登入（前台）
+      </button>
+
+      <div class="divider small"><span>也可以</span></div>
+
+      <!-- 其他 SSO -->
       <div class="sso-row">
         <button type="button" class="sso google" :disabled="auth.loading" @click="external('Google')">使用 Google 登入</button>
         <button type="button" class="sso facebook" :disabled="auth.loading" @click="external('Facebook')">使用 Facebook 登入</button>
@@ -96,20 +113,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '@/lib/http'
 import { useAuth } from '@/stores/auth'
+import { getDeviceHash } from '@/lib/deviceHash'
 
 const auth = useAuth()
 const router = useRouter()
 
 const tab = ref<'password'|'email'|'totp'>('password')
-const account = ref(''); const password = ref(''); const emailCode = ref(''); const totpCode = ref('')
+const account = ref('test@gmail.com')   // 預設空白，演示時自行輸入
+const password = ref('000000')  // 預設空白，演示時自行輸入
+const emailCode = ref('')
+const totpCode = ref('')
 const showPwd = ref(false)
 const err = ref('')
 
 const remember = ref(true)
+const rememberDevice2fa = ref(true)
+
 function onRememberChange() {
   auth.setRemember(remember.value)
   localStorage.setItem('remember_me', remember.value ? '1':'0')
@@ -154,11 +177,23 @@ async function loginPassword() {
 
     router.replace(getRedirectTarget())
   } catch (e: any) {
-    err.value = auth.error || e?.response?.data?.message || '登入失敗'
+    err.value = (auth as any).error || e?.response?.data?.message || '登入失敗'
   }
 }
 
-// Email OTP：寄送帶 Purpose='Login'（便於後端 log/語意）
+// ✅ 一鍵登入（前台）：直接呼叫帳密登入；加上快捷鍵 Alt+D
+function oneClickLogin() {
+  tab.value = 'password'
+  loginPassword()
+}
+function onKey(e: KeyboardEvent) {
+  if (e.altKey && (e.key === 'd' || e.key === 'D')) {
+    e.preventDefault()
+    oneClickLogin()
+  }
+}
+
+// Email OTP
 async function sendEmailOtp() {
   if (!isEmail(account.value)) { err.value = '請輸入有效 Email'; return }
   err.value = ''
@@ -173,13 +208,10 @@ async function loginByEmailOtp() {
   if (!canSubmitEmail.value) return
   err.value = ''
   try {
-    /*修改：接住回傳*/
-    const res = await auth.loginWithEmailCode(account.value, emailCode.value)
-/*新增：抽 token + 套用*/
-    const token = pickToken(res) || (auth as any)?.token || (auth as any)?.state?.token || null
-    if (!token) throw new Error('登入回應沒有 token')
-    applyToken(token)
-
+    await auth.loginWithEmailCode(account.value, emailCode.value, {
+      rememberDevice: !!rememberDevice2fa.value,
+      deviceHash: getDeviceHash()
+    })
     router.replace(getRedirectTarget())
   } catch (e: any) {
     err.value = e?.response?.data?.message || '驗證碼登入失敗'
@@ -204,35 +236,34 @@ async function loginByTotp() {
   }
 }
 
-// 外部登入
-function external(provider: 'Google'|'Facebook'|'LINE') {
-  const redirect = getRedirectTarget()
-  const returnUrl = `${location.origin}/auth-callback?redirect=${encodeURIComponent(redirect)}`
-  auth.external(provider, returnUrl)
+// 外部登入（popup）
+async function external(provider: 'Google'|'Facebook'|'LINE') {
+  err.value = ''
+  try {
+    const redirect = getRedirectTarget()
+    await auth.loginWithExternal(provider, redirect)
+    router.replace(redirect)
+  } catch (e: any) {
+    err.value = e?.message || '外部登入失敗，請重試或改用帳密登入'
+  }
 }
 
 onMounted(() => {
   remember.value = (localStorage.getItem('remember_me') ?? '1') === '1'
   auth.setRemember(remember.value)
+
+  // 快捷鍵 Alt + D
+  window.addEventListener('keydown', onKey)
+
   const qs = new URLSearchParams(location.search)
   if (qs.get('err') === 'oauth') err.value = '外部登入未完成授權，請重試或改用帳密登入'
 })
-
-/*統一存 token + 讓 axios 立刻帶上*/
-function applyToken(token: string) {
-  localStorage.setItem('token', token);
-  http.defaults.headers.common.Authorization = `Bearer ${token}`;
-}
-
-/*從各種可能的回傳取出 token（後端回的是 data.token）*/
-function pickToken(res: any): string | null {
-  return res?.token ?? res?.access_token ?? res?.Token ?? null;
-}
-
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKey)
+})
 </script>
 
 <style scoped>
-/* 保持你的樣式（略） */
 .auth-shell{min-height:100vh;display:grid;place-items:center;background:radial-gradient(60% 120% at 10% 10%, #eef4ff 0%, transparent 60%),radial-gradient(70% 130% at 90% 20%, #fff3f0 0%, transparent 60%),#fafafa}
 .card{width:min(92vw,460px);background:#fff;border:1px solid #e9ecef;border-radius:16px;padding:20px 20px 16px;box-shadow:0 6px 24px rgba(0,0,0,.06);display:grid;gap:12px}
 .title{margin:0 0 6px;text-align:center}
@@ -257,10 +288,18 @@ button{padding:10px 12px;border-radius:10px;cursor:pointer;border:1px solid tran
 .err{color:#c0392b;background:#fdecea;border:1px solid #fadbd8;padding:8px;border-radius:8px}
 .divider{display:grid;place-items:center;margin-top:2px}
 .divider span{color:#999;font-size:12px}
+.divider.small{margin-top:0}
 .sso-row{display:grid;gap:8px;margin-top:2px}
 .sso{display:grid;place-items:center;font-weight:600}
 .sso.google{background:#fff;border:1px solid #e3e7ee}
 .sso.facebook{background:#1877f2;color:#fff;border:0}
 .sso.line{background:#06c755;color:#fff;border:0}
 .hint{font-size:13px;color:#666;text-align:center;margin-top:4px}
+
+/* 一鍵登入按鈕（前台） */
+.btn-demo{background:linear-gradient(90deg,#ffb86b,#ff7a59);color:#111;border:0;border-radius:10px;height:42px;font-weight:700}
+.btn-demo[disabled]{opacity:.6;cursor:not-allowed}
+
+/* 2FA 勾選微調 */
+.remember2fa{gap:8px;margin-top:-2px}
 </style>

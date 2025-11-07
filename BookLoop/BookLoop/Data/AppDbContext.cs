@@ -1,5 +1,7 @@
 using BookLoop.Models;
 using Microsoft.EntityFrameworkCore;
+using MemberTokenEntity = global::BookLoop.Models.MemberToken;
+
 
 namespace BookLoop.Data
 {
@@ -24,7 +26,7 @@ namespace BookLoop.Data
 		// ===== �e�x�]�s�W/�j�ơ^ =====
 		public DbSet<Member> Members => Set<Member>();
 		public DbSet<MemberLogin> MemberLogins => Set<MemberLogin>();
-		public DbSet<MemberToken> MemberTokens => Set<MemberToken>();
+		public DbSet<MemberTokenEntity> MemberTokens => Set<MemberTokenEntity>();
 		public DbSet<MemberTrustedDevice> MemberTrustedDevices => Set<MemberTrustedDevice>();
 		public DbSet<MemberRecoveryCode> MemberRecoveryCodes => Set<MemberRecoveryCode>();
 		public DbSet<MemberRefreshToken> MemberRefreshTokens => Set<MemberRefreshToken>(); // �e�x Members �� refresh
@@ -128,7 +130,7 @@ namespace BookLoop.Data
 				e.HasIndex(x => new { x.Provider, x.ProviderKey }).IsUnique();
 			});
 
-			modelBuilder.Entity<MemberToken>(e =>
+			modelBuilder.Entity<MemberTokenEntity>(e =>
 			{
 				e.ToTable("MemberTokens");
 				e.HasKey(x => x.MemberTokenID);
@@ -137,9 +139,21 @@ namespace BookLoop.Data
 					.HasForeignKey(x => x.MemberID)
 					.OnDelete(DeleteBehavior.Cascade);
 
-				// �� �u�O�d�w�����ޡA���n�]�w Purpose/Ip/UserAgent
+				// 對齊欄位型別/長度
+				e.Property(x => x.Token)
+					.HasMaxLength(16)         // nvarchar(16)
+					.IsUnicode(true);
+
+				// 明確對齊欄位名稱（以免未來屬性名改動）
+				e.Property(x => x.ExpiresAtUtc).HasColumnName("ExpiresAtUtc");
+				e.Property(x => x.ConsumedAtUtc).HasColumnName("ConsumedAtUtc");
+				e.Property(x => x.CreatedAt).HasColumnName("CreatedAt");
+
+				// 查詢常用索引
 				e.HasIndex(x => new { x.MemberID, x.TokenType });
-				e.HasIndex(x => x.Token).IsUnique();
+				// ★ 只保留安全索引，不要設定 Purpose/Ip/UserAgent
+				//e.HasIndex(x => new { x.MemberID, x.TokenType });
+				//e.HasIndex(x => x.Token).IsUnique();
 			});
 
 			modelBuilder.Entity<MemberTrustedDevice>(e =>
