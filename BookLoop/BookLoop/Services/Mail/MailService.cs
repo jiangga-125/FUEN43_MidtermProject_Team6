@@ -27,8 +27,8 @@ namespace BookLoop.Services.Mail
 		private readonly IConfiguration _config;
         private readonly ILogger<MailService>? _logger;
         private readonly IWebHostEnvironment? _env;
-        private readonly AppDbContext _db;
-        public MailService(
+        private readonly AppDbContext _db; // AppDbContext? _db
+		public MailService(
             IConfiguration config,
 			AppDbContext db,
 			ILogger<MailService>? logger = null,

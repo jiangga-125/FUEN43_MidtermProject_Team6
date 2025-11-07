@@ -128,8 +128,10 @@
             <i class="bi bi-shield-lock"></i><span class="ms-2 text">權限管理</span><i class="bi bi-caret-down ms-auto"></i>
         </a>
         <div id="m-acl" class="submenu ps-4">
-            <a class="nav-link" asp-area="Account" asp-controller="Users" asp-action="Index">角色與權限</a>
-            @* <a class="nav-link" asp-area="XXX" asp-controller="XXX" asp-action="Index">XXX</a> 要加什麼自己加*@
+            <a class="nav-link" asp-area="Account" asp-controller="Users" asp-action="Index">後台帳號管理</a>
+            <a class="nav-link" asp-area="Account" asp-controller="Permissions" asp-action="Index">權限管理</a>
+            <a class="nav-link" asp-area="Account" asp-controller="Members" asp-action="Index">會員帳號管理</a>
+            <a class="nav-link" asp-area="Account" asp-controller="Blacklists" asp-action="Index">黑名單管理</a>
         </div>
        
     </nav>
