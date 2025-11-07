@@ -497,6 +497,35 @@ onMounted(async () => {
   </div>
 </div>
 
+ <!-- 退貨紀錄 -->
+    <div v-if="currentTab === 'returns'" class="mt-4">
+      <h4>退貨紀錄</h4>
+      <div v-if="returns.length === 0" class="text-muted py-3">目前沒有退貨紀錄</div>
+      <div class="row g-3">
+        <div v-for="r in returns" :key="r.returnID" class="col-md-6">
+          <div class="card shadow-sm border-0 rounded-4 overflow-hidden position-relative">
+            <button
+              v-if="r.status !== 9"
+              class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-2"
+              @click="cancelReturnOrder(r.returnID)"
+            >
+              ❌ 取消退貨
+            </button>
+            <div class="card-body">
+              <h5 class="card-title fw-bold text-primary">退貨編號：#{{ r.returnID }}</h5>
+              <p class="card-text mb-1">📝 原因：{{ r.returnReason }}</p>
+              <p class="card-text mb-1">
+                📦 狀態：<span class="badge bg-warning text-dark">{{
+                  getStatusText(r.status)
+                }}</span>
+              </p>
+              <p class="card-text text-muted small">訂單編號：#{{ r.orderID }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+ 
 </template>
 
 <style scoped>
