@@ -13,18 +13,22 @@ import MyNewPage from '@/views/BorrowCenter.vue'
 import OrderCenter from '@/views/OrderCenter.vue'
 import BookDetail from '@/views/BookDetail.vue'
 
-let bootstrapped = false
+// let bootstrapped = false
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     // { path: '/', name: 'Home', component: Home, meta: { public: true } },
-      { path: '/login', component: Login, meta: { public: true, title: '登入' } },
-      { path: '/register', component: Register, meta: { public: true, title: '註冊' } },
-      { path: '/forgot', component: Forgot, meta: { public: true ,title: '忘記密碼' } },
-      { path: '/reset', component: Reset, meta: { public: true, title: '重設密碼' } },
-      { path: '/auth-callback', component: AuthCallback, meta: { public: true, title: '外部登入跳轉' } },
-      { path: '/2fa/setup', component: TwoFASetup, meta: { title: '雙因素驗證設定' } },
+    { path: '/login', component: Login, meta: { public: true, title: '登入' } },
+    { path: '/register', component: Register, meta: { public: true, title: '註冊' } },
+    { path: '/forgot', component: Forgot, meta: { public: true, title: '忘記密碼' } },
+    { path: '/reset', component: Reset, meta: { public: true, title: '重設密碼' } },
+    {
+      path: '/auth-callback',
+      component: AuthCallback,
+      meta: { public: true, title: '外部登入跳轉' },
+    },
+    { path: '/2fa/setup', component: TwoFASetup, meta: { title: '雙因素驗證設定' } },
     { path: '/member', component: Member },
     { path: '/', component: () => import('@/views/Home.vue'), meta: { public: true } },
     { path: '/order-center', component: OrderCenter },
@@ -39,11 +43,16 @@ const router = createRouter({
     { path: '/books/:id', name: 'BookDetail', component: BookDetail, props: true },
     // fallback（務必放最後）
     { path: '/:pathMatch(.*)*', redirect: '/' },
-    { path: '/member/coupons',name: 'MemberCoupons',component: () => import('@/views/MemberCoupons.vue')},
-    {path: '/review/create',name: 'CreateReview',component: () => import('@/views/CreateReview.vue')}
-
-
-
+    {
+      path: '/member/coupons',
+      name: 'MemberCoupons',
+      component: () => import('@/views/MemberCoupons.vue'),
+    },
+    {
+      path: '/review/create',
+      name: 'CreateReview',
+      component: () => import('@/views/CreateReview.vue'),
+    },
   ],
 
   // 捲動行為：切頁回到頂端
@@ -83,6 +92,5 @@ router.afterEach((to) => {
   const title = (to.meta?.title as string) ?? 'BookLoop'
   document.title = `${title} - BookLoop`
 })
-
 
 export default router
