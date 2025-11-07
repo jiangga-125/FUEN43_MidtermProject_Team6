@@ -261,6 +261,15 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
 })
+function applyToken(token: string) {
+  localStorage.setItem('token', token);
+  http.defaults.headers.common.Authorization = `Bearer ${token}`;
+}
+
+/*從各種可能的回傳取出 token（後端回的是 data.token）*/
+function pickToken(res: any): string | null {
+  return res?.token ?? res?.access_token ?? res?.Token ?? null;
+}
 </script>
 
 <style scoped>
