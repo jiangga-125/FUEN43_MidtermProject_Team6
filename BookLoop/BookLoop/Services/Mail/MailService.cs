@@ -9,6 +9,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using MimeKit.Utils;
+using System;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -112,7 +116,21 @@ namespace BookLoop.Services.Mail
             else
                 html = EmbedLocalImagesToCid(html, builder); // 預設：Cid
 
-            builder.HtmlBody = html;
+			// 取得簽章密鑰與 BaseUrl（兩者都要有才改寫）
+			var viewSecret = _config["Mail:ViewSecret"];
+			var baseUrl = _config["App:PublicBaseUrl"]
+						  ?? _config["Smtp:PublicBaseUrl"]
+						  ?? ""; // 例如 https://yourdomain.com
+
+			if (jobRecipientId.HasValue &&
+				!string.IsNullOrWhiteSpace(viewSecret) &&
+				!string.IsNullOrWhiteSpace(baseUrl))
+			{
+				html = RewriteLinksForClickTrackingSimple(
+					html, jobRecipientId.Value, viewSecret, baseUrl);
+			}
+
+			builder.HtmlBody = html;
 
             if (attachmentBytes is { Length: > 0 })
             {
@@ -276,6 +294,43 @@ namespace BookLoop.Services.Mail
 				: s.Trim().Trim('<', '>', ' ', '\t', '\r', '\n').ToLowerInvariant();
 		}
 
+		// 簡化版：把 <a href="http/https"> 改成 /api/mail/c/{rid}?u=ENC(url)&s=HMAC
+		private static readonly Regex _hrefRegex =
+			new Regex("href\\s*=\\s*\"([^\"]+)\"", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+		private string RewriteLinksForClickTrackingSimple(
+			string html, long rid, string secret, string baseUrl)
+		{
+			if (string.IsNullOrWhiteSpace(html)) return html;
+			baseUrl = baseUrl.TrimEnd('/');
+
+			return _hrefRegex.Replace(html, m =>
+			{
+				var href = m.Groups[1].Value?.Trim();
+				if (string.IsNullOrWhiteSpace(href)) return m.Value;
+
+				var lower = href.ToLowerInvariant();
+				// 放過非 http(s) 連結與錨點/腳本/mailto
+				if (lower.StartsWith("#") || lower.StartsWith("mailto:") || lower.StartsWith("javascript:"))
+					return m.Value;
+				if (!(lower.StartsWith("http://") || lower.StartsWith("https://")))
+					return m.Value;
+
+				var sig = Sign($"{rid}|{href}", secret); // 與 Controller Click 驗證規則一致
+				var trackUrl = $"{baseUrl}/api/mail/c/{rid}?u={WebUtility.UrlEncode(href)}&s={sig}";
+
+				// 強化 target / rel
+				return $"href=\"{trackUrl}\" target=\"_blank\" rel=\"noopener noreferrer\"";
+			});
+		}
+
+		// 與 Controller 相同邏輯：HMAC-SHA256 → Hex
+		private static string Sign(string payload, string secret)
+		{
+			using var h = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+			var b = h.ComputeHash(Encoding.UTF8.GetBytes(payload));
+			return Convert.ToHexString(b);
+		}
 
 	}
 }
