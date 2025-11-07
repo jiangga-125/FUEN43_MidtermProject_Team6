@@ -1,7 +1,6 @@
 ﻿@model BookLoop.Models.MailSendLog
 @{
     ViewData["Title"] = "寄送明細";
-    var hasCid = (Model?.BodySnapshot ?? "").IndexOf("cid:", StringComparison.OrdinalIgnoreCase) >= 0;
 
     string DT(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy/MM/dd HH:mm") : "-";
     Func<string?, string> statusBadge = s => s switch
@@ -60,18 +59,15 @@
         </div>
 
         <div class="col-lg-7">
-
-
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <h5 class="mb-0">實際預覽</h5>
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-secondary" id="btnReload">重新載入</button>
-                </div>
             </div>
 
-            <iframe id="previewFrame" class="w-100 border rounded" style="height:650px;background:#fff"></iframe>
+            <iframe id="previewFrame" class="w-100 border rounded"
+                    style="height:650px;background:#fff"></iframe>
 
-            <textarea id="__snapshot" hidden>@Html.Raw(Model?.BodySnapshot ?? "")</textarea>
+            <textarea id="__snapshot" hidden>@Model.BodySnapshot</textarea>
+
         </div>
     </div>
 </div>
@@ -82,7 +78,7 @@
             font-weight: 600;
         }
 
-        iframe#previewFrame {
+        iframe {
             box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,.06);
         }
     </style>
@@ -90,34 +86,35 @@
 
 @section Scripts {
     <script>
-        (function(){
-          const $frame = document.getElementById('previewFrame');
-          const $raw = document.getElementById('__snapshot');
-          const $btnReload = document.getElementById('btnReload');
-          const $btnToggleRaw = document.getElementById('btnToggleRaw');
+        try {
+            const frame = document.getElementById('previewFrame');
+            const snapshot = document.getElementById('__snapshot');
 
-          function writeHtml(html){
-            const doc = $frame.contentDocument || $frame.contentWindow.document;
-            doc.open();
-            doc.write('<!doctype html><html><head><meta charset="utf-8"></head><body>');
-            doc.write(html || '');
-            doc.write('</body></html>');
-            doc.close();
-          }
+            if (frame && snapshot) {
+                // 1. 從 textarea 讀取 HTML
+                // .value 會自動 "HTML-decode" 內容
+                const fullHtml = snapshot.value || '';
+                let content = fullHtml;
 
-          // 預設載入 BodySnapshot（注意：含 cid: 時，圖片不會顯示）
-          writeHtml($raw.value || '');
+                // 2. 在 JavaScript 中使用 Regex 提取 <body> 內容
+                //    (?s) 在 C# 中需要，但在 JS 中要用 [\s\S] (包含換行符)
+                const match = fullHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
 
-          $btnReload?.addEventListener('click', ()=> writeHtml($raw.value || ''));
+                if (match && match[1]) {
+                    // 成功提取，只使用 <body> 內的內容
+                    content = match[1];
+                }
+                // 如果 Regex 提取失敗，'content' 仍然是 'fullHtml'
+                // 這將導致預覽失敗，但至少我們嘗試過了
 
-          // 有 cid: 時提供一鍵「看原始字串」的降級（方便你確認 HTML 本體）
-          $btnToggleRaw?.addEventListener('click', ()=>{
-            const doc = $frame.contentDocument || $frame.contentWindow.document;
-            const encoded = ($raw.value || '').replace(/[&<>]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[s]));
-            doc.open();
-            doc.write('<!doctype html><html><head><meta charset="utf-8"></head><body><pre style="white-space:pre-wrap">'+ encoded +'</pre></body></html>');
-            doc.close();
-          });
-        })();
+                // 3. 將提取的內容寫入 iframe
+                const doc = frame.contentWindow.document;
+                doc.open();
+                doc.write(content);
+                doc.close();
+            }
+        } catch (e) {
+            console.error("預覽 iframe 載入失敗:", e);
+        }
     </script>
 }

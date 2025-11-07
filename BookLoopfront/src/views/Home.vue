@@ -5,26 +5,27 @@ import Marquee from '@/components/Marquee.vue'
 </script>
 
 <template>
-  <!-- 🧡 頂部廣告區 -->
+  <!-- 🧡 頂部廣告區
   <div class="ad-top-wrapper">
     <AdPopupAndTopBar />
   </div>
 
-  <!-- 💙 輪播廣告區 -->
-  <div class="ad-carousel-wrapper">
+  <-- 💙 輪播廣告區 -->
+
+  <!-- <div class="ad-carousel-wrapper">
     <BannerCarousel />
-  </div>
+  </div> -->
 
   <!-- 🟠 跑馬燈文字 -->
-  <div class="home">
+  <!-- <div class="home">
     <Marquee />
-  </div>
+  </div> -->
 
   <!-- 📘 首頁內容 -->
-  <div class="home-page p-6">
+  <!-- <div class="home-page p-6">
     <h2>簿錄書城（前台）首頁</h2>
     <p>前台首頁內容</p>
-  </div>
+  </div> -->
 </template>
 
 <style scoped>

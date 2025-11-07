@@ -106,7 +106,7 @@ async function doReserve(item: Listing){
     }
     dialogListingId.value = pre.listingId
     dialogBookTitle.value = pre.bookTitle
-    dialogMembers.value = [allowed]   
+    dialogMembers.value = [allowed]
     dialogDate.value = pre.defaultPickupDate.slice(0,10)
     dialogTime.value = pre.defaultPickupTime
     showDialog.value = true
@@ -178,7 +178,7 @@ onMounted(async () => {
             :title="item.title"
             class="card-img-top cover"
             loading="lazy"
-            @error="onImgError"
+            error="onImgError"
           />
 
           <div class="card-body d-flex flex-column">

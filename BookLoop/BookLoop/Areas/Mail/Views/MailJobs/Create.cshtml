@@ -56,10 +56,10 @@
             <div class="mb-3">
                 <label class="form-label">從會員匯入名單</label>
                 <div class="input-group">
-                    <select id="MemberRoleSelect"
+                    <select id="MemberGenderSelect"
                             class="form-select"
-                            asp-items="@(ViewBag.MemberRoles ?? Enumerable.Empty<SelectListItem>())">
-                        <option value="">-- 請選擇會員角色 --</option>
+                            asp-items="@(ViewBag.MemberGender ?? Enumerable.Empty<SelectListItem>())">
+                        <option value="">-- 請選擇會員性別 --</option>
                     </select>
                     <button class="btn btn-outline-secondary" type="button" id="ImportMembersBtn">
                         <i class="fas fa-download me-1"></i> 匯入
@@ -139,15 +139,15 @@
           });
 
           // ---- 匯入會員名單（覆蓋 textarea）----
-          const roleSel = document.getElementById("MemberRoleSelect");
+          const GenderSel = document.getElementById("MemberGenderSelect");
           const importBtn = document.getElementById("ImportMembersBtn");
           const segmentQueryTa = document.getElementById("SegmentQuery"); // asp-for 會生成此 id
 
           importBtn?.addEventListener('click', async () => {
-            const selectedRole = roleSel?.value || "";
-            if (!selectedRole) {
-              alert('請先選擇一個會員角色。');
-              roleSel?.focus();
+            const selectedGender = GenderSel?.value || "";
+            if (!selectedGender) {
+              alert('請先選擇會員性別。');
+              GenderSel?.focus();
               return;
             }
 
@@ -155,13 +155,13 @@
             importBtn.innerHTML = '匯入中…';
 
             try {
-              const url = '@Url.Action("GetMembersByRole", "MailJobs", new { area = "Mail" })' + `?role=${encodeURIComponent(selectedRole)}`;
+              const url = '@Url.Action("GetMembersByGender", "MailJobs", new { area = "Mail" })' + `?gender=${encodeURIComponent(selectedGender)}`;
               const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
               if (!res.ok) throw new Error(`伺服器錯誤: ${res.status}`);
 
               const members = await res.json();
               if (!Array.isArray(members) || members.length === 0) {
-                alert('找不到該角色的會員，或沒有可用 Email。');
+                alert('找不到該性別的會員，或沒有可用 Email。');
                 segmentQueryTa.value = '';
                 return;
               }

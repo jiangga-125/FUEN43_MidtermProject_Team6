@@ -27,7 +27,7 @@ namespace BookLoop.Models
 		[MaxLength(64)]
 		public string? Ip { get; set; }
 
-		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+		public DateTime CreatedAt { get; set; } = DateTime.Now;
 
 		// 導覽（可選）
 		public MailJob? MailJob { get; set; }

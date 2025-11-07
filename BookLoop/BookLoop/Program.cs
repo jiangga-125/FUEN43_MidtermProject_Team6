@@ -12,25 +12,27 @@ using BookLoop.Services.Points;
 using BookLoop.Services.Pricing;
 using BookLoop.Services.Reports;
 using BookLoop.Services.Rules;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authentication.OAuth;
-using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.Authentication.Facebook;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.DataProtection;
+using BookLoop.Services.Storage;
 using Hangfire;
 using Hangfire.MemoryStorage;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Facebook;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using BookLoop.Services.Storage;
 using Microsoft.Extensions.FileProviders;           // [KEEP]
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using OfficeOpenXml;
 using System;
+using System.IdentityModel.Tokens.Jwt;
 using System.IO;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using System.Security.Claims;
@@ -43,6 +45,7 @@ namespace BookLoop
 		public static async Task Main(string[] args)
 		{
 			var builder = WebApplication.CreateBuilder(args);
+			JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 			ExcelPackage.License.SetNonCommercialOrganization("FUEN43 Team6");
 
 			#region context 統一共用 bookloopstr連線字串

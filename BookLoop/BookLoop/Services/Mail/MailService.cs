@@ -9,6 +9,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using MimeKit.Utils;
+using System;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -102,19 +106,42 @@ namespace BookLoop.Services.Mail
 
             var builder = new BodyBuilder();
 
-            // Cid（離線也能顯示）或 Hosted（PublicBaseUrl）
-            var imageMode = (smtp["ImageEmbedding"] ?? "Cid").Trim();
+			// 1. 保留 "渲染後"、"轉換前" 的 HTML (給 Snapshot 用)
+			string renderedBody = body ?? string.Empty;
+			string finalHtml; // 這是要實際寄送的 HTML
+
+			// Cid（離線也能顯示）或 Hosted（PublicBaseUrl）
+			var imageMode = (smtp["ImageEmbedding"] ?? "Cid").Trim();
             var publicBaseUrl = (smtp["PublicBaseUrl"] ?? "").Trim();
 
-            string html = body ?? string.Empty;
-            if (string.Equals(imageMode, "Hosted", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(publicBaseUrl))
-                html = RewriteRelativeImgToAbsolute(html, publicBaseUrl);
-            else
-                html = EmbedLocalImagesToCid(html, builder); // 預設：Cid
+			if (string.Equals(imageMode, "Hosted", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(publicBaseUrl))
+			{
+				finalHtml = RewriteRelativeImgToAbsolute(renderedBody, publicBaseUrl);
+			}
+			else
+			{
+				// 2. 'finalHtml' 拿去轉換 Cid
+				finalHtml = EmbedLocalImagesToCid(renderedBody, builder); // 預設：Cid
+			}
+			// 取得簽章密鑰與 BaseUrl（兩者都要有才改寫）
+			var viewSecret = _config["Mail:ViewSecret"];
+			var baseUrl = _config["App:PublicBaseUrl"]
+						  ?? _config["Smtp:PublicBaseUrl"]
+						  ?? ""; // 例如 https://yourdomain.com
 
-            builder.HtmlBody = html;
+			if (jobRecipientId.HasValue &&
+				!string.IsNullOrWhiteSpace(viewSecret) &&
+				!string.IsNullOrWhiteSpace(baseUrl))
+			{
+				// 3. 繼續在 'finalHtml' 上改寫連結
+				finalHtml = RewriteLinksForClickTrackingSimple(
+					finalHtml, jobRecipientId.Value, viewSecret, baseUrl);
+			}
 
-            if (attachmentBytes is { Length: > 0 })
+			// 4. 實際寄送的 MimeMessage 使用 'finalHtml' (包含 cid: 和追蹤連結)
+			builder.HtmlBody = finalHtml;
+
+			if (attachmentBytes is { Length: > 0 })
             {
                 var name = string.IsNullOrWhiteSpace(attachmentName) ? "report.xlsx" : attachmentName!;
                 builder.Attachments.Add(name, attachmentBytes, ContentType.Parse(contentType));
@@ -144,8 +171,8 @@ namespace BookLoop.Services.Mail
                 Subject = subject ?? "",
                 Status = "Pending",
                 SentAt = DateTime.Now,
-                BodySnapshot = html
-            };
+                BodySnapshot = renderedBody
+			};
 
             _db.MailSendLogs.Add(log);                 // ← 使用複數 DbSet 名稱
             await _db.SaveChangesAsync(cancellationToken);
@@ -276,6 +303,43 @@ namespace BookLoop.Services.Mail
 				: s.Trim().Trim('<', '>', ' ', '\t', '\r', '\n').ToLowerInvariant();
 		}
 
+		// 簡化版：把 <a href="http/https"> 改成 /api/mail/c/{rid}?u=ENC(url)&s=HMAC
+		private static readonly Regex _hrefRegex =
+			new Regex("href\\s*=\\s*\"([^\"]+)\"", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+		private string RewriteLinksForClickTrackingSimple(
+			string html, long rid, string secret, string baseUrl)
+		{
+			if (string.IsNullOrWhiteSpace(html)) return html;
+			baseUrl = baseUrl.TrimEnd('/');
+
+			return _hrefRegex.Replace(html, m =>
+			{
+				var href = m.Groups[1].Value?.Trim();
+				if (string.IsNullOrWhiteSpace(href)) return m.Value;
+
+				var lower = href.ToLowerInvariant();
+				// 放過非 http(s) 連結與錨點/腳本/mailto
+				if (lower.StartsWith("#") || lower.StartsWith("mailto:") || lower.StartsWith("javascript:"))
+					return m.Value;
+				if (!(lower.StartsWith("http://") || lower.StartsWith("https://")))
+					return m.Value;
+
+				var sig = Sign($"{rid}|{href}", secret); // 與 Controller Click 驗證規則一致
+				var trackUrl = $"{baseUrl}/api/mail/c/{rid}?u={WebUtility.UrlEncode(href)}&s={sig}";
+
+				// 強化 target / rel
+				return $"href=\"{trackUrl}\" target=\"_blank\" rel=\"noopener noreferrer\"";
+			});
+		}
+
+		// 與 Controller 相同邏輯：HMAC-SHA256 → Hex
+		private static string Sign(string payload, string secret)
+		{
+			using var h = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+			var b = h.ComputeHash(Encoding.UTF8.GetBytes(payload));
+			return Convert.ToHexString(b);
+		}
 
 	}
 }
