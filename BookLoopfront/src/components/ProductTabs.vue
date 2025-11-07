@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { getBooks, type Book } from '@/api/book'
 import ProductCard from './ProductCard.vue'
 import { addToCart as addCartAPI } from '@/api/shoppingCart'
+import { useCartStore } from '@/stores/cart'
 
 // 從父層接收 categoryId
 const props = defineProps<{ categoryId: number | null }>()
@@ -18,6 +19,7 @@ const loading = ref(false)
 const err = ref('')
 
 const memberId = 616 // 確認資料庫有這個會員
+const cartStore = useCartStore()// 購物車
 
 async function load() {
   if (tab.value === 'list') {
@@ -46,7 +48,11 @@ async function load() {
 }
 
 watch([() => props.categoryId, tab, page], load)
-onMounted(load)
+
+onMounted(async () => {
+  await cartStore.initCart(memberId) // ✅ 初始化時設定 memberId
+  await load()
+})
 
 function setTab(k: TabKey) {
   if (tab.value !== k) page.value = 1
@@ -69,25 +75,15 @@ async function addToCart(b: Book) {
       Quantity: 1,
       UnitPrice: b.salePrice ?? b.listPrice ?? 0,
     }
-    console.log('加入購物車 payload', payload)
-    const res = await addCartAPI(payload)
-    console.log('購物車回傳資料', res)
+    await addCartAPI(payload)
+
+    // 🔹 立即刷新購物車資料（HeaderBar會自動更新）
+    await cartStore.fetchCart()
+
     alert(`✅ 已加入購物車：${b.title}`)
   } catch (e: any) {
     console.error('加入購物車錯誤', e)
-    if (e.response) {
-      console.group('加入購物車 Axios 錯誤')
-      console.log('status:', e.response.status)
-      console.log('headers:', e.response.headers)
-      console.log('data:', e.response.data)
-      console.groupEnd()
-
-      // 只取 message 屬性，不用整個物件
-      const msg = e.response.data?.message ?? '加入購物車失敗'
-      alert(`❌ ${msg}`)
-    } else {
-      alert(`❌ 加入購物車失敗: ${e.message ?? '未知錯誤'}`)
-    }
+    alert(`❌ 加入購物車失敗`)
   }
 }
 </script>
