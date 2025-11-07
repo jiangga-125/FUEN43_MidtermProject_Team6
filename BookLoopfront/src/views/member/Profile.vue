@@ -30,7 +30,7 @@ const form = reactive({
 
   // 4) 常用據點 + 電子報
   branch: (member.value as any)?.branch ?? '',       // 板橋/中和/三峽
-  newsletter: (member.value as any)?.newsletter ?? false
+  newsletter: (member.value as any)?.newsletter ?? true
 })
 
 // 常用據點選單（你需求指定三個）
@@ -183,9 +183,9 @@ const genderText = computed(() => {
       <div class="val">
         <div class="inline">
           <input class="input" v-model.trim="form.email" type="email" />
-          <span class="badge" :class="form.emailVerified ? 'ok':'warn'">
+          <!-- <span class="badge" :class="form.emailVerified ? 'ok':'warn'">
             {{ form.emailVerified ? '已驗證' : '未驗證' }}
-          </span>
+          </span> -->
         </div>
         <p v-if="errors.email" class="err">{{ errors.email }}</p>
       </div>

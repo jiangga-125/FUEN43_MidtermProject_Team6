@@ -1,7 +1,7 @@
 // src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '@/stores/auth'
-import { memberRoutes } from './member' // ⬅️ 會員中心巢狀路由（Profile/Security/...）
+import { memberRoutes } from './member'
 import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
 import Forgot from '@/views/Forgot.vue'
@@ -13,19 +13,17 @@ import MyNewPage from '@/views/BorrowCenter.vue'
 import OrderCenter from '@/views/OrderCenter.vue'
 import BookDetail from '@/views/BookDetail.vue'
 
-let bootstrapped = false
-
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     // { path: '/', name: 'Home', component: Home, meta: { public: true } },
-      { path: '/login', component: Login, meta: { public: true, title: '登入' } },
-      { path: '/register', component: Register, meta: { public: true, title: '註冊' } },
-      { path: '/forgot', component: Forgot, meta: { public: true ,title: '忘記密碼' } },
-      { path: '/reset', component: Reset, meta: { public: true, title: '重設密碼' } },
-      { path: '/auth-callback', component: AuthCallback, meta: { public: true, title: '外部登入跳轉' } },
-      { path: '/2fa/setup', component: TwoFASetup, meta: { title: '雙因素驗證設定' } },
-    { path: '/member', component: Member },
+    { path: '/login', component: Login, meta: { public: true, title: '登入' } },
+    { path: '/register', component: Register, meta: { public: true, title: '註冊' } },
+    { path: '/forgot', component: Forgot, meta: { public: true, title: '忘記密碼' } },
+    { path: '/reset', component: Reset, meta: { public: true, title: '重設密碼' } },
+    { path: '/auth-callback', component: AuthCallback, meta: { public: true, title: '外部登入跳轉' } },
+    { path: '/2fa/setup', component: TwoFASetup, meta: { title: '雙因素驗證設定' } },
+    memberRoutes,
     { path: '/', component: () => import('@/views/Home.vue'), meta: { public: true } },
     { path: '/order-center', component: OrderCenter },
     { path: '/:pathMatch(.*)*', redirect: '/' },
