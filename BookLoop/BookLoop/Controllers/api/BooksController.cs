@@ -134,7 +134,8 @@ namespace BookLoop.Controllers.api
 				publisher = b.Publisher != null ? new { id = b.Publisher.PublisherID, name = b.Publisher.PublisherName } : null,
 				category = b.Category != null ? new { id = b.Category.CategoryID, name = b.Category.CategoryName } : null,
 				images = b.BookImages.Select(i => new { i.ImageID, i.FilePath, i.IsPrimary }),
-				coverUrl
+				coverUrl,
+				publishDate = b.PublishDate.HasValue ? b.PublishDate.Value.ToString("yyyy-MM-dd") : null
 			});
 		}
 	}
