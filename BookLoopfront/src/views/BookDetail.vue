@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import http from '@/lib/http'
 import ProductCard from '@/components/ProductCard.vue'
@@ -7,7 +7,6 @@ import { useAuth } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
-
 const loading = ref(true)
 const auth = useAuth()
 const error = ref<string | null>(null)
@@ -53,7 +52,12 @@ const reviews = ref<
 
 const loadingReviews = ref(true)
 const related = ref<any[]>([])
-const sidebarList = ref<any[]>([])
+const sidebarList = ref<any[]>([]) // 用於顯示「同類熱銷」的書籍列表（related）
+const branchList = ref<any[]>([]) // branchList 專門存各據點的庫存資料（避免混用 sidebarList）
+
+const totalAvailable = computed(() => {
+  return (branchList.value ?? []).reduce((s: number, b: any) => s + Number(b.available ?? 0), 0)
+})
 
 // 圖片
 const imgSrc = computed(() => {
@@ -82,6 +86,7 @@ async function fetchBook() {
   error.value = null
   rawItem.value = null
   book.value = null
+  branchList.value = [] // 先清空據點清單
 
   const id = String(route.params.id ?? '')
   if (!id) {
@@ -104,10 +109,11 @@ async function fetchBook() {
 
     // 格式化(範例)
     const item = Array.isArray(payload) ? payload[0] : payload
+    // mapping
     book.value = {
       id: item.id ?? item.bookId ?? id,
       title: item.title ?? item.bookTitle ?? '無標題',
-      author: item.author ?? item.authors?.join?.(', ') ?? null,
+      author: null,
       isbn: item.isbn ?? item.ISBN ?? null,
       price: item.salePrice ?? item.Price ?? null,
       coverUrl: item.coverUrl ?? item.imageUrl ?? null,
@@ -117,28 +123,100 @@ async function fetchBook() {
 
     // 格式化publisherName欄位
     book.value.publisherName =
+      payload?.publisher?.name ??
       item.publisher?.name ??
       item.publisherName ??
       item.PublisherName ??
       (typeof item.publisher === 'string' ? item.publisher : null)
 
     // 格式化publishDate欄位（可能為 null），之後用 formatDateString 處理
-    book.value.publishDateNorm = item.publishDate ?? item.publishedDate ?? item.PublishDate ?? null
+    book.value.publishDateNorm =
+      payload?.publishDate ?? item.publishDate ?? item.publishedDate ?? item.PublishDate ?? null
 
-    // 格式化常見pages / language / stock / categoryName / authors欄位
+    // authors 支援各種型別（陣列/物件/字串） ===
+    if (Array.isArray(payload?.authors) && payload.authors.length) {
+      const names = payload.authors.map((a: any) => a.name ?? a.authorName ?? a).filter(Boolean)
+      book.value.authors = names
+      book.value.author = names.join('、')
+    } else if (Array.isArray(item?.authors) && item.authors.length) {
+      const names = item.authors
+        .map((a: any) => (typeof a === 'string' ? a : (a.name ?? a.authorName ?? a)))
+        .filter(Boolean)
+      book.value.authors = names
+      book.value.author = names.join('、')
+    } else if (item.author && typeof item.author === 'object') {
+      const n = item.author.name ?? item.author.authorName ?? null
+      book.value.authors = n ? [n] : null
+      book.value.author = n
+    } else if (typeof item.author === 'string' && item.author.trim().length) {
+      book.value.authors = [item.author]
+      book.value.author = item.author
+    } else {
+      book.value.authors = null
+      book.value.author = null
+    }
+
+    // 格式化常見欄位 ( pages / language / categoryName )
     book.value.pages = item.pages ?? item.pageCount ?? item.Pages ?? null
     book.value.language = item.language ?? item.Language ?? item.LanguageCode ?? null
-    book.value.stock = item.stock ?? item.stockQty ?? item.inventory ?? item.Stock ?? null
     book.value.categoryName = item.category?.name ?? item.categoryName ?? item.CategoryName ?? null
-    book.value.authors = item.authors ?? (item.author ? [item.author] : null)
 
-    // 格式化price (沒傳 salePrice 就顯示 listPrice)
+    // (沒傳 salePrice 就顯示 listPrice)
     if (!book.value.price) {
       book.value.price =
         item.salePrice ?? item.SalePrice ?? item.listPrice ?? item.ListPrice ?? null
     }
 
-    // 載入相關商品（範例） TODO: 改為 API 請求
+    // inventory parsing（支援 payload.inventory 或 item.inventory） ===
+    const inv = payload?.inventory ?? item?.inventory ?? null
+    if (inv) {
+      book.value.inventory = inv
+
+      // 格式化inv.byBranch 欄位
+      const rawBranches =
+        inv.byBranch ??
+        inv.by_branch ??
+        inv.branches ??
+        item.inventory?.byBranch ??
+        item.inventory?.branches ??
+        null
+
+      branchList.value = Array.isArray(rawBranches)
+        ? rawBranches.map((b: any) => {
+            const onHand = Number(b.onHand ?? b.OnHand ?? b.Onhand ?? 0)
+            const reserved = Number(b.reserved ?? b.Reserved ?? 0)
+            const available = Number(b.available ?? b.Available ?? onHand - reserved)
+            return {
+              branchId: b.branchId ?? b.BranchID ?? b.BranchId ?? b.branchID ?? null,
+              branchName:
+                b.branchName ??
+                b.BranchName ??
+                b.branch ??
+                b.Branch ??
+                '據點 ' + (b.branchId ?? b.BranchID ?? ''),
+              onHand,
+              reserved,
+              available,
+              updatedAt: b.updatedAt ?? b.UpdatedAt ?? null,
+            }
+          })
+        : []
+
+      // 計算總可用庫存
+      if (typeof inv.total === 'number') {
+        book.value.stock = inv.total
+      } else if (branchList.value.length) {
+        book.value.stock = branchList.value.reduce((s: number, b: any) => s + (b.available ?? 0), 0)
+      } else {
+        book.value.stock = item.stock ?? item.Stock ?? null
+      }
+    } else {
+      book.value.inventory = null
+      branchList.value = []
+      book.value.stock = item.stock ?? item.Stock ?? null
+    }
+
+    // related books（保持）
     try {
       const rel = await http.get(`/api/BooksApi/Related/${book.value.id}`)
       related.value = (rel.data ?? []).slice(0, 8)
@@ -146,8 +224,9 @@ async function fetchBook() {
       related.value = []
     }
 
-    // 假資料：sidebarList / reviews TODO: 改為 API 請求
+    // sidebarList = related（注意：不要覆蓋 branchList）
     sidebarList.value = related.value.slice(0, 5)
+
     reviews.value = item.reviews ?? [
       { title: '好書推薦', author: '小明', rating: 5, content: '很實用的書，範例詳細。' },
     ]
@@ -321,19 +400,24 @@ function emitAdd(b: any) {
           <!-- Title / Meta / Price / Actions -->
           <div class="col-12 col-md-7">
             <h1 class="h4 mb-1">{{ book.title }}</h1>
+            <hr />
             <div class="text-muted mb-2">
               <span>作者：{{ book.authors ? book.authors.join('、') : (book.author ?? '-') }}</span>
-              <span class="mx-2">|</span>
+              <br />
+              <hr />
               <span>ISBN：{{ book.isbn ?? '-' }}</span>
             </div>
-
+            <hr />
             <div class="mb-3">
               <div class="h4 text-danger">NT$ {{ formatMoney(book.price) }}</div>
               <div class="small text-muted" v-if="book.raw?.listPrice">
                 建議售價：NT$ {{ formatMoney(book.raw.listPrice) }}
               </div>
             </div>
-
+            <br />
+            <br />
+            <br />
+            <hr />
             <div class="d-flex align-items-center gap-2 mb-3">
               <!-- type="button" + disabled 綁定 adding，onBuyNow 會等待加入購物車成功才跳轉 -->
               <button
@@ -359,52 +443,70 @@ function emitAdd(b: any) {
                 <i class="bi bi-heart"></i> 收藏
               </button>
             </div>
-
-            <ul class="list-inline small text-muted">
-              <li class="list-inline-item">運送：24 小時內出貨</li>
-              <li class="list-inline-item">│</li>
-              <li class="list-inline-item">庫存：{{ book.stock ?? '充足' }}</li>
-            </ul>
           </div>
         </div>
 
         <hr />
 
-        <ul class="nav nav-tabs mb-3" role="tablist">
-          <li class="nav-item" role="presentation">
-            <button
-              class="nav-link active"
-              data-bs-toggle="tab"
-              data-bs-target="#tab-desc"
-              type="button"
-              role="tab"
-            >
-              內容簡介
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button
-              class="nav-link"
-              data-bs-toggle="tab"
-              data-bs-target="#tab-spec"
-              type="button"
-              role="tab"
-            >
-              規格
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button
-              class="nav-link"
-              data-bs-toggle="tab"
-              data-bs-target="#tab-reviews"
-              type="button"
-              role="tab"
-            >
-              讀者評價
-            </button>
-          </li>
-        </ul>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <!-- nav tabs 與據點按鈕 -->
+          <ul class="nav nav-tabs mb-0" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link active"
+                data-bs-toggle="tab"
+                data-bs-target="#tab-desc"
+                type="button"
+                role="tab"
+              >
+                內容簡介
+              </button>
+            </li>
+
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                data-bs-toggle="tab"
+                data-bs-target="#tab-spec"
+                type="button"
+                role="tab"
+              >
+                規格
+              </button>
+            </li>
+
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                :class="{ disabled: totalAvailable <= 0 }"
+                :tabindex="totalAvailable <= 0 ? -1 : 0"
+                :aria-disabled="totalAvailable <= 0"
+                data-bs-toggle="tab"
+                data-bs-target="#tab-branches"
+                type="button"
+                role="tab"
+                title="查看各分店庫存"
+              >
+                據點總庫存
+                <span v-if="totalAvailable > 0" class="badge bg-secondary ms-2">{{
+                  totalAvailable
+                }}</span>
+              </button>
+            </li>
+
+            <li class="nav-item" role="presentation">
+              <button
+                class="nav-link"
+                data-bs-toggle="tab"
+                data-bs-target="#tab-reviews"
+                type="button"
+                role="tab"
+              >
+                讀者評價
+              </button>
+            </li>
+          </ul>
+        </div>
 
         <div class="tab-content">
           <div class="tab-pane fade show active" id="tab-desc" role="tabpanel">
@@ -477,8 +579,48 @@ function emitAdd(b: any) {
               <div v-if="!reviews.length" class="p-3 text-muted">目前尚無評價</div>
             </div>
           </div>
-        </div>
 
+          <div class="tab-pane fade" id="tab-branches" role="tabpanel">
+            <div class="mt-3 branch-panel">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <div>據點庫存明細</div>
+                  <div class="small text-muted">
+                    可用總數：<strong>{{ totalAvailable }}</strong>
+                  </div>
+                </div>
+                <div class="card-body p-0">
+                  <ul class="list-group list-group-flush">
+                    <li
+                      v-for="(b, idx) in branchList"
+                      :key="b.branchId ?? idx"
+                      class="list-group-item d-flex justify-content-between align-items-start"
+                    >
+                      <div>
+                        <div class="fw-bold">{{ b.branchName }}</div>
+                        <div class="small text-muted">
+                          更新：{{ b.updatedAt ? formatDateString(b.updatedAt) : '-' }}
+                        </div>
+                      </div>
+                      <div class="text-end">
+                        <div class="small text-muted">可用</div>
+                        <div class="badge rounded-pill bg-primary mt-1">
+                          {{ b.available ?? 0 }}
+                        </div>
+                        <div class="small text-muted mt-1">
+                          總 {{ b.onHand ?? 0 }} / 預留 {{ b.reserved ?? 0 }}
+                        </div>
+                      </div>
+                    </li>
+                    <li v-if="!branchList.length" class="list-group-item text-muted">
+                      目前沒有據點庫存資料。
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <hr />
 
         <!-- 相關推薦（carousel 或橫列） -->
@@ -537,17 +679,46 @@ function emitAdd(b: any) {
     top: 80px;
   }
 }
-/* 讓左右區域有合理間距 */
 img.img-fluid {
   display: block;
   max-width: 100%;
   height: auto;
 }
-/* horizontal related overflow 樣式 */
 .d-flex.overflow-auto {
   -webkit-overflow-scrolling: touch;
 }
 .container {
   margin-top: 60px;
+}
+
+/* === ADDED: inline branch panel 樣式，與 reviews 區塊風格一致 === */
+.branch-panel .card {
+  border-radius: 8px;
+  box-shadow: none;
+  border: 1px solid #e9ecef;
+}
+.branch-panel .card-header {
+  background: #fff;
+  border-bottom: 1px solid #eee;
+  padding: 0.5rem 1rem;
+}
+.branch-panel .list-group-item {
+  border: none;
+  border-bottom: 1px dashed #eee;
+  padding: 0.75rem 1rem;
+}
+.branch-panel .badge {
+  font-size: 0.85rem;
+  padding: 0.45rem 0.6rem;
+}
+
+/* small screen 微調 */
+@media (max-width: 576px) {
+  .branch-panel .card-header {
+    font-size: 0.95rem;
+  }
+  .branch-panel .badge {
+    font-size: 0.8rem;
+  }
 }
 </style>
