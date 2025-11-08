@@ -25,7 +25,7 @@
         }
     </style>
 }
-@* ★ 新增：依 TemplateKey 輸出可插入變數清單，給 Unlayer 的 mergeTags 使用 *@
+@* 依 TemplateKey 輸出可插入變數清單，給 Unlayer 的 mergeTags 使用 *@
 @{
     var tkey = ViewBag.TemplateKey as string ?? "";
     var tags = new List<object>();
@@ -351,7 +351,7 @@
             tools.className = 'd-flex gap-2 mt-1';
             tools.innerHTML = `
               <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-vars-reset">重設</button>
-              // <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-vars-from-subject">從主旨猜值</button>
+              @* <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-vars-from-subject">從主旨猜值</button>*@
             `;
             form.appendChild(tools);
 
@@ -362,7 +362,7 @@
               writeVars(v);
             });
 
-            // 從主旨猜值（可選）：把 Name=右側姓名、Subject=主旨；其餘保留
+            // 從主旨猜值：把 Name=右側姓名、Subject=主旨；其餘保留
             form.querySelector('#btn-vars-from-subject').addEventListener('click', ()=>{
               const subj = document.querySelector('[name="Subject"]')?.value || '';
               const name = document.getElementById('pv-name')?.value || '';
