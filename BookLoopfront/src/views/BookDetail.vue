@@ -547,4 +547,7 @@ img.img-fluid {
 .d-flex.overflow-auto {
   -webkit-overflow-scrolling: touch;
 }
+.container {
+  margin-top: 60px;
+}
 </style>
