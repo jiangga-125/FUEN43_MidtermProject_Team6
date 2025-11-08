@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import http from '@/lib/http'
 import ProductCard from '@/components/ProductCard.vue'
@@ -58,7 +58,6 @@ const branchList = ref<any[]>([]) // branchList 專門存各據點的庫存資�
 const totalAvailable = computed(() => {
   return (branchList.value ?? []).reduce((s: number, b: any) => s + Number(b.available ?? 0), 0)
 })
-
 // 圖片
 const imgSrc = computed(() => {
   if (!book.value) return '/placeholder.png'
@@ -77,71 +76,131 @@ const descriptionExtracted = computed(() => {
   return d.content ?? d.summary ?? d.html ?? null
 })
 
+// 新增：計算後端或據點回傳的總庫存（數字或 null）
+const totalStock = computed(() => {
+  const s = book.value?.stock ?? totalAvailable.value
+  if (s === null || s === undefined) return null
+  return Number(s)
+})
+
+// 顯示字串（數字 >0 顯示數字，0 或負數顯示「缺貨」，null 顯示「—」）
+const stockDisplay = computed(() => {
+  if (totalStock.value === null) return '—'
+  return totalStock.value > 0 ? String(totalStock.value) : '缺貨'
+})
+
 function smallCover(b: any) {
   return b.coverUrl ?? (b.id ? `/api/BookImages/${b.id}/cover` : '/placeholder.png')
 }
 
+// ===== types & helpers =====
+interface BookCard {
+  id: number | string | null
+  slug?: string | null
+  title: string
+  coverUrl?: string | null
+  price?: number | null
+  raw?: Record<string, any>
+}
+
+function shuffleArray<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const tmp = arr[i]
+    arr[i] = arr[j]
+    arr[j] = tmp
+  }
+  return arr
+}
+
 // 載入同類熱銷（sidebarList）與隨機推薦（related）
-async function loadSidebarAndRelated() {
+async function loadSidebarAndRelated(): Promise<void> {
+  const currentId = Number(book.value?.id ?? 0)
+
+  const normalize = (x: Record<string, any>): BookCard => {
+    const id = x?.id ?? x?.bookId ?? x?.BookID ?? null
+    const slug = x?.slug ?? x?.Slug ?? x?.bookSlug ?? null
+    const title = x?.title ?? x?.name ?? ''
+    const coverUrl = x?.coverUrl ?? x?.imageUrl ?? x?.filePath ?? x?.cover ?? null
+    const price =
+      x?.salePrice ??
+      x?.SalePrice ??
+      x?.listPrice ??
+      x?.ListPrice ??
+      x?.price ??
+      (typeof x?.price === 'string' ? Number(x.price) : null) ??
+      null
+    return { id, slug, title, coverUrl, price, raw: x }
+  }
+
+  // 1) 同類熱銷（sidebarList）
+  sidebarList.value = []
   try {
-    // 先嘗試從 book.raw 找 category id（容錯多種命名）
     const raw = book.value?.raw ?? {}
     const catId =
       raw?.CategoryID ??
       raw?.category?.id ??
       raw?.categoryId ??
       raw?.CategoryId ??
-      raw?.category?.CategoryID ??
-      raw?.categoryId ??
-      raw?.category?.id ??
       book.value?.categoryId ??
+      book.value?.CategoryID ??
       null
 
-    // 同類熱銷：若有 categoryId 則呼叫 /api/books?tab=hot&categoryId=...
     if (catId) {
+      let res: any
       try {
-        // 優先呼叫你後端示範的 API 路徑（支援不同回傳格式）
-        const res =
-          (await http.get(`/api/books?page=1&pageSize=5&tab=hot&categoryId=${catId}`)) ||
-          (await http.get(`/api/BooksApi/List?tab=hot&categoryId=${catId}`))
-        const payload = res?.data?.items ?? res?.data ?? res
-        const arr = Array.isArray(payload) ? payload : (payload?.items ?? [])
-        // 將欄位標準化成前端使用的欄位（id,title,coverUrl,price）
-        sidebarList.value = arr.map((x: any) => ({
-          id: x.id ?? x.bookId ?? x.BookID,
-          title: x.title ?? x.name ?? '',
-          coverUrl: x.coverUrl ?? x.imageUrl ?? x.filePath ?? x.cover ?? null,
-          price: x.salePrice ?? x.SalePrice ?? x.listPrice ?? x.ListPrice ?? x.price ?? null,
-        }))
-      } catch (err) {
-        console.warn('load sidebar error', err)
-        sidebarList.value = []
+        res = await http.get(`/api/books?page=1&pageSize=8&tab=hot&categoryId=${catId}`)
+      } catch {
+        res = await http.get(`/api/BooksApi/List?tab=hot&categoryId=${catId}&page=1&pageSize=8`)
       }
-    } else {
-      sidebarList.value = []
-    }
-
-    // 隨機推薦（你可能也會喜歡）
-    try {
-      // 優先嘗試 /api/books/random，若無則 fallback 到 /api/BooksApi/Random
-      const rr =
-        (await http.get(`/api/books/random?count=3`)) ||
-        (await http.get(`/api/BooksApi/Random?count=3`))
-      const payload = rr?.data?.items ?? rr?.data ?? rr
+      const payload = res?.data?.items ?? res?.data ?? res
       const arr = Array.isArray(payload) ? payload : (payload?.items ?? [])
-      related.value = arr.map((x: any) => ({
-        id: x.id ?? x.bookId ?? x.BookID,
-        title: x.title ?? x.name ?? '',
-        coverUrl: x.coverUrl ?? x.imageUrl ?? x.filePath ?? x.cover ?? null,
-        price: x.salePrice ?? x.SalePrice ?? x.listPrice ?? x.ListPrice ?? x.price ?? null,
-      }))
-    } catch (err) {
-      console.warn('load random recommendations error', err)
-      related.value = []
+      const mapped = arr
+        .map((x: Record<string, any>) => normalize(x))
+        .filter((x: any) => x.id && Number(x.id) !== currentId)
+
+      // 去重並取前 5
+      const seen = new Set<number | string>()
+      const uniq: BookCard[] = []
+      for (const it of mapped) {
+        const key = it.id ?? ''
+        if (!seen.has(key)) {
+          seen.add(key)
+          uniq.push(it)
+        }
+        if (uniq.length >= 5) break
+      }
+      sidebarList.value = uniq
     }
   } catch (e) {
-    console.error('loadSidebarAndRelated error', e)
+    console.warn('load sidebar error', e)
     sidebarList.value = []
+  }
+
+  // 2) 隨機推薦（related）
+  related.value = []
+  try {
+    let rr: any
+    try {
+      rr = await http.get(`/api/books/random?count=12`)
+    } catch {
+      rr = await http.get(`/api/BooksApi/Random?count=12`)
+    }
+    const payload = rr?.data?.items ?? rr?.data ?? rr
+    const arr = Array.isArray(payload) ? payload : (payload?.items ?? [])
+    let mapped = arr
+      .map((m: Record<string, any>) => normalize(m))
+      .filter((r: any) => r.id && Number(r.id) !== currentId)
+
+    // 排除已出現在 sidebar 的 id
+    const sidebarIds = new Set(sidebarList.value.map((s) => s.id))
+    mapped = mapped.filter((m: any) => !sidebarIds.has(m.id))
+
+    // shuffle + 取 4
+    mapped = shuffleArray(mapped)
+    related.value = mapped.slice(0, 4)
+  } catch (e) {
+    console.warn('load random recommendations error', e)
     related.value = []
   }
 }
@@ -283,6 +342,7 @@ async function fetchBook() {
 
     // related books（保持）
     await loadSidebarAndRelated()
+    loading.value = false
 
     reviews.value = item.reviews ?? [
       { title: '好書推薦', author: '小明', rating: 5, content: '很實用的書，範例詳細。' },
@@ -333,6 +393,43 @@ onMounted(async () => {
   }
 })
 
+// 當路由 id 變動時重新載入本頁資料（不重建元件）
+watch(
+  () => route.params.id,
+  async (newId, oldId) => {
+    // 若沒有 newId 或沒有變動就不用處理
+    if (!newId || String(newId) === String(oldId)) return
+
+    // 重設 UI 狀態
+    loading.value = true
+    loadingReviews.value = true
+    error.value = null
+
+    try {
+      // 重新抓書籍與 sidebar/related
+      await fetchBook()
+
+      // 重新抓評論（fetchBook 已會呼 loadSidebarAndRelated；評論獨立處理）
+      const bookId = Number(newId)
+      try {
+        const res = await http.get(`/api/ReviewsApi/GetBookReviews/${bookId}`)
+        reviews.value = Array.isArray(res.data) && res.data.length > 0 ? res.data : fakeReviews
+      } catch {
+        reviews.value = fakeReviews
+      } finally {
+        loadingReviews.value = false
+      }
+
+      // 使用者體驗：換頁後滾回頂端（可選）
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch (e: any) {
+      console.error('watch route id error', e)
+      error.value = e?.message ?? '讀取錯誤'
+    } finally {
+      loading.value = false
+    }
+  },
+)
 async function resolveMemberId(): Promise<number | null> {
   try {
     const m = (auth as any).member
@@ -451,54 +548,75 @@ function emitAdd(b: any) {
             <div class="card border-0 shadow-sm" style="max-width: 360px; margin: 0 auto">
               <img :src="imgSrc" :alt="book.title" class="img-fluid" @error="onImgError" />
             </div>
-            <small class="text-muted d-block mt-2">封面示意圖</small>
+            <small class="text-muted d-block mt-2">書籍封面示意圖</small>
           </div>
 
           <!-- Title / Meta / Price / Actions -->
           <div class="col-12 col-md-7">
-            <h1 class="h4 mb-1">{{ book.title }}</h1>
-            <hr />
-            <div class="text-muted mb-2">
-              <span>作者：{{ book.authors ? book.authors.join('、') : (book.author ?? '-') }}</span>
-              <br />
-              <hr />
-              <span>ISBN：{{ book.isbn ?? '-' }}</span>
-            </div>
-            <hr />
-            <div class="mb-3">
-              <div class="h4 text-danger">NT$ {{ formatMoney(book.price) }}</div>
-              <div class="small text-muted" v-if="book.raw?.listPrice">
-                建議售價：NT$ {{ formatMoney(book.raw.listPrice) }}
+            <div class="d-flex flex-column h-100 justify-content-between">
+              <!-- 上：Title -->
+              <div>
+                <h1 class="h5 mb-2">{{ book.title }}</h1>
               </div>
-            </div>
-            <br />
-            <br />
-            <br />
-            <hr />
-            <div class="d-flex align-items-center gap-2 mb-3">
-              <!-- type="button" + disabled 綁定 adding，onBuyNow 會等待加入購物車成功才跳轉 -->
-              <button
-                type="button"
-                class="btn btn-primary btn-lg"
-                @click="onBuyNow"
-                :disabled="adding"
-              >
-                立即購買
-              </button>
+              <br />
+              <!-- 中：垂直 Meta（作者 / ISBN / 總庫存）-->
+              <div class="meta-vertical mb-3">
+                <div class="meta-item">
+                  <div class="meta-label">作者　：</div>
+                  <div class="meta-value">
+                    {{ book.authors ? book.authors.join('、') : (book.author ?? '-') }}
+                  </div>
+                </div>
+                <hr />
+                <div class="meta-item">
+                  <div class="meta-label">ISBN　：</div>
+                  <div class="meta-value">{{ book.isbn ?? '-' }}</div>
+                </div>
+                <hr />
+                <div class="meta-item">
+                  <div class="meta-label">總庫存　：</div>
+                  <div
+                    class="meta-value"
+                    :class="{ 'text-danger fw-bold': totalStock !== null && totalStock <= 0 }"
+                  >
+                    {{ stockDisplay }}
+                  </div>
+                </div>
+                <hr />
+              </div>
 
-              <!-- type="button" + disabled 綁定 adding，點擊會呼 onAddToCart -->
-              <button
-                type="button"
-                class="btn btn-outline-primary btn-lg"
-                @click="onAddToCart"
-                :disabled="adding"
-              >
-                {{ adding ? '處理中...' : '加入購物車' }}
-              </button>
+              <!-- 右側價格區（垂直顯示，靠右） -->
+              <div class="price-and-actions d-flex flex-column align-items-end mb-3">
+                <div class="price-main">
+                  NT$ <span class="price-num">{{ formatMoney(book.price) }}</span>
+                </div>
+                <div class="price-sub small text-muted" v-if="book.raw?.listPrice">
+                  建議售價：NT$ {{ formatMoney(book.raw.listPrice) }}
+                </div>
 
-              <button type="button" class="btn btn-light" @click="onFav">
-                <i class="bi bi-heart"></i> 收藏
-              </button>
+                <!-- 下：按鈕（靠右顯示） -->
+                <div class="mt-3 d-flex gap-2">
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-md"
+                    @click="onBuyNow"
+                    :disabled="adding"
+                  >
+                    立即購買
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary btn-md"
+                    @click="onAddToCart"
+                    :disabled="adding"
+                  >
+                    {{ adding ? '處理中...' : '加入購物車' }}
+                  </button>
+
+                  <button type="button" class="btn btn-light btn-md" @click="onFav">收藏</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -642,9 +760,9 @@ function emitAdd(b: any) {
               <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                   <div>據點庫存明細</div>
-                  <div class="small text-muted">
-                    可用總數：<strong>{{ totalAvailable }}</strong>
-                  </div>
+                  <!-- <div class="small text-muted">
+                    庫存總數：<strong>{{ totalAvailable }}</strong>
+                  </div> -->
                 </div>
                 <div class="card-body p-0">
                   <ul class="list-group list-group-flush">
@@ -713,12 +831,25 @@ function emitAdd(b: any) {
             <div class="card-body">
               <h6 class="card-title">同類熱銷</h6>
               <ul class="list-unstyled">
-                <li v-for="s in sidebarList" :key="s.id" class="d-flex gap-2 mb-2">
-                  <img :src="smallCover(s)" style="width: 48px; height: 64px; object-fit: cover" />
-                  <div class="small">
-                    <div class="fw-bold text-truncate" style="max-width: 160px">{{ s.title }}</div>
-                    <div class="text-danger">NT$ {{ formatMoney(s.price) }}</div>
-                  </div>
+                <li v-for="s in sidebarList" :key="s.id" class="mb-2">
+                  <router-link
+                    :to="s.id ? `/books/${s.id}` : '#'"
+                    class="d-flex gap-2 text-decoration-none text-reset align-items-start"
+                    aria-label="前往書籍詳情"
+                  >
+                    <img
+                      :src="smallCover(s)"
+                      alt="封面"
+                      class="small-cover"
+                      style="width: 48px; height: 64px; object-fit: cover"
+                    />
+                    <div class="small ms-1 w-100">
+                      <div class="fw-bold text-truncate" style="max-width: 160px">
+                        {{ s.title }}
+                      </div>
+                      <div class="text-danger">NT$ {{ formatMoney(s.price) }}</div>
+                    </div>
+                  </router-link>
                 </li>
               </ul>
             </div>
@@ -768,7 +899,47 @@ img.img-fluid {
   font-size: 0.85rem;
   padding: 0.45rem 0.6rem;
 }
+/* meta vertical styling */
+.meta-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
 
+.meta-item {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+}
+.meta-value {
+  font-size: 1.25rem;
+  color: #222;
+  line-height: 1.25;
+}
+.meta-label {
+  font-size: 0.98rem;
+  color: #6c757d;
+  min-width: 80px;
+}
+
+/* 價格樣式（醒目） */
+.price-and-actions {
+  min-height: 110px;
+} /* 保持價格區高度 */
+.price-main {
+  color: #dc3545;
+  font-weight: 800;
+  font-size: 1.6rem;
+}
+.price-num {
+  font-size: 1.9rem;
+}
+
+/* 按鈕群微調 */
+.price-and-actions .btn {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.95rem;
+}
 /* small screen 微調 */
 @media (max-width: 576px) {
   .branch-panel .card-header {
@@ -776,6 +947,96 @@ img.img-fluid {
   }
   .branch-panel .badge {
     font-size: 0.8rem;
+  }
+}
+/* meta list styling */
+.meta-list {
+  margin: 0;
+}
+.meta-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.18rem 0;
+}
+.meta-row dt {
+  width: 4.6rem;
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.92rem;
+}
+.meta-row dd {
+  margin: 0;
+  color: #6c757d;
+  font-size: 0.92rem;
+  word-break: break-word;
+}
+
+/* price block */
+.price-box {
+  display: inline-block;
+  text-align: right;
+}
+.price-main {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #d6333f;
+}
+.price-sub {
+  margin-top: 0.18rem;
+  font-size: 0.85rem;
+}
+
+/* 調整封面寬度，縮小左右空白 */
+.col-md-5 {
+  max-width: 320px;
+}
+
+/* 按鈕大小及間距收斂 */
+.btn-md {
+  padding: 0.45rem 0.8rem;
+  font-size: 0.95rem;
+}
+
+/* 減少 tab 與內容間距 */
+.tab-content {
+  margin-top: 0.6rem;
+}
+.col-12.col-md-7 h1 {
+  font-size: 3rem; /* 書名變大 */
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+.small-cover {
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+  border-radius: 4px;
+}
+.small-cover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+/* 讓 router-link 在列表中填滿，避免內部文字也被截斷 */
+.list-unstyled > li > a {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+}
+/* 小螢幕微調：把價格放到同欄（避免太擠） */
+@media (max-width: 767.98px) {
+  .col-4.text-end {
+    text-align: left !important;
+    margin-top: 0.35rem;
+  }
+  .price-main {
+    font-size: 1.05rem;
+  }
+  .container {
+    margin-top: 20px;
   }
 }
 </style>

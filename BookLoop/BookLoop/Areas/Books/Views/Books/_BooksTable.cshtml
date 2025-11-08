@@ -110,7 +110,7 @@
                                     <span>${x.branchName}</span><strong>${x.available}</strong>
                                   </div>`).join('')
                   || '<div class="text-muted">暫無庫存</div>';
-      document.querySelector('#availModal .modal-title').textContent = `各據點現貨 - ${title}`;
+      document.querySelector('#availModal .modal-title').textContent = ` ${title}-各據點現貨`;
       document.getElementById('availList').innerHTML = html;
       new bootstrap.Modal(document.getElementById('availModal')).show();
     }
