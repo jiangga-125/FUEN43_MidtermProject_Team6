@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
-using System.Linq;
-using BookLoop.Data;
+﻿using BookLoop.Data;
+using BookLoop.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using System.Threading.Tasks;
 
 
 namespace BookLoop.Controllers.api
@@ -114,6 +115,9 @@ namespace BookLoop.Controllers.api
 				.Include(x => x.BookImages)
 				.Include(x => x.Publisher)
 				.Include(x => x.Category)
+				.Include(x => x.Author)
+				.Include(x => x.Inventories)
+					.ThenInclude(inv => inv.Branch)
 				.FirstOrDefaultAsync(x => x.BookID == id);
 
 			if (b == null) return NotFound();
@@ -121,6 +125,26 @@ namespace BookLoop.Controllers.api
 			var primary = b.BookImages.FirstOrDefault(i => i.IsPrimary);
 
 			var coverUrl = $"{Request.Scheme}://{Request.Host}/api/BookImages/book/{b.BookID}/cover";
+
+			var authors = new List<object>();
+			if (b.Author != null)
+			{
+				authors.Add(new { id = b.Author.AuthorID, name = b.Author.AuthorName });
+			}
+
+			var invByBranch = (b.Inventories ?? Enumerable.Empty<BookInventory>())
+			.Select(inv => new
+			{
+				branchId = inv.BranchID,
+				branchName = inv.Branch != null ? inv.Branch.BranchName : null,
+				onHand = inv.OnHand,
+				reserved = inv.Reserved,
+				available = inv.OnHand - inv.Reserved,
+				updatedAt = inv.UpdatedAt
+			})
+			.ToList();
+
+			var totalAvailable = invByBranch.Select(x => x.available).DefaultIfEmpty(0).Sum();
 
 			return Ok(new
 			{
@@ -135,7 +159,13 @@ namespace BookLoop.Controllers.api
 				category = b.Category != null ? new { id = b.Category.CategoryID, name = b.Category.CategoryName } : null,
 				images = b.BookImages.Select(i => new { i.ImageID, i.FilePath, i.IsPrimary }),
 				coverUrl,
-				publishDate = b.PublishDate.HasValue ? b.PublishDate.Value.ToString("yyyy-MM-dd") : null
+				publishDate = b.PublishDate.HasValue ? b.PublishDate.Value.ToString("yyyy-MM-dd") : null,
+				authors = authors,
+				inventory = new
+				{
+					total = totalAvailable,
+					byBranch = invByBranch
+				}
 			});
 		}
 	}
