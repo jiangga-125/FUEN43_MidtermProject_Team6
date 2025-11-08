@@ -71,15 +71,15 @@ namespace ReportMail.Areas.ReportMail.Controllers
                     .AsNoTracking()
                     .Where(r => r.IsActive)
                     .ToListAsync();
-                // === 新增：把「使用者ID → 使用者名稱」對照表算好，丟給 View ===
-                // 依照你實際的 Users 資料表欄位名稱調整（例如 AspNetUsers/Id/UserName）
+
+                // 把「使用者ID → 使用者名稱」對照表算好，丟給 View
                 var ownerIds = accessibleDefinitions
                     .Where(d => d.OwnerUserID.HasValue)
                     .Select(d => d.OwnerUserID!.Value)
                     .Distinct()
                     .ToList();
 
-                // 這裡假設有 _db.Users，欄位為 UserID / Name；若不同請改成你的使用者表與欄位
+                //  _db.Users，欄位為 UserID / Name
                 var owners = await _db.Users
                     .Where(u => ownerIds.Contains(u.UserID))
                     .Select(u => new { u.UserID, u.Name })

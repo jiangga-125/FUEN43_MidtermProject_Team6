@@ -1,59 +1,122 @@
 ﻿@{
     ViewBag.Title = "後台儀表板";
 }
+
 <div class="container-fluid">
     <div class="row mb-3">
         <div class="col-12 d-flex align-items-center">
-            <!-- 搜尋列（可保留） -->
+            <h3 class="mb-0">後台儀表板</h3>
         </div>
     </div>
 
+    <!-- 上方四個總覽卡片 -->
     <div class="row g-3">
-        <div class="col-md-3">
-            <div class="card p-3">
+        <div class="col-md-3 col-6">
+            <div class="card p-3 h-100">
                 <div class="small text-muted">今日訂單數</div>
-                <div id="todayOrderCount" class="h4">--</div>
+                <div id="todayOrderCount" class="h4 mb-0 fw-bold">--</div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card p-3">
+        <div class="col-md-3 col-6">
+            <div class="card p-3 h-100">
                 <div class="small text-muted">今日營收</div>
-                <div id="todayRevenue" class="h4">NT$ --</div>
+                <div id="todayRevenue" class="h4 mb-0 fw-bold">NT$ --</div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card p-3">
+        <div class="col-md-3 col-6">
+            <div class="card p-3 h-100">
                 <div class="small text-muted">未出貨</div>
-                <div id="unshippedCount" class="h4">--</div>
+                <div id="unshippedCount" class="h4 mb-0 fw-bold">--</div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card p-3">
+        <div class="col-md-3 col-6">
+            <div class="card p-3 h-100">
                 <div class="small text-muted">庫存告警</div>
-                <div id="inventoryAlerts" class="h4">--</div>
+                <div id="inventoryAlerts" class="h4 mb-0 fw-bold">--</div>
             </div>
         </div>
     </div>
 
+    <!-- 下方：左邊圖表 / 右邊最新訂單 + 最新借閱 -->
     <div class="row mt-3 g-3">
-        <div class="col-lg-8">
-            <div class="card p-3">
-                <div class="d-flex justify-content-between">
+        <!-- 左側：兩張圖 -->
+        <div class="col-lg-8 d-flex flex-column gap-3">
+
+            <!-- 近 14 天銷售走勢 -->
+            <div class="card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
                     <div class="fw-medium">近 14 天銷售走勢</div>
-                    <div>
-                        <select id="salesType" class="form-select form-select-sm">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small text-muted">顯示：</span>
+                        <select id="salesType" class="form-select form-select-sm w-auto">
                             <option value="revenue">營收</option>
                             <option value="orders">訂單數</option>
                         </select>
                     </div>
                 </div>
-                <canvas id="mySalesChart" height="120"></canvas>
+
+                <div class="chart-wrapper" style="position:relative; height:260px;">
+                    <canvas id="mySalesChart"></canvas>
+                </div>
+
+                <div id="salesEmptyHint" class="text-muted small mt-2 d-none">
+                    目前 14 天內沒有資料。
+                </div>
+            </div>
+
+            <!-- 近 14 天借閱本數 -->
+            <div class="card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-medium">近 14 天借閱本數</div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small text-muted">顯示：</span>
+                        <select id="borrowType" class="form-select form-select-sm w-auto">
+                            <option value="total">總借閱</option>
+                            <option value="borrowing">借閱中</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="chart-wrapper" style="position:relative; height:260px;">
+                    <canvas id="borrowChart"></canvas>
+                </div>
+
+                <div id="borrowEmptyHint" class="text-muted small mt-2 d-none">
+                    目前 14 天內沒有借閱紀錄。
+                </div>
             </div>
         </div>
-        <div class="col-lg-4">
+
+        <!-- 右側：最新訂單 + 最新借閱紀錄 -->
+        <div class="col-lg-4 d-flex flex-column gap-3">
+            <!-- 最新訂單 -->
             <div class="card p-3">
-                <div class="fw-medium mb-2">最新訂單</div>
-                <div id="latestOrdersList" class="list-group"></div>
+                <div class="fw-medium mb-2 d-flex justify-content-between align-items-center">
+                    <span>最新訂單</span>
+                    <a href="@Url.Action("Index", "Orders", new { area = "Orders" })"
+                       class="small text-decoration-none">
+                        查看全部訂單 &raquo;
+                    </a>
+                </div>
+                <div id="latestOrdersList" class="list-group small"></div>
+                <div id="latestOrdersEmpty" class="text-muted small text-center py-3 d-none">
+                    目前沒有新的訂單。
+                </div>
+            </div>
+
+            <!-- 最新借閱紀錄 -->
+            <div class="card p-3">
+                <div class="fw-medium mb-2 d-flex justify-content-between align-items-center">
+                    <span>最新借閱紀錄</span>
+                    <a href="@Url.Action("Index", "BorrowRecords", new { area = "Borrows" })"
+                       class="small text-decoration-none">
+                        查看全部借閱紀錄 &raquo;
+                    </a>
+                </div>
+                <div id="latestBorrowsList" class="list-group small"></div>
+                <div id="latestBorrowsEmpty" class="text-muted small text-center py-3 d-none">
+                    目前沒有新的借閱紀錄。
+                </div>
             </div>
         </div>
     </div>
@@ -63,79 +126,410 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
     <script>
-        (function(){
-          let salesChart;
+        (function () {
+            'use strict';
 
-          async function fetchSummary(){
-            try {
-              const rsp = await fetch('/api/dashboard/summary');
-              if(!rsp.ok) throw new Error('network');
-              const json = await rsp.json();
+            // === DOM 快取 ===
+            const elTodayOrderCount   = document.getElementById('todayOrderCount');
+            const elTodayRevenue      = document.getElementById('todayRevenue');
+            const elUnshippedCount    = document.getElementById('unshippedCount');
+            const elInventoryAlerts   = document.getElementById('inventoryAlerts');
 
-              document.getElementById('todayOrderCount').textContent = json.todayOrderCount ?? 0;
-              document.getElementById('todayRevenue').textContent = 'NT$ ' + (json.todayRevenue ?? 0).toLocaleString();
-              document.getElementById('unshippedCount').textContent = json.unshippedCount ?? 0;
-              document.getElementById('inventoryAlerts').textContent = json.inventoryAlerts ?? 0;
+            const elLatestOrdersList   = document.getElementById('latestOrdersList');
+            const elLatestOrdersEmpty  = document.getElementById('latestOrdersEmpty');
 
-              const list = document.getElementById('latestOrdersList');
-              list.innerHTML = '';
-              const orderDetailsTemplate = '@Url.Action("OrderDetails", "Orders", new { area = "Orders", id = "__id__" })';
-              (json.latestOrders || []).forEach(o => {
-                const id = o.Id || o.id || o.OrderId || o.orderId;
-                const a = document.createElement('a');
-                a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-                a.href = orderDetailsTemplate.replace('__id__', id);
-                a.innerHTML = `<div>
-                                  <strong>${id}</strong>
-                                  <div class="text-muted small">${o.Member || ''}</div>
-                                </div>
-                                <div class="text-end">${(o.TotalAmount||o.totalAmount||0).toLocaleString()}</div>`;
-                list.appendChild(a);
-              });
+            const elLatestBorrowsList  = document.getElementById('latestBorrowsList');
+            const elLatestBorrowsEmpty = document.getElementById('latestBorrowsEmpty');
 
-            } catch (e) {
-              console.error('fetchSummary err', e);
+            const salesCanvas       = document.getElementById('mySalesChart');
+            const elSalesEmptyHint  = document.getElementById('salesEmptyHint');
+            const salesTypeSelect   = document.getElementById('salesType');
+
+            const borrowCanvas      = document.getElementById('borrowChart');
+            const elBorrowEmptyHint = document.getElementById('borrowEmptyHint');
+            const borrowTypeSelect  = document.getElementById('borrowType');
+
+            let salesChart  = null;
+            let borrowChart = null;
+
+            // === 小工具 ===
+            function htmlEncode(value) {
+                if (value === null || value === undefined) return '';
+                return String(value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
             }
-          }
 
-          async function fetchSales(){
-            try {
-              const rsp = await fetch('/api/dashboard/sales14');
-              if(!rsp.ok) throw new Error('network');
-              const j = await rsp.json();
+            function toNumber(value, defaultValue = 0) {
+                const n = Number(value);
+                return Number.isFinite(n) ? n : defaultValue;
+            }
 
-              const ctx = document.getElementById('mySalesChart').getContext('2d');
-              if(salesChart) salesChart.destroy();
-              salesChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                  labels: j.labels,
-                  datasets: [{
-                    label: '銷售',
-                    data: j.data,
-                    borderWidth: 2,
-                    tension: 0.3,
-                    pointRadius: 3,
-                  }]
-                },
-                options: {
-                  responsive: true,
-                  plugins: { legend: { display: false } },
-                  scales: { y: { beginAtZero: true } }
+            function formatCurrency(value) {
+                const n = toNumber(value, 0);
+                return n.toLocaleString();
+            }
+
+            function formatDateTime(isoString) {
+                if (!isoString) return '';
+                const d = new Date(isoString);
+                if (isNaN(d.getTime())) return '';
+                const pad = (x) => x.toString().padStart(2, '0');
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            }
+
+            // === Summary（四卡 + 最新訂單） ===
+            async function fetchSummary() {
+                try {
+                    const rsp = await fetch('/api/dashboard/summary');
+                    if (!rsp.ok) throw new Error('network error');
+                    const json = await rsp.json();
+
+                    elTodayOrderCount.textContent = toNumber(json.todayOrderCount ?? json.TodayOrderCount).toString();
+                    elTodayRevenue.textContent    = 'NT$ ' + formatCurrency(json.todayRevenue ?? json.TodayRevenue);
+                    elUnshippedCount.textContent  = toNumber(json.unshippedCount ?? json.UnshippedCount).toString();
+                    elInventoryAlerts.textContent = toNumber(json.inventoryAlerts ?? json.InventoryAlerts).toString();
+
+                    const orders = json.latestOrders || json.LatestOrders || [];
+                    const list   = elLatestOrdersList;
+                    list.innerHTML = '';
+
+                    if (!orders.length) {
+                        elLatestOrdersEmpty.classList.remove('d-none');
+                    } else {
+                        elLatestOrdersEmpty.classList.add('d-none');
+
+                        const orderDetailsTemplate =
+                            '@Url.Action("OrderDetails", "Orders", new { area = "Orders", id = "__id__" })';
+
+                        orders.forEach(o => {
+                            const id = o.Id || o.id || o.OrderId || o.orderId;
+                            if (!id) return;
+
+                            const memberId   = o.MemberId   || o.memberId   || '';
+                            const memberName = o.MemberName || o.memberName || '';
+                            const statusText = o.StatusText || o.statusText || '';
+                            const createdAt  = o.CreatedAt  || o.createdAt  || '';
+
+                            const amount = o.TotalAmount ?? o.totalAmount ?? 0;
+
+                            const a = document.createElement('a');
+                            a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                            a.href = orderDetailsTemplate.replace('__id__', encodeURIComponent(id));
+
+                            const memberDisplay = memberName
+                                ? `${memberName} (${memberId})`
+                                : (memberId ? `會員 #${memberId}` : '');
+
+                            const leftHtml = `
+                                <div>
+                                    <strong>#${htmlEncode(id)}</strong>
+                                    <div class="text-muted small">
+                                        ${memberDisplay ? htmlEncode(memberDisplay) + ' · ' : ''}
+                                        ${statusText ? '<span class="badge bg-light text-dark border">' + htmlEncode(statusText) + '</span>' : ''}
+                                    </div>
+                                    <div class="text-muted small">
+                                        ${htmlEncode(formatDateTime(createdAt))}
+                                    </div>
+                                </div>`;
+
+                            const rightHtml = `
+                                <div class="text-end">
+                                    <div class="fw-semibold">NT$ ${formatCurrency(amount)}</div>
+                                </div>`;
+
+                            a.innerHTML = leftHtml + rightHtml;
+                            list.appendChild(a);
+                        });
+                    }
+
+                } catch (e) {
+                    console.error('fetchSummary error', e);
                 }
-              });
+            }
+
+        // === 最新借閱紀錄列表 ===
+        // 預期 /api/dashboard/latest-borrows 回傳：
+        // { latestBorrows: [{ Id, MemberId, ListingTitle, StatusText, BorrowDate, DueDate }] }
+        async function fetchLatestBorrows() {
+            try {
+                const rsp = await fetch('/api/dashboard/latest-borrows');
+                if (!rsp.ok) throw new Error('network error');
+                const json = await rsp.json();
+
+                const borrows = json.latestBorrows || json.LatestBorrows || [];
+                const list    = elLatestBorrowsList;
+                list.innerHTML = '';
+
+                if (!borrows.length) {
+                    elLatestBorrowsEmpty.classList.remove('d-none');
+                    return;
+                } else {
+                    elLatestBorrowsEmpty.classList.add('d-none');
+                }
+
+                const borrowDetailsTemplate =
+                    '@Url.Action("Details", "BorrowRecords", new { area = "Borrows", id = "__id__" })';
+
+                borrows.forEach(b => {
+                    const id         = b.Id || b.id || b.RecordId || b.recordId;
+                    if (!id) return;
+
+                    const memberId    = b.MemberId    || b.memberId    || '';
+                    const listingName = b.ListingTitle || b.listingTitle || '';
+                    const statusText  = b.StatusText  || b.statusText  || '';
+                    const borrowDate  = b.BorrowDate  || b.borrowDate  || '';
+                    const dueDate     = b.DueDate     || b.dueDate     || '';
+
+                    const a = document.createElement('a');
+                    a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                    a.href = borrowDetailsTemplate.replace('__id__', encodeURIComponent(id));
+
+                    const memberDisplay = memberId ? `會員 #${memberId}` : '';
+
+                    const leftHtml = `
+                        <div>
+                            <strong>${htmlEncode(listingName || ('借閱 #' + id))}</strong>
+                            <div class="text-muted small">
+                                ${memberDisplay ? htmlEncode(memberDisplay) : ''}
+                            </div>
+                        </div>`;
+
+                    const rightHtml = `
+                        <div class="text-end small">
+                            ${statusText ? '<div>' + htmlEncode(statusText) + '</div>' : ''}
+                            ${dueDate
+                                ? '<div class="text-muted">應還：' + htmlEncode(formatDateTime(dueDate)) + '</div>'
+                                : (borrowDate
+                                    ? '<div class="text-muted">借出：' + htmlEncode(formatDateTime(borrowDate)) + '</div>'
+                                    : ''
+                                  )
+                            }
+                        </div>`;
+
+                    a.innerHTML = leftHtml + rightHtml;
+                    list.appendChild(a);
+                });
 
             } catch (e) {
-              console.error('fetchSales err', e);
+                console.error('fetchLatestBorrows error', e);
+                elLatestBorrowsEmpty.classList.remove('d-none');
             }
-          }
+        }
 
-          fetchSummary();
-          fetchSales();
-          setInterval(()=>{ fetchSummary(); fetchSales(); }, 60000);
+        // === 銷售圖（營收 / 訂單數）：折線 + 長條 ===
+        async function fetchSales() {
+            try {
+                const type = (salesTypeSelect?.value || 'revenue').toLowerCase();
 
-          document.getElementById('salesType')?.addEventListener('change', ()=> {
-          });
+                const rsp = await fetch('/api/dashboard/sales14?type=' + encodeURIComponent(type));
+                if (!rsp.ok) throw new Error('network error');
+                const j = await rsp.json();
+
+                const labels   = j.labels || j.Labels || [];
+                const rawData  = j.data   || j.Data   || [];
+                const respType = (j.type || type || 'revenue').toLowerCase();
+                const isRevenue = respType === 'revenue';
+
+                if (!labels.length || !rawData.length) {
+                    if (salesChart) {
+                        salesChart.destroy();
+                        salesChart = null;
+                    }
+                    elSalesEmptyHint.classList.remove('d-none');
+                    return;
+                } else {
+                    elSalesEmptyHint.classList.add('d-none');
+                }
+
+                const data = rawData.map(v => Number(v) || 0);
+                let maxVal = Math.max(...data, 0);
+
+                if (isRevenue) {
+                    const pad = Math.max(maxVal * 0.1, 1000);
+                    maxVal = maxVal + pad;
+                } else {
+                    maxVal = maxVal + 1;
+                }
+
+                const ctx = salesCanvas.getContext('2d');
+                if (salesChart) {
+                    salesChart.destroy();
+                }
+
+                salesChart = new Chart(ctx, {
+                    type: 'bar', // 整體以 bar 為主，line 當第二個 dataset
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                type: 'bar',
+                                label: isRevenue ? '營收' : '訂單數',
+                                data: data,
+                                borderWidth: 0,
+                                borderRadius: 4
+                            },
+                            {
+                                type: 'line',
+                                label: isRevenue ? '營收趨勢' : '訂單數趨勢',
+                                data: data,
+                                borderWidth: 2,
+                                tension: 0.3,
+                                pointRadius: 3,
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        const v = context.parsed.y || 0;
+                                        if (isRevenue) {
+                                            return 'NT$ ' + formatCurrency(v);
+                                        }
+                                        return `${v} 筆訂單`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                min: 0,
+                                max: maxVal
+                            }
+                        }
+                    }
+                });
+
+            } catch (e) {
+                console.error('fetchSales error', e);
+                elSalesEmptyHint.classList.remove('d-none');
+            }
+        }
+
+            // === 借閱本數長條圖（總借閱 / 借閱中） ===
+        // === 借閱本數圖（總借閱 / 借閱中）：折線 + 長條 ===
+        async function fetchBorrow() {
+            try {
+                const type = (borrowTypeSelect?.value || 'total').toLowerCase();
+
+                const rsp = await fetch('/api/dashboard/borrow14?type=' + encodeURIComponent(type));
+                if (!rsp.ok) throw new Error('network error');
+                const j = await rsp.json();
+
+                const labels   = j.labels || j.Labels || [];
+                const rawData  = j.data   || j.Data   || [];
+                const respType = (j.type || type || 'total').toLowerCase();
+                const isBorrowing = respType === 'borrowing';
+
+                if (!labels.length || !rawData.length) {
+                    if (borrowChart) {
+                        borrowChart.destroy();
+                        borrowChart = null;
+                    }
+                    elBorrowEmptyHint.classList.remove('d-none');
+                    return;
+                } else {
+                    elBorrowEmptyHint.classList.add('d-none');
+                }
+
+                const data = rawData.map(v => Number(v) || 0);
+                let maxVal = Math.max(...data, 0);
+                maxVal = maxVal + 1;
+
+                const ctx = borrowCanvas.getContext('2d');
+                if (borrowChart) {
+                    borrowChart.destroy();
+                }
+
+                borrowChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                type: 'bar',
+                                label: isBorrowing ? '借閱中本數' : '總借閱本數',
+                                data: data,
+                                borderWidth: 0,
+                                borderRadius: 4
+                            },
+                            {
+                                type: 'line',
+                                label: isBorrowing ? '借閱中趨勢' : '總借閱趨勢',
+                                data: data,
+                                borderWidth: 2,
+                                tension: 0.3,
+                                pointRadius: 3,
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        const v = context.parsed.y || 0;
+                                        return isBorrowing
+                                            ? `${v} 本（借閱中）`
+                                            : `${v} 本`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                min: 0,
+                                max: maxVal
+                            }
+                        }
+                    }
+                });
+
+            } catch (e) {
+                console.error('fetchBorrow error', e);
+                elBorrowEmptyHint.classList.remove('d-none');
+            }
+        }
+
+            // === 初始化 ===
+            fetchSummary();
+            fetchLatestBorrows();
+            fetchSales();
+            fetchBorrow();
+
+            setInterval(() => {
+                fetchSummary();
+                fetchLatestBorrows();
+                fetchSales();
+                fetchBorrow();
+            }, 60000);
+
+            salesTypeSelect?.addEventListener('change', () => {
+                fetchSales();
+            });
+
+            borrowTypeSelect?.addEventListener('change', () => {
+                fetchBorrow();
+            });
+
         })();
     </script>
 }
