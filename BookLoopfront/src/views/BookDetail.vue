@@ -22,38 +22,40 @@ const fakeReviews = [
     author: '小美',
     rating: 5,
     content: '內容淺顯易懂，讓我快速上手程式設計！',
-    createdAt: new Date('2025-10-01').toISOString()
+    createdAt: new Date('2025-10-01').toISOString(),
   },
   {
     title: '值得推薦 📚',
     author: '阿明',
     rating: 4,
     content: '範例豐富，實用性高，唯一缺點是字有點小～',
-    createdAt: new Date('2025-10-03').toISOString()
+    createdAt: new Date('2025-10-03').toISOString(),
   },
   {
     title: '不錯的參考書',
     author: '讀者A',
     rating: 5,
     content: '學習時隨時可以翻來查，很方便。',
-    createdAt: new Date('2025-10-05').toISOString()
-  }
+    createdAt: new Date('2025-10-05').toISOString(),
+  },
 ]
 
-
 // 模擬讀者評價與相關推薦 TODO: 改為 API 請求
-const reviews = ref<{ 
-  title: string
-  author: string
-  rating: number
-  content: string
-  createdAt: string
-}[]>([])
+const reviews = ref<
+  {
+    title: string
+    author: string
+    rating: number
+    content: string
+    createdAt: string
+  }[]
+>([])
 
 const loadingReviews = ref(true)
 const related = ref<any[]>([])
 const sidebarList = ref<any[]>([])
 
+// 圖片
 const imgSrc = computed(() => {
   if (!book.value) return '/placeholder.png'
   return (
@@ -113,12 +115,34 @@ async function fetchBook() {
       raw: item,
     }
 
+    // 格式化publisherName欄位
+    book.value.publisherName =
+      item.publisher?.name ??
+      item.publisherName ??
+      item.PublisherName ??
+      (typeof item.publisher === 'string' ? item.publisher : null)
+
+    // 格式化publishDate欄位（可能為 null），之後用 formatDateString 處理
+    book.value.publishDateNorm = item.publishDate ?? item.publishedDate ?? item.PublishDate ?? null
+
+    // 格式化常見pages / language / stock / categoryName / authors欄位
+    book.value.pages = item.pages ?? item.pageCount ?? item.Pages ?? null
+    book.value.language = item.language ?? item.Language ?? item.LanguageCode ?? null
+    book.value.stock = item.stock ?? item.stockQty ?? item.inventory ?? item.Stock ?? null
+    book.value.categoryName = item.category?.name ?? item.categoryName ?? item.CategoryName ?? null
+    book.value.authors = item.authors ?? (item.author ? [item.author] : null)
+
+    // 格式化price (沒傳 salePrice 就顯示 listPrice)
+    if (!book.value.price) {
+      book.value.price =
+        item.salePrice ?? item.SalePrice ?? item.listPrice ?? item.ListPrice ?? null
+    }
+
     // 載入相關商品（範例） TODO: 改為 API 請求
     try {
       const rel = await http.get(`/api/BooksApi/Related/${book.value.id}`)
       related.value = (rel.data ?? []).slice(0, 8)
     } catch (__) {
-      // ADDED: 若沒有相關 endpoint，就用空陣列（避免拋錯）
       related.value = []
     }
 
@@ -136,6 +160,25 @@ async function fetchBook() {
   }
 }
 
+/* ===========================
+   格式化工具（template 可直呼）
+   =========================== */
+// 日期格式化（可為 ISO/日期字串）
+function formatDateString(s: string | null) {
+  if (!s) return null
+  // 嘗試解析；若失敗就直接回原字串
+  const d = new Date(s)
+  if (isNaN(d.getTime())) return s
+  return d.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
+// 金額格式化
+function formatMoney(v: any) {
+  if (v == null) return '—'
+  return Number(v).toLocaleString('zh-TW')
+}
+
+// 生命週期：先 load book，再 load reviews
 onMounted(async () => {
   const bookId = Number(route.params.id)
 
@@ -143,11 +186,9 @@ onMounted(async () => {
   await fetchBook()
 
   // ✅ 再載入評論
-   try {
+  try {
     const res = await http.get(`/api/ReviewsApi/GetBookReviews/${bookId}`)
-    reviews.value = Array.isArray(res.data) && res.data.length > 0
-      ? res.data
-      : fakeReviews
+    reviews.value = Array.isArray(res.data) && res.data.length > 0 ? res.data : fakeReviews
   } catch (err) {
     console.warn('⚠️ 無法載入評論，改用假資料')
     reviews.value = fakeReviews
@@ -281,15 +322,15 @@ function emitAdd(b: any) {
           <div class="col-12 col-md-7">
             <h1 class="h4 mb-1">{{ book.title }}</h1>
             <div class="text-muted mb-2">
-              <span>作者：{{ book.author ?? '-' }}</span>
+              <span>作者：{{ book.authors ? book.authors.join('、') : (book.author ?? '-') }}</span>
               <span class="mx-2">|</span>
               <span>ISBN：{{ book.isbn ?? '-' }}</span>
             </div>
 
             <div class="mb-3">
-              <div class="h4 text-danger">NT$ {{ book.price ?? '—' }}</div>
+              <div class="h4 text-danger">NT$ {{ formatMoney(book.price) }}</div>
               <div class="small text-muted" v-if="book.raw?.listPrice">
-                建議售價：NT$ {{ book.raw.listPrice }}
+                建議售價：NT$ {{ formatMoney(book.raw.listPrice) }}
               </div>
             </div>
 
@@ -322,7 +363,7 @@ function emitAdd(b: any) {
             <ul class="list-inline small text-muted">
               <li class="list-inline-item">運送：24 小時內出貨</li>
               <li class="list-inline-item">│</li>
-              <li class="list-inline-item">庫存：{{ book.raw?.stock ?? '充足' }}</li>
+              <li class="list-inline-item">庫存：{{ book.stock ?? '充足' }}</li>
             </ul>
           </div>
         </div>
@@ -377,56 +418,65 @@ function emitAdd(b: any) {
               <tbody>
                 <tr>
                   <th class="w-25">出版社</th>
-                  <td>{{ book.raw?.publisher ?? '-' }}</td>
+                  <td>{{ book.publisherName ?? '-' }}</td>
                 </tr>
                 <tr>
                   <th>出版日期</th>
-                  <td>{{ book.raw?.publishedDate ?? '-' }}</td>
+                  <td>{{ book.publishDateNorm ? formatDateString(book.publishDateNorm) : '-' }}</td>
                 </tr>
                 <tr>
+                  <th>作者</th>
+                  <td>{{ book.authors ? book.authors.join('、') : (book.author ?? '-') }}</td>
+                </tr>
+                <!-- <tr>
                   <th>頁數</th>
-                  <td>{{ book.raw?.pages ?? '-' }}</td>
-                </tr>
-                <tr>
+                  <td>{{ book.pages ?? '-' }}</td>
+                </tr> -->
+                <!-- <tr>
                   <th>語言</th>
-                  <td>{{ book.raw?.language ?? '-' }}</td>
+                  <td>{{ book.language ?? '-' }}</td>
+                </tr> -->
+                <tr>
+                  <th>分類</th>
+                  <td>{{ book.categoryName ?? '-' }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           <div class="tab-pane fade" id="tab-reviews" role="tabpanel">
-  <div v-if="loadingReviews" class="p-3 text-muted">⏳ 載入評論中...</div>
+            <div v-if="loadingReviews" class="p-3 text-muted">⏳ 載入評論中...</div>
 
-  <!-- 範例 Accordion -->
-  <div v-else class="accordion" id="reviewsAccordion">
-    <div class="accordion-item" v-for="(r, idx) in reviews" :key="idx">
-      <h2 class="accordion-header" :id="'h' + idx">
-        <button
-          class="accordion-button collapsed"
-          type="button"
-          data-bs-toggle="collapse"
-          :data-bs-target="'#c' + idx"
-        >
-          🧑‍💬 {{ r.title }}　⭐ {{ r.rating }}/5
-        </button>
-      </h2>
-      <div
-        :id="'c' + idx"
-        class="accordion-collapse collapse"
-        :data-bs-parent="'#reviewsAccordion'"
-      >
-        <div class="accordion-body">
-          <div class="text-muted small mb-2">{{ new Date(r.createdAt).toLocaleString() }}</div>
-          <div>{{ r.content }}</div>
-        </div>
-      </div>
-    </div>
+            <!-- 範例 Accordion -->
+            <div v-else class="accordion" id="reviewsAccordion">
+              <div class="accordion-item" v-for="(r, idx) in reviews" :key="idx">
+                <h2 class="accordion-header" :id="'h' + idx">
+                  <button
+                    class="accordion-button collapsed"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    :data-bs-target="'#c' + idx"
+                  >
+                    🧑‍💬 {{ r.title }}　⭐ {{ r.rating }}/5
+                  </button>
+                </h2>
+                <div
+                  :id="'c' + idx"
+                  class="accordion-collapse collapse"
+                  :data-bs-parent="'#reviewsAccordion'"
+                >
+                  <div class="accordion-body">
+                    <div class="text-muted small mb-2">
+                      {{ new Date(r.createdAt).toLocaleString() }}
+                    </div>
+                    <div>{{ r.content }}</div>
+                  </div>
+                </div>
+              </div>
 
-    <div v-if="!reviews.length" class="p-3 text-muted">目前尚無評價</div>
-  </div>
-</div>
-
+              <div v-if="!reviews.length" class="p-3 text-muted">目前尚無評價</div>
+            </div>
+          </div>
         </div>
 
         <hr />
@@ -468,7 +518,7 @@ function emitAdd(b: any) {
                   <img :src="smallCover(s)" style="width: 48px; height: 64px; object-fit: cover" />
                   <div class="small">
                     <div class="fw-bold text-truncate" style="max-width: 160px">{{ s.title }}</div>
-                    <div class="text-danger">NT$ {{ s.price }}</div>
+                    <div class="text-danger">NT$ {{ formatMoney(s.price) }}</div>
                   </div>
                 </li>
               </ul>
