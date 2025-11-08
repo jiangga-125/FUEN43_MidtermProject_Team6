@@ -81,6 +81,71 @@ function smallCover(b: any) {
   return b.coverUrl ?? (b.id ? `/api/BookImages/${b.id}/cover` : '/placeholder.png')
 }
 
+// 載入同類熱銷（sidebarList）與隨機推薦（related）
+async function loadSidebarAndRelated() {
+  try {
+    // 先嘗試從 book.raw 找 category id（容錯多種命名）
+    const raw = book.value?.raw ?? {}
+    const catId =
+      raw?.CategoryID ??
+      raw?.category?.id ??
+      raw?.categoryId ??
+      raw?.CategoryId ??
+      raw?.category?.CategoryID ??
+      raw?.categoryId ??
+      raw?.category?.id ??
+      book.value?.categoryId ??
+      null
+
+    // 同類熱銷：若有 categoryId 則呼叫 /api/books?tab=hot&categoryId=...
+    if (catId) {
+      try {
+        // 優先呼叫你後端示範的 API 路徑（支援不同回傳格式）
+        const res =
+          (await http.get(`/api/books?page=1&pageSize=5&tab=hot&categoryId=${catId}`)) ||
+          (await http.get(`/api/BooksApi/List?tab=hot&categoryId=${catId}`))
+        const payload = res?.data?.items ?? res?.data ?? res
+        const arr = Array.isArray(payload) ? payload : (payload?.items ?? [])
+        // 將欄位標準化成前端使用的欄位（id,title,coverUrl,price）
+        sidebarList.value = arr.map((x: any) => ({
+          id: x.id ?? x.bookId ?? x.BookID,
+          title: x.title ?? x.name ?? '',
+          coverUrl: x.coverUrl ?? x.imageUrl ?? x.filePath ?? x.cover ?? null,
+          price: x.salePrice ?? x.SalePrice ?? x.listPrice ?? x.ListPrice ?? x.price ?? null,
+        }))
+      } catch (err) {
+        console.warn('load sidebar error', err)
+        sidebarList.value = []
+      }
+    } else {
+      sidebarList.value = []
+    }
+
+    // 隨機推薦（你可能也會喜歡）
+    try {
+      // 優先嘗試 /api/books/random，若無則 fallback 到 /api/BooksApi/Random
+      const rr =
+        (await http.get(`/api/books/random?count=3`)) ||
+        (await http.get(`/api/BooksApi/Random?count=3`))
+      const payload = rr?.data?.items ?? rr?.data ?? rr
+      const arr = Array.isArray(payload) ? payload : (payload?.items ?? [])
+      related.value = arr.map((x: any) => ({
+        id: x.id ?? x.bookId ?? x.BookID,
+        title: x.title ?? x.name ?? '',
+        coverUrl: x.coverUrl ?? x.imageUrl ?? x.filePath ?? x.cover ?? null,
+        price: x.salePrice ?? x.SalePrice ?? x.listPrice ?? x.ListPrice ?? x.price ?? null,
+      }))
+    } catch (err) {
+      console.warn('load random recommendations error', err)
+      related.value = []
+    }
+  } catch (e) {
+    console.error('loadSidebarAndRelated error', e)
+    sidebarList.value = []
+    related.value = []
+  }
+}
+
 async function fetchBook() {
   loading.value = true
   error.value = null
@@ -217,15 +282,7 @@ async function fetchBook() {
     }
 
     // related books（保持）
-    try {
-      const rel = await http.get(`/api/BooksApi/Related/${book.value.id}`)
-      related.value = (rel.data ?? []).slice(0, 8)
-    } catch (__) {
-      related.value = []
-    }
-
-    // sidebarList = related（注意：不要覆蓋 branchList）
-    sidebarList.value = related.value.slice(0, 5)
+    await loadSidebarAndRelated()
 
     reviews.value = item.reviews ?? [
       { title: '好書推薦', author: '小明', rating: 5, content: '很實用的書，範例詳細。' },
