@@ -23,32 +23,29 @@ namespace BookLoop.Controllers.api
 		// GET: /api/books?page=1&pageSize=20
 		[HttpGet]
 		[AllowAnonymous] // 公開給未登入前端
-		public async Task<IActionResult> GetAll(int page = 1, int pageSize = 20)
+		public async Task<IActionResult> GetAll(int page = 1, int pageSize = 20, string tab = "new", int? categoryId = null)
 		{
-			string tab = "new";   // new / hot
-			int? categoryId = null;  // 可選分類
 			if (page < 1) page = 1;
 			if (pageSize <= 0) pageSize = 20;
 
 			var q = _db.Books
 				.AsNoTracking()
 				.Include(b => b.BookImages)
-				.OrderBy(b => b.Title);
+				.AsQueryable();
 
-			// 篩選分類
+			// 篩選分類（從 query 讀入）
 			if (categoryId.HasValue)
 			{
-				q = (IOrderedQueryable<Models.Book>)q.Where(b => b.CategoryID == categoryId.Value);
+				q = q.Where(b => b.CategoryID == categoryId.Value);
 			}
 
-			// 篩選 tab
-			switch (tab.ToLower())
+			// 篩選 tab（new / hot）
+			switch (tab?.ToLower())
 			{
 				case "new":
 					q = q.OrderByDescending(b => b.CreatedAt);
 					break;
 				case "hot":
-					// 這裡用 OrderDetails 數量當熱門依據
 					q = q
 						.Include(b => b.OrderDetails)
 						.OrderByDescending(b => b.OrderDetails.Count);
@@ -75,12 +72,11 @@ namespace BookLoop.Controllers.api
 				})
 				.ToListAsync();
 
-			// 在記憶體組成 coverUrl（若 FilePath 以 http 開頭就直接使用，否則轉成絕對 URL 指向 wwwroot/images/books/{fileName}）
 			var items = rawItems.Select(x =>
 			{
 				string? coverUrl = null;
 				if (!string.IsNullOrWhiteSpace(x.imageFilePath) &&
-			x.imageFilePath.StartsWith("http", System.StringComparison.OrdinalIgnoreCase))
+					x.imageFilePath.StartsWith("http", System.StringComparison.OrdinalIgnoreCase))
 				{
 					coverUrl = x.imageFilePath;
 				}
@@ -100,7 +96,6 @@ namespace BookLoop.Controllers.api
 					salePrice = x.salePrice
 				};
 			}).ToList();
-
 
 			return Ok(new { total, page, pageSize, items });
 		}
@@ -167,6 +162,79 @@ namespace BookLoop.Controllers.api
 					byBranch = invByBranch
 				}
 			});
+		}
+
+		// GET: /api/books/related/{id}?limit=8
+		[HttpGet("related/{id:int}")]
+		[AllowAnonymous]
+		public async Task<IActionResult> Related(int id, int limit = 8)
+		{
+			var book = await _db.Books.AsNoTracking().FirstOrDefaultAsync(b => b.BookID == id);
+			if (book == null) return NotFound();
+
+			var q = _db.Books
+				.AsNoTracking()
+				.Include(b => b.BookImages)
+				.Where(b => b.CategoryID == book.CategoryID && b.BookID != id)
+				.OrderByDescending(b => b.SalePrice) // 這裡示範一個排序（可改成 OrderDetails.Count 或其他）
+				.Take(limit)
+				.Select(b => new
+				{
+					id = b.BookID,
+					title = b.Title,
+					imageFilePath = b.BookImages.Where(i => i.IsPrimary).Select(i => i.FilePath).FirstOrDefault(),
+					listPrice = b.ListPrice,
+					salePrice = b.SalePrice
+				});
+
+			var raw = await q.ToListAsync();
+			var items = raw.Select(x =>
+			{
+				string? coverUrl = null;
+				if (!string.IsNullOrWhiteSpace(x.imageFilePath) && x.imageFilePath.StartsWith("http", System.StringComparison.OrdinalIgnoreCase))
+					coverUrl = x.imageFilePath;
+				else
+					coverUrl = $"{Request.Scheme}://{Request.Host}/api/BookImages/book/{x.id}/cover";
+
+				return new { id = x.id, title = x.title, coverUrl, listPrice = x.listPrice, salePrice = x.salePrice };
+			}).ToList();
+
+			return Ok(new { items });
+		}
+
+		// GET: /api/books/random?count=3
+		[HttpGet("random")]
+		[AllowAnonymous]
+		public async Task<IActionResult> Random(int count = 3)
+		{
+			// 注意：OrderBy(Guid.NewGuid()) 在 EF 會轉成 SQL ORDER BY NEWID()
+			var q = await _db.Books
+				.AsNoTracking()
+				.Include(b => b.BookImages)
+				.OrderBy(b => Guid.NewGuid())
+				.Take(count)
+				.Select(b => new
+				{
+					id = b.BookID,
+					title = b.Title,
+					imageFilePath = b.BookImages.Where(i => i.IsPrimary).Select(i => i.FilePath).FirstOrDefault(),
+					listPrice = b.ListPrice,
+					salePrice = b.SalePrice
+				})
+				.ToListAsync();
+
+			var items = q.Select(x =>
+			{
+				string? coverUrl = null;
+				if (!string.IsNullOrWhiteSpace(x.imageFilePath) && x.imageFilePath.StartsWith("http", System.StringComparison.OrdinalIgnoreCase))
+					coverUrl = x.imageFilePath;
+				else
+					coverUrl = $"{Request.Scheme}://{Request.Host}/api/BookImages/book/{x.id}/cover";
+
+				return new { id = x.id, title = x.title, coverUrl, listPrice = x.listPrice, salePrice = x.salePrice };
+			}).ToList();
+
+			return Ok(new { items });
 		}
 	}
 }

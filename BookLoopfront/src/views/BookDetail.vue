@@ -641,14 +641,14 @@ function emitAdd(b: any) {
               <p class="small text-muted">使用 VIP 折扣或輸入優惠碼可享折扣。</p>
               <button type="button" class="btn btn-outline-secondary w-100 mb-2">查看優惠</button>
               <!-- 按鈕改為 type="button" 並呼叫 onAddToCart 同一函式 -->
-              <button
+              <!-- <button
                 type="button"
                 class="btn btn-outline-primary w-100"
                 @click="onAddToCart"
                 :disabled="adding"
               >
                 {{ adding ? '處理中...' : '加入購物車' }}
-              </button>
+              </button> -->
             </div>
           </div>
 
