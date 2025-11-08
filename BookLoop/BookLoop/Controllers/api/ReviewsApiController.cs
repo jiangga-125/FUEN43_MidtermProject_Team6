@@ -2,6 +2,7 @@
 using BookLoop.Models;
 using BookLoop.Models.ViewModels;
 using DocumentFormat.OpenXml.Wordprocessing;
+using Humanizer;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -108,6 +109,23 @@ namespace BookLoop.Controllers.api
 				// ✅ 匿名化會員名稱
 				var maskedName = MaskName(member.Username); // 🧩 這裡新增一行
 
+				// 🔹 從資料庫讀取啟用的禁用詞
+				var forbiddenWords = await _memberDb.ReviewForbiddenKeyword
+					.Where(k => k.IsActive)
+					.Select(k => k.Keyword)
+					.ToListAsync();
+
+				// 🔹 檢查評論內容是否包含禁用詞
+				foreach (var word in forbiddenWords)
+				{
+					if (!string.IsNullOrEmpty(word) &&
+						vm.Content.Contains(word, StringComparison.OrdinalIgnoreCase))
+					{
+						// 🚫 偵測到禁用詞
+						return BadRequest($"評論內容包含禁用詞「{word}」，請修改後再送出。");
+					}
+				}
+
 				// ✅ 建立評論
 				var review = new Review
 				{
@@ -136,6 +154,7 @@ namespace BookLoop.Controllers.api
 				return StatusCode(500, new { message = "伺服器發生錯誤", detail = ex.Message });
 			}
 		}
+
 
 
 		[HttpGet("{bookId}")]
@@ -174,5 +193,17 @@ namespace BookLoop.Controllers.api
 			};
 		}
 
+		[HttpGet]
+		[Route("api/Members/ReviewsApi/GetBannedWords")]
+		public async Task<IActionResult> GetBannedWords()
+		{
+			// 只抓取啟用的禁用詞
+			var words = await _memberDb.ReviewForbiddenKeyword
+				.Where(k => k.IsActive)
+				.Select(k => k.Keyword) // 🔹 如果欄位是 Word 就改成 .Select(k => k.Word)
+				.ToListAsync();
+
+			return Ok(words);
+		}
 	}
 }

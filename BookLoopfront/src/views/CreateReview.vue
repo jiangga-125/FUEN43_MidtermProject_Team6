@@ -130,6 +130,7 @@ const loadingBooks = ref(false)
 const hoverRating = ref(0)
 const purchasedBooks = ref<{ value: number; text: string }[]>([])
 const ratingTexts = ['非常不滿意 😡', '不太滿意 😕', '普通 🙂', '滿意 😊', '非常滿意 🤩']
+const bannedWords = ref<string[]>([])
 
 // ⭐ 點擊星星動畫
 const selectRating = (n: number) => {
@@ -190,6 +191,15 @@ const submitReview = async () => {
     return
   }
 
+// 🔸 禁用詞檢查（前端防護）
+  for (const word of bannedWords.value) {
+    if (form.value.content.includes(word)) {
+      error.value = `⚠️ 評論內容包含禁用詞「${word}」，請修改後再送出。`
+      return
+    }
+  }
+
+
   submitting.value = true
   error.value = ''
   message.value = ''
@@ -206,13 +216,26 @@ const submitReview = async () => {
     const res = await http.post('/api/ReviewsApi/Create', payload)
     message.value = res.data.message || '✅ 評論已送出，等待管理員審核。'
 
-    // 清空表單
-    form.value.TargetBookID = ''
+     form.value.TargetBookID = ''
     form.value.rating = 0
     form.value.content = ''
   } catch (err: any) {
     console.error('❌ 送出評論失敗', err)
-    error.value = '❌ 送出失敗：' + (err.response?.data?.message || err.message)
+
+    if (err.response) {
+      // 後端直接回傳字串
+      if (typeof err.response.data === 'string') {
+        error.value = err.response.data
+      }
+      // 後端回傳物件 { message: "..." }
+      else if (err.response.data?.message) {
+        error.value = err.response.data.message
+      } else {
+        error.value = '⚠️ 發生未知的請求錯誤。'
+      }
+    } else {
+      error.value = '❌ 無法連線到伺服器，請稍後再試。'
+    }
   } finally {
     submitting.value = false
   }
