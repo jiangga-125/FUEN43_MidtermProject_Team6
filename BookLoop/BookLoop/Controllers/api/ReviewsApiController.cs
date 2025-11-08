@@ -1,6 +1,7 @@
 ﻿using BookLoop.Data;
 using BookLoop.Models;
 using BookLoop.Models.ViewModels;
+using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -71,27 +72,17 @@ namespace BookLoop.Controllers.api
 
 				Console.WriteLine($"📦 前端傳入資料：MemberID={vm.MemberID}, TargetBookID={vm.TargetBookID}, Rating={vm.Rating}, Content={vm.Content}");
 
-				// 🔐 先試著從 JWT 拿會員 ID
-				// 嘗試從 JWT 取 MemberId Claim
-				var memberIdClaim = User.FindFirstValue("mid"); // ← 注意這裡是 "MemberId"
-				int memberId;
-
-				if (string.IsNullOrEmpty(memberIdClaim))
-				{
-					Console.WriteLine("⚠️ JWT 沒有 MemberId，暫時使用前端傳來的 MemberID");
-					memberId = vm.MemberID; // 🔹 測試階段用前端傳的
-				}
-				else
-				{
-					memberId = int.Parse(memberIdClaim);
-				}
+				// 🔐 嘗試從 JWT 取出 MemberId
+				var memberIdClaim = User.FindFirstValue("mid");
+				int memberId = string.IsNullOrEmpty(memberIdClaim)
+					? vm.MemberID
+					: int.Parse(memberIdClaim);
 
 				Console.WriteLine($"✅ 使用的會員 ID：{memberId}");
 
-
 				// 檢查會員存在
-				bool memberExists = await _memberDb.Members.AnyAsync(m => m.MemberID == memberId);
-				if (!memberExists)
+				var member = await _memberDb.Members.FirstOrDefaultAsync(m => m.MemberID == memberId);
+				if (member == null)
 				{
 					Console.WriteLine($"❌ 找不到會員 ID: {memberId}");
 					return NotFound(new { message = $"找不到會員 ID: {memberId}" });
@@ -114,7 +105,10 @@ namespace BookLoop.Controllers.api
 					return BadRequest(new { message = "此書籍不在您的已完成訂單中，無法評論。" });
 				}
 
-				// ✅ 新增評論
+				// ✅ 匿名化會員名稱
+				var maskedName = MaskName(member.Username); // 🧩 這裡新增一行
+
+				// ✅ 建立評論
 				var review = new Review
 				{
 					MemberID = memberId,
@@ -124,7 +118,8 @@ namespace BookLoop.Controllers.api
 					Content = vm.Content,
 					Status = 0,
 					CreatedAt = DateTime.UtcNow,
-					UpdatedAt = DateTime.UtcNow
+					UpdatedAt = DateTime.UtcNow,
+					DisplayName = maskedName // ✅ 這樣就不會報錯
 				};
 
 				_memberDb.Reviews.Add(review);
@@ -142,20 +137,20 @@ namespace BookLoop.Controllers.api
 			}
 		}
 
+
 		[HttpGet("{bookId}")]
 		[AllowAnonymous]
 		public async Task<IActionResult> GetBookReviews(int bookId)
 		{
 			var reviews = await _memberDb.Reviews
+				.Include(r => r.Member)
 				.Where(r => r.TargetType == 1 && r.TargetID == bookId && r.Status == 1)
 				.OrderByDescending(r => r.CreatedAt)
 				.Select(r => new
 				{
-					title = _memberDb.Members
-						.Where(m => m.MemberID == r.MemberID)
-						.Select(m => m.Username)
-						.FirstOrDefault() ?? $"會員 {r.MemberID}",  // 暱稱或會員編號
-					author = "",  // 若你想顯示書籍作者可以後面補
+					displayName = !string.IsNullOrEmpty(r.DisplayName)
+						? r.DisplayName
+						: MaskName(r.Member.Username),
 					rating = r.Rating,
 					content = r.Content,
 					createdAt = r.CreatedAt
@@ -163,6 +158,20 @@ namespace BookLoop.Controllers.api
 				.ToListAsync();
 
 			return Ok(reviews);
+		}
+
+		// 🧩 匿名化函式
+		private static string MaskName(string? name)
+		{
+			if (string.IsNullOrWhiteSpace(name))
+				return "匿名用戶";
+			name = name.Trim();
+			return name.Length switch
+			{
+				1 => "*",
+				2 => $"{name[0]}＊",
+				_ => $"{name[0]}{new string('＊', name.Length - 2)}{name[^1]}"
+			};
 		}
 
 	}

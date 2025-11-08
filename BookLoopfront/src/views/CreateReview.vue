@@ -21,16 +21,15 @@
 
       <!-- 👤 會員 ID -->
       <div class="mb-3">
-        <label class="form-label fw-bold">
-          <i class="bi bi-person-circle me-1"></i>會員 ID
-        </label>
-        <input
-          v-model="form.memberId"
-          type="text"
-          class="form-control bg-light"
-          readonly
-        />
-      </div>
+  <label class="form-label">會員名稱</label>
+  <input
+    type="text"
+    :value="auth.member?.name || '未登入'"
+    class="form-control"
+    disabled
+  />
+</div>
+
 
       <!-- 📚 書名 -->
       <div class="mb-3">
@@ -157,13 +156,21 @@ onMounted(async () => {
 
     loadingBooks.value = true
     const res = await http.get(`/api/ReviewsApi/GetPurchasedBooks/${form.value.memberId}`)
-    purchasedBooks.value = res.data.map((b: any) => ({
-       value: b.bookId ?? b.BookID ?? b.bookID,  // ✅ 安全取值
-      text: b.title
+
+    console.log('📦 後端回傳內容：', res.data)
+
+    const data = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(res.data.data)
+      ? res.data.data
+      : []
+
+    purchasedBooks.value = data.map((b: any) => ({
+      value: b.bookId ?? b.BookID ?? b.bookID,
+      text: b.title ?? b.Title ?? '(未命名書籍)'
     }))
-  } catch (err) {
-    console.error('❌ 載入會員或書籍資料失敗', err)
-    error.value = '無法載入會員或書籍資料，請稍後再試。'
+  } catch (error) {
+    console.error('Error loading purchased books:', error)
   } finally {
     loadingBooks.value = false
   }
@@ -174,6 +181,12 @@ const submitReview = async () => {
   console.log("🔍 目前送出的表單內容：", form.value)
   if (!form.value.TargetBookID || !form.value.content || !form.value.rating) {
     error.value = '請填寫所有必填欄位。'
+    return
+  }
+
+// 🔸 字數長度驗證（少於 10 個字就擋下）
+  if (form.value.content.trim().length < 10) {
+    error.value = '⚠️ 評論內容不能少於 10 個字。'
     return
   }
 
@@ -203,6 +216,7 @@ const submitReview = async () => {
   } finally {
     submitting.value = false
   }
+  
 }
 </script>
 

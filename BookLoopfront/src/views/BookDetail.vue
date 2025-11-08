@@ -48,6 +48,7 @@ const reviews = ref<{
   rating: number
   content: string
   createdAt: string
+  displayName?: string
 }[]>([])
 
 const loadingReviews = ref(true)
@@ -144,16 +145,18 @@ onMounted(async () => {
 
   // ✅ 再載入評論
    try {
-    const res = await http.get(`/api/ReviewsApi/GetBookReviews/${bookId}`)
-    reviews.value = Array.isArray(res.data) && res.data.length > 0
-      ? res.data
-      : fakeReviews
-  } catch (err) {
-    console.warn('⚠️ 無法載入評論，改用假資料')
-    reviews.value = fakeReviews
-  } finally {
-    loadingReviews.value = false
-  }
+  const res = await http.get(`/api/ReviewsApi/GetBookReviews/${bookId}`)
+  console.log("📢 後端回傳的 reviews：", res.data) // ✅ 先看這裡有沒有 displayName
+  reviews.value = Array.isArray(res.data) && res.data.length > 0
+    ? res.data
+    : fakeReviews
+} catch (err) {
+  console.warn('⚠️ 無法載入評論，改用假資料')
+  reviews.value = fakeReviews
+} finally {
+  loadingReviews.value = false
+}
+
 })
 
 async function resolveMemberId(): Promise<number | null> {
@@ -408,7 +411,7 @@ function emitAdd(b: any) {
           data-bs-toggle="collapse"
           :data-bs-target="'#c' + idx"
         >
-          🧑‍💬 {{ r.title }}　⭐ {{ r.rating }}/5
+          🧑‍💬 {{ r.displayName || r.author }}　⭐ {{ r.rating }}/5
         </button>
       </h2>
       <div
