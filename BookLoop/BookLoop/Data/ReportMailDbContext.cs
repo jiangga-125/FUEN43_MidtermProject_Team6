@@ -24,6 +24,8 @@ public partial class ReportMailDbContext : DbContext
 
     public virtual DbSet<ReportFilter> ReportFilters { get; set; }
 
+    public virtual DbSet<User> Users { get; set; }
+
 }
 
 

@@ -30,9 +30,7 @@ public partial class ShopDbContext : DbContext
     public virtual DbSet<SupplierUser> SupplierUsers { get; set; } 
 	public virtual DbSet<Member> Members { get; set; } = null!;
 
-
-        
-	protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
 		modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
@@ -40,7 +38,6 @@ public partial class ShopDbContext : DbContext
 		{
 			e.ToTable("SUPPLIER_USERS");                      // 表名
 			e.HasKey(x => new { x.SupplierID, x.UserID });    // 複合主鍵（關鍵）
-
 			e.HasOne(x => x.Supplier)
 			 .WithMany(s => s.SupplierUsers)
 			 .HasForeignKey(x => x.SupplierID);
