@@ -3,46 +3,46 @@
     ViewData["Title"] = "權限管理";
 }
 
-<h2 class="mb-3">🔐 權限管理列表</h2>
+<div class="page-wrap container-fluid px-3 py-2">
+    <div class="d-flex align-items-center mb-2 list-header">
+        <h2 class="page-title mb-0">🔐 權限管理列表</h2>
+        <div class="ms-auto list-tools" style="min-width:320px">
+            @await Html.PartialAsync("_ListFilterBar", viewData: new ViewDataDictionary(ViewData) {
+                ["keywordName"]  = "keyword",
+                ["keywordValue"] = Model.Keyword ?? "",
 
-@await Html.PartialAsync("_Alerts")
+                ["pageSizePartial"] = await Html.PartialAsync("_PageSizeSelect",
+                    viewData: new ViewDataDictionary(ViewData) {
+                        ["selected"] = Model.PageSize,
+                        ["name"]     = "pageSize",
+                        ["class"]    = "form-select js-auto-submit",
+                        ["sizes"]    = new[] { 10, 20, 50, 100 }
+                }),
 
-<!-- 搜尋列（與 Users 一致：左關鍵字/每頁筆數，右側「新增」） -->
-<form id="filter-form" method="get" class="row g-2 mb-3 align-items-center" autocomplete="off">
-    @Html.AntiForgeryToken()
-
-    <div class="col-auto">
-        <input id="keyword" name="keyword" class="form-control" placeholder="關鍵字（名稱）" value="@Model.Keyword" style="width:320px;" />
+                // 這顆「新增」使用 Modal，不走頁面導向；仍保留以維持布局一致
+                ["newButton"]     = true,
+                ["newText"]       = "➕ 新增權限",
+                ["newPolicy"]     = "Permissions.Create",
+                ["newAction"]     = "Create",
+                ["newController"] = "Permissions",
+                ["newArea"]       = "Account",
+                ["newClass"]      = "fw-bold"
+            })
+        </div>
     </div>
 
-    <div class="col-auto">
-        @await Html.PartialAsync(
-        "_PageSizeSelect",
-                viewData: new ViewDataDictionary(ViewData)
-                {
-                    ["selected"] = Model.PageSize,
-                    ["name"] = "pageSize",
-                    ["class"] = "form-select js-auto-submit",
-                    ["sizes"] = new[] { 10, 20, 50, 100 }
-                })
-    </div>
+    @await Html.PartialAsync("_Alerts")
 
-    <div class="col-auto ms-auto">
-        <authorize policy="Permissions.Create">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPermModal">
-                新增權限
-            </button>
-        </authorize>
+    <div class="list-shell card shadow-sm">
+        <div class="card-body p-0">
+            <div id="list-container">
+                @await Html.PartialAsync("_PermissionsList", Model)
+            </div>
+        </div>
     </div>
-</form>
-
-<!-- 清單容器（第一次 SSR，之後 AJAX 局部刷新） -->
-<div id="list-container">
-    @await Html.PartialAsync("_PermissionsList", Model)
 </div>
 
 <!-- =============== Modals =============== -->
-<!-- 新增權限 Modal（AJAX） -->
 <authorize policy="Permissions.Create">
     <div class="modal fade" id="createPermModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -61,7 +61,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-                        <button class="btn btn-primary">建立</button>
+                        <button class="btn btn-primary fw-bold">建立</button>
                     </div>
                 </form>
             </div>
@@ -69,7 +69,6 @@
     </div>
 </authorize>
 
-<!-- 重新命名（AJAX；需要 Permissions.Edit） -->
 <authorize policy="Permissions.Edit">
     <div class="modal fade" id="renameModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -88,7 +87,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-                        <button class="btn btn-primary">儲存</button>
+                        <button class="btn btn-secondary fw-bold">儲存</button>
                     </div>
                 </form>
             </div>
@@ -96,7 +95,6 @@
     </div>
 </authorize>
 
-<!-- 刪除（AJAX；需要 Permissions.Delete） -->
 <authorize policy="Permissions.Delete">
     <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -117,7 +115,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-                        <button class="btn btn-danger">刪除</button>
+                        <button class="btn btn-danger fw-bold">刪除</button>
                     </div>
                 </form>
             </div>
@@ -125,135 +123,161 @@
     </div>
 </authorize>
 
+@await Html.PartialAsync("_ListAjaxScripts", viewData: new ViewDataDictionary(ViewData) {
+    ["controller"] = "Permissions",
+    ["area"] = "Account",
+    ["listAction"] = "List",
+    ["indexAction"] = "Index",
+    ["formId"] = "filter-form",
+    ["containerId"] = "list-container"
+})
+
+@section Styles {
+<style>
+  .page-wrap { padding-top: 10px; padding-bottom: 12px; }
+  .list-header .page-title { line-height: 1.15; }
+  .list-tools { display:flex; justify-content:flex-end; align-items:center; gap:.5rem; }
+  .list-tools form { margin: 0; }
+  .list-tools .btn, .list-tools .form-control, .list-tools .form-select { height: 36px; }
+
+  #list-container table.table th,
+  #list-container table.table td { padding: .7rem .75rem; vertical-align: middle; }
+
+  /* 按鈕統一粗體、稍大尺寸（保留你原本設定） */
+  #list-container .btn { font-weight: 700; padding: .42rem .8rem; font-size: .95rem; }
+  /* 若有人用了 outline，統一轉成實心以保持一致（保留你原本設定） */
+  #list-container .btn-outline-secondary { background-color: var(--bs-secondary)!important; border-color: var(--bs-secondary)!important; color:#fff!important; }
+  #list-container .btn-outline-primary  { background-color: var(--bs-primary)!important;   border-color: var(--bs-primary)!important;   color:#fff!important; }
+  #list-container .btn-outline-success  { background-color: var(--bs-success)!important;   border-color: var(--bs-success)!important;   color:#fff!important; }
+  #list-container .btn-outline-danger   { background-color: var(--bs-danger)!important;    border-color: var(--bs-danger)!important;    color:#fff!important; }
+
+  /* 指定四顆按鈕色系（保留你原本設定） */
+  #list-container a[href*="/Permissions/Assign"]  { background-color: var(--bs-info)!important;    border-color: var(--bs-info)!important;    color:#fff!important; }
+  #list-container a[href*="/Permissions/Features"]{ background-color: var(--bs-warning)!important; border-color: var(--bs-warning)!important; color:#000!important; }
+  #list-container [data-rename-id]                { background-color: var(--bs-secondary)!important; border-color: var(--bs-secondary)!important; color:#fff!important; }
+  #list-container .js-del                         { background-color: var(--bs-danger)!important;  border-color: var(--bs-danger)!important;  color:#fff!important; }
+
+  #list-container .btn + .btn { margin-left:.25rem; }
+</style>
+}
+
 @section Scripts {
-
-    @* 共用：清單 AJAX（自動處理搜尋、換頁、排序、History） *@
-    @await Html.PartialAsync(
-    "_ListAjaxScripts",
-        viewData: new ViewDataDictionary(ViewData)
-        {
-            ["controller"] = "Permissions",
-            ["listAction"] = "List",
-            ["indexAction"] = "Index",
-            ["formId"] = "filter-form",
-            ["containerId"] = "list-container"
-        })
-
 <script>
-    (() => {
-      // ====== 便利函式 ======
-      function refreshListOrReload() {
-        if (window.loadList && window.paramsFromForm) {
-          loadList(paramsFromForm());
-        } else {
-          location.reload();
-        }
-      }
+  (function(){
+    /* === 只掛勾「新增權限」按鈕 → 打開 Modal；不改動 _ListFilterBar 本身 === */
+    (function hookCreateAsModal(){
+      // 盡量精準抓「新增權限」這顆（在工具列、btn-primary）
+      const btn = document.querySelector('.list-tools a.btn.btn-primary');
+      const modalEl = document.getElementById('createPermModal');
+      if (!btn || !modalEl) return;
 
-      // ====== 新增權限（AJAX） ======
-      const createForm = document.getElementById('createPermForm');
-      if (createForm) {
-        const createErr = document.getElementById('createErr');
-        createForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          createErr?.classList.add('d-none');
+      // 加上 data 屬性給 Bootstrap，也攔截預設導頁
+      btn.setAttribute('data-bs-toggle','modal');
+      btn.setAttribute('data-bs-target','#createPermModal');
+      btn.addEventListener('click', function(e){
+        // 若瀏覽器/框架沒接管 data-*，手動 show；同時避免導頁
+        e.preventDefault();
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      }, { passive:false });
+    })();
 
-          try {
-            const body = new URLSearchParams(new FormData(createForm));
-            const resp = await fetch(createForm.action, {
-              method: 'POST',
-              headers: { 'X-Requested-With': 'XMLHttpRequest' },
-              body
-            });
-            if (!resp.ok) throw new Error('network');
-            const data = await resp.json();
-            if (!data.ok) throw new Error('create failed');
-
-            bootstrap.Modal.getInstance(document.getElementById('createPermModal'))?.hide();
-            createForm.reset();
-            refreshListOrReload();
-          } catch (err) {
-            console.error(err);
-            createErr?.classList.remove('d-none');
-          }
-        });
-      }
-
-      // ====== 綁定列表內：開啟重新命名 / 刪除 ======
-      document.addEventListener('click', (e) => {
-        const renameBtn = e.target.closest('[data-rename-id]');
-        if (renameBtn) {
-          document.getElementById('rename_id').value   = renameBtn.getAttribute('data-rename-id');
-          document.getElementById('rename_name').value = renameBtn.getAttribute('data-rename-name') || '';
-          const m = document.getElementById('renameModal');
-          if (m) new bootstrap.Modal(m).show();
-          return;
-        }
-        const delBtn = e.target.closest('.js-del');
-        if (delBtn) {
-          document.getElementById('delete_id').value   = delBtn.getAttribute('data-id');
-          document.getElementById('delete_name').textContent = delBtn.getAttribute('data-name') || '-';
-          const m = document.getElementById('deleteModal');
-          if (m) new bootstrap.Modal(m).show();
-          return;
-        }
+    // 新增
+    const createForm = document.getElementById('createPermForm');
+    if (createForm) {
+      const createErr = document.getElementById('createErr');
+      createForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        createErr?.classList.add('d-none');
+        try {
+          const body = new URLSearchParams(new FormData(createForm));
+          const resp = await fetch(createForm.action, { method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body });
+          if (!resp.ok) throw 0;
+          const data = await resp.json();
+          if (!data.ok) throw 1;
+          bootstrap.Modal.getInstance(document.getElementById('createPermModal'))?.hide();
+          createForm.reset();
+          if (window.loadList && window.paramsFromForm) loadList(paramsFromForm()); else location.reload();
+        } catch { createErr?.classList.remove('d-none'); }
       });
+    }
 
-      // ====== 重新命名（AJAX） ======
-      const renameForm = document.getElementById('renameForm');
-      if (renameForm) {
-        const renameErr = document.getElementById('renameErr');
-        renameForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          renameErr?.classList.add('d-none');
-
-          try {
-            const body = new URLSearchParams(new FormData(renameForm));
-            const resp = await fetch(renameForm.action, {
-              method: 'POST',
-              headers: { 'X-Requested-With': 'XMLHttpRequest' },
-              body
-            });
-            if (!resp.ok) throw new Error('network');
-            const data = await resp.json();
-            if (!data.ok) throw new Error('rename failed');
-
-            bootstrap.Modal.getInstance(document.getElementById('renameModal'))?.hide();
-            refreshListOrReload();
-          } catch (err) {
-            console.error(err);
-            renameErr?.classList.remove('d-none');
-          }
-        });
+    // 事件代理：重新命名 / 刪除 打開對話框
+    document.addEventListener('click', (e) => {
+      const renameBtn = e.target.closest('[data-rename-id]');
+      if (renameBtn) {
+        document.getElementById('rename_id').value   = renameBtn.getAttribute('data-rename-id');
+        document.getElementById('rename_name').value = renameBtn.getAttribute('data-rename-name') || '';
+        new bootstrap.Modal(document.getElementById('renameModal')).show();
+        return;
       }
+      const delBtn = e.target.closest('.js-del');
+      if (delBtn) {
+        document.getElementById('delete_id').value   = delBtn.getAttribute('data-id');
+        document.getElementById('delete_name').textContent = delBtn.getAttribute('data-name') || '-';
+        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        return;
+      }
+    });
 
-      // ====== 刪除（AJAX） ======
-      const deleteForm = document.getElementById('deleteForm');
-      if (deleteForm) {
-        const deleteErr = document.getElementById('deleteErr');
-        deleteForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          deleteErr?.classList.add('d-none');
+    // 重新命名
+    const renameForm = document.getElementById('renameForm');
+    if (renameForm) {
+      const renameErr = document.getElementById('renameErr');
+      renameForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        renameErr?.classList.add('d-none');
+        try {
+          const body = new URLSearchParams(new FormData(renameForm));
+          const resp = await fetch(renameForm.action, { method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body });
+          if (!resp.ok) throw 0;
+          const data = await resp.json();
+          if (!data.ok) throw 1;
+          bootstrap.Modal.getInstance(document.getElementById('renameModal'))?.hide();
+          if (window.loadList && window.paramsFromForm) loadList(paramsFromForm()); else location.reload();
+        } catch { renameErr?.classList.remove('d-none'); }
+      });
+    }
 
-          try {
-            const body = new URLSearchParams(new FormData(deleteForm));
-            const resp = await fetch(deleteForm.action, {
-              method: 'POST',
-              headers: { 'X-Requested-With': 'XMLHttpRequest' },
-              body
-            });
-            if (!resp.ok) throw new Error('network');
-            const data = await resp.json();
-            if (!data.ok) throw new Error('delete failed');
+    // 刪除
+    const deleteForm = document.getElementById('deleteForm');
+    if (deleteForm) {
+      const deleteErr = document.getElementById('deleteErr');
+      deleteForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        deleteErr?.classList.add('d-none');
+        try {
+          const body = new URLSearchParams(new FormData(deleteForm));
+          const resp = await fetch(deleteForm.action, { method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body });
+          if (!resp.ok) throw 0;
+          const data = await resp.json();
+          if (!data.ok) throw 1;
+          bootstrap.Modal.getInstance(document.getElementById('deleteModal'))?.hide();
+          if (window.loadList && window.paramsFromForm) loadList(paramsFromForm()); else location.reload();
+        } catch { deleteErr?.classList.remove('d-none'); }
+      });
+    }
 
-            bootstrap.Modal.getInstance(document.getElementById('deleteModal'))?.hide();
-            refreshListOrReload();
-          } catch (err) {
-            console.error(err);
-            deleteErr?.classList.remove('d-none');
+    // 即時搜尋（300ms）
+    (function(){
+      const form = document.getElementById('filter-form');
+      const input = form?.querySelector("input[name='keyword']");
+      if (!form || !input) return;
+      let composing=false, t=null; const DEBOUNCE=300;
+      input.addEventListener('compositionstart', ()=> composing=true);
+      input.addEventListener('compositionend',   ()=> { composing=false; trigger(); });
+      input.addEventListener('input', trigger);
+      function trigger(){
+        if (composing) return;
+        clearTimeout(t);
+        t=setTimeout(()=>{
+          if (window.paramsFromForm && window.loadList) {
+            const p=paramsFromForm(); p.set('page','1'); loadList(p);
+          } else {
+            try { form.requestSubmit(); } catch { form.submit(); }
           }
-        });
+        }, DEBOUNCE);
       }
     })();
+  })();
 </script>
 }

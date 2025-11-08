@@ -1,12 +1,15 @@
 ﻿@model BookLoop.Blacklist
 @{
-    ViewData["Title"] = "新增黑名單";
+    ViewData["Title"] = "編輯黑名單";
     string startLocal = Model.StartAt.ToLocalTime().ToString("yyyy-MM-ddTHH:mm");
     string? endLocal = Model.EndAt.HasValue ? Model.EndAt.Value.ToLocalTime().ToString("yyyy-MM-ddTHH:mm") : null;
+    string? liftedLocal = Model.LiftedAt.HasValue ? Model.LiftedAt.Value.ToLocalTime().ToString("yyyy-MM-ddTHH:mm") : null;
+    // 若控制器提供 ViewBag.MemberSelect（SelectListItem），可使用下拉；否則維持數字輸入
+    var memberSelect = ViewBag.MemberSelect as IEnumerable<SelectListItem>;
 }
 <div class="page-wrap container-fluid px-3 py-2">
     <div class="d-flex align-items-center mb-2 list-header">
-        <h2 class="page-title mb-0">➕ 新增黑名單</h2>
+        <h2 class="page-title mb-0">✏️ 編輯黑名單</h2>
         <a class="btn btn-outline-secondary ms-auto" asp-area="Account" asp-controller="Blacklists" asp-action="Index">返回列表</a>
     </div>
 
@@ -14,15 +17,22 @@
 
     <form method="post" class="card shadow-sm">
         @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="BlacklistID" />
+
         <div class="card-body">
             <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
 
             <div class="mb-3">
                 <label class="form-label">會員ID</label>
-                <!-- 若預先帶入為 0 也允許輸入；有值時仍可直接送出 -->
-                <input asp-for="MemberID" type="number" min="1" class="form-control" />
+                @if (memberSelect != null)
+                {
+                    <select asp-for="MemberID" asp-items="memberSelect" class="form-select"></select>
+                }
+                else
+                {
+                    <input asp-for="MemberID" type="number" min="1" class="form-control" />
+                }
                 <span asp-validation-for="MemberID" class="text-danger"></span>
-                <div class="form-text">可從會員清單點「加入黑名單」或手動輸入會員ID。</div>
             </div>
 
             <div class="mb-3">
@@ -32,21 +42,27 @@
             </div>
 
             <div class="row">
-                <div class="col-sm-6 mb-3">
+                <div class="col-md-4 mb-3">
                     <label class="form-label">開始時間</label>
                     <input name="StartAt" type="datetime-local" class="form-control" value="@startLocal" />
                     <span asp-validation-for="StartAt" class="text-danger"></span>
                 </div>
-                <div class="col-sm-6 mb-3">
+                <div class="col-md-4 mb-3">
                     <label class="form-label">結束時間（可空）</label>
                     <input name="EndAt" type="datetime-local" class="form-control" value="@(endLocal ?? "")" />
                     <span asp-validation-for="EndAt" class="text-danger"></span>
                 </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">解除時間（可空）</label>
+                    <input name="LiftedAt" type="datetime-local" class="form-control" value="@(liftedLocal ?? "")" />
+                    <span asp-validation-for="LiftedAt" class="text-danger"></span>
+                </div>
             </div>
         </div>
+
         <div class="card-footer d-flex justify-content-end gap-2">
             <a class="btn btn-outline-secondary" asp-area="Account" asp-controller="Blacklists" asp-action="Index">取消</a>
-            <button class="btn btn-primary fw-bold">建立</button>
+            <button class="btn btn-primary fw-bold">儲存</button>
         </div>
     </form>
 </div>

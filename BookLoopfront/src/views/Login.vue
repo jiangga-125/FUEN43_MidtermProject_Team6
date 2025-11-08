@@ -7,7 +7,7 @@
       <div class="tab-row">
         <button type="button" :class="['tab', tab==='password' && 'active']" @click="tab='password'">帳密登入</button>
         <button type="button" :class="['tab', tab==='email' && 'active']" @click="tab='email'">Email 驗證碼</button>
-        <button type="button" :class="['tab', tab==='totp' && 'active']" @click="tab='totp'">TOTP 驗證碼</button>
+        <button v-if="features.totp" type="button" :class="['tab', tab==='totp' && 'active']" @click="tab='totp'">TOTP 驗證碼</button>
       </div>
 
       <!-- 帳密 -->
@@ -43,7 +43,8 @@
           <input v-model.trim="account" autocomplete="username" placeholder="you@example.com" />
         </label>
 
-        <div class="row between">
+        <!-- 寄送驗證碼：整行寬，倒數下一行靠右 -->
+        <div class="email-otp-actions">
           <button class="secondary" type="button" :disabled="auth.loading || !isEmail(account)" @click="sendEmailOtp">
             寄送驗證碼
           </button>
@@ -55,7 +56,8 @@
           <input v-model.trim="emailCode" placeholder="例如：123456" maxlength="6" />
         </label>
 
-        <label class="row remember2fa">
+        <!-- 勾選：同一行靠左、不斷行 -->
+        <label class="remember2fa">
           <input type="checkbox" v-model="rememberDevice2fa" />
           <span class="muted">此裝置 30 天免驗證</span>
         </label>
@@ -65,8 +67,8 @@
         </button>
       </div>
 
-      <!-- TOTP -->
-      <div v-if="tab==='totp'" class="pane">
+      <!-- TOTP（依旗標顯示） -->
+      <div v-if="features.totp && tab==='totp'" class="pane">
         <label class="field">
           <span>帳號（Email）</span>
           <input v-model.trim="account" autocomplete="username" placeholder="you@example.com" />
@@ -89,22 +91,21 @@
 
       <div class="divider"><span>或</span></div>
 
-      <!-- ✅ 一鍵登入（前台）— 直接用目前帳密欄位的值送出 -->
-      <button type="button"
-              class="btn-demo"
-              :disabled="auth.loading || !account || !password"
-              @click="oneClickLogin"
-              title="使用上方輸入的 Email/Password 直接登入（快捷鍵 Alt+D）">
+      <button
+        type="button"
+        class="btn-demo"
+        :disabled="auth.loading || !account || !password"
+        @click="oneClickLogin"
+        title="使用上方輸入的 Email/Password 直接登入（快捷鍵 Alt+D）">
         一鍵登入（前台）
       </button>
 
-      <div class="divider small"><span>也可以</span></div>
+      <div class="divider small" v-if="hasSso"><span>也可以</span></div>
 
-      <!-- 其他 SSO -->
-      <div class="sso-row">
-        <button type="button" class="sso google" :disabled="auth.loading" @click="external('Google')">使用 Google 登入</button>
-        <button type="button" class="sso facebook" :disabled="auth.loading" @click="external('Facebook')">使用 Facebook 登入</button>
-        <button type="button" class="sso line" :disabled="auth.loading" @click="external('LINE')">使用 LINE 登入</button>
+      <div class="sso-row" v-if="hasSso">
+        <button v-if="features.google"   type="button" class="sso google"   :disabled="auth.loading" @click="external('Google')">使用 Google 登入</button>
+        <button v-if="features.facebook" type="button" class="sso facebook" :disabled="auth.loading" @click="external('Facebook')">使用 Facebook 登入</button>
+        <button v-if="features.line"     type="button" class="sso line"     :disabled="auth.loading" @click="external('LINE')">使用 LINE 登入</button>
       </div>
 
       <p class="hint">沒有帳號？<a href="/register">前往註冊</a></p>
@@ -122,9 +123,17 @@ import { getDeviceHash } from '@/lib/deviceHash'
 const auth = useAuth()
 const router = useRouter()
 
+const features = {
+  totp: false,
+  google: true,
+  facebook: false,
+  line: false
+}
+const hasSso = computed(() => features.google || features.facebook || features.line)
+
 const tab = ref<'password'|'email'|'totp'>('password')
-const account = ref('test@gmail.com')   // 預設空白，演示時自行輸入
-const password = ref('000000')  // 預設空白，演示時自行輸入
+const account = ref('test@gmail.com')
+const password = ref('000000')
 const emailCode = ref('')
 const totpCode = ref('')
 const showPwd = ref(false)
@@ -148,7 +157,6 @@ function getRedirectTarget() {
   return q.get('redirect') || '/'
 }
 
-// Email OTP 倒數
 const otpCountdown = ref(0)
 let otpTimer: number | null = null
 function startOtpCountdown() {
@@ -163,7 +171,6 @@ function startOtpCountdown() {
   }, 1000)
 }
 
-// 帳密
 async function loginPassword() {
   if (!canSubmitPassword.value) return
   err.value = ''
@@ -175,7 +182,6 @@ async function loginPassword() {
   }
 }
 
-// ✅ 一鍵登入（前台）：直接呼叫帳密登入；加上快捷鍵 Alt+D
 function oneClickLogin() {
   tab.value = 'password'
   loginPassword()
@@ -187,7 +193,6 @@ function onKey(e: KeyboardEvent) {
   }
 }
 
-// Email OTP
 async function sendEmailOtp() {
   if (!isEmail(account.value)) { err.value = '請輸入有效 Email'; return }
   err.value = ''
@@ -212,7 +217,6 @@ async function loginByEmailOtp() {
   }
 }
 
-// TOTP
 async function loginByTotp() {
   if (!canSubmitTotp.value) return
   err.value = ''
@@ -224,7 +228,6 @@ async function loginByTotp() {
   }
 }
 
-// 外部登入（popup）
 async function external(provider: 'Google'|'Facebook'|'LINE') {
   err.value = ''
   try {
@@ -239,8 +242,6 @@ async function external(provider: 'Google'|'Facebook'|'LINE') {
 onMounted(() => {
   remember.value = (localStorage.getItem('remember_me') ?? '1') === '1'
   auth.setRemember(remember.value)
-
-  // 快捷鍵 Alt + D
   window.addEventListener('keydown', onKey)
 
   const qs = new URLSearchParams(location.search)
@@ -252,12 +253,24 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.auth-shell{min-height:100vh;display:grid;place-items:center;background:radial-gradient(60% 120% at 10% 10%, #eef4ff 0%, transparent 60%),radial-gradient(70% 130% at 90% 20%, #fff3f0 0%, transparent 60%),#fafafa}
+.auth-shell{
+  padding-top: 72px;
+  min-height: calc(100vh - 72px);
+  display:grid;
+  place-items:center;
+  background:
+    radial-gradient(60% 120% at 10% 10%, #eef4ff 0%, transparent 60%),
+    radial-gradient(70% 130% at 90% 20%, #fff3f0 0%, transparent 60%),
+    #fafafa;
+}
 .card{width:min(92vw,460px);background:#fff;border:1px solid #e9ecef;border-radius:16px;padding:20px 20px 16px;box-shadow:0 6px 24px rgba(0,0,0,.06);display:grid;gap:12px}
 .title{margin:0 0 6px;text-align:center}
-.tab-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+
+/* tabs：自動分欄 */
+.tab-row{display:grid;grid-template-columns:repeat(auto-fit, minmax(0,1fr));gap:6px}
 .tab{border:1px solid #e5e7eb;background:#f8fafc;color:#374151;border-radius:10px;padding:8px 10px;cursor:pointer}
 .tab.active{background:#0d6efd;color:#fff;border-color:#0d6efd}
+
 .pane{display:grid;gap:10px;margin-top:6px}
 .field{display:grid;gap:6px}
 .field span{font-size:13px;color:#555}
@@ -288,6 +301,37 @@ button{padding:10px 12px;border-radius:10px;cursor:pointer;border:1px solid tran
 .btn-demo{background:linear-gradient(90deg,#ffb86b,#ff7a59);color:#111;border:0;border-radius:10px;height:42px;font-weight:700}
 .btn-demo[disabled]{opacity:.6;cursor:not-allowed}
 
-/* 2FA 勾選微調 */
-.remember2fa{gap:8px;margin-top:-2px}
+/* ✅ Email OTP 動作列：按鈕同寬、倒數在下一行靠右 */
+.email-otp-actions{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+.email-otp-actions .secondary{
+  grid-column: 1 / -1;  /* 第一行獨占整列 */
+  width: 100%;
+  display: block;
+}
+.email-otp-actions .muted{
+  grid-column: 2 / 3;   /* 第二行在右側 */
+  justify-self: end;
+  margin-top: 6px;
+  white-space: nowrap;
+}
+
+/* ✅ 修正「此裝置 30 天免驗證」對齊：同一行靠左，不斷行 */
+label.remember2fa{
+  display:flex !important;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-top: -2px;
+}
+label.remember2fa .muted{ display:inline !important; }
+label.remember2fa input[type="checkbox"]{
+  margin: 0;
+  width: 16px; height: 16px;
+  vertical-align: middle;
+}
 </style>
