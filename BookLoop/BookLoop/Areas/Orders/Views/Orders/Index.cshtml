@@ -126,7 +126,7 @@
                     <th class="head-width">@Html.DisplayNameFor(model => model.CouponDiscountAmount)</th>
                     <th class="head-width">會員名稱</th>
                     <th class="head-width">物流資訊</th>
-                    <th class="head-width">付款資訊</th>
+                    @* <th class="head-width">付款資訊</th> *@
                     <th></th>
                 </tr>
             </thead>
@@ -210,7 +210,7 @@
                         </td>
 
 
-                        <td>
+                        @* <td>
                             @if (item.Status == 0)
                             {
                                 if (item.TotalAmount > 0)
@@ -235,7 +235,7 @@
                             {
                                 <span class="text-muted">已付款</span>
                             }
-                        </td>
+                        </td> *@
 
                         <td class="text-center">
                             <div class="dropdown">

@@ -57,18 +57,21 @@ function viewOrderDetail(orderId: number) {
     </div>
 
     <div v-else>
-      <div v-if="orders.length === 0" class="text-center text-muted py-4">
-        目前沒有訂單紀錄
-      </div>
+      <div v-if="orders.length === 0" class="text-center text-muted py-4">目前沒有訂單紀錄</div>
 
       <div v-else class="row g-3">
         <div v-for="order in orders" :key="order.OrderID" class="col-md-6">
           <div class="card p-3 shadow-sm rounded-3">
             <h5 class="card-title">訂單 #{{ order.OrderID }}</h5>
-            <p class="card-text">下單時間: {{ order.OrderDate ? new Date(order.OrderDate).toLocaleString() : '-' }}</p>
+            <p class="card-text">
+              下單時間: {{ order.OrderDate ? new Date(order.OrderDate).toLocaleString() : '-' }}
+            </p>
             <p class="card-text">
               💰 總金額: NT$ {{ order.TotalAmount ?? 0 }} <br />
-              📦 狀態: <span class="badge bg-primary text-light">{{ orderStatusMap[order.Status ?? 0] }}</span>
+              📦 狀態:
+              <span class="badge bg-primary text-light">{{
+                orderStatusMap[order.Status ?? 0]
+              }}</span>
             </p>
             <button class="btn btn-sm btn-primary" @click="viewOrderDetail(order.OrderID!)">
               查看明細

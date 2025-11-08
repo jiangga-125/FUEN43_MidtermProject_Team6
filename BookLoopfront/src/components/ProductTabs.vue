@@ -113,36 +113,33 @@ async function addToCart(b: Book) {
 
   // ========== 真正加入購物車邏輯 ==========
   try {
-  const payload: any = {
-    BookID: b.id,
-    Quantity: 1,
-    UnitPrice: b.salePrice ?? b.listPrice ?? 0,
+    const payload: any = {
+      BookID: b.id,
+      Quantity: 1,
+      UnitPrice: b.salePrice ?? b.listPrice ?? 0,
+    }
+
+    if (memberId.value) payload.MemberID = memberId.value
+
+    console.log('加入購物車 payload', payload)
+    const res = await addCartAPI(payload)
+    console.log('購物車回傳資料', res)
+
+    // ✅ 從後端抓最新購物車，HeaderBar 會同步更新
+    if (memberId.value) {
+      await cartStore.fetchCart()
+    }
+
+    alert(`✅ 已加入購物車：${b.title}`)
+  } catch (e: any) {
+    console.error('加入購物車錯誤', e)
+    if (e?.response) {
+      const msg = e.response.data?.message ?? '加入購物車失敗'
+      alert(`❌ ${msg}`)
+    } else {
+      alert(`❌ 加入購物車失敗: ${e?.message ?? '未知錯誤'}`)
+    }
   }
-
-  if (memberId.value) payload.MemberID = memberId.value
-
-  console.log('加入購物車 payload', payload)
-  const res = await addCartAPI(payload)
-  console.log('購物車回傳資料', res)
-
-  // ✅ 同步更新 Pinia store，讓 HeaderBar 數字立刻變動
-  const exist = cartStore.items.find(i => i.book.id === b.id)
-  if (exist) {
-    exist.quantity += 1
-  } else {
-    cartStore.items.push({ book: b, quantity: 1, itemId: res.itemId ?? undefined })
-  }
-
-  alert(`✅ 已加入購物車：${b.title}`)
-} catch (e: any) {
-  console.error('加入購物車錯誤', e)
-  if (e?.response) {
-    const msg = e.response.data?.message ?? '加入購物車失敗'
-    alert(`❌ ${msg}`)
-  } else {
-    alert(`❌ 加入購物車失敗: ${e?.message ?? '未知錯誤'}`)
-  }
-}
 }
 </script>
 
