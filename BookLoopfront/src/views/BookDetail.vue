@@ -800,7 +800,7 @@ function emitAdd(b: any) {
 
         <!-- 相關推薦（carousel 或橫列） -->
         <h5 class="mb-3">你可能也會喜歡</h5>
-        <div class="d-flex gap-3 overflow-auto pb-3">
+        <div class="related-listings d-flex gap-3 overflow-auto pb-3">
           <div v-for="r in related" :key="r.id" style="min-width: 140px">
             <ProductCard :book="r" @add="emitAdd" />
           </div>
@@ -1026,6 +1026,21 @@ img.img-fluid {
   gap: 0.5rem;
   padding: 0.15rem 0;
 }
+/* 只針對詳情頁裡的 ProductCard 做覆寫，避免全站影響 */
+.related-listings :deep(.card .actions) {
+  display: flex;
+  align-items: left !important;
+}
+
+/* 調整按鈕讓它們不會被壓成兩行 */
+.related-listings :deep(.card .actions button) {
+  white-space: nowrap !important;
+  min-width: 60px; /* 視情況調大或調小 */
+  padding: 10px 4px;
+  font-size: 0.7rem;
+  justify-content: center;
+}
+
 /* 小螢幕微調：把價格放到同欄（避免太擠） */
 @media (max-width: 767.98px) {
   .col-4.text-end {
