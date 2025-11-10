@@ -14,8 +14,9 @@ namespace BookSystem.Controllers
 	{
 		private readonly BookSystemContext _db;
 		public InventoryController(BookSystemContext db) => _db = db;
-		// GET: /Books/Inventory
-		// 可帶 query: ?q=關鍵字&bookId=123
+
+		#region Index
+		// GET: /Books/Inventory 可帶 query: ?q=關鍵字&bookId=123
 		public async Task<IActionResult> Index(string? q, int? bookId)
 		{
 			// 1) 取得書籍清單（供上方下拉選擇）
@@ -75,8 +76,34 @@ namespace BookSystem.Controllers
 
 			return View();
 		}
+		#endregion
 
+		#region GetRows
+		// GET: /Books/Inventory/GetRows?bookId=5
+		[HttpGet]
+		public async Task<IActionResult> GetRows(int bookId)
+		{
+			var rows = await _db.Branches
+				.Where(b => b.IsActive)
+				.OrderBy(b => b.BranchID)
+				.Select(b => new
+				{
+					b.BranchID,
+					b.BranchName,
+					OnHand = _db.BookInventories
+								.Where(i => i.BookID == bookId && i.BranchID == b.BranchID)
+								.Select(i => i.OnHand).FirstOrDefault(),
+					Reserved = _db.BookInventories
+								.Where(i => i.BookID == bookId && i.BranchID == b.BranchID)
+								.Select(i => i.Reserved).FirstOrDefault(),
+				})
+				.ToListAsync();
 
+			return Json(rows);
+		}
+		#endregion
+
+		#region Edit
 		// GET: /Books/Inventory/Edit/5 或 /Books/Inventory/Edit?id=5 或 /Books/Inventory/Edit?bookId=5
 		public async Task<IActionResult> Edit(int? id)
 		{
@@ -118,8 +145,9 @@ namespace BookSystem.Controllers
 			ViewBag.Rows = rows;
 			return View("Edit");
 		}
+		#endregion
 
-
+		#region Save 
 		// POST: /Books/Inventory/Save
 		[HttpPost]
 		[ValidateAntiForgeryToken]
@@ -174,7 +202,9 @@ namespace BookSystem.Controllers
 
 			return RedirectToAction(nameof(Edit), new { bookId });
 		}
+		#endregion
 
+		#region Transfer
 		// GET: /Books/Inventory/Transfer?bookId=5
 		public async Task<IActionResult> Transfer(int bookId)
 		{
@@ -209,20 +239,30 @@ namespace BookSystem.Controllers
 		{
 			if (fromBranchId == toBranchId)
 			{
+				if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+					return Json(new { ok = false, message = "來源與目的據點不可相同。" });
+
 				TempData["err"] = "來源與目的據點不可相同。";
 				return RedirectToAction(nameof(Transfer), new { bookId });
 			}
 			if (quantity <= 0)
 			{
+				if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+					return Json(new { ok = false, message = "調撥數量需大於 0。" });
+
 				TempData["err"] = "調撥數量需大於 0。";
 				return RedirectToAction(nameof(Transfer), new { bookId });
 			}
 
-			// 確認 book 存在
 			var book = await _db.Books.FirstOrDefaultAsync(b => b.BookID == bookId);
-			if (book == null) return NotFound();
+			if (book == null)
+			{
+				if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+					return Json(new { ok = false, message = "找不到指定的書目。" });
 
-			// **伺服器端驗證：來源與目的據點都必須是資料庫中存在且為啟用（IsActive = true）**
+				return NotFound();
+			}
+
 			var branches = await _db.Branches
 				.Where(b => b.IsActive && (b.BranchID == fromBranchId || b.BranchID == toBranchId))
 				.Select(b => b.BranchID)
@@ -230,6 +270,9 @@ namespace BookSystem.Controllers
 
 			if (branches.Count != 2)
 			{
+				if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+					return Json(new { ok = false, message = "來源或目的據點不存在，或該據點已停用。" });
+
 				TempData["err"] = "來源或目的據點不存在，或該據點已停用。";
 				return RedirectToAction(nameof(Transfer), new { bookId });
 			}
@@ -237,7 +280,6 @@ namespace BookSystem.Controllers
 			using var tx = await _db.Database.BeginTransactionAsync();
 			try
 			{
-				// 讀來源庫存（若無資料，視為 OnHand = 0）
 				var src = await _db.BookInventories
 					.FirstOrDefaultAsync(x => x.BookID == bookId && x.BranchID == fromBranchId);
 
@@ -246,21 +288,24 @@ namespace BookSystem.Controllers
 				var srcAvailable = srcOnHand - srcReserved;
 				if (srcAvailable < quantity)
 				{
+					if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+						return Json(new { ok = false, message = $"來源據點可用數量不足（可用 {srcAvailable} 本）。" });
+
 					TempData["err"] = $"來源據點可用數量不足（可用 {srcAvailable} 本）。";
 					return RedirectToAction(nameof(Transfer), new { bookId });
 				}
 
-				// 讀或建立目的地 inventory row
-				var dest = await _db.BookInventories
-					.FirstOrDefaultAsync(x => x.BookID == bookId && x.BranchID == toBranchId);
-
-				// 來源理論上應該存在（但若不存在也已視為 OnHand=0），以下按邏輯處理
 				if (src == null)
 				{
-					// 保護性檢查：來源沒有紀錄，但因為可用數量檢查會擋住，通常不會到這裡
+					if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+						return Json(new { ok = false, message = "來源據點庫存紀錄不存在，無法執行調撥。" });
+
 					TempData["err"] = "來源據點庫存紀錄不存在，無法執行調撥。";
 					return RedirectToAction(nameof(Transfer), new { bookId });
 				}
+
+				var dest = await _db.BookInventories
+					.FirstOrDefaultAsync(x => x.BookID == bookId && x.BranchID == toBranchId);
 
 				// 扣來源
 				src.OnHand = Math.Max(0, src.OnHand - quantity);
@@ -282,7 +327,7 @@ namespace BookSystem.Controllers
 				}
 				else
 				{
-					dest.OnHand = checked(dest.OnHand + quantity); // 使用 checked 防 overflow（可選）
+					dest.OnHand = checked(dest.OnHand + quantity);
 					dest.UpdatedAt = DateTime.UtcNow;
 					_db.Entry(dest).State = EntityState.Modified;
 				}
@@ -290,20 +335,44 @@ namespace BookSystem.Controllers
 				await _db.SaveChangesAsync();
 				await tx.CommitAsync();
 
-				TempData["ok"] = $"成功將 {quantity} 本從據點 {fromBranchId} 調撥至據點 {toBranchId}。";
+				// 取得來源 / 目的 店名（供回傳顯示）
+				var fromName = await _db.Branches.Where(b => b.BranchID == fromBranchId).Select(b => b.BranchName).FirstOrDefaultAsync();
+				var toName = await _db.Branches.Where(b => b.BranchID == toBranchId).Select(b => b.BranchName).FirstOrDefaultAsync();
+
+				if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+				{
+					return Json(new
+					{
+						ok = true,
+						message = $"成功將 {quantity} 本從 {fromName} 調撥至 {toName}。",
+						fromName,
+						toName,
+						quantity
+					});
+				}
+
+				// 非 Ajax：維持舊行為但把 TempData 訊息改為顯示店名（較友善）
+				TempData["ok"] = $"成功將 {quantity} 本從 {fromName} 調撥至 {toName}。";
 			}
 			catch (DbUpdateConcurrencyException)
 			{
 				await tx.RollbackAsync();
+				if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+					return Json(new { ok = false, message = "發生並發衝突，請重新整理後再試一次。" });
+
 				TempData["err"] = "發生並發衝突，請重新整理後再試一次。";
 			}
 			catch (Exception ex)
 			{
 				await tx.RollbackAsync();
+				if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+					return Json(new { ok = false, message = "調撥失敗: " + ex.Message });
+
 				TempData["err"] = "調撥失敗: " + ex.Message;
 			}
 
 			return RedirectToAction(nameof(Edit), new { bookId });
 		}
+		#endregion
 	}
 }
