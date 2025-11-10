@@ -298,8 +298,9 @@ namespace BookSystem.Controllers
 				};
 
 				_context.BookImages.Add(newImg);
-				await _context.SaveChangesAsync();
 			}
+
+			await _context.SaveChangesAsync();
 
 			TempData["Success"] = "書籍修改成功！";
 			return RedirectToAction(nameof(Index));

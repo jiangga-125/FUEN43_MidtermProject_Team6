@@ -319,6 +319,7 @@ async function fetchBook() {
                 b.branch ??
                 b.Branch ??
                 '據點 ' + (b.branchId ?? b.BranchID ?? ''),
+              address: getFixedAddress(b.branchName ?? b.BranchName ?? b.branch ?? b.Branch),
               onHand,
               reserved,
               available,
@@ -355,6 +356,19 @@ async function fetchBook() {
     error.value = e?.message ?? '讀取錯誤'
     loading.value = false
   }
+}
+
+// 寫死的據點地址對應
+function getFixedAddress(name: any): string {
+  if (!name) return '—'
+  const key = String(name).trim()
+  // 以小寫比較以容錯
+  const k = key.toLowerCase()
+
+  if (k === '板橋店') return '新北市板橋區新生路一段274號1樓'
+  if (k === '中壢店') return '桃園市中壢區新生路二段421號(聖德基督學院內活動中心1F)'
+  if (k === '台北信義店' || k === '台北信義店') return '臺北市信義區松高路11號3樓'
+  return '—'
 }
 
 /* ===========================
@@ -772,9 +786,14 @@ function emitAdd(b: any) {
                       class="list-group-item d-flex justify-content-between align-items-start"
                     >
                       <div>
-                        <div class="fw-bold">{{ b.branchName }}</div>
+                        <div class="fw-bold">
+                          {{ b.branchName }}
+                          <span class="branch-address" v-if="b.address">「 {{ b.address }} 」</span>
+                        </div>
                         <div class="small text-muted">
-                          更新：{{ b.updatedAt ? formatDateString(b.updatedAt) : '-' }}
+                          <div class="mt-1">
+                            更新：{{ b.updatedAt ? formatDateString(b.updatedAt) : '-' }}
+                          </div>
                         </div>
                       </div>
                       <div class="text-end">
@@ -1041,6 +1060,11 @@ img.img-fluid {
   justify-content: center;
 }
 
+.branch-address {
+  margin-left: 8px;
+  color: #6c757d;
+  font-weight: 400;
+}
 /* 小螢幕微調：把價格放到同欄（避免太擠） */
 @media (max-width: 767.98px) {
   .col-4.text-end {

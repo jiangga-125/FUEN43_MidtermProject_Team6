@@ -1,0 +1,197 @@
+﻿@{
+    ViewData["Title"] = "庫存管理 - 調撥";
+    var rows = ViewBag.Rows as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    int bookId = ViewBag.BookID is int ? (int)ViewBag.BookID : 0;
+    string bookTitle = ViewBag.BookTitle as string ?? "";
+    // rows 每筆應包含: BranchID, BranchName, OnHand, Reserved
+}
+
+<h3>@ViewData["Title"] @if(!string.IsNullOrEmpty(bookTitle)){
+<small>- @bookTitle</small>
+}
+</h3>
+
+@if (TempData["ok"] != null)
+{
+    <div class="alert alert-success">@TempData["ok"]</div>
+}
+@if (TempData["err"] != null)
+{
+    <div class="alert alert-warning">@TempData["err"]</div>
+}
+
+<p class="mb-3">請點選來源據點的「調撥」按鈕，選擇目的據點與數量後送出。系統會在伺服器端再次檢查來源可用量與據點狀態。</p>
+
+@if (!rows.Any())
+{
+    <div class="alert alert-info">目前沒有可顯示的據點（請確認是否有啟用的據點）。</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>據點名稱</th>
+                    <th style="width:140px;">現有庫存</th>
+                    <th style="width:140px;">已保留</th>
+                    <th style="width:160px;">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in rows)
+                {
+                    var name = (string)r.BranchName;
+                    var onhand = (r.OnHand == null) ? 0 : (int)r.OnHand;
+                    var reserved = (r.Reserved == null) ? 0 : (int)r.Reserved;
+                    <tr>
+                        <td>@name</td>
+                        <td>
+                            <span class="badge bg-info">@onhand</span>
+                        </td>
+                        <td>
+                            <span class="text-muted">@reserved</span>
+                        </td>
+                        <td>
+                            <button type="button"
+                                    class="btn btn-sm btn-primary btn-open-transfer-modal"
+                                    data-branchid="@r.BranchID"
+                                    data-branchname="@name"
+                                    data-onhand="@onhand"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#transferModal">
+                                調撥
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<p class="mt-2">
+    <a asp-area="Books" asp-controller="Books" asp-action="Index" class="btn btn-light btn-sm">回書籍清單</a>
+</p>
+
+<!-- Transfer Modal -->
+<div class="modal fade" id="transferModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-area="Books" asp-controller="Inventory" asp-action="Transfer" method="post" id="transferForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="bookId" value="@bookId" />
+                <input type="hidden" name="fromBranchId" id="modal-fromBranchId" value="" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title">庫存調撥</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">來源據點</label>
+                        <input type="text" id="modal-fromBranchName" class="form-control" readonly />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">來源現有庫存 (可用 = OnHand - Reserved)</label>
+                        <input type="text" id="modal-fromOnHand" class="form-control" readonly />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">目的據點</label>
+                        <select name="toBranchId" id="modal-toBranchId" class="form-select" required>
+                            <option value="">-- 請選擇目的據點 --</option>
+                            @foreach (var t in rows)
+                            {
+                                <option value="@t.BranchID">@t.BranchName</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">數量</label>
+                        <input type="number" name="quantity" id="modal-quantity" class="form-control" min="1" value="1" required />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">原因 / 備註（選填）</label>
+                        <input type="text" name="reason" id="modal-reason" class="form-control" maxlength="200" />
+                    </div>
+
+                    <div id="modal-alert" class="alert alert-danger d-none" role="alert"></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">確認調撥</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function(){
+            // 點按鈕把來源資料填入 modal（id 放在隱藏欄位，不顯示在畫面）
+            document.querySelectorAll('.btn-open-transfer-modal').forEach(btn => {
+                btn.addEventListener('click', function(){
+                    const branchId = this.getAttribute('data-branchid');
+                    const branchName = this.getAttribute('data-branchname');
+                    const onhand = parseInt(this.getAttribute('data-onhand') || '0', 10);
+
+                    // 填入來源資訊（顯示給使用者看）
+                    document.getElementById('modal-fromBranchId').value = branchId;
+                    document.getElementById('modal-fromBranchName').value = branchName;
+                    document.getElementById('modal-fromOnHand').value = onhand;
+
+                    // 更新可選目的地，避免選到自己（直接 disable）
+                    const toSel = document.getElementById('modal-toBranchId');
+                    for (let i = 0; i < toSel.options.length; i++) {
+                        toSel.options[i].disabled = (toSel.options[i].value === branchId);
+                    }
+                    // 若目前選到自己就清空
+                    if (toSel.value === branchId) toSel.value = "";
+
+                    // 重置數量與 alert
+                    document.getElementById('modal-quantity').value = 1;
+                    const alertBox = document.getElementById('modal-alert');
+                    alertBox.classList.add('d-none');
+                    alertBox.textContent = '';
+                });
+            });
+
+            // 前端驗證：使用者輸入數量 <= 來源 onhand
+            const form = document.getElementById('transferForm');
+            form.addEventListener('submit', function(e){
+                const fromOnHand = parseInt(document.getElementById('modal-fromOnHand').value || '0', 10);
+                const qty = parseInt(document.getElementById('modal-quantity').value || '0', 10);
+                const toBranchId = document.getElementById('modal-toBranchId').value;
+                const alertBox = document.getElementById('modal-alert');
+
+                if (!toBranchId) {
+                    e.preventDefault();
+                    alertBox.textContent = '請選擇目的據點';
+                    alertBox.classList.remove('d-none');
+                    return;
+                }
+                if (isNaN(qty) || qty <= 0) {
+                    e.preventDefault();
+                    alertBox.textContent = '請輸入正整數的調撥數量';
+                    alertBox.classList.remove('d-none');
+                    return;
+                }
+                if (qty > fromOnHand) {
+                    e.preventDefault();
+                    alertBox.textContent = '調撥數量不可超過來源據點的現有庫存（' + fromOnHand + '）';
+                    alertBox.classList.remove('d-none');
+                    return;
+                }
+
+                // 前端驗證通過後由後端再次檢查（來源/目的是否啟用、來源是否有保留量等）
+            });
+        })();
+    </script>
+}

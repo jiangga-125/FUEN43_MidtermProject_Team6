@@ -4,6 +4,26 @@
     var q = ViewBag.q as string;
     bool showInactive = ViewBag.showInactive ?? false;
 }
+@functions {
+    // 只對三個指定據點回傳寫死地址
+    private string GetFixedAddress(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "—";
+
+        if (name.Equals("板橋店", System.StringComparison.OrdinalIgnoreCase))
+            return "新北市板橋區新生路一段274號1樓";
+
+        if (name.Equals("中壢店", System.StringComparison.OrdinalIgnoreCase))
+            return "桃園市中壢區新生路二段421號(聖德基督學院內活動中心1F)";
+
+        if (name.Equals("台北信義店", System.StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("台北信義店 ", System.StringComparison.OrdinalIgnoreCase)) // 容錯尾空白
+            return "臺北市信義區松高路11號3樓";
+
+        return "—";
+    }
+}
+
 <h3>@ViewData["Title"]</h3>
 
 @if (TempData["ok"] != null)
@@ -40,6 +60,7 @@
         <tr>
             <th style="width:80px;">ID</th>
             <th>據點名稱</th>
+            <th>地址</th>
             <th style="width:120px;">狀態</th>
             <th style="width:220px;">操作</th>
         </tr>
@@ -50,6 +71,7 @@
             <tr>
                 <td>@b.BranchID</td>
                 <td>@b.BranchName</td>
+                <td>@GetFixedAddress(b.BranchName)</td>
                 <td>
                     @if (b.IsActive)
                     {
