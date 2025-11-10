@@ -24,7 +24,6 @@ const tabs = [
     <h2 class="page-title">會員中心</h2>
 
     <div v-if="member" class="shell">
-      <!-- 左側（桌機）或上方（手機）導覽列 -->
       <nav class="nav">
         <RouterLink
           v-for="t in tabs" :key="t.text"
@@ -37,9 +36,7 @@ const tabs = [
         </RouterLink>
       </nav>
 
-      <!-- 內容區：對應各子頁面 -->
       <section class="content">
-        <!-- 可酌量用 keep-alive 保留頁面狀態 -->
         <keep-alive include="Profile,Security,Orders,Borrows,Coupons,Favorites,Cart,Reviews">
           <router-view />
         </keep-alive>
@@ -53,9 +50,17 @@ const tabs = [
 </template>
 
 <style scoped>
-.member-center{max-width:1200px;margin:24px auto;padding:0 16px}
-.page-title{margin-bottom:16px}
+/* 🔽 直接騰出固定頂欄高度（依你的 header 高度調整 56/64/72/80px） */
+.member-center{
+  max-width:1200px;
+  margin:0 auto;                 /* 不用外距，避免被 header 蓋住 */
+  padding:56px 16px 24px;        /* 72px = header 高度 */
+  min-height:calc(100vh - 72px); /* 視窗高度的合理底部留白 */
+}
 
+.page-title{margin:0 0 16px}
+
+/* 版面 */
 .shell{display:grid;grid-template-columns:260px 1fr;gap:16px}
 @media (max-width: 992px){
   .shell{grid-template-columns:1fr}
@@ -78,6 +83,7 @@ const tabs = [
 .nav-item:hover{background:#f8fafc}
 .nav-item.active{background:#0d6efd;color:#fff;border-color:#0d6efd}
 .icon{width:22px;text-align:center}
+
 .content{
   background:#fff;border:1px solid #e9ecef;border-radius:16px;padding:18px;
   box-shadow:0 4px 18px rgba(0,0,0,.04);

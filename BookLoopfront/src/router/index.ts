@@ -1,7 +1,7 @@
 // src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '@/stores/auth'
-import { memberRoutes } from './member' // ⬅️ 會員中心巢狀路由（Profile/Security/...）
+import { memberRoutes } from './member'
 import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
 import Forgot from '@/views/Forgot.vue'

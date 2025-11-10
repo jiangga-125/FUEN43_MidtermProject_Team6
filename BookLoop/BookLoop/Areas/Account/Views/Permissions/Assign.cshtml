@@ -1,109 +1,190 @@
 ﻿@model Account.Controllers.PermissionsController.AssignVM
 @{
-    Layout = "_Layout";
-    ViewData["Title"] = $"適用帳號 - {Model.Perm.PermName ?? Model.Perm.PermKey}";
+    ViewData["Title"] = "適用帳號";
 }
 
-<div class="d-flex align-items-center mb-3">
-    <h3 class="mb-0">👥 適用帳號 - @((Model.Perm.PermName ?? Model.Perm.PermKey))</h3>
-    <a class="btn btn-outline-secondary ms-auto" asp-area="Account" asp-controller="Permissions" asp-action="Index">返回列表</a>
-</div>
+<div class="page-wrap container-fluid px-3 py-2">
+    <div class="d-flex align-items-center mb-2 list-header">
+        <h2 class="page-title mb-0">👥 適用帳號</h2>
+        <a class="btn btn-secondary fw-bold ms-auto" asp-area="Account" asp-controller="Permissions" asp-action="Index">返回列表</a>
+    </div>
 
-@await Html.PartialAsync("_Alerts")
+    @await Html.PartialAsync("_Alerts")
 
-<div class="row g-3">
-    <!-- 已指派 -->
-    <div class="col-lg-6">
-        <div class="card shadow-sm">
-            <div class="card-header bg-light fw-semibold">已指派</div>
-            <div class="card-body">
-                @if (Model.Assigned.Count == 0)
-                {
-                    <div class="text-muted">尚未指派帳號</div>
-                }
-                else
-                {
-                    <ul class="list-group list-group-flush">
-                        @foreach (var u in Model.Assigned)
+    <div class="row g-3">
+        <!-- 已指派 -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light fw-semibold">已指派</div>
+                <div class="card-body">
+                    @if (Model.Assigned.Count == 0)
+                    {
+                        <div class="text-muted">尚未指派帳號</div>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var u in Model.Assigned)
+                            {
+                                <li class="list-group-item d-flex align-items-center">
+                                    <div class="flex-grow-1">
+                                        <div class="fw-semibold">@u.Email</div>
+                                        @if (!string.IsNullOrWhiteSpace(u.Phone))
+                                        {
+                                            <div class="text-muted small">@u.Phone</div>
+                                        }
+                                    </div>
+                                    <authorize policy="Permissions.Assign">
+                                        <form method="post" asp-area="Account" asp-controller="Permissions" asp-action="RemoveUser" class="ms-2">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@Model.Perm.PermissionID" />
+                                            <input type="hidden" name="userId" value="@u.UserID" />
+                                            <button class="btn btn-danger btn-sm fw-bold">移除</button>
+                                        </form>
+                                    </authorize>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- 候選（搜尋 + 分頁） -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex align-items-center">
+                    <span class="fw-semibold">新增帳號</span>
+                    <span class="ms-auto text-muted small">共 @Model.Total 筆</span>
+                </div>
+                <div class="card-body">
+                    <!-- 改為由 JS 接管，不讓瀏覽器直接提交 -->
+                    <form id="assign-search-form" method="get" class="row g-2 mb-3"
+                          asp-area="Account" asp-controller="Permissions" asp-action="Assign">
+                        <input type="hidden" name="id" value="@Model.Perm.PermissionID" />
+                        <div class="col">
+                            <input id="assign-q" name="q" class="form-control"
+                                   value="@Model.Keyword"
+                                   placeholder="搜尋（ID / Email / Phone）" autocomplete="off" />
+                        </div>
+                    </form>
+
+                    <!-- 這個容器會被不刷新更新 -->
+                    <div id="assign-candidates">
+                        @if (Model.Candidates.Count == 0)
                         {
-                            <li class="list-group-item d-flex align-items-center">
-                                <div class="flex-grow-1">
-                                    <div class="fw-semibold">@u.Email</div>
-                                    @if (!string.IsNullOrWhiteSpace(u.Phone))
-                                    {
-                                        <div class="text-muted small">@u.Phone</div>
-                                    }
-                                </div>
-                                <authorize policy="Permissions.Assign">
-                                    <form method="post" asp-area="Account" asp-controller="Permissions" asp-action="RemoveUser" class="ms-2">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@Model.Perm.PermissionID" />
-                                        <input type="hidden" name="userId" value="@u.UserID" />
-                                        <button class="btn btn-sm btn-outline-danger">移除</button>
-                                    </form>
-                                </authorize>
-                            </li>
+                            <div class="text-muted">輸入關鍵字開始搜尋或無符合的候選帳號</div>
                         }
-                    </ul>
-                }
+                        else
+                        {
+                            <ul class="list-group list-group-flush">
+                                @foreach (var u in Model.Candidates)
+                                {
+                                    <li class="list-group-item d-flex align-items-center">
+                                        <div class="flex-grow-1">
+                                            <div class="fw-semibold">@u.Email</div>
+                                            @if (!string.IsNullOrWhiteSpace(u.Phone))
+                                            {
+                                                <div class="text-muted small">@u.Phone</div>
+                                            }
+                                        </div>
+                                        <authorize policy="Permissions.Assign">
+                                            <form method="post" asp-area="Account" asp-controller="Permissions" asp-action="AddUser" class="ms-2">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@Model.Perm.PermissionID" />
+                                                <input type="hidden" name="userId" value="@u.UserID" />
+                                                <button class="btn btn-success btn-sm fw-bold">新增</button>
+                                            </form>
+                                        </authorize>
+                                    </li>
+                                }
+                            </ul>
+
+                            <div class="mt-2">
+                                @* 沿用共用 Pager（無排序與狀態，保留 q） *@
+                                @await Html.PartialAsync("_Pager", (Model.Page, Model.PageSize, Model.Total, (string?)null, (string?)null, Model.Keyword, (int?)null))
+                            </div>
+                        }
+                    </div>
+                    <!-- /assign-candidates -->
+                </div>
             </div>
         </div>
     </div>
-
-    <!-- 候選（搜尋 + 分頁） -->
-    <div class="col-lg-6">
-        <div class="card shadow-sm">
-            <div class="card-header bg-light d-flex align-items-center">
-                <span class="fw-semibold">新增帳號</span>
-                <span class="ms-auto text-muted small">共 @Model.Total 筆</span>
-            </div>
-            <div class="card-body">
-                <form method="get" class="row g-2 mb-3" asp-area="Account" asp-controller="Permissions" asp-action="Assign">
-                    <input type="hidden" name="id" value="@Model.Perm.PermissionID" />
-                    <div class="col">
-                        <input name="q"
-                               class="form-control"
-                               value="@Model.Keyword"
-                               placeholder="搜尋（ID / Email / Phone）"
-                               oninput="this.form.submit();" />
-                    </div>
-                </form>
-
-                @if (Model.Candidates.Count == 0)
-                {
-                    <div class="text-muted">輸入關鍵字開始搜尋或無符合的候選帳號</div>
-                }
-                else
-                {
-                    <ul class="list-group list-group-flush">
-                        @foreach (var u in Model.Candidates)
-                        {
-                            <li class="list-group-item d-flex align-items-center">
-                                <div class="flex-grow-1">
-                                    <div class="fw-semibold">@u.Email</div>
-                                    @if (!string.IsNullOrWhiteSpace(u.Phone))
-                                    {
-                                        <div class="text-muted small">@u.Phone</div>
-                                    }
-                                </div>
-                                <authorize policy="Permissions.Assign">
-                                    <form method="post" asp-area="Account" asp-controller="Permissions" asp-action="AddUser" class="ms-2">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@Model.Perm.PermissionID" />
-                                        <input type="hidden" name="userId" value="@u.UserID" />
-                                        <button class="btn btn-sm btn-outline-success">新增</button>
-                                    </form>
-                                </authorize>
-                            </li>
-                        }
-                    </ul>
-
-                    @* 分頁（沿用共用 _Pager，無排序與狀態，帶回 q） *@
-                    <div class="mt-3">
-                        @await Html.PartialAsync("_Pager", (Model.Page, Model.PageSize, Model.Total, (string?)null, (string?)null, Model.Keyword, (int?)null))
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
 </div>
+
+@section Styles {
+    <style>
+        .list-header .page-title {
+            line-height: 1.15;
+        }
+
+        .list-table th, .list-table td {
+            padding: .7rem .75rem;
+            vertical-align: middle;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        (function(){
+          const form = document.getElementById('assign-search-form');
+          const input = document.getElementById('assign-q');
+          const box = document.getElementById('assign-candidates');
+          if(!form || !input || !box) return;
+
+          // 阻止 Enter 觸發整頁提交
+          form.addEventListener('submit', e => e.preventDefault());
+
+          // 300ms 去抖，並處理輸入法組字
+          let composing=false, t=null;
+          input.addEventListener('compositionstart', ()=> composing=true);
+          input.addEventListener('compositionend',  ()=>{ composing=false; trigger(); });
+          input.addEventListener('input', trigger);
+
+          function trigger(){
+            if (composing) return;
+            clearTimeout(t);
+            t = setTimeout(runSearch, 300);
+          }
+
+          async function runSearch(){
+            // 以當前表單參數組 URL，固定回到第一頁
+            const params = new URLSearchParams(new FormData(form));
+            params.set('page','1');
+            const url = form.action + '?' + params.toString();
+
+            try{
+              const resp = await fetch(url, { headers: { 'X-Requested-With':'XMLHttpRequest' }});
+              if(!resp.ok) throw 0;
+              const html = await resp.text();
+              const doc  = new DOMParser().parseFromString(html, 'text/html');
+              const next = doc.getElementById('assign-candidates');
+              if(next){
+                box.replaceChildren(...next.childNodes);
+              }
+            }catch(e){
+              console.error('assign live search failed', e);
+            }
+          }
+
+          // 讓候選區的分頁連結也走不刷新
+          box.addEventListener('click', function(e){
+            const a = e.target.closest('a');
+            if(!a) return;
+            if(a.href && a.href.includes('?') && /[?&]page=\d+/.test(a.href)){
+              e.preventDefault();
+              fetch(a.href, { headers: { 'X-Requested-With':'XMLHttpRequest' }})
+                .then(r => r.text())
+                .then(html => {
+                  const doc = new DOMParser().parseFromString(html, 'text/html');
+                  const next = doc.getElementById('assign-candidates');
+                  if(next) box.replaceChildren(...next.childNodes);
+                })
+                .catch(()=>{});
+            }
+          });
+        })();
+    </script>
+}

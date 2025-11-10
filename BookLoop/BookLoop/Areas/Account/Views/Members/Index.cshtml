@@ -2,49 +2,57 @@
 @model Account.Controllers.MembersController.MemberIndexVM
 @{
     ViewData["Title"] = "會員清單";
-    // 重要：使用三參數多載（resource 以 null 傳入）
+    // 使用三參數多載（resource 以 null 傳入）
     var canCreate = (await Authz.AuthorizeAsync(User, null, "Members.Create")).Succeeded;
 }
 
-<h2 class="mb-3 page-title">🧑‍🤝‍🧑 會員帳號列表</h2>
+<div class="page-wrap container-fluid px-3 py-2">
+    <div class="d-flex align-items-center mb-2 list-header">
+        <h2 class="page-title mb-0">🧑‍🤝‍🧑 會員帳號列表</h2>
+        <div class="ms-auto list-tools" style="min-width:320px">
+            @* 共用篩選列（與其他頁一致） *@
+            @await Html.PartialAsync("_ListFilterBar", viewData: new ViewDataDictionary(ViewData) {
+                ["keywordName"]  = "keyword",
+                ["keywordValue"] = Model.Keyword ?? "",
 
-@await Html.PartialAsync("_Alerts")
+                ["statusPartial"] = await Html.PartialAsync("_StatusSelect",
+                    viewData: new ViewDataDictionary(ViewData) {
+                        ["selected"]   = Model.Status,
+                        ["includeAll"] = true,
+                        ["allText"]    = "全部狀態",
+                        ["name"]       = "status",
+                        ["class"]      = "form-select js-auto-submit"
+                }),
 
-<div class="list-shell">
-    @* 共用篩選列 *@
-    @await Html.PartialAsync("_ListFilterBar", viewData: new ViewDataDictionary(ViewData) {
-        ["keywordName"]  = "keyword",
-        ["keywordValue"] = Model.Keyword ?? "",
+                ["pageSizePartial"] = await Html.PartialAsync("_PageSizeSelect",
+                    viewData: new ViewDataDictionary(ViewData) {
+                        ["selected"] = Model.PageSize,
+                        ["name"]     = "pageSize",
+                        ["class"]    = "form-select js-auto-submit",
+                        ["sizes"]    = new[] { 10, 20, 50 }
+                }),
 
-        ["statusPartial"] = await Html.PartialAsync("_StatusSelect",
-            viewData: new ViewDataDictionary(ViewData) {
-                ["selected"]   = Model.Status,
-                ["includeAll"] = true,
-                ["allText"]    = "全部狀態",
-                ["name"]       = "status",
-                ["class"]      = "form-select js-auto-submit"
-            }
-        ),
+                // 以 Policy 控制是否顯示「新增」按鈕
+                ["newButton"]     = canCreate,
+                ["newText"]       = "➕ 新增會員",
+                ["newPolicy"]     = "Members.Create",
+                ["newAction"]     = "Create",
+                ["newController"] = "Members",
+                ["newArea"]       = "Account",
+                ["newClass"] = "fw-bold"
+            })
+        </div>
+    </div>
 
-        ["pageSizePartial"] = await Html.PartialAsync("_PageSizeSelect",
-            viewData: new ViewDataDictionary(ViewData) {
-                ["selected"] = Model.PageSize,
-                ["name"]     = "pageSize",
-                ["class"]    = "form-select js-auto-submit",
-                ["sizes"]    = new[] { 10, 20, 50 }
-            }
-        ),
+    @await Html.PartialAsync("_Alerts")
 
-        // 以 Policy 控制是否顯示「新增」按鈕
-        ["newButton"]      = canCreate,
-        ["newText"]        = "新增會員",
-        ["newAction"]      = "Create",
-        ["newController"]  = "Members",
-        ["newArea"]        = "Account"
-    })
-
-    <div id="list-container">
-        @await Html.PartialAsync("_MembersList", Model)
+    <div class="list-shell card shadow-sm">
+        <div class="card-body p-0">
+            <div id="list-container">
+                @* 首次 SSR；之後由 _ListAjaxScripts 局部刷新 *@
+                @await Html.PartialAsync("_MembersList", Model)
+            </div>
+        </div>
     </div>
 </div>
 
@@ -60,9 +68,9 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <div class="alert alert-warning">
-            你即將刪除下列會員，動作無法還原：
-            <div class="mt-2">
+          <div class="alert alert-warning mb-0">
+            你即將刪除下列會員（此動作無法還原）：
+            <div class="mt-2 small">
               <div><strong>ID：</strong><span id="del-mid">-</span></div>
               <div><strong>姓名：</strong><span id="del-name">-</span></div>
               <div><strong>Email：</strong><span id="del-email">-</span></div>
@@ -71,63 +79,120 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-          <button type="submit" class="btn btn-danger">確認刪除</button>
+          <button type="submit" class="btn btn-danger fw-bold">確認刪除</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
+@* 共用 AJAX 腳本（與其他頁一致） *@
+@await Html.PartialAsync("_ListAjaxScripts", viewData: new ViewDataDictionary(ViewData) {
+    ["controller"] = "Members",
+    ["area"] = "Account",
+    ["listAction"] = "List",
+    ["indexAction"] = "Index",
+    ["formId"] = "filter-form",
+    ["containerId"] = "list-container"
+})
+
+@section Styles {
+<style>
+  /* 版面緊湊一致 */
+  .page-wrap { padding-top: 10px; padding-bottom: 12px; }
+  .list-header .page-title { line-height: 1.15; }
+  .list-tools { display:flex; justify-content:flex-end; align-items:center; gap:.5rem; }
+  .list-tools form { margin: 0; }
+  .list-tools .btn, .list-tools .form-control, .list-tools .form-select { height: 36px; }
+
+  /* 列高微增 */
+  #list-container table.table th,
+  #list-container table.table td { padding: .7rem .75rem; vertical-align: middle; }
+
+  /* 徽章：介於兩版之間 */
+  #list-container .badge { font-size: .95rem; padding: .35rem .6rem; border-radius: 50rem; }
+
+  /* 操作按鈕：粗體、稍大、實心色（若有 outline 一律轉實心） */
+  #list-container .btn { font-weight: 700; padding: .42rem .8rem; font-size: .95rem; }
+  #list-container .btn-outline-secondary { background-color: var(--bs-secondary)!important; border-color: var(--bs-secondary)!important; color:#fff!important; }
+  #list-container .btn-outline-primary  { background-color: var(--bs-primary)!important;   border-color: var(--bs-primary)!important;   color:#fff!important; }
+  #list-container .btn-outline-warning  { background-color: var(--bs-warning)!important;   border-color: var(--bs-warning)!important;   color:#000!important; }
+  #list-container .btn-outline-danger   { background-color: var(--bs-danger)!important;    border-color: var(--bs-danger)!important;    color:#fff!important; }
+
+  /* 顏色指定（保險）：檢視=info、編輯=warning、刪除=danger */
+  #list-container a[href*="/Members/Details"] { background-color: var(--bs-info)!important;    border-color: var(--bs-info)!important;    color:#fff!important; }
+  #list-container a[href*="/Members/Edit"]    { background-color: var(--bs-warning)!important; border-color: var(--bs-warning)!important; color:#000!important; }
+  #list-container .js-del                     { background-color: var(--bs-danger)!important;  border-color: var(--bs-danger)!important;  color:#fff!important; }
+
+  #list-container .btn + .btn { margin-left:.25rem; }
+</style>
+}
+
 @section Scripts{
 <script>
-  // 啟動共用 AJAX 換頁/篩選
-  listPageBoot({
-    listUrl:  '@Url.Action("List","Members",  new { area = "Account" })',
-    indexUrl: '@Url.Action("Index","Members", new { area = "Account" })',
-    onAfterRender: bindRowEvents
-  });
+  // 開啟刪除對話框（事件代理）
+  (function(){
+    const container = document.getElementById('list-container');
+    if (!container) return;
 
-  function bindRowEvents() {
-    document.querySelectorAll('.js-del').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.getElementById('del-id').value         = btn.dataset.id;
-        document.getElementById('del-mid').textContent  = btn.dataset.id;
-        document.getElementById('del-name').textContent = btn.dataset.name || '-';
-        document.getElementById('del-email').textContent= btn.dataset.email || '-';
-        new bootstrap.Modal(document.getElementById('delModal')).show();
-      });
+    container.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.js-del');
+      if (!btn) return;
+      ev.preventDefault();
+      document.getElementById('del-id').value        = btn.dataset.id || '';
+      document.getElementById('del-mid').textContent = btn.dataset.id || '-';
+      document.getElementById('del-name').textContent= btn.dataset.name || '-';
+      document.getElementById('del-email').textContent= btn.dataset.email || '-';
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('delModal')).show();
     });
-  }
-  bindRowEvents();
 
-  // 刪除送出（AJAX）
-  const delForm = document.getElementById('delForm');
-  delForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const anti = delForm.querySelector('input[name="__RequestVerificationToken"]').value;
-    const id   = document.getElementById('del-id').value;
-    try {
-      const resp = await fetch(delForm.dataset.action, {
-        method: 'POST',
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: new URLSearchParams({ '__RequestVerificationToken': anti, id })
+    // 刪除送出（AJAX）
+    const delForm = document.getElementById('delForm');
+    if (delForm) {
+      delForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const url = delForm.getAttribute('data-action');
+        const fd  = new FormData(delForm); // 夾帶 AntiForgery
+        try {
+          const resp = await fetch(url, { method:'POST', body: fd, headers:{'X-Requested-With':'XMLHttpRequest'} });
+          const data = await resp.json();
+          if (data?.ok) {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('delModal')).hide();
+            if (window.paramsFromForm && window.loadList) {
+              const p = paramsFromForm(); p.set('page','1'); loadList(p);
+            } else {
+              location.href='@Url.Action("Index","Members", new { area="Account" })';
+            }
+          } else {
+            alert(data?.message || '刪除失敗');
+          }
+        } catch { alert('刪除失敗，請稍後再試。'); }
       });
-      if (resp.status === 401) { location.href='@Url.Content("~/Auth/Login")'; return; }
-      if (resp.status === 403) { alert('沒有權限執行刪除。'); return; }
-      const data = await resp.json();
-      if (data?.ok) {
-        bootstrap.Modal.getInstance(document.getElementById('delModal'))?.hide();
-        listPageReload();
-      } else {
-        alert(data?.message || '刪除失敗');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('網路異常，請稍後再試。');
     }
-  });
+  })();
+
+  // 關鍵字「即時搜尋」：300ms debounce（不影響排序/分頁攔截）
+  (function(){
+    const form = document.getElementById('filter-form');
+    const input = form?.querySelector("input[name='keyword']");
+    if (!form || !input) return;
+
+    let composing=false, t=null; const DEBOUNCE=300;
+    input.addEventListener('compositionstart', ()=> composing = true);
+    input.addEventListener('compositionend',   ()=> { composing = false; trigger(); });
+    input.addEventListener('input', trigger);
+
+    function trigger(){
+      if (composing) return;
+      clearTimeout(t);
+      t = setTimeout(()=>{
+        if (window.paramsFromForm && window.loadList) {
+          const p = paramsFromForm(); p.set('page','1'); loadList(p);
+        } else {
+          try { form.requestSubmit(); } catch { form.submit(); }
+        }
+      }, DEBOUNCE);
+    }
+  })();
 </script>
 }

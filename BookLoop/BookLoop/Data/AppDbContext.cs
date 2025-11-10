@@ -90,6 +90,50 @@ namespace BookLoop.Data
 				e.HasIndex(x => x.PermKey).IsUnique();
 			});
 
+			// ★ UserPermission 正確映射，避免 EF 產生 PermissionID1/UserID1 影子欄位
+			modelBuilder.Entity<UserPermission>(e =>
+			{
+				e.ToTable("USER_PERMISSIONS");                 // ← 依你的實際表名調整
+				e.HasKey(x => new { x.UserID, x.PermissionID });   // 複合主鍵
+
+				// 明確指定外鍵欄位名
+				e.Property(x => x.UserID).HasColumnName("UserID");
+				e.Property(x => x.PermissionID).HasColumnName("PermissionID");
+
+				e.HasOne(x => x.User)
+				 .WithMany(u => u.UserPermissions)            // 對應 User 的集合名稱
+				 .HasForeignKey(x => x.UserID)
+				 .OnDelete(DeleteBehavior.Cascade)
+				 .HasConstraintName("FK_UserPermissions_Users_UserID");
+
+				e.HasOne(x => x.Permission)
+				 .WithMany(p => p.UserPermissions)            // 對應 Permission 的集合名稱
+				 .HasForeignKey(x => x.PermissionID)
+				 .OnDelete(DeleteBehavior.Cascade)
+				 .HasConstraintName("FK_UserPermissions_Permissions_PermissionID");
+			});
+
+			modelBuilder.Entity<PermissionFeature>(e =>
+			{
+				e.ToTable("Permission_Features");
+
+				// 複合主鍵
+				e.HasKey(x => new { x.PermissionID, x.FeatureID });
+
+				// FK: PermissionID -> PERMISSIONS.PermissionID
+				e.HasOne(x => x.Permission)
+				 .WithMany(p => p.PermissionFeatures)
+				 .HasForeignKey(x => x.PermissionID)
+				 .OnDelete(DeleteBehavior.Cascade);
+
+				// FK: FeatureID -> FEATURES.FeatureID
+				e.HasOne(x => x.Feature)
+				 .WithMany(f => f.PermissionFeatures)
+				 .HasForeignKey(x => x.FeatureID)
+				 .OnDelete(DeleteBehavior.Cascade);
+			});
+
+
 			modelBuilder.Entity<Supplier>(e =>
 			{
 				e.ToTable("SUPPLIERS");
