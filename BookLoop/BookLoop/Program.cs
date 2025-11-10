@@ -306,7 +306,7 @@ namespace BookLoop
 			builder.Services.AddHttpClient<IImageValidator, ImageValidator>();
 			builder.Services.AddScoped<IReportDataService, ShopReportDataService>();
 			builder.Services.AddScoped<ReportQueryBuilder>();
-			builder.Services.AddSingleton<IExcelExporter, ClosedXmlExcelExporter>();
+			builder.Services.AddSingleton<IExcelExporter, EpplusExcelExporter>();
 			builder.Services.AddScoped<IMailService, MailService>();
 			builder.Services.AddSingleton<ITemplateRenderer, SimpleTemplateRenderer>();
 			builder.Services.AddScoped<ITemplateMailer, TemplateMailer>();
