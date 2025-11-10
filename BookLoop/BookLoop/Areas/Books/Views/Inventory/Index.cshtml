@@ -1,15 +1,12 @@
 ﻿@{
     ViewData["Title"] = "庫存管理 - 調撥";
+    var books = ViewBag.Books as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
     var rows = ViewBag.Rows as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
     int bookId = ViewBag.BookID is int ? (int)ViewBag.BookID : 0;
     string bookTitle = ViewBag.BookTitle as string ?? "";
-    // rows 每筆應包含: BranchID, BranchName, OnHand, Reserved
 }
 
-<h3>@ViewData["Title"] @if(!string.IsNullOrEmpty(bookTitle)){
-<small>- @bookTitle</small>
-}
-</h3>
+<h3>@ViewData["Title"] @if(!string.IsNullOrEmpty(bookTitle)){ <small>- @bookTitle</small> }</h3>
 
 @if (TempData["ok"] != null)
 {
@@ -20,7 +17,27 @@
     <div class="alert alert-warning">@TempData["err"]</div>
 }
 
-<p class="mb-3">請點選來源據點的「調撥」按鈕，選擇目的據點與數量後送出。系統會在伺服器端再次檢查來源可用量與據點狀態。</p>
+<div class="mb-3 d-flex gap-2 align-items-center">
+    <form method="get" class="d-flex gap-2 align-items-center">
+        <label class="form-label mb-0 me-2">選擇書籍：</label>
+        <select name="bookId" class="form-select" style="min-width:360px;">
+            @foreach (var b in books)
+            {
+                if (b.BookID == bookId)
+                {
+                    <option value="@b.BookID" selected>@b.Title</option>
+                }
+                else
+                {
+                    <option value="@b.BookID">@b.Title</option>
+                }
+            }
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">載入</button>
+    </form>
+
+    <a asp-area="Books" asp-controller="Books" asp-action="Index" class="btn btn-light btn-sm ms-3">回書籍清單</a>
+</div>
 
 @if (!rows.Any())
 {
@@ -46,18 +63,15 @@ else
                     var reserved = (r.Reserved == null) ? 0 : (int)r.Reserved;
                     <tr>
                         <td>@name</td>
-                        <td>
-                            <span class="badge bg-info">@onhand</span>
-                        </td>
-                        <td>
-                            <span class="text-muted">@reserved</span>
-                        </td>
+                        <td><span class="badge bg-info">@onhand</span></td>
+                        <td><span class="text-muted">@reserved</span></td>
                         <td>
                             <button type="button"
                                     class="btn btn-sm btn-primary btn-open-transfer-modal"
                                     data-branchid="@r.BranchID"
                                     data-branchname="@name"
                                     data-onhand="@onhand"
+                                    data-reserved="@reserved"
                                     data-bs-toggle="modal"
                                     data-bs-target="#transferModal">
                                 調撥
@@ -69,10 +83,6 @@ else
         </table>
     </div>
 }
-
-<p class="mt-2">
-    <a asp-area="Books" asp-controller="Books" asp-action="Index" class="btn btn-light btn-sm">回書籍清單</a>
-</p>
 
 <!-- Transfer Modal -->
 <div class="modal fade" id="transferModal" tabindex="-1" aria-hidden="true">
@@ -95,8 +105,13 @@ else
                     </div>
 
                     <div class="mb-2">
-                        <label class="form-label">來源現有庫存 (可用 = OnHand - Reserved)</label>
+                        <label class="form-label">來源現有庫存 (OnHand)</label>
                         <input type="text" id="modal-fromOnHand" class="form-control" readonly />
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">來源已保留 (Reserved)</label>
+                        <input type="text" id="modal-fromReserved" class="form-control" readonly />
                     </div>
 
                     <div class="mb-2">
@@ -135,38 +150,40 @@ else
 @section Scripts {
     <script>
         (function(){
-            // 點按鈕把來源資料填入 modal（id 放在隱藏欄位，不顯示在畫面）
+            // 點按鈕把來源資料填入 modal
             document.querySelectorAll('.btn-open-transfer-modal').forEach(btn => {
                 btn.addEventListener('click', function(){
                     const branchId = this.getAttribute('data-branchid');
                     const branchName = this.getAttribute('data-branchname');
                     const onhand = parseInt(this.getAttribute('data-onhand') || '0', 10);
+                    const reserved = parseInt(this.getAttribute('data-reserved') || '0', 10);
+                    const available = Math.max(0, onhand - reserved);
 
-                    // 填入來源資訊（顯示給使用者看）
                     document.getElementById('modal-fromBranchId').value = branchId;
                     document.getElementById('modal-fromBranchName').value = branchName;
                     document.getElementById('modal-fromOnHand').value = onhand;
+                    document.getElementById('modal-fromReserved').value = reserved;
 
                     // 更新可選目的地，避免選到自己（直接 disable）
                     const toSel = document.getElementById('modal-toBranchId');
                     for (let i = 0; i < toSel.options.length; i++) {
                         toSel.options[i].disabled = (toSel.options[i].value === branchId);
                     }
-                    // 若目前選到自己就清空
                     if (toSel.value === branchId) toSel.value = "";
 
-                    // 重置數量與 alert
-                    document.getElementById('modal-quantity').value = 1;
+                    document.getElementById('modal-quantity').value = Math.min(available, 1);
                     const alertBox = document.getElementById('modal-alert');
                     alertBox.classList.add('d-none');
                     alertBox.textContent = '';
                 });
             });
 
-            // 前端驗證：使用者輸入數量 <= 來源 onhand
+            // 前端驗證
             const form = document.getElementById('transferForm');
             form.addEventListener('submit', function(e){
-                const fromOnHand = parseInt(document.getElementById('modal-fromOnHand').value || '0', 10);
+                const onhand = parseInt(document.getElementById('modal-fromOnHand').value || '0', 10);
+                const reserved = parseInt(document.getElementById('modal-fromReserved').value || '0', 10);
+                const available = Math.max(0, onhand - reserved);
                 const qty = parseInt(document.getElementById('modal-quantity').value || '0', 10);
                 const toBranchId = document.getElementById('modal-toBranchId').value;
                 const alertBox = document.getElementById('modal-alert');
@@ -183,14 +200,12 @@ else
                     alertBox.classList.remove('d-none');
                     return;
                 }
-                if (qty > fromOnHand) {
+                if (qty > available) {
                     e.preventDefault();
-                    alertBox.textContent = '調撥數量不可超過來源據點的現有庫存（' + fromOnHand + '）';
+                    alertBox.textContent = '調撥數量不可超過來源據點可用數量（' + available + '）';
                     alertBox.classList.remove('d-none');
                     return;
                 }
-
-                // 前端驗證通過後由後端再次檢查（來源/目的是否啟用、來源是否有保留量等）
             });
         })();
     </script>

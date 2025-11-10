@@ -14,22 +14,68 @@ namespace BookSystem.Controllers
 	{
 		private readonly BookSystemContext _db;
 		public InventoryController(BookSystemContext db) => _db = db;
-		// GET: /Books/Inventory  或 /Books/Inventory/Index
-		public async Task<IActionResult> Index(string? q)
+		// GET: /Books/Inventory
+		// 可帶 query: ?q=關鍵字&bookId=123
+		public async Task<IActionResult> Index(string? q, int? bookId)
 		{
-			// 簡單搜尋（可用書名模糊搜尋）
-			var query = _db.Books.AsQueryable();
-			if (!string.IsNullOrWhiteSpace(q))
-				query = query.Where(b => b.Title.Contains(q));
-
-			var list = await query
-				.OrderBy(b => b.BookID)
-				.Take(200) // 預防一次拉太多筆，必要時改成分頁
+			// 1) 取得書籍清單（供上方下拉選擇）
+			var books = await _db.Books
+				.OrderBy(b => b.Title)
+				.Select(b => new { b.BookID, b.Title })
 				.ToListAsync();
 
+			ViewBag.Books = books;
 			ViewBag.q = q;
-			return View(list); // 會對應到 Areas/Books/Views/Inventory/Index.cshtml
+
+			// 2) 決定目前要顯示哪本書：若 URL 有 bookId 用它，否則預設選第一本（若有）
+			if (!bookId.HasValue && books.Any())
+			{
+				bookId = books.First().BookID;
+			}
+
+			if (!bookId.HasValue)
+			{
+				// 沒有書籍資料
+				ViewBag.BookID = 0;
+				ViewBag.BookTitle = "";
+				ViewBag.Rows = new List<object>();
+				return View();
+			}
+
+			// 3) 取得 book 與各據點庫存（只取啟用據點）
+			var book = await _db.Books.FirstOrDefaultAsync(b => b.BookID == bookId.Value);
+			if (book == null)
+			{
+				TempData["err"] = "找不到指定的書目";
+				ViewBag.BookID = 0;
+				ViewBag.BookTitle = "";
+				ViewBag.Rows = new List<object>();
+				return View();
+			}
+
+			var rows = await _db.Branches
+				.Where(b => b.IsActive)
+				.OrderBy(b => b.BranchID)
+				.Select(b => new
+				{
+					b.BranchID,
+					b.BranchName,
+					OnHand = _db.BookInventories
+								.Where(i => i.BookID == bookId.Value && i.BranchID == b.BranchID)
+								.Select(i => i.OnHand).FirstOrDefault(),
+					Reserved = _db.BookInventories
+								.Where(i => i.BookID == bookId.Value && i.BranchID == b.BranchID)
+								.Select(i => i.Reserved).FirstOrDefault(),
+				})
+				.ToListAsync();
+
+			ViewBag.BookID = bookId.Value;
+			ViewBag.BookTitle = book.Title;
+			ViewBag.Rows = rows;
+
+			return View();
 		}
+
 
 		// GET: /Books/Inventory/Edit/5 或 /Books/Inventory/Edit?id=5 或 /Books/Inventory/Edit?bookId=5
 		public async Task<IActionResult> Edit(int? id)
