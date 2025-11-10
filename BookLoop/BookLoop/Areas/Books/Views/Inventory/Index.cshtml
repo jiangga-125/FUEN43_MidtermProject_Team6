@@ -6,6 +6,7 @@
     string bookTitle = ViewBag.BookTitle as string ?? "";
 }
 
+<div class="inventory-page">
 <h3>@ViewData["Title"] @if(!string.IsNullOrEmpty(bookTitle)){ <small>- @bookTitle</small> }</h3>
 
 @if (TempData["ok"] != null)
@@ -16,6 +17,7 @@
 {
     <div class="alert alert-warning">@TempData["err"]</div>
 }
+
 
 <div class="mb-3 d-flex gap-2 align-items-center">
     <form method="get" class="d-flex gap-2 align-items-center">
@@ -146,7 +148,7 @@ else
         </div>
     </div>
 </div>
-
+</div>
 @section Scripts {
     <script>
         (function(){
@@ -295,49 +297,75 @@ else
 
             // 初次綁定（如果 server render 已有按鈕，綁定它們）
             bindOpenTransferButtons();
-
-            // 可選：若你想頁面載入時就用 AJAX 讀 rows（取代 server-side render），可在這打開：
-            // const initialBookId = bookSelect ? bookSelect.value : null;
-            // if (initialBookId) loadRows(initialBookId);
-
-            // ---------- （選用）AJAX submit 範例（註解掉） ----------
-            /*
-            if (form) {
-                form.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    const fd = new FormData(form);
-                    // antiforgery token 取法（如果你用 default Html.AntiForgeryToken）
-                    const tokenEl = document.querySelector('input[name="__RequestVerificationToken"]');
-                    const token = tokenEl ? tokenEl.value : null;
-                    try {
-                        const resp = await fetch(form.action, {
-                            method: 'POST',
-                            headers: Object.assign({}, token ? {'RequestVerificationToken': token} : {}, { 'X-Requested-With': 'XMLHttpRequest' }),
-                            body: fd
-                        });
-                        if (!resp.ok) throw new Error('POST failed ' + resp.status);
-                        const data = await resp.json();
-                        if (data.ok) {
-                            // 成功：重新載入 rows，關閉 modal
-                            const bookId = form.querySelector('input[name="bookId"]').value;
-                            await loadRows(bookId);
-                            const modalEl = document.getElementById('transferModal');
-                            const bsModal = bootstrap.Modal.getInstance(modalEl);
-                            if (bsModal) bsModal.hide();
-                            alert(data.message || '調撥成功');
-                        } else {
-                            document.getElementById('modal-alert').textContent = data.message || '調撥失敗';
-                            document.getElementById('modal-alert').classList.remove('d-none');
-                        }
-                    } catch (ex) {
-                        console.error(ex);
-                        document.getElementById('modal-alert').textContent = '發生錯誤，請稍後再試';
-                        document.getElementById('modal-alert').classList.remove('d-none');
-                    }
-                });
-            }
-            */
-
         })();
     </script>
+}
+
+@section Styles {
+    <style>
+        /* Inventory page custom */
+        .inventory-page .form-select {
+            min-width: 360px;
+            max-width: 60vw;
+        }
+
+        /* 表格樣式 */
+        #inv-rows-tbody tr td {
+            vertical-align: middle;
+        }
+
+        #inv-rows-tbody td:first-child {
+            font-weight: 600;
+        }
+
+        /* badge 調整（數字圓點） */
+        #inv-rows-tbody .badge.bg-info {
+            background: linear-gradient(135deg,#1ccad6,#00bcd4);
+            color: #fff;
+            border-radius: 999px;
+            padding: 0.35rem 0.6rem;
+            font-weight: 600;
+            min-width: 34px;
+            text-align: center;
+            display: inline-block;
+        }
+
+        /* 操作按鈕小調整 */
+        .btn-open-transfer-modal {
+            min-width: 68px;
+            padding: 0.28rem 0.6rem;
+            border-radius: 6px;
+        }
+
+        /* Modal 內提示字顏色 */
+        #modal-alert {
+            margin-top: 0.4rem;
+        }
+
+        /* 小螢幕友善：選書列換行 */
+        @@media (max-width: 768px) {
+            .inventory-page .mb-3.d-flex
+
+        {
+            flex-direction: column;
+            align-items: stretch;
+            gap: .5rem;
+        }
+
+        .inventory-page .form-select {
+            width: 100%;
+            min-width: auto;
+        }
+
+        #inv-rows-tbody td {
+            padding: .6rem .5rem;
+        }
+
+        }
+
+        /* 可選：成功/錯誤訊息區塊加距離 */
+        .inventory-page .alert {
+            margin-top: .6rem;
+        }
+    </style>
 }
