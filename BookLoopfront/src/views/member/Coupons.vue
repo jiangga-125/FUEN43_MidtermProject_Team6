@@ -101,14 +101,8 @@ onMounted(loadCoupons)
         <div :key="tab">
           <!-- 可使用 -->
           <div v-if="tab === 'usable'" class="coupon-list">
-            <p v-if="!usable.length" class="text-muted">
-              目前沒有可使用的優惠券。
-            </p>
-            <div
-              v-for="c in usable"
-              :key="c.memberCouponID"
-              class="coupon-card usable"
-            >
+            <p v-if="!usable.length" class="text-muted">目前沒有可使用的優惠券。</p>
+            <div v-for="c in usable" :key="c.memberCouponID" class="coupon-card usable">
               <div class="value">
                 {{ c.discountType === 0 ? `＄${c.discountValue}` : `${c.discountValue}%` }}
               </div>
@@ -124,14 +118,8 @@ onMounted(loadCoupons)
 
           <!-- 已使用 -->
           <div v-if="tab === 'used'" class="coupon-list">
-            <p v-if="!used.length" class="text-muted">
-              目前沒有已使用的優惠券。
-            </p>
-            <div
-              v-for="c in used"
-              :key="c.memberCouponID"
-              class="coupon-card used"
-            >
+            <p v-if="!used.length" class="text-muted">目前沒有已使用的優惠券。</p>
+            <div v-for="c in used" :key="c.memberCouponID" class="coupon-card used">
               <div class="value">已使用</div>
               <div class="info">
                 <div class="name">{{ c.name }}</div>
@@ -141,14 +129,8 @@ onMounted(loadCoupons)
 
           <!-- 已逾期 -->
           <div v-if="tab === 'expired'" class="coupon-list">
-            <p v-if="!expired.length" class="text-muted">
-              目前沒有已逾期的優惠券。
-            </p>
-            <div
-              v-for="c in expired"
-              :key="c.memberCouponID"
-              class="coupon-card expired"
-            >
+            <p v-if="!expired.length" class="text-muted">目前沒有已逾期的優惠券。</p>
+            <div v-for="c in expired" :key="c.memberCouponID" class="coupon-card expired">
               <div class="value">已逾期</div>
               <div class="info">
                 <div class="name">{{ c.name }}</div>
@@ -172,7 +154,7 @@ onMounted(loadCoupons)
   margin: 62px auto;
   padding: 0 16px;
   color: #333;
-  font-family: "Noto Sans TC", "微軟正黑體", sans-serif;
+  font-family: 'Noto Sans TC', '微軟正黑體', sans-serif;
 }
 
 /* 🧾 標題 */
