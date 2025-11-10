@@ -91,7 +91,7 @@ watch(
   <header class="headerbar bg-white py-2 shadow-sm">
     <div class="container d-flex align-items-center gap-3">
       <!-- LOGO -->
-      <router-link to="/" class="me-3 text-decoration-none fw-bold fs-4">Logo</router-link>
+      <router-link to="/" class="me-3 text-decoration-none fw-bold fs-4">BookLoop</router-link>
 
       <!-- 搜尋欄 + 訂單中心 + 購物車按鈕 -->
       <div class="flex-grow-1 d-flex align-items-center gap-3">

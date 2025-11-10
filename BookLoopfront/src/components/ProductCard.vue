@@ -6,7 +6,7 @@ import type { Book } from '@/api/book'
 import { useAuth } from '@/stores/auth'
 import http from '@/lib/http'
 
-const props = defineProps<{ book: Book | null }>()
+const props = defineProps<{ book: Book | null; compact?: boolean }>()
 const emit = defineEmits<{
   (e: 'add', b: Book): void
   (e: 'like', b: Book): void
@@ -133,7 +133,7 @@ async function like(e?: Event) {
   liking.value = true
   try {
     emit('like', book.value)
-    alert('已加入收藏（示範）')
+    alert('已加入收藏')
   } finally {
     liking.value = false
   }
@@ -157,7 +157,13 @@ function onImgError(e: Event) {
 </script>
 
 <template>
-  <div class="card" @click="goDetail" role="button" tabindex="0" @keydown.enter.prevent="goDetail">
+  <div
+    :class="['card', { compact: props.compact !== false }]"
+    @click="goDetail"
+    role="button"
+    tabindex="0"
+    @keydown.enter.prevent="goDetail"
+  >
     <div class="cover">
       <img
         :src="coverSrc"
@@ -196,10 +202,13 @@ function onImgError(e: Event) {
   border-radius: 12px;
   overflow: hidden;
   background: #fff;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   grid-template-rows: 180px 1fr;
+  min-height: 320px; /* 可微調，整列卡片高度一致 */
 }
 .cover {
+  height: 200px;
   background: #f6f7f9;
   display: flex;
   align-items: center;
@@ -217,9 +226,13 @@ function onImgError(e: Event) {
 }
 .title {
   font-size: 14px;
-  line-height: 1.4;
-  height: 40px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
 }
 .prices {
   display: flex;
@@ -235,16 +248,24 @@ function onImgError(e: Event) {
   text-decoration: line-through;
 }
 .actions {
+  margin-top: auto; /* 把按鈕推到底 */
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: nowrap; /* *關鍵*：不要換行 */
+  justify-content: flex-start;
+  overflow: hidden;
 }
 .actions button {
-  flex: 1;
-  cursor: pointer;
+  flex: 0 1 auto;
+  min-width: 86px; /* 不會填滿整欄 */
+  padding: 5px 8px;
   border-radius: 8px;
-  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
   border: 1px solid #0d6efd;
   background: #0d6efd;
+  line-height: 1;
   color: #fff;
 }
 .actions .ghost {
