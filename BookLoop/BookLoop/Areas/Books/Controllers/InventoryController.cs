@@ -200,7 +200,7 @@ namespace BookSystem.Controllers
 				TempData["err"] = "有別人同時修改了庫存，請重新整理後再試一次。";
 			}
 
-			return RedirectToAction(nameof(Edit), new { bookId });
+			return RedirectToAction(nameof(Index), new { bookId });
 		}
 		#endregion
 
@@ -344,7 +344,7 @@ namespace BookSystem.Controllers
 					return Json(new
 					{
 						ok = true,
-						message = $"成功將 {quantity} 本從 {fromName} 調撥至 {toName}。",
+						message = $"成功將 {quantity} 本《{book.Title}》從 {fromName} 調撥至 {toName}。",
 						fromName,
 						toName,
 						quantity
@@ -352,7 +352,7 @@ namespace BookSystem.Controllers
 				}
 
 				// 非 Ajax：維持舊行為但把 TempData 訊息改為顯示店名（較友善）
-				TempData["ok"] = $"成功將 {quantity} 本從 {fromName} 調撥至 {toName}。";
+				TempData["ok"] = $"成功將 {quantity} 本《{book.Title}》從 {fromName} 調撥至 {toName}。";
 			}
 			catch (DbUpdateConcurrencyException)
 			{
@@ -371,7 +371,7 @@ namespace BookSystem.Controllers
 				TempData["err"] = "調撥失敗: " + ex.Message;
 			}
 
-			return RedirectToAction(nameof(Edit), new { bookId });
+			return RedirectToAction(nameof(Index), new { bookId });
 		}
 		#endregion
 	}

@@ -55,7 +55,7 @@ else
                     <th style="width:160px;">操作</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="inv-rows-tbody">
                 @foreach (var r in rows)
                 {
                     var name = (string)r.BranchName;
@@ -150,63 +150,194 @@ else
 @section Scripts {
     <script>
         (function(){
-            // 點按鈕把來源資料填入 modal
-            document.querySelectorAll('.btn-open-transfer-modal').forEach(btn => {
-                btn.addEventListener('click', function(){
-                    const branchId = this.getAttribute('data-branchid');
-                    const branchName = this.getAttribute('data-branchname');
-                    const onhand = parseInt(this.getAttribute('data-onhand') || '0', 10);
-                    const reserved = parseInt(this.getAttribute('data-reserved') || '0', 10);
-                    const available = Math.max(0, onhand - reserved);
+            // ---------- helper: 以 AJAX 取得 rows JSON（server 需有 /Inventory/GetRows?bookId=...） ----------
+            async function loadRows(bookId) {
+                const tbody = document.getElementById('inv-rows-tbody');
+                if (!tbody) return;
+                try {
+                    const url = '@Url.Action("GetRows", "Inventory", new { area = "Books" })' + '?bookId=' + encodeURIComponent(bookId);
+                    const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+                    if (!resp.ok) throw new Error('載入失敗: ' + resp.status);
+                    const rows = await resp.json();
 
-                    document.getElementById('modal-fromBranchId').value = branchId;
-                    document.getElementById('modal-fromBranchName').value = branchName;
-                    document.getElementById('modal-fromOnHand').value = onhand;
-                    document.getElementById('modal-fromReserved').value = reserved;
+                    // 清空並重建 tbody
+                    tbody.innerHTML = '';
+                    for (const r of rows) {
+                        const tr = document.createElement('tr');
 
-                    // 更新可選目的地，避免選到自己（直接 disable）
-                    const toSel = document.getElementById('modal-toBranchId');
+                        const tdName = document.createElement('td');
+                        tdName.textContent = r.branchName;
+                        tr.appendChild(tdName);
+
+                        const tdOnHand = document.createElement('td');
+                        tdOnHand.innerHTML = `<span class="badge bg-info">${r.onHand ?? 0}</span>`;
+                        tr.appendChild(tdOnHand);
+
+                        const tdReserved = document.createElement('td');
+                        tdReserved.innerHTML = `<span class="text-muted">${r.reserved ?? 0}</span>`;
+                        tr.appendChild(tdReserved);
+
+                        const tdOp = document.createElement('td');
+                        tdOp.innerHTML = `<button type="button" class="btn btn-sm btn-primary btn-open-transfer-modal"
+                                            data-branchid="${r.branchID}"
+                                            data-branchname="${escapeHtml(r.branchName)}"
+                                            data-onhand="${r.onHand ?? 0}"
+                                            data-reserved="${r.reserved ?? 0}"
+                                            data-bs-toggle="modal" data-bs-target="#transferModal">調撥</button>`;
+                        tr.appendChild(tdOp);
+
+                        tbody.appendChild(tr);
+                    }
+
+                    // 重新綁定 modal 按鈕的 click handler
+                    bindOpenTransferButtons();
+                } catch (ex) {
+                    console.error(ex);
+                }
+            }
+
+            // escapeHtml 保護（簡單）
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            }
+
+            // ---------- 綁定按鈕與 modal 填值邏輯 ----------
+            function bindOpenTransferButtons() {
+                document.querySelectorAll('.btn-open-transfer-modal').forEach(btn => {
+                    btn.removeEventListener('click', openTransferHandler);
+                    btn.addEventListener('click', openTransferHandler);
+                });
+            }
+
+            function openTransferHandler() {
+                const branchId = this.getAttribute('data-branchid');
+                const branchName = this.getAttribute('data-branchname');
+                const onhand = parseInt(this.getAttribute('data-onhand') || '0', 10);
+                const reserved = parseInt(this.getAttribute('data-reserved') || '0', 10);
+                const available = Math.max(0, onhand - reserved);
+
+                document.getElementById('modal-fromBranchId').value = branchId;
+                document.getElementById('modal-fromBranchName').value = branchName;
+                document.getElementById('modal-fromOnHand').value = onhand;
+                document.getElementById('modal-fromReserved').value = reserved;
+
+                // 避免目的選到自己
+                const toSel = document.getElementById('modal-toBranchId');
+                if (toSel) {
                     for (let i = 0; i < toSel.options.length; i++) {
                         toSel.options[i].disabled = (toSel.options[i].value === branchId);
                     }
                     if (toSel.value === branchId) toSel.value = "";
+                }
 
-                    document.getElementById('modal-quantity').value = Math.min(available, 1);
-                    const alertBox = document.getElementById('modal-alert');
-                    alertBox.classList.add('d-none');
-                    alertBox.textContent = '';
-                });
-            });
+                // 預設數量：至少 1，最大為 available（顯示上讓使用者知道）
+                const qtyEl = document.getElementById('modal-quantity');
+                if (qtyEl) qtyEl.value = Math.max(1, Math.min(available || 1, 1));
 
-            // 前端驗證
-            const form = document.getElementById('transferForm');
-            form.addEventListener('submit', function(e){
-                const onhand = parseInt(document.getElementById('modal-fromOnHand').value || '0', 10);
-                const reserved = parseInt(document.getElementById('modal-fromReserved').value || '0', 10);
-                const available = Math.max(0, onhand - reserved);
-                const qty = parseInt(document.getElementById('modal-quantity').value || '0', 10);
-                const toBranchId = document.getElementById('modal-toBranchId').value;
                 const alertBox = document.getElementById('modal-alert');
+                if (alertBox) { alertBox.classList.add('d-none'); alertBox.textContent = ''; }
+            }
 
-                if (!toBranchId) {
+            // ---------- 前端驗證（留用） ----------
+            const form = document.getElementById('transferForm');
+            if (form) {
+                form.addEventListener('submit', function(e){
+                    const onhand = parseInt(document.getElementById('modal-fromOnHand').value || '0', 10);
+                    const reserved = parseInt(document.getElementById('modal-fromReserved').value || '0', 10);
+                    const available = Math.max(0, onhand - reserved);
+                    const qty = parseInt(document.getElementById('modal-quantity').value || '0', 10);
+                    const toBranchId = document.getElementById('modal-toBranchId').value;
+                    const alertBox = document.getElementById('modal-alert');
+
+                    if (!toBranchId) {
+                        e.preventDefault();
+                        alertBox.textContent = '請選擇目的據點';
+                        alertBox.classList.remove('d-none');
+                        return;
+                    }
+                    if (isNaN(qty) || qty <= 0) {
+                        e.preventDefault();
+                        alertBox.textContent = '請輸入正整數的調撥數量';
+                        alertBox.classList.remove('d-none');
+                        return;
+                    }
+                    if (qty > available) {
+                        e.preventDefault();
+                        alertBox.textContent = '調撥數量不可超過來源據點可用數量（' + available + '）';
+                        alertBox.classList.remove('d-none');
+                        return;
+                    }
+
+                    // 若你要用 AJAX 送出（不 reload），請啟用下面被註解的段落並註解掉 return（或 e.preventDefault()）
+                    // 為了安全，若用 AJAX 必須把 antiforgery token 加入 header（下段示範）。
+                });
+            }
+
+            // ---------- 下拉書籍即時更新（不整頁 reload） ----------
+            const bookSelect = document.querySelector('select[name="bookId"]');
+            if (bookSelect) {
+                bookSelect.addEventListener('change', function(){
+                    // 方案 A：用 AJAX 立即重載 rows（需要 Controller GetRows 回傳 JSON）
+                    const bookId = this.value;
+                    if (bookId) loadRows(bookId);
+
+                    // 並且把 URL 的 query string 更新（不 reload），讓刷新/分享能保留 bookId
+                    const u = new URL(window.location.href);
+                    u.searchParams.set('bookId', bookId);
+                    window.history.replaceState({}, '', u.toString());
+                });
+            }
+
+            // 初次綁定（如果 server render 已有按鈕，綁定它們）
+            bindOpenTransferButtons();
+
+            // 可選：若你想頁面載入時就用 AJAX 讀 rows（取代 server-side render），可在這打開：
+            // const initialBookId = bookSelect ? bookSelect.value : null;
+            // if (initialBookId) loadRows(initialBookId);
+
+            // ---------- （選用）AJAX submit 範例（註解掉） ----------
+            /*
+            if (form) {
+                form.addEventListener('submit', async function(e) {
                     e.preventDefault();
-                    alertBox.textContent = '請選擇目的據點';
-                    alertBox.classList.remove('d-none');
-                    return;
-                }
-                if (isNaN(qty) || qty <= 0) {
-                    e.preventDefault();
-                    alertBox.textContent = '請輸入正整數的調撥數量';
-                    alertBox.classList.remove('d-none');
-                    return;
-                }
-                if (qty > available) {
-                    e.preventDefault();
-                    alertBox.textContent = '調撥數量不可超過來源據點可用數量（' + available + '）';
-                    alertBox.classList.remove('d-none');
-                    return;
-                }
-            });
+                    const fd = new FormData(form);
+                    // antiforgery token 取法（如果你用 default Html.AntiForgeryToken）
+                    const tokenEl = document.querySelector('input[name="__RequestVerificationToken"]');
+                    const token = tokenEl ? tokenEl.value : null;
+                    try {
+                        const resp = await fetch(form.action, {
+                            method: 'POST',
+                            headers: Object.assign({}, token ? {'RequestVerificationToken': token} : {}, { 'X-Requested-With': 'XMLHttpRequest' }),
+                            body: fd
+                        });
+                        if (!resp.ok) throw new Error('POST failed ' + resp.status);
+                        const data = await resp.json();
+                        if (data.ok) {
+                            // 成功：重新載入 rows，關閉 modal
+                            const bookId = form.querySelector('input[name="bookId"]').value;
+                            await loadRows(bookId);
+                            const modalEl = document.getElementById('transferModal');
+                            const bsModal = bootstrap.Modal.getInstance(modalEl);
+                            if (bsModal) bsModal.hide();
+                            alert(data.message || '調撥成功');
+                        } else {
+                            document.getElementById('modal-alert').textContent = data.message || '調撥失敗';
+                            document.getElementById('modal-alert').classList.remove('d-none');
+                        }
+                    } catch (ex) {
+                        console.error(ex);
+                        document.getElementById('modal-alert').textContent = '發生錯誤，請稍後再試';
+                        document.getElementById('modal-alert').classList.remove('d-none');
+                    }
+                });
+            }
+            */
+
         })();
     </script>
 }

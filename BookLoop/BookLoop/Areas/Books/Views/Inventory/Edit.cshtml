@@ -15,18 +15,29 @@
                 <th style="width: 200px;">已保留 (Reserved)</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="inventory-rows">
             @foreach (var r in rows)
             {
+                // 計算可用量（Guard：避免負數）
+                var currentOnHand = (r.OnHand == null) ? 0 : (int)r.OnHand;
+                var currentReserved = (r.Reserved == null) ? 0 : (int)r.Reserved;
+                var available = Math.Max(0, currentOnHand - currentReserved);
+                // 如果你想不允許增加（只能減少或等於），把 max 設成 currentOnHand；如果你想只允許設為「可用量」，用 available。
+                // 下面採用：max = currentOnHand （不允許擴增庫存 — 若想允許擴增請改成更寬鬆邏輯）
+
                 <tr>
                     <td>
                         @r.BranchName
                         <input type="hidden" name="BranchID" value="@r.BranchID" />
                         <input type="hidden" name="RowVersionBase64" value="@r.RowVersionBase64" />
                     </td>
-                    <td>
-                        <input class="form-control" type="number" name="OnHand" min="0" value="@r.OnHand" />
-                    </td>
+                    <input class="form-control"
+                           type="number"
+                           name="OnHand"
+                           min="0"
+                           max="@currentOnHand"
+                           value="@currentOnHand"
+                           oninput="if(+this.value < 0) this.value = 0; if(+this.value > @currentOnHand) this.value = @currentOnHand;" />
                     <td>
                         <input class="form-control" type="number" value="@r.Reserved" disabled />
                     </td>
