@@ -182,7 +182,7 @@ onMounted(async () => {
             :title="item.title"
             class="card-img-top cover"
             loading="lazy"
-            error="onImgError"
+            @error="onImgError"
           />
 
           <div class="card-body d-flex flex-column">

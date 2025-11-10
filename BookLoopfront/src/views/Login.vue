@@ -179,7 +179,7 @@ const auth = useAuth()
 const router = useRouter()
 
 const tab = ref<'password' | 'email' | 'totp'>('password')
-const account = ref('test@gmail.com') // 預設空白，演示時自行輸入
+const account = ref('allen.kuo@gmail.com') // 預設空白，演示時自行輸入
 const password = ref('000000') // 預設空白，演示時自行輸入
 const emailCode = ref('')
 const totpCode = ref('')
