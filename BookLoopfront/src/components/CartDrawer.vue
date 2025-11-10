@@ -367,7 +367,7 @@ async function checkoutCart() {
                   </div>
                   <div class="text-end">
                     <span v-if="c.DiscountType === 0">折抵 NT$ {{ c.DiscountValue }}</span>
-                    <span v-else>{{ c.DiscountValue }}% 折扣</span>
+                    <span v-else>{{ c.DiscountValue }}</span>
                     <button
                       class="btn btn-sm btn-outline-success ms-2"
                       @click="useCoupon(c)"
