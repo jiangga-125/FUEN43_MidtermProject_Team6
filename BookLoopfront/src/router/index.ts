@@ -42,7 +42,13 @@ const router = createRouter({
       component: () => import('@/views/MemberCoupons.vue'),
     },
     // 商品詳細頁（props: true 會把 route.params 當 props 傳入元件）
-    { path: '/books/:id', name: 'BookDetail', component: BookDetail, props: true },
+    {
+      path: '/books/:id',
+      name: 'BookDetail',
+      component: BookDetail,
+      props: true,
+      meta: { public: true, title: '書籍詳情' },
+    },
     // fallback（務必放最後）
     { path: '/:pathMatch(.*)*', redirect: '/' },
     {

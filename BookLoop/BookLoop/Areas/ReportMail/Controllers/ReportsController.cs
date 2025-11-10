@@ -71,6 +71,21 @@ namespace ReportMail.Areas.ReportMail.Controllers
                     .AsNoTracking()
                     .Where(r => r.IsActive)
                     .ToListAsync();
+
+                // 把「使用者ID → 使用者名稱」對照表算好，丟給 View
+                var ownerIds = accessibleDefinitions
+                    .Where(d => d.OwnerUserID.HasValue)
+                    .Select(d => d.OwnerUserID!.Value)
+                    .Distinct()
+                    .ToList();
+
+                //  _db.Users，欄位為 UserID / Name
+                var owners = await _db.Users
+                    .Where(u => ownerIds.Contains(u.UserID))
+                    .Select(u => new { u.UserID, u.Name })
+                    .ToListAsync();
+
+                ViewBag.UserIdToName = owners.ToDictionary(x => x.UserID, x => x.Name);
             }
             else
             {
