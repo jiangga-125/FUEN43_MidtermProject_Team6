@@ -2,51 +2,55 @@
 @{
     ViewData["Title"] = "後台帳號清單";
 }
-<h2 class="mb-3 page-title">👥 後台帳號列表</h2>
 
-@await Html.PartialAsync("_Alerts")
+<div class="page-wrap container-fluid px-3 py-2"><!-- 更緊湊 -->
+    <div class="d-flex align-items-center mb-2 list-header">
+        <h2 class="page-title mb-0">👥 後台帳號列表</h2>
+        <div class="ms-auto list-tools" style="min-width:320px">
+            @await Html.PartialAsync("_ListFilterBar", viewData: new ViewDataDictionary(ViewData) {
+                ["keywordName"]  = "keyword",
+                ["keywordValue"] = Model.Keyword ?? "",
 
-<div class="list-shell">
-    @* 共用篩選列（插槽式） *@
-    @await Html.PartialAsync("_ListFilterBar", viewData: new ViewDataDictionary(ViewData) {
-        ["keywordName"]  = "keyword",
-        ["keywordValue"] = Model.Keyword ?? "",
+                ["statusPartial"] = await Html.PartialAsync("_StatusSelect",
+                    viewData: new ViewDataDictionary(ViewData) {
+                        ["selected"]   = Model.Status,
+                        ["includeAll"] = true,
+                        ["allText"]    = "全部狀態",
+                        ["name"]       = "status",
+                        ["class"]      = "form-select js-auto-submit"
+                }),
 
-        // 狀態下拉
-        ["statusPartial"] = await Html.PartialAsync("_StatusSelect",
-            viewData: new ViewDataDictionary(ViewData) {
-                ["selected"]   = Model.Status,
-                ["includeAll"] = true,
-                ["allText"]    = "全部狀態",
-                ["name"]       = "status",
-                ["class"]      = "form-select js-auto-submit"
-        }),
+                ["pageSizePartial"] = await Html.PartialAsync("_PageSizeSelect",
+                    viewData: new ViewDataDictionary(ViewData) {
+                        ["selected"] = Model.PageSize,
+                        ["name"]     = "pageSize",
+                        ["class"]    = "form-select js-auto-submit",
+                        ["sizes"]    = new[] { 10, 20, 50 }
+                }),
 
-        // 每頁筆數
-        ["pageSizePartial"] = await Html.PartialAsync("_PageSizeSelect",
-            viewData: new ViewDataDictionary(ViewData) {
-                ["selected"] = Model.PageSize,
-                ["name"]     = "pageSize",
-                ["class"]    = "form-select js-auto-submit",
-                ["sizes"]    = new[] { 10, 20, 50 }
-        }),
+                ["newButton"]     = true,
+                ["newText"]       = "➕ 新增帳號",
+                ["newPolicy"]     = "Users.Create",
+                ["newAction"]     = "Create",
+                ["newController"] = "Users",
+                ["newArea"]       = "Account",
+                ["newClass"] = "fw-bold"
+            })
+        </div>
+    </div>
 
-        // 右上角「新增」需新版權限：Users.Create
-        ["newButton"]    = true,
-        ["newText"]      = "新增帳號",
-        ["newPolicy"]    = "Users.Create",
-        ["newAction"]    = "Create",
-        ["newController"]= "Users",
-        ["newArea"]      = "Account"
-    })
+    @await Html.PartialAsync("_Alerts")
 
-    <div id="list-container">
-        @* 首次 SSR，後續由 AJAX 局部刷新 *@
-        @await Html.PartialAsync("_UsersList", Model)
+    <div class="list-shell card shadow-sm">
+        <div class="card-body p-0">
+            <div id="list-container">
+                @* 首次 SSR；之後由 _ListAjaxScripts 局部刷新 *@
+                @await Html.PartialAsync("_UsersList", Model)
+            </div>
+        </div>
     </div>
 </div>
 
-@* 刪除用 Modal（置中） *@
 <authorize policy="Users.Delete">
     <div class="modal fade" id="delModal" tabindex="-1" aria-labelledby="delLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -61,7 +65,7 @@
                     <div class="modal-body">
                         <div class="alert alert-warning mb-0">
                             你即將刪除下列帳號（此動作無法還原）：
-                            <div class="mt-2">
+                            <div class="mt-2 small">
                                 <div><strong>名稱：</strong><span id="del-name">-</span></div>
                                 <div><strong>Email：</strong><span id="del-email">-</span></div>
                             </div>
@@ -77,18 +81,138 @@
     </div>
 </authorize>
 
+@* 共用 AJAX 腳本（現有的）——指定 controller/area/formId/containerId *@
+@await Html.PartialAsync("_ListAjaxScripts", viewData: new ViewDataDictionary(ViewData) {
+    ["controller"] = "Users",
+    ["area"] = "Account",
+    ["listAction"] = "List",
+    ["indexAction"] = "Index",
+    ["formId"] = "filter-form",        // _ListFilterBar 的 form id
+    ["containerId"] = "list-container" // 這頁列表容器 id
+})
+
+@section Styles {
+<style>
+  /* 版面緊湊 */
+  .page-wrap { padding-top: 10px; padding-bottom: 12px; }
+  .list-header .page-title { line-height: 1.15; }
+  .list-tools { display:flex; justify-content:flex-end; align-items:center; gap:.5rem; }
+  .list-tools form { margin: 0; }
+  .list-tools .btn, .list-tools .form-control, .list-tools .form-select { height: 36px; }
+
+  /* 列表列高 */
+  #list-container table.table th,
+  #list-container table.table td { padding: .7rem .75rem; vertical-align: middle; }
+
+  /* 徽章：介於兩版之間（略縮） */
+  #list-container .badge { font-size: .95rem; padding: .35rem .6rem; border-radius: 50rem; }
+
+  /* 按鈕字體加粗、稍微加大，即便是 .btn-sm 也放大一些 */
+  #list-container .btn { font-weight: 700; padding: .42rem .8rem; font-size: .95rem; }
+
+  /* 若有人仍用 outline，強制變實心 */
+  #list-container .btn-outline-secondary { background-color: var(--bs-secondary) !important; border-color: var(--bs-secondary) !important; color: #fff !important; }
+  #list-container .btn-outline-primary  { background-color: var(--bs-primary)   !important; border-color: var(--bs-primary)   !important; color: #fff !important; }
+  #list-container .btn-outline-danger   { background-color: var(--bs-danger)    !important; border-color: var(--bs-danger)    !important; color: #fff !important; }
+
+  /* 顏色指定：檢視=info、編輯=warning、刪除=danger（不改你 partial 也能吃到） */
+  /* 檢視：抓 /Users/Details 連結 */
+  #list-container a[href*="/Users/Details"] {
+    background-color: var(--bs-info) !important;
+    border-color: var(--bs-info) !important;
+    color: #fff !important;
+  }
+  /* 編輯：抓 /Users/Edit 連結（黃色） */
+  #list-container a[href*="/Users/Edit"] {
+    background-color: var(--bs-warning) !important;
+    border-color: var(--bs-warning) !important;
+    color: #000 !important;
+  }
+  /* 刪除：依 js-del */
+  #list-container .js-del {
+    background-color: var(--bs-danger) !important;
+    border-color: var(--bs-danger) !important;
+    color: #fff !important;
+  }
+
+  #list-container .btn + .btn { margin-left:.25rem; }
+</style>
+}
+
 @section Scripts {
 <script>
-  // 啟用共用列表腳本
-  listPageBoot({
-    listUrl:  '@Url.Action("List",  "Users", new { area = "Account" })',
-    indexUrl: '@Url.Action("Index", "Users", new { area = "Account" })',
-    onAfterRender: () => {},
-    del: {
-      formId:  'delForm',
-      modalId: 'delModal',
-      postUrl: '@Url.Action("Delete","Users", new { area="Account" })'
+  // 開啟刪除對話框 + 刪除送出（走 AJAX）
+  (function(){
+    const container = document.getElementById('list-container');
+    if (!container) return;
+
+    // 開啟刪除對話框
+    container.addEventListener('click', function (ev) {
+      const delBtn = ev.target.closest('.js-del');
+      if (!delBtn) return;
+      ev.preventDefault();
+      document.getElementById('del-id').value    = delBtn.dataset.id || '';
+      document.getElementById('del-name').textContent  = delBtn.dataset.name || '-';
+      document.getElementById('del-email').textContent = delBtn.dataset.email || '-';
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('delModal')).show();
+    });
+
+    // 送出刪除（符合你 Controller 的 JSON 回覆）
+    const delForm = document.getElementById('delForm');
+    if (delForm) {
+      delForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const url = delForm.getAttribute('data-action');
+        const fd  = new FormData(delForm);
+        const res = await fetch(url, { method:'POST', body: fd, headers: {'X-Requested-With':'XMLHttpRequest'} });
+        try {
+          const j = await res.json();
+          if (j.ok) {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('delModal')).hide();
+            if (typeof window.paramsFromForm === 'function' && typeof window.loadList === 'function') {
+              const p = window.paramsFromForm();
+              p.set('page', '1'); // 回到第 1 頁較合理
+              window.loadList(p);
+            } else {
+              location.href = '@Url.Action("Index","Users", new { area="Account" })';
+            }
+          } else {
+            alert(j.message || '刪除失敗');
+          }
+        } catch {
+          alert('刪除失敗');
+        }
+      });
     }
-  });
+  })();
+
+  // ★ 關鍵字「即時搜尋」：300ms debounce，不動你現有排序/分頁攔截
+  (function(){
+    const form = document.getElementById('filter-form');
+    if (!form) return;
+    const input = form.querySelector("input[name='keyword']") || form.querySelector("input[type='search']");
+    if (!input) return;
+
+    let composing = false, t = null;
+    const DEBOUNCE = 300;
+
+    input.addEventListener('compositionstart', ()=> composing = true);
+    input.addEventListener('compositionend',   ()=> { composing = false; trigger(); });
+    input.addEventListener('input', trigger);
+
+    function trigger(){
+      if (composing) return;
+      clearTimeout(t);
+      t = setTimeout(() => {
+        if (typeof window.paramsFromForm === 'function' && typeof window.loadList === 'function') {
+          const p = window.paramsFromForm();
+          p.set('page', '1');
+          window.loadList(p);
+        } else {
+          try { form.requestSubmit(); } catch { form.submit(); }
+        }
+      }, DEBOUNCE);
+    }
+  })();
 </script>
 }

@@ -25,6 +25,7 @@
     var newAction = (ViewData["newAction"] as string) ?? "Create";
     var newCtrl = (ViewData["newController"] as string) ?? (ViewContext.RouteData.Values["controller"]?.ToString() ?? "");
     var newArea = (ViewData["newArea"] as string) ?? "Account";
+    var newClass = (ViewData["newClass"] as string) ?? "";
 }
 <form id="filter-form" method="get" class="row g-2 mb-3 align-items-center list-toolbar" autocomplete="off">
     @Html.AntiForgeryToken()
@@ -54,12 +55,14 @@
             if (!string.IsNullOrWhiteSpace(newPolicy))
             {
                 <authorize policy="@newPolicy">
-                    <a class="btn btn-primary" asp-area="@newArea" asp-controller="@newCtrl" asp-action="@newAction">@newText</a>
+                    <a class="btn btn-primary @(string.IsNullOrWhiteSpace(newClass) ? "" : newClass)"
+                       asp-area="@newArea" asp-controller="@newCtrl" asp-action="@newAction">@newText</a>
                 </authorize>
             }
             else
             {
-                <a class="btn btn-primary" asp-area="@newArea" asp-controller="@newCtrl" asp-action="@newAction">@newText</a>
+                <a class="btn btn-primary @(string.IsNullOrWhiteSpace(newClass) ? "" : newClass)"
+                   asp-area="@newArea" asp-controller="@newCtrl" asp-action="@newAction">@newText</a>
             }
         }
     </div>

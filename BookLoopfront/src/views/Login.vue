@@ -83,7 +83,8 @@
           <input v-model.trim="emailCode" placeholder="例如：123456" maxlength="6" />
         </label>
 
-        <label class="row remember2fa">
+        <!-- 勾選：同一行靠左、不斷行 -->
+        <label class="remember2fa">
           <input type="checkbox" v-model="rememberDevice2fa" />
           <span class="muted">此裝置 30 天免驗證</span>
         </label>
@@ -138,7 +139,7 @@
         一鍵登入（前台）
       </button>
 
-      <div class="divider small"><span>也可以</span></div>
+      <div class="divider small" v-if="hasSso"><span>也可以</span></div>
 
       <!-- 其他 SSO -->
       <div class="sso-row">
@@ -178,9 +179,17 @@ import { getDeviceHash } from '@/lib/deviceHash'
 const auth = useAuth()
 const router = useRouter()
 
+const features = {
+  totp: false,
+  google: true,
+  facebook: false,
+  line: false,
+}
+const hasSso = computed(() => features.google || features.facebook || features.line)
+
 const tab = ref<'password' | 'email' | 'totp'>('password')
-const account = ref('test@gmail.com') // 預設空白，演示時自行輸入
-const password = ref('000000') // 預設空白，演示時自行輸入
+const account = ref('test@gmail.com')
+const password = ref('000000')
 const emailCode = ref('')
 const totpCode = ref('')
 const showPwd = ref(false)
@@ -206,7 +215,6 @@ function getRedirectTarget() {
   return q.get('redirect') || '/'
 }
 
-// Email OTP 倒數
 const otpCountdown = ref(0)
 let otpTimer: number | null = null
 function startOtpCountdown() {
@@ -221,25 +229,17 @@ function startOtpCountdown() {
   }, 1000)
 }
 
-// 帳密
 async function loginPassword() {
   if (!canSubmitPassword.value) return
   err.value = ''
   try {
-    /*修改：接住 auth.login 的回傳*/
-    const res = await auth.login(account.value, password.value)
-    /*新增：抽 token 並套用；如果 auth.login 沒回，就嘗試從 auth 內部狀態取*/
-    const token = pickToken(res) || (auth as any)?.token || (auth as any)?.state?.token || null
-    if (!token) throw new Error('登入回應沒有 token')
-    applyToken(token)
-
+    await auth.login(account.value, password.value)
     router.replace(getRedirectTarget())
   } catch (e: any) {
     err.value = (auth as any).error || e?.response?.data?.message || '登入失敗'
   }
 }
 
-// ✅ 一鍵登入（前台）：直接呼叫帳密登入；加上快捷鍵 Alt+D
 function oneClickLogin() {
   tab.value = 'password'
   loginPassword()
@@ -251,7 +251,6 @@ function onKey(e: KeyboardEvent) {
   }
 }
 
-// Email OTP
 async function sendEmailOtp() {
   if (!isEmail(account.value)) {
     err.value = '請輸入有效 Email'
@@ -279,7 +278,6 @@ async function loginByEmailOtp() {
   }
 }
 
-// TOTP
 async function loginByTotp() {
   if (!canSubmitTotp.value) return
   err.value = ''
@@ -312,8 +310,6 @@ async function external(provider: 'Google' | 'Facebook' | 'LINE') {
 onMounted(() => {
   remember.value = (localStorage.getItem('remember_me') ?? '1') === '1'
   auth.setRemember(remember.value)
-
-  // 快捷鍵 Alt + D
   window.addEventListener('keydown', onKey)
 
   const qs = new URLSearchParams(location.search)

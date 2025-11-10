@@ -43,7 +43,7 @@
                        asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
                        asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize">狀態 @Arrow("status")</a>
                 </th>
-                <th style="width:260px" class="text-center">操作</th>
+                <th style="width:300px" class="text-center">操作</th>
             </tr>
         </thead>
         <tbody>
@@ -59,25 +59,31 @@
                         <td>@(string.IsNullOrWhiteSpace(x.Name) ? "-" : x.Name)</td>
                         <td>@x.Email</td>
                         <td>@(x.Phone ?? "-")</td>
-                        <td><span class="badge @badge">@statusText</span></td>
+                        <td>
+                            <!-- 徽章：介於原本與上一版之間 -->
+                            <span class="badge @badge fs-6 px-3 py-1 rounded-pill">@statusText</span>
+                        </td>
                         <td class="text-center">
                             <div class="d-flex flex-wrap gap-2 justify-content-center">
                                 <authorize policy="Users.View">
-                                    <a class="btn btn-sm btn-outline-secondary"
+                                    <!-- 檢視：改用 info，與綠色區隔；粗體 -->
+                                    <a class="btn btn-info fw-bold"
                                        asp-area="Account" asp-controller="Users" asp-action="Details" asp-route-id="@x.UserID">
                                         檢視
                                     </a>
                                 </authorize>
 
                                 <authorize policy="Users.Edit">
-                                    <a class="btn btn-sm btn-outline-primary"
+                                    <!-- 編輯：黃色；粗體 -->
+                                    <a class="btn btn-warning fw-bold"
                                        asp-area="Account" asp-controller="Users" asp-action="Edit" asp-route-id="@x.UserID">
                                         編輯
                                     </a>
                                 </authorize>
 
                                 <authorize policy="Users.Delete">
-                                    <button type="button" class="btn btn-sm btn-outline-danger js-del"
+                                    <!-- 刪除：紅色；粗體 -->
+                                    <button type="button" class="btn btn-danger fw-bold js-del"
                                             data-id="@x.UserID"
                                             data-name="@(string.IsNullOrWhiteSpace(x.Name) ? "-" : x.Name)"
                                             data-email="@x.Email">

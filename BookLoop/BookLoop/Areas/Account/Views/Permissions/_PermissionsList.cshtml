@@ -1,7 +1,6 @@
 ﻿@model Account.Controllers.PermissionsController.IndexVM
 
 @{
-    // 與 Users 一樣，從 ViewBag 取排序方向
     string sort = (ViewBag.Sort as string) ?? "id";
     string dir = (ViewBag.Dir as string) ?? "asc";
 
@@ -32,7 +31,7 @@
                        asp-route-sort="name"
                        asp-route-dir="@NextDir("name")">名稱 @Arrow("name")</a>
                 </th>
-                <th class="text-center" style="width:140px;">
+                <th class="text-center" style="width:160px;">
                     <a class="text-dark text-decoration-none ajax-link"
                        asp-action="List"
                        asp-route-keyword="@Model.Keyword"
@@ -41,7 +40,7 @@
                        asp-route-sort="users"
                        asp-route-dir="@NextDir("users")">帳號數 @Arrow("users")</a>
                 </th>
-                <th class="text-center" style="width:140px;">
+                <th class="text-center" style="width:160px;">
                     <a class="text-dark text-decoration-none ajax-link"
                        asp-action="List"
                        asp-route-keyword="@Model.Keyword"
@@ -50,7 +49,7 @@
                        asp-route-sort="features"
                        asp-route-dir="@NextDir("features")">功能數 @Arrow("features")</a>
                 </th>
-                <th class="text-center" style="width:380px;">操作</th>
+                <th class="text-center" style="width:460px;">操作</th>
             </tr>
         </thead>
         <tbody>
@@ -61,32 +60,36 @@
                     <tr>
                         <td>@x.PermissionID</td>
                         <td>@x.Name</td>
-                        <td class="text-center"><span class="badge bg-info">@x.GrantedUserCount</span></td>
-                        <td class="text-center"><span class="badge bg-secondary">@x.FeatureCount</span></td>
+                        <td class="text-center">@x.GrantedUserCount</td>   @* ← 純文字，不用 badge *@
+                        <td class="text-center">@x.FeatureCount</td>       @* ← 純文字，不用 badge *@
                         <td class="text-center">
                             <div class="d-flex gap-2 justify-content-center flex-wrap">
+                                @* 1. 適用帳號（info） *@
+                                <authorize policy="Permissions.Assign">
+                                    <a class="btn fw-bold"
+                                       asp-area="Account" asp-controller="Permissions" asp-action="Assign"
+                                       asp-route-id="@x.PermissionID">適用帳號</a>
+                                </authorize>
+
+                                @* 2. 功能設定（warning/黃色） *@
+                                <authorize policy="Permissions.Features">
+                                    <a class="btn fw-bold"
+                                       asp-area="Account" asp-controller="Permissions" asp-action="Features"
+                                       asp-route-id="@x.PermissionID">功能設定</a>
+                                </authorize>
+
+                                @* 3. 重新命名（secondary/灰） *@
                                 <authorize policy="Permissions.Edit">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    <button type="button" class="btn fw-bold"
                                             data-rename-id="@x.PermissionID"
                                             data-rename-name="@x.Name">
                                         重新命名
                                     </button>
                                 </authorize>
 
-                                <authorize policy="Permissions.Assign">
-                                    <a class="btn btn-sm btn-outline-primary"
-                                       asp-area="Account" asp-controller="Permissions" asp-action="Assign"
-                                       asp-route-id="@x.PermissionID">適用帳號</a>
-                                </authorize>
-
-                                <authorize policy="Permissions.Features">
-                                    <a class="btn btn-sm btn-outline-success"
-                                       asp-area="Account" asp-controller="Permissions" asp-action="Features"
-                                       asp-route-id="@x.PermissionID">功能設定</a>
-                                </authorize>
-
+                                @* 4. 刪除（danger/紅） *@
                                 <authorize policy="Permissions.Delete">
-                                    <button type="button" class="btn btn-sm btn-outline-danger js-del"
+                                    <button type="button" class="btn fw-bold js-del"
                                             data-id="@x.PermissionID"
                                             data-name="@x.Name">
                                         刪除
@@ -105,5 +108,4 @@
     </table>
 </div>
 
-@* 共用 Pager（沒有 status，傳 null） *@
 @await Html.PartialAsync("_Pager", (Model.Page, Model.PageSize, Model.Total, sort, dir, Model.Keyword, (int?)null))
