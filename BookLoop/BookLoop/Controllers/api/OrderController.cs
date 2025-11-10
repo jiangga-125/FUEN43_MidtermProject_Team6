@@ -212,5 +212,46 @@ namespace BookLoop.Controllers.Api
 
 			return Ok(ecpayRequest);
 		}
+
+
+		// ✅ EcpayNotify（綠界）
+		[HttpPost("/api/ecpay/notify")]
+		[AllowAnonymous]
+		public IActionResult EcpayNotify([FromForm] ECPayRequest data)
+		{
+			if (data == null || string.IsNullOrWhiteSpace(data.CheckMacValue))
+				return Content("0|NoCheckMacValue");
+
+			if (!ECPayHelper.VerifyNotification(data))
+				return Content("0|ErrorCheckMacValue");
+
+			// 從 MerchantTradeNo 解析 orderId（尾數取數字）
+			int orderId = -1;
+			var digits = new string(data.MerchantTradeNo.Reverse().TakeWhile(char.IsDigit).Reverse().ToArray());
+			if (!int.TryParse(digits, out orderId))
+				return Content("0|ParseOrderIdFail");
+
+			var order = _db.Orders.Include(o => o.OrderDetails).FirstOrDefault(o => o.OrderID == orderId);
+			if (order == null) return Content("0|OrderNotFound");
+
+			var expectedAmt = (int)Math.Round(order.OrderDetails.Sum(od => od.UnitPrice * od.Quantity), MidpointRounding.AwayFromZero);
+			if (expectedAmt != data.TotalAmount) return Content("0|AmountMismatch");
+
+			if (order.Status == 1) return Content("1|OK"); // idempotent
+
+			// 更新訂單狀態（若有 TradeNo / PaidAt 欄位，可寫入）
+			order.Status = 1;
+			_db.SaveChanges();
+
+			return Content("1|OK");
+		}
+
+		[HttpGet("status/{orderId}")]
+		public IActionResult GetStatus(int orderId)
+		{
+			var order = _db.Orders.Find(orderId);
+			if (order == null) return NotFound(new { success = false, message = "找不到訂單" });
+			return Ok(new { success = true, orderId = order.OrderID, status = order.Status, totalAmount = order.TotalAmount });
+		}
 	}
 }

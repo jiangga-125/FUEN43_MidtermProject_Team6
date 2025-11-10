@@ -114,7 +114,7 @@ namespace BookLoop.Ordersys.Controllers
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> Create([Bind("OrderID,MemberID,OrderDate,TotalAmount,Status,DiscountAmount,DiscountCode,MemberCouponID,CouponTypeSnap,CouponValueSnap,CouponNameSnap,CouponDiscountAmount")] Order order,
-string Provider)
+		string Provider)
 		{
 			if (ModelState.IsValid)
 			{
@@ -310,20 +310,20 @@ string Provider)
 
 			// 將資料轉成 Dictionary 給 View 自動送出表單
 			var orderDict = new Dictionary<string, string>
-	{
-		{ "MerchantID", ecpayRequest.MerchantID },
-		{ "MerchantTradeNo", ecpayRequest.MerchantTradeNo },
-		{ "MerchantTradeDate", ecpayRequest.MerchantTradeDate },
-		{ "PaymentType", ecpayRequest.PaymentType },
-		{ "TotalAmount", ecpayRequest.TotalAmount.ToString() },
-		{ "TradeDesc", ecpayRequest.TradeDesc },
-		{ "ItemName", ecpayRequest.ItemName },
-		{ "ReturnURL", ecpayRequest.ReturnURL },
-		{ "OrderResultURL", ecpayRequest.OrderResultURL },
-		{ "ChoosePayment", ecpayRequest.ChoosePayment },
-		{ "EncryptType", ecpayRequest.EncryptType },
-		{ "CheckMacValue", ecpayRequest.CheckMacValue }
-	};
+			{
+				{ "MerchantID", ecpayRequest.MerchantID },
+				{ "MerchantTradeNo", ecpayRequest.MerchantTradeNo },
+				{ "MerchantTradeDate", ecpayRequest.MerchantTradeDate },
+				{ "PaymentType", ecpayRequest.PaymentType },
+				{ "TotalAmount", ecpayRequest.TotalAmount.ToString() },
+				{ "TradeDesc", ecpayRequest.TradeDesc },
+				{ "ItemName", ecpayRequest.ItemName },
+				{ "ReturnURL", ecpayRequest.ReturnURL },
+				{ "OrderResultURL", ecpayRequest.OrderResultURL },
+				{ "ChoosePayment", ecpayRequest.ChoosePayment },
+				{ "EncryptType", ecpayRequest.EncryptType },
+				{ "CheckMacValue", ecpayRequest.CheckMacValue }
+			};
 
 			return View("GoToPayment", orderDict);
 		}
