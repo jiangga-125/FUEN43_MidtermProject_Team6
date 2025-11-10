@@ -7,6 +7,7 @@ import SidebarCategories from './components/SidebarCategories.vue'
 import ProductTabs from './components/ProductTabs.vue'
 import { computed, ref } from 'vue'
 import MailNudge from "@/components/MailNudge.vue";
+import FooterContact from './components/FooterContact.vue'
 
 /* 依路由判斷是否首頁 */
 import { useRoute, RouterView } from 'vue-router'
@@ -43,6 +44,7 @@ function onPickCategory(id: number | null) {
     </main>
       <RouterView />
   <MailNudge />
+  <FooterContact />
   </template>
 
   <!-- 非首頁：只顯示各自頁面的內容（乾淨的新頁感） -->
