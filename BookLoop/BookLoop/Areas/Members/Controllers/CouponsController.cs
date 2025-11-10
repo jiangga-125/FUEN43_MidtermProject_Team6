@@ -32,6 +32,7 @@ namespace BookLoop.Areas.Members.Controllers
 				.ToListAsync();
 		}
 
+
 		// ========== 列表 ==========
 		[HttpGet]
 		public async Task<IActionResult> Index()
@@ -61,6 +62,15 @@ namespace BookLoop.Areas.Members.Controllers
 		{
 			if (!ModelState.IsValid)
 			{
+				await FillCategoryOptionsAsync(vm);
+				return View(vm);
+			}
+
+			// ✅ 防止重複 Code
+			bool exists = await _db.Coupons.AnyAsync(c => c.Code == vm.Code);
+			if (exists)
+			{
+				ModelState.AddModelError("Code", "此代碼已存在，請使用其他代碼。");
 				await FillCategoryOptionsAsync(vm);
 				return View(vm);
 			}

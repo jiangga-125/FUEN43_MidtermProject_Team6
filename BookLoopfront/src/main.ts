@@ -4,6 +4,8 @@ import App from './App.vue'
 import router from './router'
 import { createPinia } from 'pinia'
 import { useAuth } from '@/stores/auth' // <-- 先 import store
+import 'bootstrap-icons/font/bootstrap-icons.css'
+
 
 const app = createApp(App)
 const pinia = createPinia()

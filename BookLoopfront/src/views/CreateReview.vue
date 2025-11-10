@@ -21,16 +21,15 @@
 
       <!-- 👤 會員 ID -->
       <div class="mb-3">
-        <label class="form-label fw-bold">
-          <i class="bi bi-person-circle me-1"></i>會員 ID
-        </label>
-        <input
-          v-model="form.memberId"
-          type="text"
-          class="form-control bg-light"
-          readonly
-        />
-      </div>
+  <label class="form-label">會員名稱</label>
+  <input
+    type="text"
+    :value="auth.member?.name || '未登入'"
+    class="form-control"
+    disabled
+  />
+</div>
+
 
       <!-- 📚 書名 -->
       <div class="mb-3">
@@ -131,6 +130,7 @@ const loadingBooks = ref(false)
 const hoverRating = ref(0)
 const purchasedBooks = ref<{ value: number; text: string }[]>([])
 const ratingTexts = ['非常不滿意 😡', '不太滿意 😕', '普通 🙂', '滿意 😊', '非常滿意 🤩']
+const bannedWords = ref<string[]>([])
 
 // ⭐ 點擊星星動畫
 const selectRating = (n: number) => {
@@ -157,13 +157,21 @@ onMounted(async () => {
 
     loadingBooks.value = true
     const res = await http.get(`/api/ReviewsApi/GetPurchasedBooks/${form.value.memberId}`)
-    purchasedBooks.value = res.data.map((b: any) => ({
-       value: b.bookId ?? b.BookID ?? b.bookID,  // ✅ 安全取值
-      text: b.title
+
+    console.log('📦 後端回傳內容：', res.data)
+
+    const data = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(res.data.data)
+      ? res.data.data
+      : []
+
+    purchasedBooks.value = data.map((b: any) => ({
+      value: b.bookId ?? b.BookID ?? b.bookID,
+      text: b.title ?? b.Title ?? '(未命名書籍)'
     }))
-  } catch (err) {
-    console.error('❌ 載入會員或書籍資料失敗', err)
-    error.value = '無法載入會員或書籍資料，請稍後再試。'
+  } catch (error) {
+    console.error('Error loading purchased books:', error)
   } finally {
     loadingBooks.value = false
   }
@@ -176,6 +184,21 @@ const submitReview = async () => {
     error.value = '請填寫所有必填欄位。'
     return
   }
+
+// 🔸 字數長度驗證（少於 10 個字就擋下）
+  if (form.value.content.trim().length < 10) {
+    error.value = '⚠️ 評論內容不能少於 10 個字。'
+    return
+  }
+
+// 🔸 禁用詞檢查（前端防護）
+  for (const word of bannedWords.value) {
+    if (form.value.content.includes(word)) {
+      error.value = `⚠️ 評論內容包含禁用詞「${word}」，請修改後再送出。`
+      return
+    }
+  }
+
 
   submitting.value = true
   error.value = ''
@@ -193,16 +216,30 @@ const submitReview = async () => {
     const res = await http.post('/api/ReviewsApi/Create', payload)
     message.value = res.data.message || '✅ 評論已送出，等待管理員審核。'
 
-    // 清空表單
-    form.value.TargetBookID = ''
+     form.value.TargetBookID = ''
     form.value.rating = 0
     form.value.content = ''
   } catch (err: any) {
     console.error('❌ 送出評論失敗', err)
-    error.value = '❌ 送出失敗：' + (err.response?.data?.message || err.message)
+
+    if (err.response) {
+      // 後端直接回傳字串
+      if (typeof err.response.data === 'string') {
+        error.value = err.response.data
+      }
+      // 後端回傳物件 { message: "..." }
+      else if (err.response.data?.message) {
+        error.value = err.response.data.message
+      } else {
+        error.value = '⚠️ 發生未知的請求錯誤。'
+      }
+    } else {
+      error.value = '❌ 無法連線到伺服器，請稍後再試。'
+    }
   } finally {
     submitting.value = false
   }
+  
 }
 </script>
 

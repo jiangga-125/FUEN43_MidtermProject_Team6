@@ -8,5 +8,6 @@
 		public string Source { get; set; } // 系統審核 / 會員檢舉
 		public string? ReporterName { get; set; }
 		public DateTime CreatedAt { get; set; }
+		public string? DisplayName { get; set; }
 	}
 }
