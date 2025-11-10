@@ -106,6 +106,28 @@
       </div>
     </form>
   </div>
+  <!-- 🚀 送出 + 一鍵評論按鈕 -->
+<div class="d-flex justify-content-between align-items-center mt-4">
+  <!-- 一鍵評論 -->
+  <div class="btn-group">
+    <button
+      type="button"
+      class="btn btn-outline-danger"
+      @click="setQuickComment('這本書真垃圾 大家不要浪費錢購買')"
+    >
+      🚫 一鍵差評
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-outline-success"
+      @click="setQuickComment('好喜歡這本書 讓我收益良多 推薦大家購買')"
+    >
+      💖 一鍵好評
+    </button>
+  </div>
+</div>
+
 </template>
 
 <script setup lang="ts">
@@ -121,6 +143,11 @@ const form = ref({
   rating: 0,
   content: ''
 })
+// 一鍵評論功能
+function setQuickComment(text: string) {
+  form.value.content = text
+}
+
 
 const message = ref('')
 const error = ref('')
