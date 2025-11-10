@@ -176,12 +176,21 @@ namespace BookLoop.Controllers.Api
 			});
 			await _db.SaveChangesAsync();
 
-			var isProd = !_env.IsDevelopment(); // 依你專案的準則決定
+			//var isProd = !_env.IsDevelopment(); // 依你專案的準則決定
+			//Response.Cookies.Append("refreshToken", rawRefresh, new CookieOptions
+			//{
+			//	HttpOnly = true,
+			//	Secure = isProd,                 // 只有正式環境強制 Secure
+			//	SameSite = isProd ? SameSiteMode.None : SameSiteMode.Lax, // 本機開發用 Lax 比較好測
+			//	Path = "/",
+			//	Expires = DateTime.UtcNow.AddDays(days)
+			//});
+			var isHttpsRequest = Request.IsHttps;
 			Response.Cookies.Append("refreshToken", rawRefresh, new CookieOptions
 			{
 				HttpOnly = true,
-				Secure = isProd,                 // 只有正式環境強制 Secure
-				SameSite = isProd ? SameSiteMode.None : SameSiteMode.Lax, // 本機開發用 Lax 比較好測
+				Secure = isHttpsRequest,                 // true if request is HTTPS
+				SameSite = SameSiteMode.None,            // 要跨域 POST，必須 None
 				Path = "/",
 				Expires = DateTime.UtcNow.AddDays(days)
 			});
@@ -195,11 +204,11 @@ namespace BookLoop.Controllers.Api
 				: "【BookLoop】Email 驗證碼";
 
 			var html = $@"
-<p>您好，</p>
-<p>您的一次性驗證碼為：</p>
-<h2 style=""letter-spacing:3px"">{code}</h2>
-<p>有效期限：{expiresAt:yyyy/MM/dd HH:mm}</p>
-<p>若非本人操作，請忽略本信。</p>";
+			<p>您好，</p>
+			<p>您的一次性驗證碼為：</p>
+			<h2 style=""letter-spacing:3px"">{code}</h2>
+			<p>有效期限：{expiresAt:yyyy/MM/dd HH:mm}</p>
+			<p>若非本人操作，請忽略本信。</p>";
 
 			return _mail.SendAsync(
 				to: email,
@@ -299,9 +308,16 @@ namespace BookLoop.Controllers.Api
 					await _db.SaveChangesAsync();
 				}
 			}
+			//Response.Cookies.Delete("refreshToken", new CookieOptions
+			//{ HttpOnly = true, Secure = true, SameSite = SameSiteMode.None, Path = "/" });
+			var isHttpsRequest = Request.IsHttps;
 			Response.Cookies.Delete("refreshToken", new CookieOptions
-			{ HttpOnly = true, Secure = true, SameSite = SameSiteMode.None, Path = "/" });
-
+			{
+				HttpOnly = true,
+				Secure = isHttpsRequest,
+				SameSite = SameSiteMode.None,
+				Path = "/"
+			});
 			await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 			return Ok(new { message = "signed out" });
 		}
@@ -833,52 +849,55 @@ namespace BookLoop.Controllers.Api
 
 		// 回傳給 popup 的最小 HTML（成功）— 使用「origin」而不是整個 URL
 		private string HtmlCloseWithSuccess(string provider, string targetUrl, string accessToken, long expiresAt) => $@"
-<!doctype html><html><body>
-<script>
-  (function() {{
-    try {{
-      var targetUrl = '{targetUrl}';
-      var origin;
-      try {{
-        origin = new URL(targetUrl).origin;   // 只取 origin（例如 https://localhost:5173）
-      }} catch (e) {{
-        origin = '*'; // 後援：解析失敗就放寬（開發環境建議 ok；正式可改為固定字串）
-      }}
-      if (window.opener && window.opener !== window) {{
-        window.opener.postMessage({{
-          type: 'oauth-success',
-          provider: '{provider.ToLowerInvariant()}',
-          accessToken: '{accessToken}',
-          expiresAt: {expiresAt}
-        }}, origin);
-      }}
-    }} catch (e) {{}}
-    window.close();
-  }})();
-</script>
-登入成功，視窗將自動關閉。
-</body></html>";
+
+		<!doctype html>
+		<html>
+		<body>
+		<script>
+		  (function() {{
+			try {{
+			  var targetUrl = '{targetUrl}';
+			  var origin;
+			  try {{
+				origin = new URL(targetUrl).origin;   // 只取 origin（例如 https://localhost:5173）
+			  }} catch (e) {{
+				origin = '*'; // 後援：解析失敗就放寬（開發環境建議 ok；正式可改為固定字串）
+			  }}
+			  if (window.opener && window.opener !== window) {{
+				window.opener.postMessage({{
+				  type: 'oauth-success',
+				  provider: '{provider.ToLowerInvariant()}',
+				  accessToken: '{accessToken}',
+				  expiresAt: {expiresAt}
+				}}, origin);
+			  }}
+			}} catch (e) {{}}
+			window.close();
+		  }})();
+		</script>
+		登入成功，視窗將自動關閉。
+		</body></html>";
 
 
-		// 回傳給 popup 的最小 HTML（失敗）
-		private string HtmlCloseWithError(string code, string message) => $@"
-<!doctype html><html><body>
-<script>
-  (function() {{
-    try {{
-      if (window.opener && window.opener !== window) {{
-        window.opener.postMessage({{
-          type: 'oauth-error',
-          provider: 'google',
-          error: '{code}',
-          message: '{message}'
-        }}, '*');
-      }}
-    }} catch (e) {{ }}
-    window.close();
-  }})();
-</script>
-登入失敗：{message}
-</body></html>";
-	}
-}
+				// 回傳給 popup 的最小 HTML（失敗）
+				private string HtmlCloseWithError(string code, string message) => $@"
+		<!doctype html><html><body>
+		<script>
+		  (function() {{
+			try {{
+			  if (window.opener && window.opener !== window) {{
+				window.opener.postMessage({{
+				  type: 'oauth-error',
+				  provider: 'google',
+				  error: '{code}',
+				  message: '{message}'
+				}}, '*');
+			  }}
+			}} catch (e) {{ }}
+			window.close();
+		  }})();
+		</script>
+		登入失敗：{message}
+		</body></html>";
+			}
+		}

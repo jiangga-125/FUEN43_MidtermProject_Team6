@@ -59,19 +59,19 @@ namespace BookLoop.Helpers
 		public static string GenerateCheckMacValue(ECPayRequest model)
 		{
 			var parameters = new Dictionary<string, string>
-	{
-		{ "MerchantID", model.MerchantID },
-		{ "MerchantTradeNo", model.MerchantTradeNo },
-		{ "MerchantTradeDate", model.MerchantTradeDate },
-		{ "PaymentType", "aio" },
-		{ "TotalAmount", model.TotalAmount.ToString() },
-		{ "TradeDesc", model.TradeDesc },
-		{ "ItemName", model.ItemName },
-		{ "ReturnURL", model.ReturnURL },
-		{ "OrderResultURL", model.OrderResultURL },
-		{ "ChoosePayment", model.ChoosePayment },
-		{ "EncryptType", "1" }
-	};
+			{
+			{ "MerchantID", model.MerchantID ?? "" },
+				{ "MerchantTradeNo", model.MerchantTradeNo ?? "" },
+				{ "MerchantTradeDate", model.MerchantTradeDate ?? "" },
+				{ "PaymentType", "aio" },
+				{ "TotalAmount", model.TotalAmount.ToString() ?? "0" },
+				{ "TradeDesc", model.TradeDesc ?? "" },
+				{ "ItemName", model.ItemName ?? "" },
+				{ "ReturnURL", model.ReturnURL ?? "" },
+				{ "OrderResultURL", model.OrderResultURL ?? "" },
+				{ "ChoosePayment", model.ChoosePayment ?? "" },
+				{ "EncryptType", "1" }
+			};
 
 			var sorted = parameters.OrderBy(x => x.Key);
 			var raw = $"HashKey={HashKey}&{string.Join("&", sorted.Select(x => $"{x.Key}={x.Value}"))}&HashIV={HashIV}";

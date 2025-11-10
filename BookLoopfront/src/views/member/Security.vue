@@ -1,19 +1,25 @@
+<!-- src/views/member/Security.vue （或你的檔名） -->
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/stores/auth'
 import http from '@/lib/http'
 import { getDeviceHash } from '@/lib/deviceHash'
-import { changePassword as apiChangePassword } from '@/api/authApi'  // ✅ 新增：變更密碼 API
+import { changePassword as apiChangePassword } from '@/api/authApi'
 
 const auth = useAuth()
 const router = useRouter()
 const member = computed(() => auth.member)
 
-// TODO: 之後從 /api/auth/me 讀真正的 TwoFactorEnabled
+// 功能旗標：TOTP 先隱藏
+const features = {
+  totp: false
+}
+
+// （暫時）兩步驗證旗標，未串接前維持 false
 const twofaEnabled = ref(false)
 
-/* ===== Email OTP 狀態 ===== */
+/* ===== Email OTP ===== */
 const sending = ref(false)
 const verifying = ref(false)
 const otpCode = ref('')
@@ -90,7 +96,7 @@ async function verifyEmailOtp() {
   }
 }
 
-/* ===== 變更密碼（✅ 已串接） ===== */
+/* ===== 變更密碼 ===== */
 const oldPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
@@ -98,7 +104,6 @@ const changing = ref(false)
 const pwdMsg = ref('')
 const pwdOk = ref(false)
 
-// 最低長度 6；可視需求增加複雜度規則
 const canChangePwd = computed(() =>
   oldPassword.value.length >= 1 &&
   newPassword.value.length >= 6 &&
@@ -128,7 +133,6 @@ async function changePassword () {
   }
 }
 
-function gotoTotpSetup () { router.push('/2fa/setup') }
 async function signout () { try { await auth.logout?.() } finally { router.push('/login') } }
 
 onMounted(() => {
@@ -141,7 +145,7 @@ onMounted(() => {
     <h3 class="title">帳號密碼與安全性</h3>
 
     <div class="grid">
-      <!-- 基本資訊 / 2FA 狀態 / TOTP -->
+      <!-- 基本資訊 / Email OTP -->
       <section class="card">
         <h4>基本資訊</h4>
         <div class="row"><span class="k">名稱</span><span class="v">{{ member?.name || '-' }}</span></div>
@@ -152,8 +156,10 @@ onMounted(() => {
             <span class="badge" :class="twofaEnabled ? 'on' : 'off'">{{ twofaEnabled ? '已啟用' : '未啟用' }}</span>
           </span>
         </div>
+
         <div class="actions">
-          <button type="button" class="btn" @click="gotoTotpSetup">設定 / 綁定 2FA（TOTP）</button>
+          <!-- TOTP 先隱藏 -->
+          <button v-if="false" type="button" class="btn">設定 / 綁定 2FA（TOTP）</button>
           <button type="button" class="btn danger" @click="signout">登出</button>
         </div>
 
@@ -161,6 +167,7 @@ onMounted(() => {
 
         <h4>Email OTP</h4>
         <p class="muted">寄 6 碼到你的 Email，勾選「記住此裝置」可 30 天免驗證。</p>
+
         <div class="otp-send">
           <button
             type="button" class="btn outline"
@@ -174,7 +181,7 @@ onMounted(() => {
         </div>
 
         <div class="otp-verify">
-          <input class="input" placeholder="輸入 6 碼" maxlength="6" v-model.trim="otpCode" />
+          <input class="input sm" placeholder="6 碼" maxlength="6" v-model.trim="otpCode" />
           <label class="check">
             <input type="checkbox" v-model="rememberDevice">
             記住此裝置 30 天
@@ -182,7 +189,7 @@ onMounted(() => {
           <button type="button" class="btn primary"
                   :disabled="verifying || !/^[0-9]{6}$/.test(otpCode)"
                   @click="verifyEmailOtp">
-            驗證（Email OTP）
+            驗證
           </button>
         </div>
 
@@ -212,27 +219,45 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* 版面 */
 .title{margin:0 0 12px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media (max-width: 900px){.grid{grid-template-columns:1fr}}
 
-.card{background:#fff;border:1px solid #e9ecef;border-radius:16px;padding:18px;box-shadow:0 4px 18px rgba(0,0,0,.04);display:grid;gap:12px}
+.card{
+  background:#fff;border:1px solid #e9ecef;border-radius:16px;padding:18px;
+  box-shadow:0 4px 18px rgba(0,0,0,.04);display:grid;gap:12px
+}
 .row{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center}
 .k{color:#666}.v{font-weight:600}
+
+/* 控制元件：一致的「適中」尺寸 */
+.input{
+  width:100%;max-width:380px;
+  height:40px; padding:0 12px;
+  border:1px solid #dfe3e8;border-radius:10px;font-size:14px;background:#fff
+}
+.input.sm{max-width:140px;text-align:center}
+
+.btn{
+  height:40px; padding:0 14px;
+  border-radius:10px;border:1px solid #e5e7eb;background:#f8fafc;
+  font-weight:600;cursor:pointer;white-space:nowrap
+}
+.btn.primary{background:#0d6efd;border-color:#0d6efd;color:#fff}
+.btn.outline{background:#fff;border-color:#cfd6e0}
+.btn.danger{background:#ffecec;border-color:#ffd9d9;color:#c0392b}
 
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px}
 .badge.on{background:#e8f7ef;color:#139a50}
 .badge.off{background:#fff3f0;color:#c74a2e;border:1px solid #ffd8cc}
 
-.actions{display:flex;gap:10px;margin-top:4px;flex-wrap:wrap}
-.input{padding:10px 12px;border:1px solid #dfe3e8;border-radius:10px;width:100%}
-.btn{padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#f8fafc;font-weight:600;cursor:pointer}
-.btn.primary{background:#0d6efd;border-color:#0d6efd;color:#fff}
-.btn.outline{background:#fff;border-color:#cfd6e0}
-.btn.danger{background:#ffecec;border-color:#ffd9d9;color:#c0392b}
+.actions{display:flex;gap:10px;margin-top:2px;flex-wrap:wrap}
 
 .divider{height:1px;background:#f0f2f5;margin:6px 0}
 .muted{color:#6b7280;font-size:13px}
+
+/* Email OTP 區塊 */
 .otp-send{display:flex;align-items:center;gap:8px}
 .dev-code{color:#999;font-size:12px}
 .otp-verify{display:flex;gap:10px;align-items:center;flex-wrap:wrap}

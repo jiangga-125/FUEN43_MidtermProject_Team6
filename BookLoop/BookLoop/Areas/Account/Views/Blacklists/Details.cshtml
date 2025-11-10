@@ -1,0 +1,44 @@
+﻿@model BookLoop.Blacklist
+@{
+    ViewData["Title"] = "黑名單明細";
+}
+<div class="page-wrap container-fluid px-3 py-2">
+    <div class="d-flex align-items-center mb-2 list-header">
+        <h2 class="page-title mb-0">🔎 黑名單明細</h2>
+        <div class="ms-auto d-flex gap-2">
+            <a class="btn btn-secondary fw-bold" asp-area="Account" asp-controller="Blacklists" asp-action="Index">返回列表</a>
+        </div>
+    </div>
+
+    @await Html.PartialAsync("_Alerts")
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-2">編號</dt>
+                <dd class="col-sm-10">@Model.BlacklistID</dd>
+
+                <dt class="col-sm-2">會員ID</dt>
+                <dd class="col-sm-10">@Model.MemberID</dd>
+
+                <dt class="col-sm-2">原因</dt>
+                <dd class="col-sm-10">@Model.Reason</dd>
+
+                <dt class="col-sm-2">開始時間</dt>
+                <dd class="col-sm-10">@Model.StartAt.ToLocalTime():yyyy/MM/dd HH:mm</dd>
+
+                <dt class="col-sm-2">結束時間</dt>
+                <dd class="col-sm-10">@(Model.EndAt.HasValue? Model.EndAt.Value.ToLocalTime().ToString("yyyy/MM/dd HH:mm") : "（無）")</dd>
+
+                <dt class="col-sm-2">解除時間</dt>
+                <dd class="col-sm-10">@(Model.LiftedAt.HasValue? Model.LiftedAt.Value.ToLocalTime().ToString("yyyy/MM/dd HH:mm") : "（未解除）")</dd>
+            </dl>
+        </div>
+        <div class="card-footer d-flex justify-content-end gap-2">
+            <a class="btn btn-outline-secondary" asp-area="Account" asp-controller="Blacklists" asp-action="Index">返回</a>
+            <authorize policy="Blacklists.Edit">
+                <a class="btn btn-primary fw-bold" asp-area="Account" asp-controller="Blacklists" asp-action="Edit" asp-route-id="@Model.BlacklistID">編輯</a>
+            </authorize>
+        </div>
+    </div>
+</div>

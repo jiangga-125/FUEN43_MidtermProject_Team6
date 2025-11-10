@@ -6,7 +6,8 @@
 
 <h2>編輯書籍</h2>
 
-<form asp-action="Edit" method="post" enctype="multipart/form-data">
+<form asp-action="Edit" asp-route-id="@Model.BookID" method="post" enctype="multipart/form-data">
+    @Html.AntiForgeryToken()
 
     <!-- 主鍵隱藏欄位 -->
     <input type="hidden" asp-for="BookID" />

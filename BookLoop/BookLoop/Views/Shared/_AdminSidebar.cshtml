@@ -27,6 +27,14 @@
             <a class="nav-link" asp-area="Books" asp-controller="Import" asp-action="Index">資料匯入</a>
         </div>
 
+        <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-branch" href="javascript:void(0)">
+            <i class="bi bi-building"></i><span class="ms-2 text">分店管理</span><i class="bi bi-caret-down ms-auto"></i>
+        </a>
+        <div id="m-branch" class="submenu ps-4">
+            <a class="nav-link" asp-area="Books" asp-controller="Branches" asp-action="Index">分店列表</a>
+            <a class="nav-link" asp-area="Books" asp-controller="Inventory" asp-action="Index">庫存調撥</a>
+        </div>
+
         <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-borrow" href="javascript:void(0)">
             <i class="bi bi-journal-arrow-down"></i><span class="ms-2 text">借閱管理</span><i class="bi bi-caret-down ms-auto"></i>
         </a>
@@ -95,17 +103,9 @@
             <i class="bi bi-envelope"></i><span class="ms-2 text">郵件管理</span><i class="bi bi-caret-down ms-auto"></i>
         </a> 
         <div id="m-noti" class="submenu ps-4">
-                <a class="nav-link" asp-area="Mail" asp-controller="Templates" asp-action="Index">郵件範本</a>
+                <a class="nav-link" asp-area="Mail" asp-controller="Templates" asp-action="Index">郵件模板</a>
                 <a class="nav-link" asp-area="Mail" asp-controller="MailJobs" asp-action="Index">郵件排程</a>
                 <a class="nav-link" asp-area="Mail" asp-controller="MailLogs" asp-action="Index">郵件日誌</a>
-        </div>
-
-        <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-branch" href="javascript:void(0)">
-            <i class="bi bi-building"></i><span class="ms-2 text">分店管理</span><i class="bi bi-caret-down ms-auto"></i>
-        </a>
-        <div id="m-branch" class="submenu ps-4">
-            <a class="nav-link" asp-area="Books" asp-controller="Branches" asp-action="Index">分店列表</a>
-            <a class="nav-link" asp-area="Books" asp-controller="Transfers" asp-action="Index">庫存調撥</a>
         </div>
 
         <a class="nav-link d-flex align-items-center" data-toggle="submenu" data-target="#m-report" href="javascript:void(0)">

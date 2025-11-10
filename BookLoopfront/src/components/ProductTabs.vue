@@ -8,7 +8,9 @@ import { addToCart as addCartAPI } from '@/api/shoppingCart'
 import UsedListingsGrid from '@/components/UsedListingsGrid.vue'
 // 使用 pinia auth store（你檔案最底有 export useAuth）
 import { useAuth } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
 
+const cartStore = useCartStore()
 const router = useRouter()
 // 從父層接收 categoryId
 const props = defineProps<{ categoryId: number | null }>()
@@ -117,12 +119,17 @@ async function addToCart(b: Book) {
       UnitPrice: b.salePrice ?? b.listPrice ?? 0,
     }
 
-    // 短期 fallback：如果後端還要求 MemberID 才存，才附上（長期請後端改由 token 決定）
     if (memberId.value) payload.MemberID = memberId.value
 
     console.log('加入購物車 payload', payload)
     const res = await addCartAPI(payload)
     console.log('購物車回傳資料', res)
+
+    // ✅ 從後端抓最新購物車，HeaderBar 會同步更新
+    if (memberId.value) {
+      await cartStore.fetchCart()
+    }
+
     alert(`✅ 已加入購物車：${b.title}`)
   } catch (e: any) {
     console.error('加入購物車錯誤', e)
@@ -143,10 +150,31 @@ async function addToCart(b: Book) {
       <button :class="{ active: tab === 'hot' }" @click="setTab('hot')">熱門排行</button>
       <button :class="{ active: tab === 'list' }" @click="setTab('list')">二手書</button>
       <div class="spacer"></div>
+      <!-- 改成 SVG 按鈕的 pager -->
       <div class="pager" v-if="tab !== 'list'">
-        <button @click="prev" :disabled="page <= 1">‹</button>
+        <button @click="prev" :disabled="page <= 1" aria-label="上一頁">
+          <svg
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="M15 18 L9 12 L15 6" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
+
         <span>{{ page }}</span>
-        <button @click="next" :disabled="page * pageSize >= total">›</button>
+
+        <button @click="next" :disabled="page * pageSize >= total" aria-label="下一頁">
+          <svg
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="M9 6 L15 12 L9 18" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -194,15 +222,78 @@ async function addToCart(b: Book) {
 .pager {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 4px;
 }
 .pager button {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  border: 1px solid #e1e1e1;
-  background: #fff;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid #e6eefc;
+  background: #ffffff;
   cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease;
+  padding: 0;
+  box-sizing: border-box;
+}
+/* SVG 在按鈕裡的尺寸與顏色 */
+.pager button svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  stroke: #333;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* hover / focus 效果（除 disabled） */
+.pager button:hover:not(:disabled),
+.pager button:focus:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(13, 110, 253, 0.12);
+  border-color: #0d6efd;
+}
+
+/* 點擊時的微動畫 */
+.pager button:active:not(:disabled) {
+  transform: translateY(-1px) scale(0.98);
+}
+
+/* disabled 樣式 */
+.pager button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  border-color: #eee;
+}
+
+/* 當前頁數視覺（圓角膠囊） */
+.pager span {
+  min-width: 46px;
+  text-align: center;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f7f9ff;
+  border: 1px solid #eef4ff;
+  color: #0b5ed7;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.02);
+  user-select: none;
+  font-size: 14px;
 }
 .grid {
   display: grid;

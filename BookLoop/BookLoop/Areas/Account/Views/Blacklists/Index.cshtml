@@ -5,53 +5,190 @@
     var canCreate = (await Authz.AuthorizeAsync(User, null, "Blacklists.Create")).Succeeded;
 }
 
-<h2 class="mb-3 page-title">⛔ 黑名單列表</h2>
+<div class="page-wrap container-fluid px-3 py-2">
+    <div class="d-flex align-items-center mb-2 list-header">
+        <h2 class="page-title mb-0">⛔ 黑名單列表</h2>
+        <div class="ms-auto list-tools" style="min-width:320px">
+            @await Html.PartialAsync("_ListFilterBar", viewData: new ViewDataDictionary(ViewData) {
+                ["keywordName"]  = "keyword",
+                ["keywordValue"] = Model.Keyword ?? "",
 
-@await Html.PartialAsync("_Alerts")
+                ["statusPartial"] = await Html.PartialAsync("_StatusSelect",
+                    viewData: new ViewDataDictionary(ViewData) {
+                        ["selected"]   = Model.Status,
+                        ["includeAll"] = true,
+                        ["allText"]    = "全部狀態",
+                        ["name"]       = "status",
+                        ["class"]      = "form-select js-auto-submit"
+                }),
 
-<div class="list-shell">
-    @await Html.PartialAsync("_ListFilterBar", viewData: new ViewDataDictionary(ViewData) {
-        ["keywordName"]  = "keyword",
-        ["keywordValue"] = Model.Keyword ?? "",
+                ["pageSizePartial"] = await Html.PartialAsync("_PageSizeSelect",
+                    viewData: new ViewDataDictionary(ViewData) {
+                        ["selected"] = Model.PageSize,
+                        ["name"]     = "pageSize",
+                        ["class"]    = "form-select js-auto-submit",
+                        ["sizes"]    = new[] { 10, 20, 50 }
+                }),
 
-        ["statusPartial"] = await Html.PartialAsync("_StatusSelect",
-            viewData: new ViewDataDictionary(ViewData) {
-                ["selected"]   = Model.Status,
-                ["includeAll"] = true,
-                ["allText"]    = "全部狀態",
-                ["name"]       = "status",
-                ["class"]      = "form-select js-auto-submit"
-            }
-        ),
+                ["newButton"]     = canCreate,
+                ["newText"]       = "➕ 新增黑名單",
+                ["newPolicy"]     = "Blacklists.Create",
+                ["newAction"]     = "Create",
+                ["newController"] = "Blacklists",
+                ["newArea"]       = "Account",
+                ["newClass"] = "fw-bold"
+            })
+        </div>
+    </div>
 
-        ["pageSizePartial"] = await Html.PartialAsync("_PageSizeSelect",
-            viewData: new ViewDataDictionary(ViewData) {
-                ["selected"] = Model.PageSize,
-                ["name"]     = "pageSize",
-                ["class"]    = "form-select js-auto-submit",
-                ["sizes"]    = new[] { 10, 20, 50 }
-            }
-        ),
+    @await Html.PartialAsync("_Alerts")
 
-        // 用 Create policy 控制「新增黑名單」按鈕
-        ["newButton"]      = canCreate,
-        ["newText"]        = "新增黑名單",
-        ["newAction"]      = "Create",
-        ["newController"]  = "Blacklists",
-        ["newArea"]        = "Account"
-    })
-
-    <div id="list-container">
-        @await Html.PartialAsync("_BlacklistsList", Model)
+    <div class="list-shell card shadow-sm">
+        <div class="card-body p-0">
+            <div id="list-container">
+                @* 首次 SSR；之後由 _ListAjaxScripts 局部刷新 *@
+                @await Html.PartialAsync("_BlacklistsList", Model)
+            </div>
+        </div>
     </div>
 </div>
 
+@* 刪除用 Modal（AJAX） *@
+<authorize policy="Blacklists.Delete">
+<div class="modal fade" id="delModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow">
+      <form id="delForm" method="post" data-action="@Url.Action("DeleteAjax","Blacklists", new { area="Account" })">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" id="del-id" />
+        <div class="modal-header">
+          <h5 class="modal-title">刪除黑名單</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-warning mb-0">
+            你即將刪除下列黑名單紀錄（此動作無法還原）：
+            <div class="mt-2 small">
+              <div><strong>ID：</strong><span id="del-bid">-</span></div>
+              <div><strong>會員：</strong><span id="del-name">-</span></div>
+              <div><strong>Email：</strong><span id="del-email">-</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="submit" class="btn btn-danger fw-bold">確認刪除</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+</authorize>
+
+@* 共用 AJAX 腳本（搜尋/排序/分頁/History） *@
+@await Html.PartialAsync("_ListAjaxScripts", viewData: new ViewDataDictionary(ViewData) {
+    ["controller"] = "Blacklists",
+    ["area"] = "Account",
+    ["listAction"] = "List",
+    ["indexAction"] = "Index",
+    ["formId"] = "filter-form",
+    ["containerId"] = "list-container"
+})
+
+@section Styles {
+<style>
+  .page-wrap { padding-top: 10px; padding-bottom: 12px; }
+  .list-header .page-title { line-height: 1.15; }
+  .list-tools { display:flex; justify-content:flex-end; align-items:center; gap:.5rem; }
+  .list-tools form { margin: 0; }
+  .list-tools .btn, .list-tools .form-control, .list-tools .form-select { height: 36px; }
+
+  #list-container table.table th,
+  #list-container table.table td { padding: .7rem .75rem; vertical-align: middle; }
+
+  #list-container .badge { font-size: .95rem; padding: .35rem .6rem; border-radius: 50rem; }
+
+  /* 統一按鈕外觀：粗體 + 實心色 */
+  #list-container .btn { font-weight: 700; padding: .42rem .8rem; font-size: .95rem; }
+  #list-container .btn-outline-secondary { background-color: var(--bs-secondary)!important; border-color: var(--bs-secondary)!important; color:#fff!important; }
+  #list-container .btn-outline-primary  { background-color: var(--bs-warning)!important;   border-color: var(--bs-warning)!important;   color:#000!important; } /* 編輯：黃 */
+  #list-container .btn-outline-danger   { background-color: var(--bs-danger)!important;    border-color: var(--bs-danger)!important;    color:#fff!important; }
+
+  /* 顏色保險：檢視=info、編輯=warning、刪除=danger */
+  #list-container a[href*="/Blacklists/Details"] { background-color: var(--bs-info)!important;    border-color: var(--bs-info)!important;    color:#fff!important; }
+  #list-container a[href*="/Blacklists/Edit"]    { background-color: var(--bs-warning)!important; border-color: var(--bs-warning)!important; color:#000!important; }
+  #list-container .js-del                        { background-color: var(--bs-danger)!important;  border-color: var(--bs-danger)!important;  color:#fff!important; }
+
+  /* 表格與分頁貼齊再微鬆 */
+  #list-container .list-table { margin-bottom: 0 !important; }
+  .list-pager { padding-top: 2px !important; padding-bottom: 6px !important; }
+  #list-container .list-table tbody tr:last-child td { padding-bottom: .4rem; }
+</style>
+}
+
 @section Scripts {
 <script>
-  listPageBoot({
-    listUrl:  '@Url.Action("List",  "Blacklists", new { area = "Account" })',
-    indexUrl: '@Url.Action("Index", "Blacklists", new { area = "Account" })',
-    onAfterRender: ()=>{}
-  });
+  (function(){
+    const container = document.getElementById('list-container');
+    if (!container) return;
+
+    // 開啟刪除對話框（事件代理）
+    container.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.js-del');
+      if (!btn) return;
+      ev.preventDefault();
+      document.getElementById('del-id').value        = btn.dataset.id || '';
+      document.getElementById('del-bid').textContent = btn.dataset.id || '-';
+      document.getElementById('del-name').textContent= btn.dataset.name || '-';
+      document.getElementById('del-email').textContent= btn.dataset.email || '-';
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('delModal')).show();
+    });
+
+    // 刪除送出（AJAX）
+    const delForm = document.getElementById('delForm');
+    if (delForm) {
+      delForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const url = delForm.getAttribute('data-action');
+        const fd  = new FormData(delForm);
+        try {
+          const resp = await fetch(url, { method:'POST', body: fd, headers:{'X-Requested-With':'XMLHttpRequest'} });
+          const data = await resp.json();
+          if (data?.ok) {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('delModal')).hide();
+            if (window.paramsFromForm && window.loadList) {
+              const p = paramsFromForm(); p.set('page','1'); loadList(p);
+            } else {
+              location.href='@Url.Action("Index","Blacklists", new { area="Account" })';
+            }
+          } else {
+            alert(data?.message || '刪除失敗');
+          }
+        } catch { alert('刪除失敗，請稍後再試。'); }
+      });
+    }
+
+    // 關鍵字即時搜尋（300ms）
+    (function(){
+      const form = document.getElementById('filter-form');
+      const input = form?.querySelector("input[name='keyword']");
+      if (!form || !input) return;
+      let composing=false, t=null; const DEBOUNCE=300;
+      input.addEventListener('compositionstart', ()=> composing=true);
+      input.addEventListener('compositionend',   ()=> { composing=false; trigger(); });
+      input.addEventListener('input', trigger);
+      function trigger(){
+        if (composing) return;
+        clearTimeout(t);
+        t=setTimeout(()=>{
+          if (window.paramsFromForm && window.loadList) {
+            const p=paramsFromForm(); p.set('page','1'); loadList(p);
+          } else {
+            try { form.requestSubmit(); } catch { form.submit(); }
+          }
+        }, DEBOUNCE);
+      }
+    })();
+  })();
 </script>
 }

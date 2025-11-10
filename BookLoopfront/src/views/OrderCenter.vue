@@ -5,7 +5,8 @@ import { getOrdersByMember, getOrderDetail, cancelOrder, deleteOrder, Order } fr
 import { createReturn, getReturnsByOrder, ReturnInfo, getStatusText } from '@/api/return'
 import { cancelReturn } from '@/api/return'
 import { useAuth } from '@/stores/auth'
-import { getShipmentByOrder, updateShipment, ShipmentInfo ,createShipment} from '@/api/shipment'
+import { getShipmentByOrder, updateShipment, ShipmentInfo, createShipment } from '@/api/shipment'
+import http from '@/lib/http'
 
 const router = useRouter()
 const route = useRoute()
@@ -21,35 +22,33 @@ const memberId = computed<number | null>(() => {
 const shipmentMap = ref<Record<number, ShipmentInfo>>({}) // key = OrderID
 
 async function onChangeShipment(orderId: number, provider: string) {
-  if (!provider) return; // 未選擇物流不處理
+  if (!provider) return // 未選擇物流不處理
   try {
     // 統一呼叫 createShipment，由後端自動覆蓋或建立
-    const shipment = await createShipment({ orderID: orderId, provider });
+    const shipment = await createShipment({ orderID: orderId, provider })
 
     // 後端會自動生成 TrackingNumber 並固定 Status = 0 (待出貨)
-    shipmentMap.value[orderId] = shipment;
+    shipmentMap.value[orderId] = shipment
 
-    alert(`✅ 物流公司已更新\n追蹤號碼：${shipment.trackingNumber}\n狀態：待出貨`);
+    alert(`✅ 物流公司已更新\n追蹤號碼：${shipment.trackingNumber}\n狀態：待出貨`)
   } catch (err) {
-    console.error('更新物流失敗', err);
-    alert('❌ 更新物流失敗，請稍後再試');
+    console.error('更新物流失敗', err)
+    alert('❌ 更新物流失敗，請稍後再試')
   }
 }
 // function goHome() {
 //   router.push('/') // 導向首頁
 
-
 // 載入物流（初始化時）
 async function loadShipment(orderId: number) {
   try {
-    const shipment = await getShipmentByOrder(orderId);
-    shipmentMap.value[orderId] = shipment;
+    const shipment = await getShipmentByOrder(orderId)
+    shipmentMap.value[orderId] = shipment
   } catch (err) {
     // 沒有物流資料不用理會
-    console.warn(`尚無物流資料 for OrderID ${orderId}`, err);
+    console.warn(`尚無物流資料 for OrderID ${orderId}`, err)
   }
 }
-
 
 // Tab: 'orders'=我的訂單, 'details'=單筆明細, 'allDetails'=所有訂單明細, 'returns'=退貨紀錄
 const currentTab = ref<'orders' | 'details' | 'allDetails' | 'returns'>('orders')
@@ -58,18 +57,9 @@ const selectedOrder = ref<Order | null>(null)
 // const returns = ref<any[]>([])
 const returns = ref<ReturnInfo[]>([])
 
-
-
-
-
-
-
 function goHome() {
   router.push('/') // 導向首頁
 }
-
-
-
 
 // 訂單狀態對應
 const orderStatusMap: Record<number, string> = {
@@ -108,9 +98,97 @@ async function loadOrders() {
 }
 
 async function onPay(orderId: number) {
-  window.open(`https://localhost:7176/Orders/Orders/GoToPayment?orderId=${orderId}`, '_blank')
-  // 整合 ECPay
+  try {
+    const res = await http.post('/api/Order/GoToPayment', { OrderID: orderId })
+    const resp = res?.data
+    console.log('[GoToPayment] raw response (resp):', resp)
+
+    if (!resp) throw new Error('後端沒有回傳 data')
+
+    const stageUrl = 'https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5'
+    const prodUrl = 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5'
+    const isProd =
+      window.location.hostname !== 'localhost' && !window.location.hostname.includes('dev')
+
+    // 取得來源欄位物件（可能在 resp.fields、resp.data.fields，或直接 resp）
+    let fieldsSrc: Record<string, any> = {}
+    if (resp.fields) fieldsSrc = resp.fields
+    else if (resp.data && resp.data.fields) fieldsSrc = resp.data.fields
+    else fieldsSrc = resp
+
+    // 目標欄位（與後端簽章用的一模一樣）
+    const KEYS = [
+      'MerchantID',
+      'MerchantTradeNo',
+      'MerchantTradeDate',
+      'PaymentType',
+      'TotalAmount',
+      'TradeDesc',
+      'ItemName',
+      'ReturnURL',
+      'OrderResultURL',
+      'ChoosePayment',
+      'EncryptType',
+      'CheckMacValue',
+    ]
+
+    // case-insensitive map：找出 fieldsSrc 中對應的 key（不分大小寫）
+    const srcKeys = Object.keys(fieldsSrc || {})
+    const fields: Record<string, string> = {}
+
+    for (const k of KEYS) {
+      const found = srcKeys.find((s) => s.toLowerCase() === k.toLowerCase())
+      let v: any = undefined
+      if (found !== undefined) v = (fieldsSrc as any)[found]
+      else if ((fieldsSrc as any)[k] !== undefined) v = (fieldsSrc as any)[k]
+      else if ((fieldsSrc as any)[k[0].toLowerCase() + k.slice(1)] !== undefined)
+        v = (fieldsSrc as any)[k[0].toLowerCase() + k.slice(1)]
+      fields[k] = v == null ? '' : String(v)
+    }
+
+    // TotalAmount 確保為整數字串
+    if (fields.TotalAmount) {
+      const amt = Math.round(Number(fields.TotalAmount)) || 0
+      fields.TotalAmount = String(amt)
+    }
+
+    // CheckMacValue 強制大寫（與你後端一致）
+    if (fields.CheckMacValue) fields.CheckMacValue = fields.CheckMacValue.toUpperCase()
+
+    // DEBUG: 一定要用 JSON.stringify 讓內容一眼看清楚（貼給我）
+    console.log('[GoToPayment] fields from server (fieldsSrc) JSON:', JSON.stringify(fieldsSrc))
+    console.log('[GoToPayment] normalized fields to submit (fields) JSON:', JSON.stringify(fields))
+
+    // 在送出前暫停（DevTools 會停在這裡），你可以檢查 fields 與 fieldsSrc
+    debugger
+
+    const actionUrl = resp.action ?? (isProd ? prodUrl : stageUrl)
+
+    const form = document.createElement('form')
+    form.method = 'POST'
+    form.action = actionUrl
+    form.style.display = 'none'
+
+    for (const k of KEYS) {
+      const input = document.createElement('input')
+      input.type = 'hidden'
+      input.name = k
+      input.value = fields[k] ?? ''
+      form.appendChild(input)
+    }
+
+    document.body.appendChild(form)
+    form.submit()
+    setTimeout(() => {
+      if (form.parentNode) form.parentNode.removeChild(form)
+    }, 1200)
+  } catch (err: any) {
+    console.error('呼叫 GoToPayment 失敗', err)
+    const message = err?.response?.data?.message ?? err?.message ?? JSON.stringify(err)
+    alert(`無法建立付款：${message}`)
+  }
 }
+
 // 載入會員所有退貨紀錄
 async function loadAllReturns() {
   if (!orders.value.length) return // 🔹 防護：沒有訂單就不抓
@@ -298,19 +376,20 @@ onMounted(async () => {
         <div class="row g-3">
           <div v-for="order in orders" :key="order.OrderID" class="col-md-6">
             <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
-
-                  <!-- 物流公司下拉選單 -->
-        <select class="form-select form-select-sm position-absolute top-0 end-0 m-2 shadow-sm"
-                style="width: 140px;"
+              <!-- 物流公司下拉選單 -->
+              <select
+                class="form-select form-select-sm position-absolute top-0 end-0 m-2 shadow-sm"
+                style="width: 140px"
                 :value="shipmentMap[order.OrderID!]?.provider || ''"
-                @change="onChangeShipment(order.OrderID!, ($event.target as HTMLSelectElement).value)">
-          <option value="">請選擇物流公司</option>
-          <option value="黑貓宅急便">黑貓宅急便</option>
-          <option value="宅配通">宅配通</option>
-          <option value="新竹物流">新竹物流</option>
-        </select>
-
-
+                @change="
+                  onChangeShipment(order.OrderID!, ($event.target as HTMLSelectElement).value)
+                "
+              >
+                <option value="">請選擇物流公司</option>
+                <option value="黑貓宅急便">黑貓宅急便</option>
+                <option value="宅配通">宅配通</option>
+                <option value="新竹物流">新竹物流</option>
+              </select>
 
               <div class="card-body">
                 <h5 class="card-title mb-2 fw-bold text-primary">
@@ -326,18 +405,18 @@ onMounted(async () => {
                     >NT$ {{ order.TotalAmount ?? 0 }}</span
                   ><br />
                   📦 狀態：<span
-                          class="badge"
-                          :class="{
-                            'bg-warning text-dark': order.Status === 0, // 待付款
-                            'bg-primary': order.Status === 1,           // 已付款
-                            'bg-info text-dark': order.Status === 2,    // 已出貨
-                            'bg-success': order.Status === 3,           // 完成訂單
-                            'bg-danger': order.Status === 4,            // 已取消
-                            'bg-secondary': order.Status == null        // 其他狀態
-                          }"
-                        >
-                          {{ orderStatusMap[order.Status ?? 0] }}
-                        </span>
+                    class="badge"
+                    :class="{
+                      'bg-warning text-dark': order.Status === 0, // 待付款
+                      'bg-primary': order.Status === 1, // 已付款
+                      'bg-info text-dark': order.Status === 2, // 已出貨
+                      'bg-success': order.Status === 3, // 完成訂單
+                      'bg-danger': order.Status === 4, // 已取消
+                      'bg-secondary': order.Status == null, // 其他狀態
+                    }"
+                  >
+                    {{ orderStatusMap[order.Status ?? 0] }}
+                  </span>
                 </p>
 
                 <!-- 按鈕區 -->
@@ -363,7 +442,6 @@ onMounted(async () => {
                   <button
                     class="btn btn-sm btn-warning flex-grow-1"
                     @click="onReturn(order.OrderID!)"
-                    
                   >
                     退貨
                   </button>
@@ -382,69 +460,10 @@ onMounted(async () => {
         </div>
       </div>
     </div>
-</div>
-    <!-- 單筆訂單明細 -->
-    <div v-if="currentTab === 'details' && selectedOrder" class="mt-4">
-      <h4>訂單明細：#{{ selectedOrder.OrderID }}</h4>
-      <div class="card shadow-sm bg-white p-3">
-        <table class="table table-hover mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>書籍</th>
-              <th>數量</th>
-              <th>單價</th>
-              <th>小計</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in selectedOrder.OrderDetails" :key="item.BookID">
-              <td>
-                <div class="d-flex align-items-center gap-3 flex-grow-1">
-                  <img
-                    :src="
-                      item.Book?.coverUrl && item.Book.coverUrl.startsWith('http')
-                        ? item.Book.coverUrl
-                        : `/api/BookImages/${item.Book?.id}/cover`
-                    "
-                    :alt="item.Book?.title || 'Book Cover'"
-                    error="(e: Event) => {
-                        const target = e.currentTarget as HTMLImageElement | null;
-                        if(target) target.src='/placeholder.png'
-                    }"
-                    class="rounded shadow-sm"
-                    style="width: 60px; height: 80px; object-fit: cover"
-                  />
-                  <div>
-                    <strong class="fs-6">{{ item.Book?.title || '(已下架)' }}</strong>
-                    <div class="text-muted small">
-                      NT$ {{ item.Book?.salePrice ?? item.UnitPrice ?? 0 }}
-                    </div>
-                  </div>
-                </div>
-              </td>
-
-              <td>{{ item.Quantity }}</td>
-              <td>NT$ {{ item.UnitPrice }}</td>
-              <td>NT$ {{ item.Quantity * item.UnitPrice }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="text-end fs-5 fw-bold mt-3">總金額：NT$ {{ selectedOrder.TotalAmount }}</div>
-      </div>
-    </div>
-
-    <!-- 所有訂單明細 -->
-<div v-if="currentTab === 'allDetails'" class="mt-4">
-  <h4>所有訂單明細</h4>
-  <div v-if="allOrderDetailsGroupedArray.length === 0">目前沒有訂單明細</div>
-
-  <div
-    v-for="group in allOrderDetailsGroupedArray"
-    :key="group.orderId"
-    class="mb-4"
-  >
-    <h5 class="mb-3">訂單 #{{ group.orderId }}</h5>
-
+  </div>
+  <!-- 單筆訂單明細 -->
+  <div v-if="currentTab === 'details' && selectedOrder" class="mt-4">
+    <h4>訂單明細：#{{ selectedOrder.OrderID }}</h4>
     <div class="card shadow-sm bg-white p-3">
       <table class="table table-hover mb-0">
         <thead class="table-light">
@@ -456,27 +475,25 @@ onMounted(async () => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in group.details" :key="item.BookID">
+          <tr v-for="item in selectedOrder.OrderDetails" :key="item.BookID">
             <td>
               <div class="d-flex align-items-center gap-3 flex-grow-1">
-                                <img
-                    :src="
-                      item.Book?.coverUrl && item.Book.coverUrl.startsWith('http')
-                        ? item.Book.coverUrl
-                        : `/api/BookImages/${item.Book?.id}/cover`
-                    "
-                    :alt="item.Book?.title || 'Book Cover'"
-                    @error="(e) => {
-                      const target = e.target as HTMLImageElement | null
-                      if (target) target.src = '/placeholder.png'
+                <img
+                  :src="
+                    item.Book?.coverUrl && item.Book.coverUrl.startsWith('http')
+                      ? item.Book.coverUrl
+                      : `/api/BookImages/${item.Book?.id}/cover`
+                  "
+                  :alt="item.Book?.title || 'Book Cover'"
+                  error="(e: Event) => {
+                        const target = e.currentTarget as HTMLImageElement | null;
+                        if(target) target.src='/placeholder.png'
                     }"
-                    class="rounded shadow-sm"
-                    style="width: 60px; height: 80px; object-fit: cover"
-                  />
+                  class="rounded shadow-sm"
+                  style="width: 60px; height: 80px; object-fit: cover"
+                />
                 <div>
-                  <strong class="fs-6">
-                    {{ item.Book?.title || '(已下架)' }}
-                  </strong>
+                  <strong class="fs-6">{{ item.Book?.title || '(已下架)' }}</strong>
                   <div class="text-muted small">
                     NT$ {{ item.Book?.salePrice ?? item.UnitPrice ?? 0 }}
                   </div>
@@ -490,42 +507,96 @@ onMounted(async () => {
           </tr>
         </tbody>
       </table>
-      <div class="text-end fs-5 fw-bold mt-3">
-        總金額：NT$ {{ group.total }}
+      <div class="text-end fs-5 fw-bold mt-3">總金額：NT$ {{ selectedOrder.TotalAmount }}</div>
+    </div>
+  </div>
+
+  <!-- 所有訂單明細 -->
+  <div v-if="currentTab === 'allDetails'" class="mt-4">
+    <h4>所有訂單明細</h4>
+    <div v-if="allOrderDetailsGroupedArray.length === 0">目前沒有訂單明細</div>
+
+    <div v-for="group in allOrderDetailsGroupedArray" :key="group.orderId" class="mb-4">
+      <h5 class="mb-3">訂單 #{{ group.orderId }}</h5>
+
+      <div class="card shadow-sm bg-white p-3">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>書籍</th>
+              <th>數量</th>
+              <th>單價</th>
+              <th>小計</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in group.details" :key="item.BookID">
+              <td>
+                <div class="d-flex align-items-center gap-3 flex-grow-1">
+                  <img
+                    :src="
+                      item.Book?.coverUrl && item.Book.coverUrl.startsWith('http')
+                        ? item.Book.coverUrl
+                        : `/api/BookImages/${item.Book?.id}/cover`
+                    "
+                    :alt="item.Book?.title || 'Book Cover'"
+                    @error="
+                      (e) => {
+                        const target = e.target as HTMLImageElement | null
+                        if (target) target.src = '/placeholder.png'
+                      }
+                    "
+                    class="rounded shadow-sm"
+                    style="width: 60px; height: 80px; object-fit: cover"
+                  />
+                  <div>
+                    <strong class="fs-6">
+                      {{ item.Book?.title || '(已下架)' }}
+                    </strong>
+                    <div class="text-muted small">
+                      NT$ {{ item.Book?.salePrice ?? item.UnitPrice ?? 0 }}
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+              <td>{{ item.Quantity }}</td>
+              <td>NT$ {{ item.UnitPrice }}</td>
+              <td>NT$ {{ item.Quantity * item.UnitPrice }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="text-end fs-5 fw-bold mt-3">總金額：NT$ {{ group.total }}</div>
       </div>
     </div>
   </div>
-</div>
 
- <!-- 退貨紀錄 -->
-    <div v-if="currentTab === 'returns'" class="mt-4">
-      <h4>退貨紀錄</h4>
-      <div v-if="returns.length === 0" class="text-muted py-3">目前沒有退貨紀錄</div>
-      <div class="row g-3">
-        <div v-for="r in returns" :key="r.returnID" class="col-md-6">
-          <div class="card shadow-sm border-0 rounded-4 overflow-hidden position-relative">
-            <button
-              v-if="r.status !== 9"
-              class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-2"
-              @click="cancelReturnOrder(r.returnID)"
-            >
-              ❌ 取消退貨
-            </button>
-            <div class="card-body">
-              <h5 class="card-title fw-bold text-primary">退貨編號：#{{ r.returnID }}</h5>
-              <p class="card-text mb-1">📝 原因：{{ r.returnReason }}</p>
-              <p class="card-text mb-1">
-                📦 狀態：<span class="badge bg-warning text-dark">{{
-                  getStatusText(r.status)
-                }}</span>
-              </p>
-              <p class="card-text text-muted small">訂單編號：#{{ r.orderID }}</p>
-            </div>
+  <!-- 退貨紀錄 -->
+  <div v-if="currentTab === 'returns'" class="mt-4">
+    <h4>退貨紀錄</h4>
+    <div v-if="returns.length === 0" class="text-muted py-3">目前沒有退貨紀錄</div>
+    <div class="row g-3">
+      <div v-for="r in returns" :key="r.returnID" class="col-md-6">
+        <div class="card shadow-sm border-0 rounded-4 overflow-hidden position-relative">
+          <button
+            v-if="r.status !== 9"
+            class="btn btn-sm btn-outline-danger position-absolute top-0 end-0 m-2"
+            @click="cancelReturnOrder(r.returnID)"
+          >
+            ❌ 取消退貨
+          </button>
+          <div class="card-body">
+            <h5 class="card-title fw-bold text-primary">退貨編號：#{{ r.returnID }}</h5>
+            <p class="card-text mb-1">📝 原因：{{ r.returnReason }}</p>
+            <p class="card-text mb-1">
+              📦 狀態：<span class="badge bg-warning text-dark">{{ getStatusText(r.status) }}</span>
+            </p>
+            <p class="card-text text-muted small">訂單編號：#{{ r.orderID }}</p>
           </div>
         </div>
       </div>
     </div>
- 
+  </div>
 </template>
 
 <style scoped>

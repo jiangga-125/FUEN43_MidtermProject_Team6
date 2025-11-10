@@ -1,7 +1,7 @@
 ﻿@model IEnumerable<BookLoop.Models.Template>
 
 @{
-    ViewData["Title"] = "範本群組";
+    ViewData["Title"] = "模板群組";
 }
 
 <div class="container-fluid mt-4">
@@ -11,7 +11,7 @@
            asp-area="Mail"
            asp-controller="Templates"
            asp-action="Create">
-            新增範本群組
+            新增模板群組
         </a>
     </div>
 
@@ -60,7 +60,7 @@
                 }
                 else
                 {
-                    <tr><td colspan="5" class="text-center text-muted">目前尚無範本群組，請先建立。</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted">目前尚無模板群組，請先建立。</td></tr>
                 }
             </tbody>
         </table>

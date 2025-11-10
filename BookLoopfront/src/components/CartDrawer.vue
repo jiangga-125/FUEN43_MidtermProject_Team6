@@ -367,7 +367,7 @@ async function checkoutCart() {
                   </div>
                   <div class="text-end">
                     <span v-if="c.DiscountType === 0">折抵 NT$ {{ c.DiscountValue }}</span>
-                    <span v-else>{{ c.DiscountValue }}% 折扣</span>
+                    <span v-else>{{ c.DiscountValue }}</span>
                     <button
                       class="btn btn-sm btn-outline-success ms-2"
                       @click="useCoupon(c)"
@@ -437,7 +437,7 @@ async function checkoutCart() {
   z-index: 2100;
   background: #fff;
   width: 900px;
-  height: 900px;
+  height: 900px; /* 保留固定初始高度 */
   max-width: 95%;
   max-height: 95%;
   padding: 2.5rem;
@@ -445,7 +445,10 @@ async function checkoutCart() {
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+}
+.modal-body {
+  flex-grow: 1;      /* 撐滿 modal-content 高度 */
+  overflow-y: auto;  /* 超過高度自動滾動 */
 }
 
 .cart-list {

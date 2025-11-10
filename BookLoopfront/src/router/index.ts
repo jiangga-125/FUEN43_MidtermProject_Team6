@@ -1,7 +1,7 @@
 // src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '@/stores/auth'
-import { memberRoutes } from './member' // ⬅️ 會員中心巢狀路由（Profile/Security/...）
+import { memberRoutes } from './member'
 import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
 import Forgot from '@/views/Forgot.vue'
@@ -42,7 +42,13 @@ const router = createRouter({
       component: () => import('@/views/MemberCoupons.vue'),
     },
     // 商品詳細頁（props: true 會把 route.params 當 props 傳入元件）
-    { path: '/books/:id', name: 'BookDetail', component: BookDetail, props: true },
+    {
+      path: '/books/:id',
+      name: 'BookDetail',
+      component: BookDetail,
+      props: true,
+      meta: { public: true, title: '書籍詳情' },
+    },
     // fallback（務必放最後）
     { path: '/:pathMatch(.*)*', redirect: '/' },
     {

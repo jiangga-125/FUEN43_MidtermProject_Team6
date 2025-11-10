@@ -1,14 +1,12 @@
 ﻿@model IEnumerable<Account.Controllers.PermissionsController.FeatureVM>
 
 @{
-    Layout = "_Layout";
     ViewData["Title"] = "功能設定";
 
     var perm = ViewBag.Permission;
     var pickedAll = ((IEnumerable<int>)(ViewBag.CheckedIds ?? new List<int>())).ToHashSet();
     string Keyword = (ViewBag.Keyword as string) ?? "";
 
-    // 群組中文
     var groupLabel = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["Account"] = "帳號管理",
@@ -19,16 +17,13 @@
         ["未分組"] = "未分組"
     };
 
-    // 子模組中文
     var moduleLabel = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
-        // Account
         ["Users"] = "後台帳號",
         ["Permissions"] = "權限",
         ["Members"] = "會員帳號",
         ["Blacklists"] = "黑名單",
 
-        // Reports buckets
         ["Reports"] = "報表",
         ["Export"] = "匯出",
         ["Templates"] = "範本",
@@ -50,7 +45,6 @@
         _ => 99
     };
 
-    // 允許 1/2/3 段代碼：m / m.v / m.s.v
     (string module, string second, string verb) Parse3(string? code)
     {
         string m = "", s = "", v = "";
@@ -64,47 +58,33 @@
         return (m, s, v);
     }
 
-    // 以 Code 推論顯示群組（明確納入 Account.* 與 ReportMail.*）
     string GetGroupKey(Account.Controllers.PermissionsController.FeatureVM f)
     {
         var code = f.Code ?? "";
         var (m, _, _) = Parse3(code);
-
         if (code.StartsWith("Account.", StringComparison.OrdinalIgnoreCase)) return "Account";
         if (code.StartsWith("ReportMail.", StringComparison.OrdinalIgnoreCase)) return "Reports";
-
-        if (new[] { "Users", "Permissions", "Members", "Blacklists" }
-            .Contains(m, StringComparer.OrdinalIgnoreCase)) return "Account";
-
-        if (new[] { "Books", "Borrow", "Orders" }
-            .Contains(m, StringComparer.OrdinalIgnoreCase)) return m;
-
+        if (new[] { "Users", "Permissions", "Members", "Blacklists" }.Contains(m, StringComparer.OrdinalIgnoreCase)) return "Account";
+        if (new[] { "Books", "Borrow", "Orders" }.Contains(m, StringComparer.OrdinalIgnoreCase)) return m;
         return "未分組";
     }
 
-    // Reports 子桶（第二段）
     string GetReportsBucket(string? code)
     {
         var (_, second, _) = Parse3(code);
         return string.IsNullOrWhiteSpace(second) ? "Reports" : second;
     }
 
-    // 過濾：Account 僅保留四模組四動詞與 Account.Access；其餘群組全保留（含 Access）
     bool IsKept(Account.Controllers.PermissionsController.FeatureVM f)
     {
         var code = f.Code ?? "";
         var group = GetGroupKey(f);
-
         if (string.Equals(group, "Account", StringComparison.OrdinalIgnoreCase))
         {
             var (m, _, v) = Parse3(code);
             if (code.Equals("Account.Access", StringComparison.OrdinalIgnoreCase)) return true;
-
-            var allowModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                { "Users","Permissions","Members","Blacklists" };
-            var allowVerbs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                { "View","Create","Edit","Delete" };
-
+            var allowModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Users", "Permissions", "Members", "Blacklists" };
+            var allowVerbs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "View", "Create", "Edit", "Delete" };
             return allowModules.Contains(m) && allowVerbs.Contains(v);
         }
         return true;
@@ -113,155 +93,136 @@
     var filtered = Model.Where(IsKept).ToList();
     var picked = filtered.Where(f => pickedAll.Contains(f.FeatureID)).Select(f => f.FeatureID).ToHashSet();
     var totalVisible = filtered.Count;
+    var pickedCount = picked.Count;
 
-    // 分群＋排序（不渲染「未分組」）
-    var groups = filtered.GroupBy(GetGroupKey)
-                         .Where(g => !string.Equals(g.Key, "未分組", StringComparison.OrdinalIgnoreCase))
-                         .OrderBy(g => g.Key switch
-                         {
-                             "Account" => 1,
-                             "Books" => 2,
-                             "Borrow" => 3,
-                             "Orders" => 4,
-                             "Reports" => 5,
-                             _ => 9
-                         })
-                         .ThenBy(g => g.Key)
-                         .ToList();
+    var groups = filtered
+        .GroupBy(GetGroupKey)
+        .Where(g => !string.Equals(g.Key, "未分組", StringComparison.OrdinalIgnoreCase))
+        .OrderBy(g => g.Key switch { "Account" => 1, "Books" => 2, "Borrow" => 3, "Orders" => 4, "Reports" => 5, _ => 9 })
+        .ThenBy(g => g.Key)
+        .ToList();
 }
 
-<h2 class="mb-3 page-title">
-    🧩 權限功能設定 <small class="text-muted">@perm.PermName (@perm.PermKey)</small>
-</h2>
-@await Html.PartialAsync("_Alerts")
-
-<form id="af-form" class="d-none">@Html.AntiForgeryToken()</form>
-
-<div class="row g-2 align-items-center mb-3">
-    <div class="col-md-6">
-        <input id="live-search" class="form-control" placeholder="搜尋功能（名稱/代碼）" value="@Keyword" autocomplete="off" />
-    </div>
-    <div class="col-md-6 d-flex align-items-center justify-content-md-end gap-3">
-        <span class="text-muted">已勾選：<strong id="sel-count">@picked.Count</strong> / @totalVisible</span>
-        <authorize policy="Permissions.Features">
-            <button id="save-btn" type="button" class="btn btn-primary">儲存變更</button>
-        </authorize>
-        <a class="btn btn-outline-secondary" asp-area="Account" asp-controller="Permissions" asp-action="Index">返回清單</a>
-    </div>
-</div>
-
-<div id="feature-groups" class="vstack gap-3">
-    @foreach (var g in groups)
-    {
-        var grpKey = g.Key;
-        var grpName = groupLabel.TryGetValue(grpKey, out var zh) ? zh : grpKey;
-        var grpId = "grp_" + System.Text.RegularExpressions.Regex.Replace(grpKey, @"\W+", "_");
-
-        // Access（嚴格比對該群組）
-        var accessList = g.Where(f =>
-        {
-            var c = f.Code ?? "";
-            if (grpKey.Equals("Reports", StringComparison.OrdinalIgnoreCase))
-                return c.Equals("ReportMail.Access", StringComparison.OrdinalIgnoreCase);
-            if (grpKey.Equals("Account", StringComparison.OrdinalIgnoreCase))
-                return c.Equals("Account.Access", StringComparison.OrdinalIgnoreCase);
-            return c.Equals($"{grpKey}.Access", StringComparison.OrdinalIgnoreCase);
-        }).ToList();
-
-        // 非 Access
-        var others = g.Where(f => !(f.Code?.EndsWith(".Access", StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
-
-        // 分桶
-        IEnumerable<IGrouping<string, Account.Controllers.PermissionsController.FeatureVM>> buckets =
-        grpKey.Equals("Reports", StringComparison.OrdinalIgnoreCase)
-        ? others.GroupBy(f => GetReportsBucket(f.Code))
-        .OrderBy(b => { var i = reportsBucketOrder.IndexOf(b.Key); return i >= 0 ? i : int.MaxValue; })
-        .ThenBy(b => b.Key)
-        : grpKey.Equals("Account", StringComparison.OrdinalIgnoreCase)
-        ? others.GroupBy(f => Parse3(f.Code).module)
-        .OrderBy(b => { var i = accountModuleOrder.IndexOf(b.Key); return i >= 0 ? i : int.MaxValue; })
-        .ThenBy(b => b.Key)
-        : others.GroupBy(_ => grpKey) // Books/Borrow/Orders：單一卡
-        .OrderBy(b => 0);
-
-        <div class="card shadow-sm group-card" data-group="@grpKey">
-            <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <div class="fw-bold d-flex align-items-center gap-3">
-                    @* 門票勾選：只顯示勾勾，不顯示 “Access” 字樣 *@
-                    @foreach (var a in accessList)
-                    {
-                        <label class="d-inline-flex align-items-center gap-2 mb-0" title="@grpName 門票">
-                            <input class="form-check-input me-1 js-feature js-access"
-                                   type="checkbox"
-                                   value="@a.FeatureID"
-                                   @(picked.Contains(a.FeatureID) ? "checked" : "")
-                                   data-name="@grpName 門票" data-code="@a.Code" />
-                            <span class="visually-hidden">門票</span>
-                        </label>
-                    }
-                    <span>@grpName</span>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-primary js-group-selectall">全選</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary js-group-clear">清除</button>
-                    <button type="button"
-                            class="btn btn-sm btn-outline-dark js-group-toggle chev-btn"
-                            data-bs-toggle="collapse"
-                            data-bs-target="#@grpId-collapse"
-                            aria-expanded="@(grpKey.Equals("Account", StringComparison.OrdinalIgnoreCase) ? "true" : "false")"
-                            aria-controls="@grpId-collapse">
-                        <svg class="chev-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-                            <polyline points="4,8 12,16 20,8" fill="none" stroke="#1c2e4a" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <div id="@grpId-collapse" class="collapse @(grpKey.Equals("Account", StringComparison.OrdinalIgnoreCase) ? "show" : "")">
-                <div class="card-body">
-                    @if (!others.Any())
-                    {
-                        <div class="text-muted">（此群組目前只有門票可設定）</div>
-                    }
-                    else
-                    {
-                        <div class="vstack gap-3">
-                            @foreach (var bucket in buckets)
-                            {
-                                var title = bucket.Key;
-                                if (grpKey.Equals("Reports", StringComparison.OrdinalIgnoreCase) || grpKey.Equals("Account", StringComparison.OrdinalIgnoreCase))
-                                    title = moduleLabel.TryGetValue(bucket.Key, out var zh2) ? zh2 : bucket.Key;
-
-                                var ordered = bucket
-                                .OrderBy(f => grpKey.Equals("Account", StringComparison.OrdinalIgnoreCase)
-                                ? VerbRank(Parse3(f.Code).verb) : 99)
-                                .ThenBy(f => f.Name ?? "")
-                                .ToList();
-
-                                <div class="module-block" data-module="@bucket.Key">
-                                    <div class="mb-2 fw-semibold text-secondary">@title</div>
-                                    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-2">
-                                        @foreach (var f in ordered)
-                                        {
-                                            <div class="col">
-                                                <label class="d-flex align-items-start gap-2 border rounded p-2 hover-shadow-sm feature-item"
-                                                       data-name="@f.Name" data-code="@f.Code">
-                                                    <input class="form-check-input mt-1 js-feature"
-                                                           type="checkbox" value="@f.FeatureID"
-                                                           @(picked.Contains(f.FeatureID) ? "checked" : "") />
-                                                    <span class="fw-semibold">@f.Name</span>
-                                                </label>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
+<div class="page-wrap container-fluid px-3 py-2">
+    <div class="d-flex align-items-center mb-3 list-header">
+        <h2 class="page-title mb-0">🧩 權限功能設定</h2>
+        <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+            <input id="live-search" class="form-control" style="width:320px" placeholder="搜尋功能（名稱/代碼/群組/模組）" value="@Keyword" autocomplete="off" />
+            <span class="text-muted">已勾選：<strong id="sel-count">@pickedCount</strong> / @totalVisible</span>
+            <authorize policy="Permissions.Features">
+                <button id="save-btn" type="button" class="btn btn-primary fw-bold">儲存變更</button>
+            </authorize>
+            <a class="btn btn-secondary fw-bold" asp-area="Account" asp-controller="Permissions" asp-action="Index">返回清單</a>
         </div>
-    }
+    </div>
+
+    @await Html.PartialAsync("_Alerts")
+
+    <form id="af-form" class="d-none">@Html.AntiForgeryToken()</form>
+
+    <div id="feature-groups" class="vstack gap-3">
+        @{
+            var firstGroup = true;
+        }
+        @foreach (var g in groups)
+        {
+            var grpKey = g.Key;
+            var grpName = groupLabel.TryGetValue(grpKey, out var zh) ? zh : grpKey;
+            var grpId = "grp_" + System.Text.RegularExpressions.Regex.Replace(g.Key, @"\W+", "_");
+
+            var accessList = g.Where(f =>
+            {
+                var c = f.Code ?? "";
+                if (grpKey.Equals("Reports", StringComparison.OrdinalIgnoreCase)) return c.Equals("ReportMail.Access", StringComparison.OrdinalIgnoreCase);
+                if (grpKey.Equals("Account", StringComparison.OrdinalIgnoreCase)) return c.Equals("Account.Access", StringComparison.OrdinalIgnoreCase);
+                return c.Equals($"{grpKey}.Access", StringComparison.OrdinalIgnoreCase);
+            }).ToList();
+
+            var others = g.Where(f => !(f.Code?.EndsWith(".Access", StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
+
+            IEnumerable<IGrouping<string, Account.Controllers.PermissionsController.FeatureVM>> buckets =
+            grpKey.Equals("Reports", StringComparison.OrdinalIgnoreCase)
+            ? others.GroupBy(f => GetReportsBucket(f.Code))
+            .OrderBy(b => { var i = reportsBucketOrder.IndexOf(b.Key); return i >= 0 ? i : int.MaxValue; })
+            .ThenBy(b => b.Key)
+            : grpKey.Equals("Account", StringComparison.OrdinalIgnoreCase)
+            ? others.GroupBy(f => Parse3(f.Code).module)
+            .OrderBy(b => { var i = accountModuleOrder.IndexOf(b.Key); return i >= 0 ? i : int.MaxValue; })
+            .ThenBy(b => b.Key)
+            : others.GroupBy(_ => grpKey).OrderBy(b => 0);
+
+            var expand = firstGroup; firstGroup = false;
+            <div class="card shadow-sm group-card" data-group="@grpKey">
+                <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="fw-bold d-flex align-items-center gap-3">
+                        @foreach (var a in accessList)
+                        {
+                            <label class="d-inline-flex align-items-center gap-2 mb-0" title="@grpName 門票">
+                                <input class="form-check-input me-1 js-feature js-access" type="checkbox"
+                                       value="@a.FeatureID" @(picked.Contains(a.FeatureID) ? "checked" : "")
+                                       data-name="@grpName 門票" data-code="@a.Code" />
+                                <span class="visually-hidden">門票</span>
+                            </label>
+                        }
+                        <span>@grpName</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary js-group-selectall">全選</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary js-group-clear">清除</button>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary js-group-toggle chev-btn @(expand ? "open" : "")"
+                                data-bs-toggle="collapse" data-bs-target="#@grpId-collapse"
+                                aria-expanded="@(expand ? "true" : "false")" aria-controls="@grpId-collapse">
+                            <svg class="chev-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                                <polyline points="4,8 12,16 20,8" fill="none" stroke="#1c2e4a" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="@grpId-collapse" class="collapse @(expand ? "show" : "")">
+                    <div class="card-body">
+                        @if (!others.Any())
+                        {
+                            <div class="text-muted">（此群組目前只有門票可設定）</div>
+                        }
+                        else
+                        {
+                            <div class="vstack gap-3">
+                                @foreach (var bucket in buckets)
+                                {
+                                    var title = bucket.Key;
+                                    if (grpKey.Equals("Reports", StringComparison.OrdinalIgnoreCase) || grpKey.Equals("Account", StringComparison.OrdinalIgnoreCase))
+                                        title = moduleLabel.TryGetValue(bucket.Key, out var zh2) ? zh2 : bucket.Key;
+
+                                    var ordered = bucket
+                                    .OrderBy(f => grpKey.Equals("Account", StringComparison.OrdinalIgnoreCase) ? VerbRank(Parse3(f.Code).verb) : 99)
+                                    .ThenBy(f => f.Name ?? "")
+                                    .ToList();
+                                    <div class="module-block" data-module="@bucket.Key">
+                                        <div class="mb-2 fw-semibold text-secondary">@title</div>
+                                        <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-2">
+                                            @foreach (var f in ordered)
+                                            {
+                                                <div class="col">
+                                                    <label class="d-flex align-items-start gap-2 border rounded p-2 hover-shadow-sm feature-item"
+                                                           data-name="@f.Name" data-code="@f.Code">
+                                                        <input class="form-check-input mt-1 js-feature" type="checkbox"
+                                                               value="@f.FeatureID" @(picked.Contains(f.FeatureID) ? "checked" : "") />
+                                                        <span class="fw-semibold">@f.Name</span>
+                                                    </label>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
 </div>
 
 <authorize policy="Permissions.Features">
@@ -289,7 +250,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" id="confirm-apply" disabled>套用變更</button>
+                    <button type="button" class="btn btn-primary fw-bold" id="confirm-apply" disabled>套用變更</button>
                 </div>
             </div>
         </div>
@@ -298,8 +259,17 @@
 
 @section Styles {
     <style>
+        .page-wrap {
+            padding-top: 10px;
+            padding-bottom: 12px;
+        }
+
+        .list-header .page-title {
+            line-height: 1.15;
+        }
+
         .hover-shadow-sm:hover {
-            box-shadow: 0 0.2rem 0.6rem rgba(0,0,0,.08);
+            box-shadow: 0 .2rem .6rem rgba(0,0,0,.08);
         }
 
         .chev-btn {
@@ -319,28 +289,28 @@
         .chev-btn.open .chev-icon {
             transform: rotate(180deg);
         }
+
+        .chev-btn.btn-outline-secondary:active,
+        .chev-btn.btn-outline-secondary:focus,
+        .chev-btn.btn-outline-secondary[aria-expanded="true"],
+        .chev-btn.btn-outline-secondary.open {
+            background-color: #e9ecef !important;
+            color: #000 !important;
+            border-color: var(--bs-secondary) !important;
+            box-shadow: none !important;
+        }
     </style>
 }
 
 @section Scripts {
     <script>
         (() => {
-          const SINGLE_OPEN = false;
-          const anti     = document.querySelector('#af-form input[name="__RequestVerificationToken"]')?.value || '';
-          const permId   = @ViewBag.Permission.PermissionID;
+          const anti     = document.querySelector('#af-form input[name="__RequestVerificationToken"]')?.value ||
+                           document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
           const groupsEl = document.getElementById('feature-groups');
           const selCount = document.getElementById('sel-count');
           const searchEl = document.getElementById('live-search');
           const saveBtn  = document.getElementById('save-btn');
-
-          const initialPicked = new Set(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(picked)));
-
-          function currentCheckedSet(){
-            const s=new Set();
-            document.querySelectorAll('.js-feature:checked').forEach(cb=>s.add(Number(cb.value)));
-            return s;
-          }
-          function refreshCount(){ selCount.textContent = document.querySelectorAll('.js-feature:checked').length; }
 
           document.querySelectorAll('#feature-groups .group-card').forEach(card=>{
             const panel = card.querySelector('.collapse');
@@ -351,57 +321,50 @@
             panel.addEventListener('hidden.bs.collapse', ()=> btn.classList.remove('open'));
           });
 
-          groupsEl.addEventListener('change', e=>{
-            if(!e.target.closest('.js-feature')) return;
-            refreshCount();
-          });
+          function currentCheckedSet(){
+            const s=new Set();
+            document.querySelectorAll('.js-feature:checked').forEach(cb=>s.add(Number(cb.value)));
+            return s;
+          }
+          function refreshCount(){ selCount.textContent = document.querySelectorAll('.js-feature:checked').length; }
+          groupsEl.addEventListener('change', e=>{ if(e.target.closest('.js-feature')) refreshCount(); });
 
-          groupsEl.addEventListener('click', e=>{
-            const card = e.target.closest('.group-card'); if(!card) return;
-            if(e.target.closest('.js-group-selectall')){ card.querySelectorAll('.js-feature').forEach(cb=>cb.checked=true);  refreshCount(); }
-            if(e.target.closest('.js-group-clear'))    { card.querySelectorAll('.js-feature').forEach(cb=>cb.checked=false); refreshCount(); }
-            if(e.target.closest('.js-group-toggle') && SINGLE_OPEN){
-              const targetSel = e.target.closest('.js-group-toggle').getAttribute('data-bs-target');
-              const target = document.querySelector(targetSel);
-              document.querySelectorAll('#feature-groups .collapse.show').forEach(c=>{ if(c!==target){ bootstrap.Collapse.getOrCreateInstance(c).hide(); } });
-            }
-          });
-
-          // 即時搜尋（含門票）
+          let sTimer;
+          searchEl.addEventListener('input', ()=>{ clearTimeout(sTimer); sTimer=setTimeout(applyFilter, 120); });
+          function norm(s){ return (s||'').toLowerCase().trim(); }
           function applyFilter(){
-            const k=(searchEl.value||'').trim().toLowerCase();
+            const k = norm(searchEl.value);
             document.querySelectorAll('.group-card').forEach(card=>{
-              let any=false;
-              // Access
-              card.querySelectorAll('.js-access').forEach(cb=>{
-                const text=((cb.getAttribute('title')||'')+' '+(cb.getAttribute('data-code')||'')).toLowerCase();
-                if(k==='' || text.includes(k)) any=true;
-              });
-              // 其他 tiles
-              card.querySelectorAll('.feature-item').forEach(item=>{
-                const text=((item.dataset.name||'')+' '+(item.dataset.code||'')).toLowerCase();
-                const show = k==='' || text.includes(k);
-                item.style.display = show ? '' : 'none';
-                if(show) any=true;
-              });
-              // 子區塊是否顯示
+              const grpName = norm(card.querySelector('.card-header .fw-bold span:last-child')?.textContent);
+              let groupHasAny = false;
               card.querySelectorAll('.module-block').forEach(block=>{
-                const has = Array.from(block.querySelectorAll('.feature-item')).some(el=>el.style.display!=='none');
-                block.style.display = has ? '' : 'none';
-                if(has) any=true;
+                const moduleTitle = norm(block.querySelector('.fw-semibold')?.textContent);
+                let moduleHasAny = false;
+                block.querySelectorAll('.feature-item').forEach(item=>{
+                  const name = norm(item.dataset.name), code = norm(item.dataset.code);
+                  const show = !k || name.includes(k) || code.includes(k) || moduleTitle.includes(k) || grpName.includes(k);
+                  item.style.display = show ? '' : 'none';
+                  if (show) moduleHasAny = true;
+                });
+                block.style.display = moduleHasAny ? '' : 'none';
+                if (moduleHasAny) groupHasAny = true;
               });
-              // 只有門票時，標題匹配也顯示
-              if(!any){
-                const headerMatch = (card.querySelector('.fw-bold span:last-child')?.textContent||'').toLowerCase().includes(k);
-                if(k!=='' && headerMatch) any=true;
+              if (!groupHasAny) {
+                card.querySelectorAll('.js-access').forEach(cb=>{
+                  const t = norm(cb.getAttribute('title')) + ' ' + norm(cb.getAttribute('data-code'));
+                  if (!k || t.includes(k) || grpName.includes(k)) groupHasAny = true;
+                });
               }
-              card.style.display = any ? '' : 'none';
+              card.style.display = groupHasAny ? '' : 'none';
+              if (groupHasAny && k) {
+                const c = card.querySelector('.collapse');
+                if (c && !c.classList.contains('show')) bootstrap.Collapse.getOrCreateInstance(c).show();
+              }
             });
           }
-          searchEl.addEventListener('input', applyFilter);
           applyFilter();
 
-          // 確認與送出
+          const initialPicked = new Set(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(picked)));
           const confirmModalEl = document.getElementById('confirmModal');
           const confirmModal   = confirmModalEl ? new bootstrap.Modal(confirmModalEl) : null;
           const listAdded   = document.getElementById('list-added');
@@ -412,60 +375,82 @@
           let   pendingDiff = { added:[], removed:[] };
 
           function buildDiff(){
-            const now=currentCheckedSet();
-            const added=[], removed=[];
+            const now=currentCheckedSet(); const added=[], removed=[];
             const id2name=new Map();
             document.querySelectorAll('.js-feature').forEach(cb=>{
               const tile=cb.closest('.feature-item');
-              const name= tile ? (tile.dataset.name || ('#'+cb.value))
-                               : (cb.getAttribute('title') || ('#'+cb.value));
+              const name= tile ? (tile.dataset.name || ('#'+cb.value)) : (cb.getAttribute('title') || ('#'+cb.value));
               id2name.set(Number(cb.value), name);
             });
             now.forEach(id=>{ if(!initialPicked.has(id)) added.push({id, name:id2name.get(id)||('#'+id)}); });
             initialPicked.forEach(id=>{ if(!now.has(id)) removed.push({id, name:id2name.get(id)||('#'+id)}); });
 
-            if(listAdded)   listAdded.innerHTML   = added.length? added.map(x=>`<li>${x.name}</li>`).join('') : '<li class="text-muted">（無）</li>';
-            if(listRemoved) listRemoved.innerHTML = removed.length? removed.map(x=>`<li>${x.name}</li>`).join('') : '<li class="text-muted">（無）</li>';
+            listAdded.innerHTML   = added.length? added.map(x=>`<li>${x.name}</li>`).join('') : '<li class="text-muted">（無）</li>';
+            listRemoved.innerHTML = removed.length? removed.map(x=>`<li>${x.name}</li>`).join('') : '<li class="text-muted">（無）</li>';
             const has = added.length || removed.length;
-            if(noChange)  noChange.style.display = has ? 'none' : '';
-            if(confirmBtn) confirmBtn.disabled = !has;
+            noChange.style.display = has ? 'none' : '';
+            confirmBtn.disabled = !has;
             return {added,removed};
           }
 
           if (saveBtn && confirmModal) {
             saveBtn.addEventListener('click', ()=>{
-              if(errEl) errEl.classList.add('d-none');
+              errEl.classList.add('d-none');
               pendingDiff = buildDiff();
               confirmModal.show();
             });
           }
 
-          if (document.getElementById('confirm-apply')) {
-            document.getElementById('confirm-apply').addEventListener('click', async ()=>{
-              if(errEl) errEl.classList.add('d-none'); this.disabled=true;
+          if (confirmBtn) {
+            confirmBtn.addEventListener('click', async function(){
+              errEl.classList.add('d-none'); this.disabled=true;
               try{
                 for(const a of pendingDiff.added)   await toggle(a.id,true);
                 for(const r of pendingDiff.removed) await toggle(r.id,false);
-                const now=currentCheckedSet();
-                initialPicked.clear(); now.forEach(id=>initialPicked.add(id));
-                refreshCount(); if(confirmModal) confirmModal.hide();
+                const now=currentCheckedSet(); initialPicked.clear(); now.forEach(id=>initialPicked.add(id));
+                selCount.textContent = now.size;
+                confirmModal.hide();
               }catch(e){
-                console.error(e); if(errEl) errEl.classList.remove('d-none');
+                console.error('toggle error:', e);
+                errEl.textContent = '儲存失敗：' + (e.message || e);
+                errEl.classList.remove('d-none');
               }finally{
                 this.disabled=false;
               }
             });
           }
 
-          async function toggle(featureId, check){
-            const resp = await fetch('@Url.Action("ToggleFeature", "Permissions", new { area = "Account" })', {
-              method:'POST',
-              headers:{ 'X-Requested-With':'XMLHttpRequest', 'Content-Type':'application/x-www-form-urlencoded' },
-              body:new URLSearchParams({ id:permId, featureId:featureId, check:check, '__RequestVerificationToken':anti })
+          // === 修正版：帶上 cookie、同送 id/permissionId、Header + Form 雙送 Anti ===
+          async function toggle(featureId, check) {
+            const url = '@Url.Action("ToggleFeature", "Permissions", new { area = "Account" })';
+            const body = new URLSearchParams({
+              id: '@perm.PermissionID',
+              permissionId: '@perm.PermissionID',
+              featureId: String(featureId),
+              check: check ? 'true' : 'false',
+              '__RequestVerificationToken': anti
             });
-            if(!resp.ok) throw new Error('network');
-            const data=await resp.json();
-            if(!data.ok) throw new Error('toggle failed');
+
+            const resp = await fetch(url, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'RequestVerificationToken': anti
+              },
+              body
+            });
+
+            if (!resp.ok) {
+              let msg = `HTTP ${resp.status}`;
+              try { msg = (await resp.text())?.trim() || msg; } catch {}
+              throw new Error(msg.toLowerCase().includes('anti') ? 'anti-forgery token invalid' : msg);
+            }
+
+            let data = null;
+            try { data = await resp.json(); } catch {}
+            if (data && data.ok !== true) throw new Error(data.message || 'toggle failed');
           }
         })();
     </script>

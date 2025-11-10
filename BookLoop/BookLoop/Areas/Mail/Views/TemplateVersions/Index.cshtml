@@ -1,6 +1,6 @@
 ﻿@model BookLoop.Models.Template
 @{
-    ViewData["Title"] = $"範本群組「{Model.Name}」";
+    ViewData["Title"] = $"模板群組「{Model.Name}」";
     var hasDefault = Model.Versions.Any(x => x.IsDefault);     // 是否有預設版
 }
 
@@ -12,7 +12,7 @@
                     class="btn btn-outline-secondary"
                     data-bs-toggle="collapse" data-bs-target="#editGroupBox"
                     aria-expanded="false" aria-controls="editGroupBox">
-                編輯範本群組
+                編輯模板群組
             </button>
         <a class="btn btn-primary"
            asp-area="Mail"
@@ -27,7 +27,7 @@
     <div id="editGroupBox" class="collapse">
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-body">
-                <h2 class="h5 mb-3">編輯範本群組</h2>
+                <h2 class="h5 mb-3">編輯模板群組</h2>
 
                 @* ===== 儲存（Edit）表單：更新 TemplateKey / Description ===== *@
                 <form asp-area="Mail"
@@ -40,7 +40,7 @@
                     <input type="hidden" name="TemplateId" value="@Model.TemplateId" />
 
                     <div class="col-md-3">
-                        <label class="form-label">TemplateKey(範本群組識別碼)</label>
+                        <label class="form-label">TemplateKey(模板群組識別碼)</label>
                         <input class="form-control" name="TemplateKey" value="@Model.TemplateKey" />
                     </div>
 
@@ -74,7 +74,7 @@
                             class="btn btn-outline-danger"
                             data-name="@Model.TemplateKey"
                             data-has-default="@hasDefault>
-                        刪除範本群組
+                        刪除模板群組
                     </button>
                     <small class="text-muted ms-2">（將同時刪除所有版本）</small>
                 </form>
@@ -190,13 +190,13 @@
         //若目前有預設版本，直接阻擋並提示
         const btn = f.querySelector('button[type="submit"]');
         if (btn?.dataset?.hasDefault === 'True' || btn?.dataset?.hasDefault === 'true') {
-          alert('此範本群組仍有「預設版本」，無法刪除。\n請先將所有版本取消預設或改成非預設。');
+          alert('此模板群組仍有「預設版本」，無法刪除。\n請先將所有版本取消預設或改成非預設。');
           return;
         }
 
           e.preventDefault();
           const name = f.querySelector('button[type="submit"]')?.dataset?.name || '';
-          if (!confirm(`確定要刪除 範本群組「${name}」以及其所有版本嗎？`)) return;
+          if (!confirm(`確定要刪除 模板群組「${name}」以及其所有版本嗎？`)) return;
           if (!confirm('此操作無法復原，真的要刪除嗎？')) return;
 
           f.submit();

@@ -7,7 +7,7 @@
     string Next(string key) => (Is(key) && dir == "asc") ? "desc" : "asc";
     string Arrow(string key) => Is(key) ? (dir == "asc" ? "↑" : "↓") : "";
 
-    // 重要：使用三參數多載（resource 以 null 傳入）
+    // 三參數多載
     var canEdit = (await Authz.AuthorizeAsync(User, null, "Members.Edit")).Succeeded;
     var canDelete = (await Authz.AuthorizeAsync(User, null, "Members.Delete")).Succeeded;
 }
@@ -64,54 +64,66 @@
                        asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
                        asp-route-page="@Model.Page" asp-route-pageSize="@Model.PageSize">黑名單 @Arrow("blacklist")</a>
                 </th>
-                <th style="width:180px;" class="text-end">操作</th>
+                <th style="width:240px;" class="text-center">操作</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var x in Model.Items)
+            @if (Model.Items?.Count > 0)
             {
-                <tr>
-                    <td>@x.MemberID</td>
-                    <td>@x.Username</td>
-                    <td>@x.Email</td>
-                    <td>@x.Phone</td>
-                    <td>
-                        @{
-                            string s = x.Status switch { 0 => "未啟用", 1 => "啟用", 2 => "停權", 3 => "關閉", _ => "?" };
-                            string badge = x.Status switch { 1 => "bg-success", 2 => "bg-warning text-dark", 3 => "bg-secondary", _ => "bg-light text-dark" };
-                        }
-                        <span class="badge @badge">@s</span>
-                    </td>
-                    <td class="text-end">@x.TotalBooks</td>
-                    <td class="text-end">@x.TotalBorrows</td>
-                    <td>
-                        @if (x.IsBlacklistedNow)
-                        {
-                            <span class="badge bg-danger">生效中</span>
-                        }
-                        else
-                        {
-                            <span class="text-muted">—</span>
-                        }
-                    </td>
-                    <td class="text-end" style="white-space:nowrap;">
-                        <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-route-id="@x.MemberID">檢視</a>
+                foreach (var x in Model.Items)
+                {
+                    var statusText = x.Status switch { 0 => "未啟用", 1 => "啟用", 2 => "停權", 3 => "關閉", _ => "?" };
+                    var badgeClass = x.Status switch { 1 => "bg-success", 2 => "bg-warning text-dark", 3 => "bg-secondary", _ => "bg-light text-dark" };
 
-                        @if (canEdit)
-                        {
-                            <a class="btn btn-sm btn-outline-primary ms-1" asp-action="Edit" asp-route-id="@x.MemberID">編輯</a>
-                        }
-                        @if (canDelete)
-                        {
-                            <button type="button" class="btn btn-sm btn-outline-danger ms-1 js-del"
-                                    data-id="@x.MemberID"
-                                    data-name="@x.Username"
-                                    data-email="@x.Email">
-                                刪除
-                            </button>
-                        }
-                    </td>
-                </tr>
+                    <tr>
+                        <td>@x.MemberID</td>
+                        <td>@x.Username</td>
+                        <td>@x.Email</td>
+                        <td>@(x.Phone ?? "-")</td>
+                        <td><span class="badge @badgeClass">@statusText</span></td>
+                        <td class="text-end">@x.TotalBooks</td>
+                        <td class="text-end">@x.TotalBorrows</td>
+                        <td>
+                            @if (x.IsBlacklistedNow)
+                            {
+                                <span class="badge bg-danger">生效中</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex flex-wrap gap-2 justify-content-center">
+                                <a class="btn btn-info fw-bold"
+                                   asp-area="Account" asp-controller="Members" asp-action="Details" asp-route-id="@x.MemberID">
+                                    檢視
+                                </a>
+
+                                @if (canEdit)
+                                {
+                                    <a class="btn btn-warning fw-bold"
+                                       asp-area="Account" asp-controller="Members" asp-action="Edit" asp-route-id="@x.MemberID">
+                                        編輯
+                                    </a>
+                                }
+                                @if (canDelete)
+                                {
+                                    <button type="button" class="btn btn-danger fw-bold js-del"
+                                            data-id="@x.MemberID"
+                                            data-name="@x.Username"
+                                            data-email="@x.Email">
+                                        刪除
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr><td colspan="10" class="text-center text-muted">查無資料</td></tr>
             }
         </tbody>
     </table>
