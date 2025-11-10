@@ -202,7 +202,7 @@ const features = reactive({
 const hasSso = computed(() => features.google || features.facebook || features.line)
 
 const tab = ref<'password' | 'email' | 'totp'>('password')
-const account = ref('test@gmail.com')
+const account = ref('allen.kuo@gmail.com')
 const password = ref('000000')
 const emailCode = ref('')
 const totpCode = ref('')

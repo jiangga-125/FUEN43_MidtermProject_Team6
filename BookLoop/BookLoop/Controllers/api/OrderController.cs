@@ -2,6 +2,8 @@
 using BookLoop.Helpers;
 using BookLoop.Models;
 using DocumentFormat.OpenXml.InkML;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Org.BouncyCastle.Ocsp;
@@ -173,6 +175,7 @@ namespace BookLoop.Controllers.Api
 		}
 		// ✅ 付款流程（綠界）
 		[HttpPost("GoToPayment")]
+		//[AllowAnonymous]
 		public IActionResult GoToPayment([FromBody] PaymentRequest req)
 		{
 			int orderId = req.OrderID; // 從物件取得 OrderID
@@ -209,12 +212,5 @@ namespace BookLoop.Controllers.Api
 
 			return Ok(ecpayRequest);
 		}
-
-
-
-
-
-
-
 	}
 }

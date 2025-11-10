@@ -69,7 +69,7 @@ async function saveProfile() {
   try {
     const payload = { name: form.fullName, email: form.email }
     await http.post('/api/members/profile/update', payload)
-    await auth.reloadMember?.()
+    // await auth.reloadMember?.()
     ok.value = true
     msg.value = '已更新'
   } catch (e) {
