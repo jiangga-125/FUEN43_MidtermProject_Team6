@@ -10,11 +10,11 @@ const member = computed(() => auth.member)
 // 示範預填資料（只顯示，不入庫）
 const DEMO = {
   birthday: '1995-11-12',
-  gender: 'M' as 'M'|'F'|'N',
+  gender: 'M' as 'M' | 'F' | 'N',
   zip: '320',
   city: '桃園市',
   district: '中壢區',
-  addressLine: '新生路二段421號'
+  addressLine: '新生路二段421號',
 }
 
 type Gender = 'M' | 'F' | 'N'
@@ -25,7 +25,8 @@ const form = reactive({
   gender: ((member.value as any)?.gender ?? DEMO.gender) as Gender,
 
   email: member.value?.email ?? '',
-  emailVerified: (member.value as any)?.emailVerified ?? (member.value as any)?.emailConfirmed ?? false,
+  emailVerified:
+    (member.value as any)?.emailVerified ?? (member.value as any)?.emailConfirmed ?? false,
   mobile: (member.value as any)?.mobile ?? '',
 
   zip: (member.value as any)?.address?.zip ?? DEMO.zip,
@@ -34,15 +35,15 @@ const form = reactive({
   addressLine: (member.value as any)?.address?.line ?? DEMO.addressLine,
 
   branch: (member.value as any)?.branch ?? '',
-  newsletter: (member.value as any)?.newsletter ?? true
+  newsletter: (member.value as any)?.newsletter ?? true,
 })
 
-const branches = ['板橋', '中和', '三峽']
+const branches = ['板橋店', '中壢店', '台北信義店']
 
 // 只驗證姓名與 Email
 const errors = reactive<Record<string, string>>({})
 function validate() {
-  Object.keys(errors).forEach(k => delete errors[k])
+  Object.keys(errors).forEach((k) => delete errors[k])
   if (!form.fullName || form.fullName.trim().length < 2) {
     errors.fullName = '請輸入姓名（至少 2 個字元）'
   }
@@ -80,7 +81,9 @@ async function saveProfile() {
   }
 }
 
-const genderText = computed(() => (form.gender === 'M' ? '男' : form.gender === 'F' ? '女' : '不提供'))
+const genderText = computed(() =>
+  form.gender === 'M' ? '男' : form.gender === 'F' ? '女' : '不提供',
+)
 </script>
 
 <template>
@@ -178,64 +181,137 @@ const genderText = computed(() => (form.gender === 'M' ? '男' : form.gender ===
 
     <div class="actions">
       <button class="btn primary" :disabled="saving" @click="saveProfile">儲存</button>
-      <span v-if="msg" :class="['msg', ok ? 'ok':'err']">{{ msg }}</span>
+      <span v-if="msg" :class="['msg', ok ? 'ok' : 'err']">{{ msg }}</span>
     </div>
   </div>
 </template>
 
 <style scoped>
-.title{margin:0 0 12px}
-.grid{
-  display:grid;
-  grid-template-columns:180px 1fr;
-  gap:10px 14px;
-  align-items:center;
-  margin-bottom:14px;
+.title {
+  margin: 0 0 12px;
 }
-@media (max-width: 720px){
-  .grid{grid-template-columns:1fr;align-items:stretch}
-  .lab{margin-top:8px}
+.grid {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 10px 14px;
+  align-items: center;
+  margin-bottom: 14px;
 }
-.lab{color:#333}
-.lab.req::after{content:' *'; color:#d33}
-.val{display:block}
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .lab {
+    margin-top: 8px;
+  }
+}
+.lab {
+  color: #333;
+}
+.lab.req::after {
+  content: ' *';
+  color: #d33;
+}
+.val {
+  display: block;
+}
 
-.input{
-  width:100%; padding:10px 12px; border:1px solid #dfe3e8; border-radius:10px; font-size:14px;
-  background:#fff;
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dfe3e8;
+  border-radius: 10px;
+  font-size: 14px;
+  background: #fff;
 }
 
 /* 三欄緊湊橫排：郵遞區號 / 縣市 / 鄉鎮市區 */
-.row-compact{
-  display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;
+.row-compact {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
 }
-.row-compact .cell{ flex: 1 1 160px; min-width: 140px; }
-.row-compact .cell:first-child{ flex: 0 0 120px; } /* 郵遞區號較短 */
-@media (max-width: 720px){
-  .row-compact .cell{ flex:1 1 100%; }
+.row-compact .cell {
+  flex: 1 1 160px;
+  min-width: 140px;
+}
+.row-compact .cell:first-child {
+  flex: 0 0 120px;
+} /* 郵遞區號較短 */
+@media (max-width: 720px) {
+  .row-compact .cell {
+    flex: 1 1 100%;
+  }
 }
 
-.seg{display:flex; gap:8px; flex-wrap:wrap}
-.seg-item{
-  display:flex; align-items:center; gap:6px;
-  padding:8px 10px; border:1px solid #e5e7eb; border-radius:999px;
-  background:#fff; cursor:pointer; user-select:none;
+.seg {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
-.seg-item input{accent-color:#0d6efd}
-
-.inline{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
-
-.check{display:flex; gap:8px; align-items:center}
-
-.err{color:#c0392b; font-size:12px; margin-top:4px}
-
-.actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-.btn{
-  padding:10px 12px; border-radius:10px; border:1px solid #e5e7eb; background:#f8fafc; font-weight:600; cursor:pointer;
+.seg-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
 }
-.btn.primary{background:#0d6efd; border-color:#0d6efd; color:#fff}
+.seg-item input {
+  accent-color: #0d6efd;
+}
 
-.msg{font-size:14px}
-.msg.ok{color:#138a36}
-.msg.err{color:#c0392b}
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.err {
+  color: #c0392b;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.btn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn.primary {
+  background: #0d6efd;
+  border-color: #0d6efd;
+  color: #fff;
+}
+
+.msg {
+  font-size: 14px;
+}
+.msg.ok {
+  color: #138a36;
+}
+.msg.err {
+  color: #c0392b;
+}
 </style>

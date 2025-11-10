@@ -15,7 +15,12 @@
         <button type="button" :class="['tab', tab === 'email' && 'active']" @click="tab = 'email'">
           Email 驗證碼
         </button>
-        <button type="button" :class="['tab', tab === 'totp' && 'active']" @click="tab = 'totp'">
+        <button
+          v-if="features.totp"
+          type="button"
+          :class="['tab', tab === 'totp' && 'active']"
+          @click="tab = 'totp'"
+        >
           TOTP 驗證碼
         </button>
       </div>
@@ -142,8 +147,9 @@
       <div class="divider small" v-if="hasSso"><span>也可以</span></div>
 
       <!-- 其他 SSO -->
-      <div class="sso-row">
+      <div class="sso-row" v-if="hasSso">
         <button
+          v-if="features.google"
           type="button"
           class="sso google"
           :disabled="auth.loading"
@@ -152,6 +158,7 @@
           使用 Google 登入
         </button>
         <button
+          v-if="features.facebook"
           type="button"
           class="sso facebook"
           :disabled="auth.loading"
@@ -159,7 +166,13 @@
         >
           使用 Facebook 登入
         </button>
-        <button type="button" class="sso line" :disabled="auth.loading" @click="external('LINE')">
+        <button
+          v-if="features.line"
+          type="button"
+          class="sso line"
+          :disabled="auth.loading"
+          @click="external('LINE')"
+        >
           使用 LINE 登入
         </button>
       </div>
@@ -170,7 +183,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '@/lib/http'
 import { useAuth } from '@/stores/auth'
@@ -179,12 +192,13 @@ import { getDeviceHash } from '@/lib/deviceHash'
 const auth = useAuth()
 const router = useRouter()
 
-const features = {
+const features = reactive({
   totp: false,
   google: true,
   facebook: false,
   line: false,
-}
+})
+
 const hasSso = computed(() => features.google || features.facebook || features.line)
 
 const tab = ref<'password' | 'email' | 'totp'>('password')
