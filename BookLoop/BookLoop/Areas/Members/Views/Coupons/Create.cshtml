@@ -9,6 +9,11 @@
     @Html.AntiForgeryToken()
 
     <!-- 基本欄位：名稱、券碼、折扣類型/值、最低消費、最高折抵、期間、啟用、每會員次數、簡介 -->
+    <div>
+        <button type="button" id="fillSample" class="btn btn-secondary mb-3">
+            <i class="bi bi-magic"></i> 一鍵帶入範例資料
+        </button>
+    </div>
     <div class="row">
         <div class="col-md-6 mb-3">
             <label asp-for="Name" class="form-label">名稱</label>
@@ -52,8 +57,10 @@
 
         <div class="col-md-6 mb-3">
             <label asp-for="StartAt" class="form-label">開始時間（選填）</label>
-            <input asp-for="StartAt" type="datetime-local" class="form-control" />
+            <input asp-for="StartAt" type="datetime-local" class="form-control"
+                   value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" />
         </div>
+
         <div class="col-md-6 mb-3">
             <label asp-for="EndAt" class="form-label">結束時間（選填）</label>
             <input asp-for="EndAt" type="datetime-local" class="form-control" />
@@ -73,13 +80,59 @@
     <!-- ✅ 分類多選：SelectedCategoryIds -->
     <div class="mb-3">
         <label class="form-label">僅限可用分類（可多選）</label>
+        <div class="mb-2">
+            <input type="checkbox" id="selectAllCategories" class="form-check-input me-2" />
+            <label for="selectAllCategories" class="form-check-label">全選（不限制分類）</label>
+        </div>
         <select asp-for="SelectedCategoryIds" asp-items="Model.CategoryOptions" class="form-select" multiple size="8"></select>
         <small class="text-muted d-block">按住 Ctrl/Cmd 多選。留空＝不限制分類（全站可用）。</small>
     </div>
-
+    
     <button type="submit" class="btn btn-primary">新增</button>
 </form>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // 🔹 全選分類
+            const selectAll = document.getElementById('selectAllCategories');
+            const select = document.querySelector('select[multiple]');
+            if (selectAll && select) {
+                selectAll.addEventListener('change', () => {
+                    Array.from(select.options).forEach(o => o.selected = selectAll.checked);
+                });
+            }
+
+            // 🔹 一鍵帶入範例資料
+            const btn = document.getElementById('fillSample');
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    // 帶入範例資料
+                    document.querySelector('[name="Name"]').value = '萬聖節折扣券';
+                    document.querySelector('[name="Code"]').value = 'halloween';
+                    document.querySelector('[name="DiscountType"]').value = '1';
+                    document.querySelector('[name="DiscountValue"]').value = '20';
+                    document.querySelector('[name="MaxDiscountAmount"]').value = '200';
+                    document.querySelector('[name="MinOrderAmount"]').value = '500';
+                    document.querySelector('[name="MaxUsesPerMember"]').value = '2';
+                    document.querySelector('[name="IsActive"]').checked = true;
+                    document.querySelector('[name="StartAt"]').value = new Date().toISOString().slice(0, 16);
+
+                    const endAt = new Date();
+                    endAt.setDate(endAt.getDate() + 7);
+                    document.querySelector('[name="EndAt"]').value = endAt.toISOString().slice(0, 16);
+
+                    document.querySelector('[name="Description"]').value = '萬聖節';
+                    document.querySelector('[name="TermsText"]').value = '本券僅限一般會員使用，不可與其他優惠併用。';
+
+                    alert('✅ 已自動帶入範例資料！');
+                });
+            }
+        });
+                document.querySelector('form').addEventListener('submit', e => {
+            console.log('🚀 表單送出事件觸發');
+        });
+    </script>
 }
+

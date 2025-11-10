@@ -15,7 +15,8 @@ type RawOrder = {
   orderID?: number
   memberID: number
   customerID?: number | null
-  createdAt?: string      // 後端實際回傳欄位
+  OrderDate?: string
+  createdAt?: string // ✅ 新增支援後端 createdAt
   totalAmount: number
   status?: number
   discountAmount?: number
@@ -41,7 +42,7 @@ export type Order = {
   OrderID?: number
   MemberID: number
   CustomerID?: number | null
-  OrderDate?: string       // 前端統一使用 OrderDate
+  OrderDate?: string
   TotalAmount: number
   Status?: number
   DiscountAmount?: number
@@ -78,7 +79,6 @@ export async function getOrdersByMember(memberId: number) {
   const orders: Order[] = await Promise.all(
     data.map(async o => {
       console.log('後端回傳 order:', o)
-
       const details: OrderDetail[] = await Promise.all(
         o.orderDetails.map(async od => {
           let book = od.book
@@ -102,7 +102,10 @@ export async function getOrdersByMember(memberId: number) {
         OrderID: o.orderID,
         MemberID: o.memberID,
         CustomerID: o.customerID ?? null,
-        OrderDate: o.createdAt ?? undefined,  // ✅ 使用 createdAt
+        // ✅ 修正：優先使用 createdAt，兼容舊欄位
+        OrderDate: o.OrderDate || o.createdAt
+          ? new Date(o.OrderDate || o.createdAt!).toISOString()
+          : undefined,
         TotalAmount: o.totalAmount,
         Status: o.status,
         DiscountAmount: o.discountAmount,
@@ -145,7 +148,10 @@ export async function getOrderDetail(orderId: number) {
     OrderID: data.orderID,
     MemberID: data.memberID,
     CustomerID: data.customerID ?? null,
-    OrderDate: data.createdAt ?? undefined,  // ✅ 使用 createdAt
+    // ✅ 同樣修正這裡
+    OrderDate: data.OrderDate || data.createdAt
+      ? new Date(data.OrderDate || data.createdAt!).toISOString()
+      : undefined,
     TotalAmount: data.totalAmount,
     Status: data.status,
     DiscountAmount: data.discountAmount,
@@ -192,6 +198,6 @@ export type ECPayRequest = {
 }
 
 export async function goToPayment(orderId: number) {
-  const { data } = await http.post<ECPayRequest>(`/orders/GoToPayment`, { orderId })
+  const { data } = await http.post<ECPayRequest>(`/order/GoToPayment`, { orderId })
   return data
 }

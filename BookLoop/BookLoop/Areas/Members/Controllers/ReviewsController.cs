@@ -64,7 +64,8 @@ namespace BookLoop.Controllers
 					Content = r.Content,
 					Reason = "(尚未審核)",
 					Source = "新評論",
-					CreatedAt = r.CreatedAt
+					CreatedAt = r.CreatedAt,
+					DisplayName = r.DisplayName
 				})
 				.ToListAsync();
 
@@ -151,17 +152,45 @@ namespace BookLoop.Controllers
 				return RedirectToAction("PendingList");
 			}
 
-			// 2. 更新狀態
+			//找會員名稱
+			var member = await _db.Members.FirstOrDefaultAsync(m => m.MemberID == review.MemberID);
+			if (member != null)
+			{
+				review.DisplayName = MaskName(member.Username);
+			}
+			else
+			{
+				review.DisplayName = "匿名用戶";
+			}
+
+			//更新狀態
 			review.Status = 1; // 假設 1 = 已通過 (你可以用 Enum 定義會更清楚)
 			review.UpdatedAt = DateTime.Now;
 
-			// 3. 儲存進資料庫
+			//儲存進資料庫
 			await _db.SaveChangesAsync();
 
-			// 4. 顯示提示訊息
+			//顯示提示訊息
 			TempData["Msg"] = $"評論 {reviewId} 已通過！";
 			return RedirectToAction("PendingList");
 		}
+
+		// 🧩 匿名化函式
+		private static string MaskName(string name)
+		{
+			if (string.IsNullOrWhiteSpace(name))
+				return "匿名用戶";
+
+			name = name.Trim();
+
+			return name.Length switch
+			{
+				1 => "*",
+				2 => $"{name[0]}＊",
+				_ => $"{name[0]}{new string('＊', name.Length - 2)}{name[^1]}"
+			};
+		}
+
 
 		[HttpPost]
 		[ValidateAntiForgeryToken]

@@ -113,6 +113,10 @@
                 <div class="card-body">
                     <div class="mb-2">
                         <label class="form-label">僅限可用分類（可多選）</label>
+                        <div class="mb-2">
+                            <input type="checkbox" id="selectAllCategories" class="form-check-input me-2" />
+                            <label for="selectAllCategories" class="form-check-label">全選（不限制分類）</label>
+                        </div>
                         <select asp-for="SelectedCategoryIds"
                                 asp-items="Model.CategoryOptions"
                                 class="form-select" multiple size="12">
@@ -138,4 +142,14 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const selectAll = document.getElementById('selectAllCategories');
+            const select = document.querySelector('select[multiple]');
+
+            selectAll.addEventListener('change', function () {
+                Array.from(select.options).forEach(o => o.selected = selectAll.checked);
+            });
+        });
+    </script>
 }

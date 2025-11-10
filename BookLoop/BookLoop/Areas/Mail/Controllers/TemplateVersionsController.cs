@@ -130,14 +130,19 @@ namespace BookLoop.Areas.Mail.Controllers
 			return Json(new { ok = true, redirectUrl = redirectUrl });
 
 		}
-		// GET: /Mail/TemplateVersions/Edit/5
-		public async Task<IActionResult> Edit(int id)
-		{
-			var m = await _db.TemplateVersions.FindAsync(id);
-			if (m == null) return NotFound();
+        // GET: /Mail/TemplateVersions/Edit/5
+        public async Task<IActionResult> Edit(int id)
+        {
+            var m = await _db.TemplateVersions
+                .Include(v => v.Template) // ★ 把關聯載進來
+                .FirstOrDefaultAsync(v => v.TemplateVersionId == id);
 
-			return View(m);
-		}
+            if (m == null) return NotFound();
+
+            ViewBag.TemplateKey = m.Template?.TemplateKey ?? string.Empty;
+
+            return View(m);
+        }
 
         // POST: /Mail/TemplateVersions/Edit
         [HttpPost]

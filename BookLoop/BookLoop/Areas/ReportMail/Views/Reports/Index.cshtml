@@ -23,6 +23,9 @@
     var lineList = ViewBag.LineReports as IEnumerable<ReportDefinition> ?? Enumerable.Empty<ReportDefinition>();
     var barList = ViewBag.BarReports as IEnumerable<ReportDefinition> ?? Enumerable.Empty<ReportDefinition>();
     var pieList = ViewBag.PieReports as IEnumerable<ReportDefinition> ?? Enumerable.Empty<ReportDefinition>();
+
+    // UserID -> Name
+    var nameMap = ViewBag.UserIdToName as IDictionary<int, string>;
 }
 @inject Microsoft.AspNetCore.Authorization.IAuthorizationService Authz
 @inject Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Authorization.AuthorizationOptions> AuthzOptions
@@ -104,7 +107,16 @@
                                         <option value="">（預設報表）近30日書籍借閱種類Top5</option>
                                         @foreach (var d in pieList)
                                         {
-                                            <option value="@d.ReportDefinitionID">@d.ReportName</option>
+                                            string ownerName = null; // 先宣告並給預設值
+                                            if (d.OwnerUserID.HasValue && nameMap != null)
+                                            {
+                                                nameMap.TryGetValue(d.OwnerUserID.Value, out ownerName);
+                                            }
+                                            var showOwner = !string.IsNullOrWhiteSpace(ownerName);
+
+                                            <option value="@d.ReportDefinitionID" data-owner="@(showOwner ? ownerName : "")">
+                                                @(showOwner ? $"<建立者: {ownerName}>" : "")@d.ReportName
+                                            </option>
                                         }
                                     </select>
                                 </div>
@@ -150,7 +162,16 @@
                                                 <option value="">（預設報表）近30日每日銷售金額</option>
                                                 @foreach (var d in lineList)
                                                 {
-                                                    <option value="@d.ReportDefinitionID">@d.ReportName</option>
+                                                    string ownerName = null;
+                                                    if (d.OwnerUserID.HasValue && nameMap != null)
+                                                    {
+                                                        nameMap.TryGetValue(d.OwnerUserID.Value, out ownerName);
+                                                    }
+                                                    var showOwner = !string.IsNullOrWhiteSpace(ownerName);
+
+                                                    <option value="@d.ReportDefinitionID" data-owner="@(showOwner ? ownerName : "")">
+                                                        @(showOwner ? $"<建立者: {ownerName}>" : "")@d.ReportName
+                                                    </option>
                                                 }
                                             </select>
                                         </div>
@@ -193,7 +214,16 @@
                                                 <option value="">（預設報表）近30日書籍銷售Top10</option>
                                                 @foreach (var d in barList)
                                                 {
-                                                    <option value="@d.ReportDefinitionID">@d.ReportName</option>
+                                                    string ownerName = null;
+                                                    if (d.OwnerUserID.HasValue && nameMap != null)
+                                                    {
+                                                        nameMap.TryGetValue(d.OwnerUserID.Value, out ownerName);
+                                                    }
+                                                    var showOwner = !string.IsNullOrWhiteSpace(ownerName);
+
+                                                    <option value="@d.ReportDefinitionID" data-owner="@(showOwner ? ownerName : "")">
+                                                        @(showOwner ? $"<建立者: {ownerName}>" : "")@d.ReportName
+                                                    </option>
                                                 }
                                             </select>
                                         </div>

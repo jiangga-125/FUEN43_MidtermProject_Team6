@@ -13,6 +13,9 @@ import MyNewPage from '@/views/BorrowCenter.vue'
 import OrderCenter from '@/views/OrderCenter.vue'
 import BookDetail from '@/views/BookDetail.vue'
 
+// let bootstrapped = false
+const MemberCenter = () => import('@/views/MemberCenter.vue')
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -21,8 +24,13 @@ const router = createRouter({
     { path: '/register', component: Register, meta: { public: true, title: '註冊' } },
     { path: '/forgot', component: Forgot, meta: { public: true, title: '忘記密碼' } },
     { path: '/reset', component: Reset, meta: { public: true, title: '重設密碼' } },
-    { path: '/auth-callback', component: AuthCallback, meta: { public: true, title: '外部登入跳轉' } },
+    {
+      path: '/auth-callback',
+      component: AuthCallback,
+      meta: { public: true, title: '外部登入跳轉' },
+    },
     { path: '/2fa/setup', component: TwoFASetup, meta: { title: '雙因素驗證設定' } },
+    // { path: '/member', component: Member },
     memberRoutes,
     { path: '/', component: () => import('@/views/Home.vue'), meta: { public: true } },
     { path: '/order-center', component: OrderCenter },
@@ -34,14 +42,20 @@ const router = createRouter({
       component: () => import('@/views/MemberCoupons.vue'),
     },
     // 商品詳細頁（props: true 會把 route.params 當 props 傳入元件）
-    { path: '/books/:id', name: 'BookDetail', component: BookDetail, props: true },
+    {
+      path: '/books/:id',
+      name: 'BookDetail',
+      component: BookDetail,
+      props: true,
+      meta: { public: true, title: '書籍詳情' },
+    },
     // fallback（務必放最後）
     { path: '/:pathMatch(.*)*', redirect: '/' },
-    { path: '/member/coupons',name: 'MemberCoupons',component: () => import('@/views/MemberCoupons.vue')},
-    {path: '/review/create',name: 'CreateReview',component: () => import('@/views/CreateReview.vue')}
-
-
-
+    {
+      path: '/review/create',
+      name: 'CreateReview',
+      component: () => import('@/views/CreateReview.vue'),
+    },
   ],
 
   // 捲動行為：切頁回到頂端
