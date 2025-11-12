@@ -94,7 +94,7 @@
                 
             </td>
                 <td>
-                    @Html.DisplayFor(modelItem => item.totalMoney)
+                    @String.Format("{0:N0}元", item.totalMoney)
                 </td>
                 <td>
                     @Html.DisplayFor(modelItem => item.PaidAt)

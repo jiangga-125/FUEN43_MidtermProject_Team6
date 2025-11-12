@@ -89,9 +89,7 @@
             const table = $('#borrowTable').DataTable({
                 language: { url: 'https://cdn.datatables.net/plug-ins/2.0.8/i18n/zh-HANT.json' },
                 processing: true,
-                responsive: true,
-                // 如果要中文介面，可載入語系檔：
-                // language: { url: "https://cdn.datatables.net/plug-ins/1.13.8/i18n/zh-HANT.json" },
+                responsive: true,               
                 ajax: {
                     // 根據你的路由調整（含 Area 的話就 /Borrows/BorrowRecords/List）
                     url: '@Url.Action("List", "BorrowRecords", new { area = "Borrows" })',
