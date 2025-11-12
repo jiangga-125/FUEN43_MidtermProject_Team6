@@ -1,5 +1,6 @@
 ﻿using BookLoop.Data;
 using BookLoop.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,6 +27,7 @@ public class SearchApiController : ControllerBase
 
 	// 下拉建議
 	[HttpGet("suggest")]
+	[AllowAnonymous]
 	public async Task<IActionResult> Suggest([FromQuery] string q, [FromQuery] int take = 5)
 	{
 		q = (q ?? "").Trim();
@@ -82,7 +84,7 @@ public class SearchApiController : ControllerBase
 						Type = "Member",
 						Title = m.Username,
 						Sub = m.Email,
-						Url = $"/Members/Members/Details/{m.MemberID}"
+						Url = $"/Account/Members/Details/{m.MemberID}"
 					}));
 			}));
 
@@ -99,10 +101,10 @@ public class SearchApiController : ControllerBase
 				lock (list)
 					list.AddRange(data.Select(r => new SearchHit
 					{
-						Type = "Borrow",
+						Type = "Borrows",
 						Title = r.Title,
 						Sub = $"會員：{r.Member}",
-						Url = $"/Borrow/BorrowRecords/Edit/{r.RecordID}"
+						Url = $"/Borrows/BorrowRecords/Details/{r.RecordID}"
 					}));
 			}));
 
@@ -117,6 +119,7 @@ public class SearchApiController : ControllerBase
 
 	// 即時
 	[HttpGet("quick")]
+	[AllowAnonymous]
 	public async Task<IActionResult> Quick([FromQuery] string q, [FromQuery] int takePerSource = 6)
 	{
 		q = (q ?? "").Trim();
@@ -184,7 +187,7 @@ public class SearchApiController : ControllerBase
 				Type = "Member",
 				Title = m.Username,
 				Sub = $"{m.Email}｜{m.Phone}",
-				Url = $"/Members/Members/Details/{m.MemberID}"
+				Url = $"/Account/Members/Details/{m.MemberID}"
 			}));
 	});
 
@@ -200,10 +203,10 @@ public class SearchApiController : ControllerBase
 		lock (sink)
 			sink.AddRange(data.Select(r => new SearchHit
 			{
-				Type = "Borrow",
+				Type = "Borrows",
 				Title = r.Title,
 				Sub = $"會員：{r.Member}",
-				Url = $"/Borrow/BorrowRecords/Edit/{r.RecordID}"
+				Url = $"/Borrows/BorrowRecords/Details/{r.RecordID}"
 			}));
 	});
 }

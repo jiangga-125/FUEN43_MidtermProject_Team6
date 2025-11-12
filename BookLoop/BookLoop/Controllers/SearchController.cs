@@ -115,7 +115,7 @@ namespace BookLoop.Controllers
 								Type = "Member",
 								Title = m.Username,
 								Sub = $"{m.Email}｜{m.Phone}",
-								Url = Url.Action("Details", "Members", new { area = "Members", id = m.MemberID })!
+								Url = Url.Action("Details", "Members", new { area = "Account", id = m.MemberID })!
 							});
 						}
 					}
@@ -146,7 +146,7 @@ namespace BookLoop.Controllers
 								Type = "BorrowRecord",
 								Title = r.Listing?.Title ?? "(未命名書籍)",
 								Sub = $"會員：{r.Member?.Username}｜狀態：{r.StatusName}",
-								Url = Url.Action("Edit", "BorrowRecords", new { area = "Borrow", id = r.RecordID })!
+								Url = Url.Action("Edit", "BorrowRecords", new { area = "Borrows", id = r.RecordID })!
 							});
 						}
 					}
