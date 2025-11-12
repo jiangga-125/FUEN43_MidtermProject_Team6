@@ -60,26 +60,45 @@ else
             <tbody id="inv-rows-tbody">
                 @foreach (var r in rows)
                 {
-                    var name = (string)r.BranchName;
-                    var onhand = (r.OnHand == null) ? 0 : (int)r.OnHand;
-                    var reserved = (r.Reserved == null) ? 0 : (int)r.Reserved;
-                    <tr>
-                        <td>@name</td>
-                        <td><span class="badge bg-info">@onhand</span></td>
-                        <td><span class="text-muted">@reserved</span></td>
-                        <td>
-                            <button type="button"
-                                    class="btn btn-sm btn-primary btn-open-transfer-modal"
-                                    data-branchid="@r.BranchID"
-                                    data-branchname="@name"
-                                    data-onhand="@onhand"
-                                    data-reserved="@reserved"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#transferModal">
-                                調撥
-                            </button>
-                        </td>
-                    </tr>
+                        var name = (string)r.BranchName;
+                        var onhand = (r.OnHand == null) ? 0 : (int)r.OnHand;
+                        var reserved = (r.Reserved == null) ? 0 : (int)r.Reserved;
+                        var available = Math.Max(0, onhand - reserved);
+
+                        <tr>
+                            <td>@name</td>
+                            <td><span class="badge bg-info">@onhand</span></td>
+                            <td>
+                                @if (reserved == 0)
+                                {
+                                    <span class="text-muted">@reserved</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">@reserved</span>
+                                }
+                            </td>
+                            <td>
+                                @if (available > 0)
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-primary btn-open-transfer-modal"
+                                            data-branchid="@r.BranchID"
+                                            data-branchname="@name"
+                                            data-onhand="@onhand"
+                                            data-reserved="@reserved"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#transferModal">
+                                        調撥
+                                    </button>
+                                }
+                                else
+                                {
+                                    @* 無庫存：顯示極簡的長破折號（或改成空白 / 圖示） *@
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                        </tr>
                 }
             </tbody>
         </table>
@@ -152,153 +171,219 @@ else
 @section Scripts {
     <script>
         (function(){
-            // ---------- helper: 以 AJAX 取得 rows JSON（server 需有 /Inventory/GetRows?bookId=...） ----------
-            async function loadRows(bookId) {
-                const tbody = document.getElementById('inv-rows-tbody');
-                if (!tbody) return;
-                try {
-                    const url = '@Url.Action("GetRows", "Inventory", new { area = "Books" })' + '?bookId=' + encodeURIComponent(bookId);
-                    const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
-                    if (!resp.ok) throw new Error('載入失敗: ' + resp.status);
-                    const rows = await resp.json();
+          // escapeHtml 保護
+          function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+              .replace(/&/g, '&amp;')
+              .replace(/"/g, '&quot;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;');
+          }
 
-                    // 清空並重建 tbody
-                    tbody.innerHTML = '';
-                    for (const r of rows) {
-                        const tr = document.createElement('tr');
+          // --- loadRows: 從 Controller 的 GetRows 讀 JSON，並重建 tbody
+          async function loadRows(bookId) {
+            const tbody = document.getElementById('inv-rows-tbody');
+            if (!tbody) return;
+            try {
+              const url = '@Url.Action("GetRows", "Inventory", new { area = "Books" })' + '?bookId=' + encodeURIComponent(bookId);
+              const resp = await fetch(url, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin'
+              });
+              if (!resp.ok) throw new Error('載入失敗: ' + resp.status);
 
-                        const tdName = document.createElement('td');
-                        tdName.textContent = r.branchName;
-                        tr.appendChild(tdName);
+              const rows = await resp.json();
+              // 清空並重建 tbody
+              tbody.innerHTML = '';
 
-                        const tdOnHand = document.createElement('td');
-                        tdOnHand.innerHTML = `<span class="badge bg-info">${r.onHand ?? 0}</span>`;
-                        tr.appendChild(tdOnHand);
+              for (const r of rows) {
+                const onHand = Number(r.onHand ?? r.OnHand ?? 0);
+                const reserved = Number(r.reserved ?? r.Reserved ?? 0);
+                const branchID = r.branchID ?? r.BranchID;
+                const branchName = r.branchName ?? r.BranchName ?? '';
+                const available = Math.max(0, onHand - reserved);
 
-                        const tdReserved = document.createElement('td');
-                        tdReserved.innerHTML = `<span class="text-muted">${r.reserved ?? 0}</span>`;
-                        tr.appendChild(tdReserved);
+                const tr = document.createElement('tr');
 
-                        const tdOp = document.createElement('td');
-                        tdOp.innerHTML = `<button type="button" class="btn btn-sm btn-primary btn-open-transfer-modal"
-                                            data-branchid="${r.branchID}"
-                                            data-branchname="${escapeHtml(r.branchName)}"
-                                            data-onhand="${r.onHand ?? 0}"
-                                            data-reserved="${r.reserved ?? 0}"
-                                            data-bs-toggle="modal" data-bs-target="#transferModal">調撥</button>`;
-                        tr.appendChild(tdOp);
+                const tdName = document.createElement('td');
+                tdName.textContent = branchName;
+                tr.appendChild(tdName);
 
-                        tbody.appendChild(tr);
-                    }
+                const tdOnHand = document.createElement('td');
+                tdOnHand.innerHTML = `<span class="badge bg-info">${onHand}</span>`;
+                tr.appendChild(tdOnHand);
 
-                    // 重新綁定 modal 按鈕的 click handler
-                    bindOpenTransferButtons();
-                } catch (ex) {
-                    console.error(ex);
+                const tdReserved = document.createElement('td');
+                tdReserved.innerHTML = `<span class="text-muted">${reserved}</span>`;
+                tr.appendChild(tdReserved);
+
+                const tdOp = document.createElement('td');
+                if (available > 0) {
+                  tdOp.innerHTML = `<button type="button" class="btn btn-sm btn-primary btn-open-transfer-modal"
+                                      data-branchid="${branchID}"
+                                      data-branchname="${escapeHtml(branchName)}"
+                                      data-onhand="${onHand}"
+                                      data-reserved="${reserved}"
+                                      data-bs-toggle="modal" data-bs-target="#transferModal">調撥</button>`;
+                } else {
+                  tdOp.innerHTML = `<span class="text-muted">—</span>`;
                 }
+                tr.appendChild(tdOp);
+
+                tbody.appendChild(tr);
+              }
+
+              // 重新綁定 modal 按鈕的 click handler（必要）
+              bindOpenTransferButtons();
+
+              // 同步 transfer form 的 bookId hidden（如果你在 loadRows 時有指定 bookId）
+              const transferBookHidden = document.querySelector('form#transferForm input[name="bookId"]');
+              if (transferBookHidden) transferBookHidden.value = bookId;
+
+              // 同步頁首小標題（若存在 select）
+              const sel = document.querySelector('select[name="bookId"]');
+              if (sel) {
+                const opt = sel.querySelector(`option[value="${bookId}"]`);
+                const small = document.getElementById('currentBookTitle');
+                if (opt && small) small.textContent = ' - ' + opt.textContent;
+              }
+            } catch (ex) {
+              console.error('loadRows error', ex);
+            }
+          }
+
+          // --- modal 開啟填值
+          function openTransferHandler() {
+            const branchId = this.getAttribute('data-branchid');
+            const branchName = this.getAttribute('data-branchname');
+            const onhand = parseInt(this.getAttribute('data-onhand') || '0', 10);
+            const reserved = parseInt(this.getAttribute('data-reserved') || '0', 10);
+            const available = Math.max(0, onhand - reserved);
+
+            const fromBranchIdEl = document.getElementById('modal-fromBranchId');
+            if (fromBranchIdEl) fromBranchIdEl.value = branchId;
+            const fromBranchNameEl = document.getElementById('modal-fromBranchName');
+            if (fromBranchNameEl) fromBranchNameEl.value = branchName;
+            const fromOnHandEl = document.getElementById('modal-fromOnHand');
+            if (fromOnHandEl) fromOnHandEl.value = onhand;
+            const fromReservedEl = document.getElementById('modal-fromReserved');
+            if (fromReservedEl) fromReservedEl.value = reserved;
+
+            // 避免目的選到自己
+            const toSel = document.getElementById('modal-toBranchId');
+            if (toSel) {
+              for (let i = 0; i < toSel.options.length; i++) {
+                toSel.options[i].disabled = (toSel.options[i].value === branchId);
+              }
+              if (toSel.value === branchId) toSel.value = "";
             }
 
-            // escapeHtml 保護（簡單）
-            function escapeHtml(str) {
-                if (!str) return '';
-                return String(str)
-                    .replace(/&/g, '&amp;')
-                    .replace(/"/g, '&quot;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;');
+            // 設定 qty max（UI 提示：你可改成顯示 max 字樣）
+            const qtyEl = document.getElementById('modal-quantity');
+            if (qtyEl) {
+              qtyEl.max = available;
+              // 設預設值為 1，若 available = 0 則設為 0（不過按鈕不會出現）
+              qtyEl.value = available > 0 ? 1 : 0;
             }
 
-            // ---------- 綁定按鈕與 modal 填值邏輯 ----------
-            function bindOpenTransferButtons() {
-                document.querySelectorAll('.btn-open-transfer-modal').forEach(btn => {
-                    btn.removeEventListener('click', openTransferHandler);
-                    btn.addEventListener('click', openTransferHandler);
-                });
-            }
+            const alertBox = document.getElementById('modal-alert');
+            if (alertBox) { alertBox.classList.add('d-none'); alertBox.textContent = ''; }
+          }
 
-            function openTransferHandler() {
-                const branchId = this.getAttribute('data-branchid');
-                const branchName = this.getAttribute('data-branchname');
-                const onhand = parseInt(this.getAttribute('data-onhand') || '0', 10);
-                const reserved = parseInt(this.getAttribute('data-reserved') || '0', 10);
-                const available = Math.max(0, onhand - reserved);
+          // --- 綁定 open modal 的按鈕
+          function bindOpenTransferButtons() {
+            document.querySelectorAll('.btn-open-transfer-modal').forEach(btn => {
+              btn.removeEventListener('click', openTransferHandler);
+              btn.addEventListener('click', openTransferHandler);
+            });
+          }
 
-                document.getElementById('modal-fromBranchId').value = branchId;
-                document.getElementById('modal-fromBranchName').value = branchName;
-                document.getElementById('modal-fromOnHand').value = onhand;
-                document.getElementById('modal-fromReserved').value = reserved;
-
-                // 避免目的選到自己
-                const toSel = document.getElementById('modal-toBranchId');
-                if (toSel) {
-                    for (let i = 0; i < toSel.options.length; i++) {
-                        toSel.options[i].disabled = (toSel.options[i].value === branchId);
-                    }
-                    if (toSel.value === branchId) toSel.value = "";
-                }
-
-                // 預設數量：至少 1，最大為 available（顯示上讓使用者知道）
-                const qtyEl = document.getElementById('modal-quantity');
-                if (qtyEl) qtyEl.value = Math.max(1, Math.min(available || 1, 1));
-
-                const alertBox = document.getElementById('modal-alert');
-                if (alertBox) { alertBox.classList.add('d-none'); alertBox.textContent = ''; }
-            }
-
-            // ---------- 前端驗證（留用） ----------
-            const form = document.getElementById('transferForm');
-            if (form) {
-                form.addEventListener('submit', function(e){
-                    const onhand = parseInt(document.getElementById('modal-fromOnHand').value || '0', 10);
-                    const reserved = parseInt(document.getElementById('modal-fromReserved').value || '0', 10);
-                    const available = Math.max(0, onhand - reserved);
-                    const qty = parseInt(document.getElementById('modal-quantity').value || '0', 10);
-                    const toBranchId = document.getElementById('modal-toBranchId').value;
-                    const alertBox = document.getElementById('modal-alert');
-
-                    if (!toBranchId) {
-                        e.preventDefault();
-                        alertBox.textContent = '請選擇目的據點';
-                        alertBox.classList.remove('d-none');
-                        return;
-                    }
-                    if (isNaN(qty) || qty <= 0) {
-                        e.preventDefault();
-                        alertBox.textContent = '請輸入正整數的調撥數量';
-                        alertBox.classList.remove('d-none');
-                        return;
-                    }
-                    if (qty > available) {
-                        e.preventDefault();
-                        alertBox.textContent = '調撥數量不可超過來源據點可用數量（' + available + '）';
-                        alertBox.classList.remove('d-none');
-                        return;
-                    }
-
-                    // 若你要用 AJAX 送出（不 reload），請啟用下面被註解的段落並註解掉 return（或 e.preventDefault()）
-                    // 為了安全，若用 AJAX 必須把 antiforgery token 加入 header（下段示範）。
-                });
-            }
-
-            // ---------- 下拉書籍即時更新（不整頁 reload） ----------
+          // --- bind book select（封裝成 function，可重用）
+          function bindBookSelect() {
             const bookSelect = document.querySelector('select[name="bookId"]');
-            if (bookSelect) {
-                bookSelect.addEventListener('change', function(){
-                    // 方案 A：用 AJAX 立即重載 rows（需要 Controller GetRows 回傳 JSON）
-                    const bookId = this.value;
-                    if (bookId) loadRows(bookId);
+            if (!bookSelect) return;
 
-                    // 並且把 URL 的 query string 更新（不 reload），讓刷新/分享能保留 bookId
-                    const u = new URL(window.location.href);
-                    u.searchParams.set('bookId', bookId);
-                    window.history.replaceState({}, '', u.toString());
-                });
+            // 初次變動時（或 user 切換）要同步：1) 更新 rows 2) 更新 transferForm hidden 3) 更新 URL 4) 更新頁首 small
+            bookSelect.removeEventListener('change', bookSelect._boundChangeHandler);
+            const handler = function() {
+              const bookId = this.value;
+              if (!bookId) return;
+              // 1) AJAX 更新表格
+              loadRows(bookId);
+
+              // 2) 同步 transfer form hidden 的 bookId（以免送出時帶回舊值）
+              const transferBookHidden = document.querySelector('form#transferForm input[name="bookId"]');
+              if (transferBookHidden) transferBookHidden.value = bookId;
+
+              // 3) 更新 URL（不 reload）
+              const u = new URL(window.location.href);
+              u.searchParams.set('bookId', bookId);
+              window.history.replaceState({}, '', u.toString());
+
+              // 4) 更新頁首小標題
+              const opt = this.selectedOptions && this.selectedOptions[0];
+              const small = document.getElementById('currentBookTitle');
+              if (opt && small) small.textContent = ' - ' + opt.textContent;
+            };
+            bookSelect.addEventListener('change', handler);
+            // keep reference so we can remove later if needed
+            bookSelect._boundChangeHandler = handler;
+          }
+
+          // --- transfer form 前端驗證（保持） ---
+          (function bindFormValidation(){
+            const form = document.getElementById('transferForm');
+            if (!form) return;
+            form.addEventListener('submit', function(e){
+              const onhand = parseInt(document.getElementById('modal-fromOnHand').value || '0', 10);
+              const reserved = parseInt(document.getElementById('modal-fromReserved').value || '0', 10);
+              const available = Math.max(0, onhand - reserved);
+              const qty = parseInt(document.getElementById('modal-quantity').value || '0', 10);
+              const toBranchId = document.getElementById('modal-toBranchId').value;
+              const alertBox = document.getElementById('modal-alert');
+
+              if (!toBranchId) {
+                e.preventDefault();
+                if (alertBox) { alertBox.textContent = '請選擇目的據點'; alertBox.classList.remove('d-none'); }
+                return;
+              }
+              if (isNaN(qty) || qty <= 0) {
+                e.preventDefault();
+                if (alertBox) { alertBox.textContent = '請輸入正整數的調撥數量'; alertBox.classList.remove('d-none'); }
+                return;
+              }
+              if (qty > available) {
+                e.preventDefault();
+                if (alertBox) { alertBox.textContent = '調撥數量不可超過來源據點可用數量（' + available + '）'; alertBox.classList.remove('d-none'); }
+                return;
+              }
+              // 若你想用 AJAX 送出取代表單 submit，可在此 e.preventDefault() 然後實作 fetch POST（需帶 antiforgery token）
+            });
+          })();
+
+          // --- 初始化：綁定書籍下拉、綁 modal 按鈕（server-render 版）、並確保 transfer hidden 同步當前 server bookId ---
+          bindBookSelect();
+          bindOpenTransferButtons();
+
+          // 如果頁面載入時 URL 已有 bookId（或 server 已有 ViewBag.BookID），我們也應同步 transfer hidden
+          (function syncInitialBookHidden(){
+            const transferBookHidden = document.querySelector('form#transferForm input[name="bookId"]');
+            const bookSelect = document.querySelector('select[name="bookId"]');
+            if (transferBookHidden && bookSelect) {
+              transferBookHidden.value = bookSelect.value || transferBookHidden.value || '';
+              // 同步頁首 small（若有）
+              const small = document.getElementById('currentBookTitle');
+              if (small) {
+                const opt = bookSelect.selectedOptions && bookSelect.selectedOptions[0];
+                if (opt) small.textContent = ' - ' + opt.textContent;
+              }
             }
+          })();
 
-            // 初次綁定（如果 server render 已有按鈕，綁定它們）
-            bindOpenTransferButtons();
         })();
     </script>
+
 }
 
 @section Styles {
@@ -316,6 +401,11 @@ else
 
         #inv-rows-tbody td:first-child {
             font-weight: 600;
+        }
+
+        #inv-rows-tbody .text-muted {
+            opacity: 0.85;
+            font-weight: 500;
         }
 
         /* badge 調整（數字圓點） */
