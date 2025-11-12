@@ -3,7 +3,7 @@ import { computed, defineProps, defineEmits, ref, watch, Ref } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useRouter } from 'vue-router'
 import http from '@/lib/http'
-import { useAuth  } from '@/stores/auth'
+import { useAuth } from '@/stores/auth'
 
 // --- 傳入父層 props 與事件 ---
 
@@ -37,7 +37,7 @@ watch(
       alert('請先登入會員再查看優惠券')
       return
     }
-  }
+  },
 )
 
 // 綁定 store 中的資料
@@ -153,8 +153,7 @@ watch(
 async function loadMemberCoupons() {
   try {
     // 🟢 若沒有 token，就不發 request
-    const token =
-      localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
     if (!token) {
       console.warn('⚠️ 無法載入優惠券：尚未登入')
       memberCoupons.value = []
@@ -170,7 +169,6 @@ async function loadMemberCoupons() {
     memberCoupons.value = []
   }
 }
-
 
 // ✅ 使用代碼領取優惠券
 async function claimByCode() {
@@ -203,11 +201,24 @@ async function applyCoupon() {
       Subtotal: subtotal,
     })
     if (data.success) {
-      discountAmount.value = data.data.discount
-      discountInfo.value = data.data.rule
+      // 更新畫面展示
+      discountAmount.value = Number(data.data.discount || 0)
+      discountInfo.value = data.data.rule || ''
+
+      // **同步到 cart store**
+      cartStore.setAppliedCoupon({
+        code: couponCode.value?.trim() || data.data?.code || data.data?.couponCode || '',
+        discount: Number(data.data?.discount ?? 0),
+        memberCouponId: data.data?.memberCouponId ?? data.data?.MemberCouponId ?? null,
+      })
+
+      // 選擇性：清空輸入欄（看你UX）
+      // couponCode.value = ''
     } else {
       discountAmount.value = 0
       discountInfo.value = data.message || '無效的優惠券'
+      // 若無效則同步清掉 store 的 appliedCoupon（保險）
+      cartStore.clearAppliedCoupon()
     }
   } catch (err: any) {
     console.error('applyCoupon error:', err)
@@ -217,7 +228,18 @@ async function applyCoupon() {
 
 // ✅ 點擊優惠券 → 自動填入並立即套用
 async function useCoupon(coupon: any) {
-  couponCode.value = coupon.code
+  // 容錯讀欄位名稱
+  const code = coupon.code ?? coupon.Code ?? coupon.couponCode ?? ''
+  couponCode.value = String(code)
+
+  // 立即把 coupon 存到 store（可以快速呈現 UX）
+  cartStore.setAppliedCoupon({
+    code,
+    discount: Number(coupon.DiscountValue ?? coupon.discount ?? 0),
+    memberCouponId: coupon.MemberCouponId ?? coupon.memberCouponId ?? coupon.CouponId ?? null,
+  })
+
+  // 再向後端確認（會覆寫 discount 與 rule）
   await applyCoupon()
 }
 
@@ -243,6 +265,7 @@ function removeItem(itemId: number | null) {
 // ✅ 清空購物車
 function clearCart() {
   cartStore.clearCart()
+  cartStore.clearAppliedCoupon()
   discountAmount.value = 0
   discountInfo.value = ''
   couponCode.value = ''
@@ -264,6 +287,50 @@ async function checkoutCart() {
     const e = err as any
     alert(e.message || '結帳失敗')
   }
+}
+
+function getCoverUrl(book: any) {
+  // 支援多種欄位命名
+  const id = book?.id ?? book?.Id ?? book?.bookId ?? book?.BookID ?? null
+  const cover = (book?.coverUrl ?? book?.cover ?? '').toString().trim()
+
+  if (cover) {
+    if (cover.startsWith('http://') || cover.startsWith('https://') || cover.startsWith('/'))
+      return cover
+    return `/images/books/${cover}` // 若 DB 存的是檔名
+  }
+
+  // *** 這裡改成跟詳情頁一致的路徑（working） ***
+  if (id != null) return `/api/BookImages/book/${id}/cover`
+
+  // data-uri placeholder（不會發 request，不會造成 loop）
+  return defaultPlaceholderDataUri()
+}
+
+function defaultPlaceholderDataUri() {
+  const svg = encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='160'>
+      <rect width='100%' height='100%' fill='#f3f4f6'/>
+      <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#9ca3af' font-size='14'>No Cover</text>
+    </svg>`,
+  )
+  return `data:image/svg+xml;charset=UTF-8,${svg}`
+}
+
+function onImageError(e: Event, book: any) {
+  const img = e.currentTarget as HTMLImageElement | null
+  if (!img) return
+
+  // 只嘗試一次 fallback，避免 loop
+  if (img.dataset.fallback === '1') {
+    console.warn('[img error] fallback already used, giving up', img.src, book)
+    return
+  }
+
+  // 取消後續 onerror handler（避免再次觸發）
+  img.onerror = null
+  img.dataset.fallback = '1'
+  img.src = defaultPlaceholderDataUri()
 }
 </script>
 
@@ -293,9 +360,9 @@ async function checkoutCart() {
             >
               <div class="d-flex align-items-center gap-3 flex-grow-1">
                 <img
-                  :src="item.book.coverUrl && item.book.coverUrl.startsWith('http') ? item.book.coverUrl : `/api/BookImages/${item.book.id}/cover`"
+                  :src="getCoverUrl(item.book)"
                   :alt="item.book.title || 'Book Cover'"
-                  @error="(e) => { const target = e.currentTarget as HTMLImageElement | null; if (target) target.src = '/placeholder.png' }"
+                  @error="(e) => onImageError(e, item.book)"
                   class="rounded shadow-sm"
                   style="width: 60px; height: 80px; object-fit: cover"
                 />
@@ -357,21 +424,15 @@ async function checkoutCart() {
                   <div>
                     <div class="fw-bold">{{ c.name }}</div>
                     <div class="text-muted small">
-  有效期限：
-  <span v-if="c.startAt && c.endAt">
-    {{ c.startAt }} ~ {{ c.endAt }}
-  </span>
-  <span v-else>無期限</span>
-</div>
-
+                      有效期限：
+                      <span v-if="c.startAt && c.endAt"> {{ c.startAt }} ~ {{ c.endAt }} </span>
+                      <span v-else>無期限</span>
+                    </div>
                   </div>
                   <div class="text-end">
                     <span v-if="c.DiscountType === 0">折抵 NT$ {{ c.DiscountValue }}</span>
                     <span v-else>{{ c.DiscountValue }}</span>
-                    <button
-                      class="btn btn-sm btn-outline-success ms-2"
-                      @click="useCoupon(c)"
-                    >
+                    <button class="btn btn-sm btn-outline-success ms-2" @click="useCoupon(c)">
                       使用
                     </button>
                   </div>
@@ -379,9 +440,7 @@ async function checkoutCart() {
               </ul>
 
               <!-- 沒有優惠券 -->
-              <p v-else class="text-muted small mb-0">
-                尚未領取任何優惠券，請輸入代碼領取。
-              </p>
+              <p v-else class="text-muted small mb-0">尚未領取任何優惠券，請輸入代碼領取。</p>
             </div>
 
             <!-- 優惠券結果提示 -->
@@ -398,9 +457,7 @@ async function checkoutCart() {
             <!-- 實付金額 -->
             <div class="d-flex justify-content-between fs-5 mt-2 border-top pt-2">
               <span>🧾 實付金額：</span>
-              <strong class="text-danger fs-4">
-                NT$ {{ totalPrice - discountAmount }}
-              </strong>
+              <strong class="text-danger fs-4"> NT$ {{ totalPrice - discountAmount }} </strong>
             </div>
           </div>
 
@@ -447,8 +504,8 @@ async function checkoutCart() {
   flex-direction: column;
 }
 .modal-body {
-  flex-grow: 1;      /* 撐滿 modal-content 高度 */
-  overflow-y: auto;  /* 超過高度自動滾動 */
+  flex-grow: 1; /* 撐滿 modal-content 高度 */
+  overflow-y: auto; /* 超過高度自動滾動 */
 }
 
 .cart-list {
