@@ -288,6 +288,50 @@ async function checkoutCart() {
     alert(e.message || '結帳失敗')
   }
 }
+
+function getCoverUrl(book: any) {
+  // 支援多種欄位命名
+  const id = book?.id ?? book?.Id ?? book?.bookId ?? book?.BookID ?? null
+  const cover = (book?.coverUrl ?? book?.cover ?? '').toString().trim()
+
+  if (cover) {
+    if (cover.startsWith('http://') || cover.startsWith('https://') || cover.startsWith('/'))
+      return cover
+    return `/images/books/${cover}` // 若 DB 存的是檔名
+  }
+
+  // *** 這裡改成跟詳情頁一致的路徑（working） ***
+  if (id != null) return `/api/BookImages/book/${id}/cover`
+
+  // data-uri placeholder（不會發 request，不會造成 loop）
+  return defaultPlaceholderDataUri()
+}
+
+function defaultPlaceholderDataUri() {
+  const svg = encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='160'>
+      <rect width='100%' height='100%' fill='#f3f4f6'/>
+      <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#9ca3af' font-size='14'>No Cover</text>
+    </svg>`,
+  )
+  return `data:image/svg+xml;charset=UTF-8,${svg}`
+}
+
+function onImageError(e: Event, book: any) {
+  const img = e.currentTarget as HTMLImageElement | null
+  if (!img) return
+
+  // 只嘗試一次 fallback，避免 loop
+  if (img.dataset.fallback === '1') {
+    console.warn('[img error] fallback already used, giving up', img.src, book)
+    return
+  }
+
+  // 取消後續 onerror handler（避免再次觸發）
+  img.onerror = null
+  img.dataset.fallback = '1'
+  img.src = defaultPlaceholderDataUri()
+}
 </script>
 
 <template>
@@ -316,18 +360,9 @@ async function checkoutCart() {
             >
               <div class="d-flex align-items-center gap-3 flex-grow-1">
                 <img
-                  :src="
-                    item.book.coverUrl && item.book.coverUrl.startsWith('http')
-                      ? item.book.coverUrl
-                      : `/api/BookImages/${item.book.id}/cover`
-                  "
+                  :src="getCoverUrl(item.book)"
                   :alt="item.book.title || 'Book Cover'"
-                  @error="
-                    (e) => {
-                      const target = e.currentTarget as HTMLImageElement | null
-                      if (target) target.src = '/placeholder.png'
-                    }
-                  "
+                  @error="(e) => onImageError(e, item.book)"
                   class="rounded shadow-sm"
                   style="width: 60px; height: 80px; object-fit: cover"
                 />
