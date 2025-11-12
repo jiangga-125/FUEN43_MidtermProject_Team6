@@ -39,7 +39,6 @@ const fakeReviews = [
   },
 ]
 
-// 模擬讀者評價與相關推薦 TODO: 改為 API 請求
 const reviews = ref<
   {
     title: string
@@ -389,6 +388,10 @@ function formatMoney(v: any) {
   return Number(v).toLocaleString('zh-TW')
 }
 
+function goToCoupons() {
+  router.push('/member/coupons')
+}
+
 // 生命週期：先 load book，再 load reviews
 onMounted(async () => {
   const bookId = Number(route.params.id)
@@ -399,8 +402,13 @@ onMounted(async () => {
   // ✅ 再載入評論
   try {
     const res = await http.get(`/api/ReviewsApi/GetBookReviews/${bookId}`)
-    console.log('📢 後端回傳的 reviews：', res.data) // ✅ 先看這裡有沒有 displayName
-    reviews.value = Array.isArray(res.data) && res.data.length > 0 ? res.data : fakeReviews
+    if (Array.isArray(res.data) && res.data.length > 0) {
+      // ✅ 合併假資料 + 真實資料
+      reviews.value = [...fakeReviews, ...res.data]
+    } else {
+      // ✅ 即使沒有後端資料，假資料仍保留
+      reviews.value = fakeReviews
+    }
   } catch (err) {
     console.warn('⚠️ 無法載入評論，改用假資料')
     reviews.value = fakeReviews
@@ -833,7 +841,14 @@ function emitAdd(b: any) {
             <div class="card-body">
               <h6 class="card-title">活動與優惠</h6>
               <p class="small text-muted">使用 VIP 折扣或輸入優惠碼可享折扣。</p>
-              <button type="button" class="btn btn-outline-secondary w-100 mb-2">查看優惠</button>
+              <button
+    type="button"
+    class="btn btn-outline-secondary w-100 mb-2"
+    @click="goToCoupons"
+  >
+    查看優惠
+  </button>
+
               <!-- 按鈕改為 type="button" 並呼叫 onAddToCart 同一函式 -->
               <!-- <button
                 type="button"
