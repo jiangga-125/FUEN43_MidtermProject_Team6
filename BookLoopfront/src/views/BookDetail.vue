@@ -678,7 +678,7 @@ function emitAdd(b: any) {
                 role="tab"
                 title="查看各分店庫存"
               >
-                據點總庫存
+                庫存
                 <span v-if="totalAvailable > 0" class="badge bg-secondary ms-2">{{
                   totalAvailable
                 }}</span>
@@ -773,7 +773,7 @@ function emitAdd(b: any) {
             <div class="mt-3 branch-panel">
               <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                  <div>據點庫存明細</div>
+                  <div>分店庫存明細</div>
                   <!-- <div class="small text-muted">
                     庫存總數：<strong>{{ totalAvailable }}</strong>
                   </div> -->

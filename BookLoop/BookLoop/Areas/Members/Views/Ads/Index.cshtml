@@ -43,7 +43,19 @@
                     <img src="@ad.ImageUrl" style="width:120px; border-radius:6px; border:1px solid #ddd;" />
                 </td>
                 <td>@ad.Title</td>
-                <td>@ad.Position</td>
+                <td>
+                    @{
+                        string posName = @ad.Position switch
+                        {
+                            "Carousel" => "輪播圖",
+                            "HomeBanner" => "首頁橫幅",
+                            "Sidebar" => "側邊欄",
+                            "EventPage" => "活動頁",
+                            _ => @ad.Position
+                        };
+                    }
+                    @posName
+                </td>
                 <td>@ad.DisplayOrder</td>
                 <td>
                     @if (ad.IsActive)
