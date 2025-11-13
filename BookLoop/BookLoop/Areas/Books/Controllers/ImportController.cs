@@ -146,9 +146,7 @@ namespace BookSystem.Controllers
 
 		#region 匯入書籍 (預覽)
 
-		/// <summary>
-		/// 上傳書籍 CSV/JSON，預覽前 10 筆
-		/// </summary>
+		//上傳書籍 CSV/JSON
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> IndexBooks(IFormFile file)
@@ -170,9 +168,8 @@ namespace BookSystem.Controllers
 					try
 					{
 						using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
-						previewList = csv.GetRecords<ImportBookDto>()
-										 .Take(10)
-										 .ToList();
+						// 取全部，讓使用者在預覽頁面勾選要匯入的
+						previewList = csv.GetRecords<ImportBookDto>().ToList();
 					}
 					catch (Exception ex)
 					{
@@ -186,18 +183,7 @@ namespace BookSystem.Controllers
 					{
 						var json = await reader.ReadToEndAsync();
 
-						// 先檢查 JSON 格式是否正確
-						try
-						{
-							using var doc = System.Text.Json.JsonDocument.Parse(json);
-						}
-						catch (System.Text.Json.JsonException jex)
-						{
-							ViewBag.Error = $"JSON 格式錯誤：{jex.Message}";
-							return View("Index");
-						}
-
-						// 格式正確再反序列化
+						using var doc = System.Text.Json.JsonDocument.Parse(json); // 檢查格式
 						var rawList = System.Text.Json.JsonSerializer
 										.Deserialize<List<Dictionary<string, object>>>(json);
 
@@ -207,27 +193,20 @@ namespace BookSystem.Controllers
 							return View("Index");
 						}
 
-						// 欄位對照表：不同 JSON 欄位名稱 → ImportBookDto 屬性
 						var fieldMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-							{
-								{ "ISBN", "ISBN" },
+				{
+					{ "ISBN", "ISBN" },
+					{ "書名", "Title" }, { "書名(正題名)", "Title" }, { "Title", "Title" },
+					{ "作者", "Author" }, { "Author", "Author" },
+					{ "出版者", "Publisher" }, { "出版社", "Publisher" }, { "Publisher", "Publisher" },
+					{ "出版日期", "PublishDate" }, { "PublishDate", "PublishDate" },
+					{ "主題", "Category" }, { "分類", "Category" }, { "Category", "Category" },
+					{ "ImagePath", "ImagePath" }, { "圖片", "ImagePath" }
+				};
 
-								{ "書名", "Title" }, { "書名(正題名)", "Title" }, { "Title", "Title" },
-
-								{ "作者", "Author" }, { "Author", "Author" },
-
-								{ "出版者", "Publisher" }, { "出版社", "Publisher" }, { "Publisher", "Publisher" },
-
-								{ "出版日期", "PublishDate" }, { "PublishDate", "PublishDate" },
-
-								{ "主題", "Category" }, { "分類", "Category" }, { "Category", "Category" }
-							};
-
-						// 把 Dictionary 轉成 ImportBookDto
 						previewList = rawList.Select(x =>
 						{
 							var dto = new ImportBookDto();
-
 							foreach (var kv in x)
 							{
 								if (fieldMap.TryGetValue(kv.Key, out var propName))
@@ -236,11 +215,9 @@ namespace BookSystem.Controllers
 									prop?.SetValue(dto, kv.Value?.ToString());
 								}
 							}
-
 							return dto;
 						})
-						.Take(10)
-						.ToList();
+						.ToList(); // 取全部
 					}
 					catch (Exception ex)
 					{
@@ -248,7 +225,6 @@ namespace BookSystem.Controllers
 						return View("Index");
 					}
 				}
-
 				else
 				{
 					ViewBag.Error = "僅支援 CSV 或 JSON 檔案";
@@ -256,9 +232,10 @@ namespace BookSystem.Controllers
 				}
 			}
 
-			// 顯示書籍預覽畫面
+			// 顯示整份預覽清單（使用者在畫面上勾選要匯入的）
 			return View("PreviewBooks", previewList);
 		}
+
 
 		#endregion
 
@@ -277,27 +254,50 @@ namespace BookSystem.Controllers
 				return RedirectToAction("Index");
 			}
 
+			// 只匯入使用者勾選的；若沒有勾任何筆就預設匯入全部
+			var toImport = books.Where(b => b.Selected).ToList();
+			if (!toImport.Any()) toImport = books;
+
 			int inserted = 0, updated = 0;
 
-			foreach (var dto in books)
+			// 使用 transaction，較安全
+			using var transaction = await _context.Database.BeginTransactionAsync();
+
+			// 先把現有資料 load 成字典以便 cache（大小視資料量調整）
+			var publishersDict = await _context.Publishers
+				.AsNoTracking()
+				.ToDictionaryAsync(p => p.PublisherName, StringComparer.OrdinalIgnoreCase);
+			var categoriesDict = await _context.Categories
+				.AsNoTracking()
+				.ToDictionaryAsync(c => c.CategoryName, StringComparer.OrdinalIgnoreCase);
+			var authorsDict = await _context.Authors
+				.AsNoTracking()
+				.ToDictionaryAsync(a => a.AuthorName, StringComparer.OrdinalIgnoreCase);
+
+			// 暫存要 later 處理的作者與圖片（因為需要 book.BookID）
+			var pendingAuthors = new List<(string isbn, string authorName)>();
+			var pendingImages = new List<(string isbn, string imagePath)>();
+
+			// 先處理 publishers/categories & book 新增/更新（不立即 SaveChanges）
+			foreach (var dto in toImport)
 			{
 				if (string.IsNullOrWhiteSpace(dto.ISBN) || string.IsNullOrWhiteSpace(dto.Title))
 					continue;
 
 				string cleanIsbn = dto.ISBN.Replace("-", "").Trim();
 
-				// 嘗試找舊書籍
-				var book = await _context.Books
-					.FirstOrDefaultAsync(x => x.ISBN == cleanIsbn);
+				// 找舊書（用 ISBN）
+				var book = await _context.Books.FirstOrDefaultAsync(x => x.ISBN == cleanIsbn);
 
-				// 找或新增出版社
+				// 處理出版社（cache lookup，沒則新增到 context 並加到 dict）
 				Publisher? publisher = null;
 				if (!string.IsNullOrWhiteSpace(dto.Publisher))
 				{
-					publisher = await _context.Publishers
-						.FirstOrDefaultAsync(p => p.PublisherName == dto.Publisher);
-
-					if (publisher == null)
+					if (publishersDict.TryGetValue(dto.Publisher, out var p))
+					{
+						publisher = p;
+					}
+					else
 					{
 						publisher = new Publisher
 						{
@@ -308,18 +308,20 @@ namespace BookSystem.Controllers
 							IsDeleted = false
 						};
 						_context.Publishers.Add(publisher);
-						await _context.SaveChangesAsync();
+						// 加到 dict 以便後續 reuse (注意：尚未有 ID，會在 SaveChanges 後取得)
+						publishersDict[dto.Publisher] = publisher;
 					}
 				}
 
-				// 找或新增分類
+				// 處理分類
 				Category? category = null;
 				if (!string.IsNullOrWhiteSpace(dto.Category))
 				{
-					category = await _context.Categories
-						.FirstOrDefaultAsync(c => c.CategoryName == dto.Category);
-
-					if (category == null)
+					if (categoriesDict.TryGetValue(dto.Category, out var c))
+					{
+						category = c;
+					}
+					else
 					{
 						category = new Category
 						{
@@ -330,64 +332,34 @@ namespace BookSystem.Controllers
 							IsDeleted = false
 						};
 						_context.Categories.Add(category);
-						await _context.SaveChangesAsync();
+						categoriesDict[dto.Category] = category;
 					}
 				}
 
-				// 嘗試轉換出版日期（允許多格式）
+				// 解析出版日（允許多格式）
 				DateTime? publishDate = null;
 				if (!string.IsNullOrWhiteSpace(dto.PublishDate))
 				{
-					string[] formats = { "yyyy-MM-dd", "yyyy/MM/dd", "yyyyMMdd", "yyyy/M/d" };
-					if (DateTime.TryParseExact(dto.PublishDate, formats,
-						CultureInfo.InvariantCulture,
-						DateTimeStyles.None,
-						out var parsedDate))
+					string[] formats = { "yyyy-MM-dd", "yyyy/MM/dd", "yyyyMMdd", "yyyy/M/d", "yyyy/M/dd", "yyyy-M-d" };
+					if (DateTime.TryParseExact(dto.PublishDate, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
 					{
-						publishDate = parsedDate;
+						publishDate = parsed;
+					}
+					else if (DateTime.TryParse(dto.PublishDate, out var parsed2))
+					{
+						publishDate = parsed2;
 					}
 				}
-				// 如果匯入資料沒有出版日 → 補今天
-				if (publishDate == null)
-				{
-					publishDate = DateTime.UtcNow;
-				}
+				if (publishDate == null) publishDate = DateTime.UtcNow;
 
 				if (book != null)
 				{
-					// 更新模式（反射更新）
-					string? oldTitle = book.Title;
-
-					foreach (var prop in typeof(ImportBookDto).GetProperties())
-					{
-						if (prop.Name == "ISBN") continue; // ISBN 不更新
-
-						var newValue = prop.GetValue(dto);
-						if (newValue != null && !(newValue is string s && string.IsNullOrWhiteSpace(s)))
-						{
-							var targetProp = typeof(Book).GetProperty(prop.Name);
-							if (targetProp != null && targetProp.CanWrite)
-							{
-								try
-								{
-									var converted = Convert.ChangeType(newValue, targetProp.PropertyType);
-									targetProp.SetValue(book, converted);
-								}
-								catch
-								{
-									// 型別不符就跳過（Publisher, Category 等關聯另外處理）
-								}
-							}
-						}
-					}
-
-					// 額外處理關聯與系統欄位
+					// 更新欄位（排除 ISBN，本範例僅更新 Title/PublishDate 與關聯 ID）
+					var oldTitle = book.Title;
+					if (!string.IsNullOrWhiteSpace(dto.Title)) book.Title = dto.Title;
+					if (publishDate.HasValue) book.PublishDate = publishDate.Value;
 					book.PublisherID = publisher?.PublisherID ?? book.PublisherID;
 					book.CategoryID = category?.CategoryID ?? book.CategoryID;
-					if (publishDate.HasValue)
-					{
-						book.PublishDate = publishDate.Value;
-					}
 
 					if (!string.Equals(oldTitle, book.Title, StringComparison.OrdinalIgnoreCase))
 					{
@@ -401,82 +373,111 @@ namespace BookSystem.Controllers
 				}
 				else
 				{
-					// 新增模式
-					book = new Book
+					// 新增 book（PublisherID/CategoryID 目前可能還沒 ID，稍後 SaveChanges 會補）
+					var newBook = new Book
 					{
 						ISBN = cleanIsbn,
 						Title = dto.Title,
-						PublisherID = (int)(publisher?.PublisherID),
-						CategoryID = (int)(category?.CategoryID),
-						PublishDate = publishDate,
+						PublishDate = publishDate.Value,
 						Slug = SlugHelper.Generate(dto.Title),
 						CreatedAt = DateTime.UtcNow,
 						UpdatedAt = DateTime.UtcNow,
 						IsDeleted = false
 					};
-					_context.Books.Add(book);
+
+					// 若 publisher/category 已存在且有 ID -> 指定 ID，否則稍後透過 navigation object 關聯
+					if (publisher != null && publisher.PublisherID > 0) newBook.PublisherID = publisher.PublisherID;
+					if (category != null && category.CategoryID > 0) newBook.CategoryID = category.CategoryID;
+
+					// 如果 publisher/category 還沒 ID（剛加入 context），我們也可以用 navigation
+					if (publisher != null && publisher.PublisherID == 0) newBook.Publisher = publisher;
+					if (category != null && category.CategoryID == 0) newBook.Category = category;
+
+					_context.Books.Add(newBook);
 					inserted++;
 				}
 
-				await _context.SaveChangesAsync();
-
-				// 作者處理
+				// 暫存作者與圖片（後處理）
 				if (!string.IsNullOrWhiteSpace(dto.Author))
+					pendingAuthors.Add((cleanIsbn, dto.Author));
+
+				if (!string.IsNullOrWhiteSpace(dto.ImagePath))
+					pendingImages.Add((cleanIsbn, dto.ImagePath));
+			}
+
+			// 第一次儲存：把 new publishers/categories/books 寫入 DB，取得 ID
+			await _context.SaveChangesAsync();
+
+			// 重新 refresh authorsDict（避免新增時再查）
+			authorsDict = await _context.Authors
+				.AsNoTracking()
+				.ToDictionaryAsync(a => a.AuthorName, StringComparer.OrdinalIgnoreCase);
+
+			// 處理 BookAuthors & BookImages
+			foreach (var (isbn, authorName) in pendingAuthors)
+			{
+				var book = await _context.Books.FirstOrDefaultAsync(b => b.ISBN == isbn);
+				if (book == null) continue;
+
+				if (!authorsDict.TryGetValue(authorName, out var author))
 				{
-					var author = await _context.Authors.FirstOrDefaultAsync(a => a.AuthorName == dto.Author);
-					if (author == null)
+					author = new Author
 					{
-						author = new Author
-						{
-							AuthorName = dto.Author,
-							Slug = SlugHelper.Generate(dto.Author),
-							CreatedAt = DateTime.UtcNow,
-							UpdatedAt = DateTime.UtcNow,
-							IsDeleted = false
-						};
-						_context.Authors.Add(author);
-						await _context.SaveChangesAsync();
-					}
-
-					bool hasRelation = await _context.BookAuthors
-						.AnyAsync(ba => ba.BookID == book.BookID && ba.AuthorID == author.AuthorID);
-
-					if (!hasRelation)
-					{
-						_context.BookAuthors.Add(new BookAuthor
-						{
-							BookID = book.BookID,
-							AuthorID = author.AuthorID,
-							AuthorOrder = 1
-						});
-						await _context.SaveChangesAsync();
-					}
+						AuthorName = authorName,
+						Slug = SlugHelper.Generate(authorName),
+						CreatedAt = DateTime.UtcNow,
+						UpdatedAt = DateTime.UtcNow,
+						IsDeleted = false
+					};
+					_context.Authors.Add(author);
+					// 加到字典（ID 尚未有，稍後 SaveChanges 後會有）
+					authorsDict[authorName] = author;
 				}
 
-				// 圖片處理
-				if (!string.IsNullOrWhiteSpace(dto.ImagePath))
-				{
-					bool hasImage = await _context.BookImages
-						.AnyAsync(img => img.BookID == book.BookID && img.IsPrimary);
+				// 確認關聯是否已存在
+				bool hasRelation = await _context.BookAuthors
+					.AnyAsync(ba => ba.BookID == book.BookID && ba.AuthorID == author.AuthorID);
 
-					if (!hasImage)
+				if (!hasRelation)
+				{
+					_context.BookAuthors.Add(new BookAuthor
 					{
-						_context.BookImages.Add(new BookImage
-						{
-							BookID = book.BookID,
-							FilePath = dto.ImagePath,
-							IsPrimary = true,
-							CreatedAt = DateTime.UtcNow,
-							UpdatedAt = DateTime.UtcNow
-						});
-						await _context.SaveChangesAsync();
-					}
+						BookID = book.BookID,
+						AuthorID = author.AuthorID, // 若 author 尚未有 ID EF 會處理（必須 SaveChanges）
+						AuthorOrder = 1
+					});
 				}
 			}
+
+			foreach (var (isbn, imagePath) in pendingImages)
+			{
+				var book = await _context.Books.FirstOrDefaultAsync(b => b.ISBN == isbn);
+				if (book == null) continue;
+
+				bool hasImage = await _context.BookImages
+					.AnyAsync(img => img.BookID == book.BookID && img.IsPrimary);
+
+				if (!hasImage)
+				{
+					_context.BookImages.Add(new BookImage
+					{
+						BookID = book.BookID,
+						FilePath = imagePath,
+						IsPrimary = true,
+						CreatedAt = DateTime.UtcNow,
+						UpdatedAt = DateTime.UtcNow
+					});
+				}
+			}
+
+			// 最後一次 SaveChanges 並 commit
+			await _context.SaveChangesAsync();
+			await transaction.CommitAsync();
 
 			TempData["Success"] = $"書籍匯入完成：新增 {inserted} 筆，更新 {updated} 筆。";
 			return RedirectToAction("Index", "Books");
 		}
+
 
 
 		#endregion

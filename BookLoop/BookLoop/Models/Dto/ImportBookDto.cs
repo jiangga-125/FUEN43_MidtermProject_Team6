@@ -9,5 +9,7 @@
 		public string? PublishDate { get; set; }
 		public string? Category { get; set; }
 		public string? ImagePath { get; set; }
+
+		public bool Selected { get; set; } = true;
 	}
 }

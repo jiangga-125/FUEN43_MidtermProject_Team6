@@ -107,7 +107,7 @@ namespace BookSystem.Controllers
 
 			if (_context.Books.Any(b => b.ISBN == book.ISBN))
 			{
-				ModelState.AddModelError("Isbn", "這個 ISBN 已經存在，請輸入新的。");
+				ModelState.AddModelError("ISBN", "這個 ISBN 已經存在，請輸入新的。");
 				return View(book);
 			}
 
@@ -227,12 +227,14 @@ namespace BookSystem.Controllers
 			existing.ISBN = book.ISBN;
 			existing.PublisherID = book.PublisherID;
 			existing.CategoryID = book.CategoryID;
+			existing.Description = book.Description;
 			existing.Slug = SlugHelper.Generate(book.Title);
 			existing.UpdatedAt = DateTime.UtcNow;
 
 			if (_context.Books.Any(b => b.ISBN == book.ISBN && b.BookID != book.BookID))
 			{
-				ModelState.AddModelError("Isbn", "這個 ISBN 已經存在，請輸入新的。");
+				ModelState.AddModelError("ISBN", "這個 ISBN 已經存在，請輸入新的。");
+				await LoadDropdownsAsync(); // 必須補回下拉資料
 				return View(book);
 			}
 

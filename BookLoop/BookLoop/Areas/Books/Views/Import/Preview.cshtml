@@ -1,29 +1,46 @@
 ﻿@using BookLoop.Services.Import
-@model IEnumerable<ImportCategoryDto>
+@model List<ImportCategoryDto>
 
-<h1>匯入預覽</h1>
-<p>以下為前 10 筆資料，確認後可匯入正式資料庫：</p>
+@{
+    ViewData["Title"] = "分類匯入預覽";
+}
 
-<form asp-action="Commit" method="post">
+<h1>匯入分類（預覽）</h1>
+<p>請勾選要匯入的分類，未勾選者將不會匯入。</p>
+
+<form asp-area="Books" asp-controller="Import" asp-action="Commit" method="post">
+    @Html.AntiForgeryToken()
+
     <table class="table table-bordered">
         <thead>
             <tr>
+                <th style="width:60px">匯入</th>
                 <th>分類名稱</th>
             </tr>
         </thead>
         <tbody>
-            @for (int i = 0; i < Model.Count(); i++)
+            @{
+                var list = Model ?? new List<ImportCategoryDto>();
+            }
+            @for (int i = 0; i < list.Count; i++)
             {
                 <tr>
+                    <td class="align-middle text-center">
+                        <!-- hidden false 保證欄位會送出 false 當 checkbox 未勾選時 -->
+                        <input type="hidden" name="categories[@i].Selected" value="false" />
+                        <input type="checkbox" name="categories[@i].Selected" value="true" @(list[i].Selected ? "checked" : "") />
+                    </td>
                     <td>
-                        <input type="hidden" name="categories[@i].CategoryName" value="@Model.ElementAt(i).CategoryName" />
-                        @Model.ElementAt(i).CategoryName
+                        <input type="hidden" name="categories[@i].CategoryName" value="@list[i].CategoryName" />
+                        @Html.DisplayFor(m => list[i].CategoryName)
                     </td>
                 </tr>
             }
         </tbody>
     </table>
 
-    <input type="submit" value="確認匯入" class="btn btn-success" />
-    <a asp-action="Index" class="btn btn-secondary">取消</a>
+    <div class="mt-3">
+        <button type="submit" class="btn btn-success">確認匯入選取項目</button>
+        <a asp-area="Books" asp-controller="Import" asp-action="Index" class="btn btn-secondary">取消</a>
+    </div>
 </form>

@@ -19,27 +19,31 @@
 }
 
 
-<div class="mb-3 d-flex gap-2 align-items-center">
-    <form method="get" class="d-flex gap-2 align-items-center">
-        <label class="form-label mb-0 me-2">選擇書籍：</label>
-        <select name="bookId" class="form-select" style="min-width:360px;">
-            @foreach (var b in books)
-            {
-                if (b.BookID == bookId)
-                {
-                    <option value="@b.BookID" selected>@b.Title</option>
-                }
-                else
-                {
-                    <option value="@b.BookID">@b.Title</option>
-                }
-            }
-        </select>
-        <button type="submit" class="btn btn-primary btn-sm">載入</button>
-    </form>
+    <div class="mb-3 inventory-select-row">
+        <form method="get" class="inventory-select-form">
+            <label class="form-label label-select mb-0">選擇書籍：</label>
 
-    <a asp-area="Books" asp-controller="Books" asp-action="Index" class="btn btn-light btn-sm ms-3">回書籍清單</a>
-</div>
+            <div class="select-wrap">
+                <select name="bookId" class="form-select book-select" aria-label="選擇書籍">
+                    @foreach (var b in books)
+                    {
+                        if (b.BookID == bookId)
+                        {
+                            <option value="@b.BookID" selected>@b.Title</option>
+                        }
+                        else
+                        {
+                            <option value="@b.BookID">@b.Title</option>
+                        }
+                    }
+                </select>
+
+                <button type="submit" class="btn btn-primary btn-sm btn-load">載入</button>
+            </div>
+        </form>
+
+        <a asp-area="Books" asp-controller="Books" asp-action="Index" class="btn btn-light btn-sm ms-3 btn-back-list">回書籍清單</a>
+    </div>
 
 @if (!rows.Any())
 {
@@ -420,6 +424,58 @@ else
             display: inline-block;
         }
 
+        .inventory-select-row {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* 表單整體可以伸縮，避免 overflow */
+        .inventory-select-form {
+            flex: 1 1 auto;
+            min-width: 0; /* 很重要：讓內部的 select 能夠 shrink */
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+            /* 標籤不換行也不伸長 */
+            .inventory-select-form .label-select {
+                flex: 0 0 auto;
+                white-space: nowrap;
+                margin-right: 0.5rem;
+            }
+
+            /* 把 select 與按鈕包在同一行並允許 select 收縮 */
+            .inventory-select-form .select-wrap {
+                display: flex;
+                gap: 0.5rem;
+                align-items: center;
+                flex: 1 1 auto; /* 佔滿剩餘空間 */
+                min-width: 0;
+            }
+
+            /* select 在 flex 容器裡一定要能收縮 */
+            .inventory-select-form .book-select {
+                flex: 1 1 auto;
+                min-width: 0; /* 避免被長字撐破 layout */
+                max-width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            /* 載入按鈕固定寬度 / 不換行 */
+            .inventory-select-form .btn-load {
+                flex: 0 0 auto;
+                white-space: nowrap;
+                padding: 0.28rem 0.7rem;
+            }
+
+        /* 回書籍清單按鈕在桌面靠右間隔；小螢幕改成置左 */
+        .btn-back-list {
+            flex: 0 0 auto;
+        }
         /* 操作按鈕小調整 */
         .btn-open-transfer-modal {
             min-width: 68px;
@@ -432,6 +488,7 @@ else
             margin-top: 0.4rem;
         }
 
+       
         /* 小螢幕友善：選書列換行 */
         @@media (max-width: 768px) {
             .inventory-page .mb-3.d-flex
